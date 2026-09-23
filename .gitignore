@@ -1,0 +1,33 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# 환경변수 / 비밀키
+.env
+.env.local
+
+# 데이터: 원본/참조/중간/가공물은 버전관리 대상에서 제외(용량/라이선스)
+data/raw/*
+data/external/*
+data/interim/*
+data/processed/*
+data/cache/*
+!data/**/.gitkeep
+outputs/tables/*
+outputs/figures/*
+!outputs/**/.gitkeep
+
+# 탐색용 (요청 산출물 아님) — repo 에 남기지 않음
+notebooks/
+docs/
+
+# Node / 프론트엔드
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
