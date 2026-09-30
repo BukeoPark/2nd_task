@@ -2,8 +2,8 @@
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
 
-async function request<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
+async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, { method });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}) as { detail?: string });
     throw new Error(body.detail ?? `API 오류 (HTTP ${res.status})`);
@@ -240,6 +240,13 @@ export interface GooglePlaceLinkResponse {
   cached: boolean;
 }
 
+export interface GoogleViewReservation {
+  allowed: boolean;
+  place_id?: string;
+  reason?: "not_matched" | "quota";
+  message?: string;
+}
+
 export const apiClient = {
   getGrid: (sizeM: number) => request<GridResponse>(`/api/grid?size_m=${sizeM}`),
   getRegions: () => request<RegionsResponse>("/api/regions"),
@@ -262,4 +269,6 @@ export const apiClient = {
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),
   getGooglePlaceLink: (storeId: string) =>
     request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place`),
+  reserveGoogleView: (storeId: string) =>
+    request<GoogleViewReservation>(`/api/stores/${encodeURIComponent(storeId)}/google-place/view`, "POST"),
 };

@@ -78,6 +78,23 @@ def store_nearby(bizes_id: str, radius_m: float = Query(500, ge=100, le=1000, de
         raise HTTPException(status_code=503, detail=str(e))
 
 
+@router.get("/google-usage")
+def google_usage() -> dict:
+    """Google 호출 사용량과 무료 한도 상한(오늘·이번 달)."""
+    return google_places.usage_summary()
+
+
+@router.post("/stores/{bizes_id}/google-place/view")
+def reserve_google_view(bizes_id: str) -> dict:
+    """UI Kit 컴포넌트 표시 허락(일·월 상한 안에서만). allowed=false 면 브라우저는 컴포넌트를 만들지 않는다."""
+    try:
+        return google_places.reserve_ui_kit_view(bizes_id)
+    except store_profile.StoreNotFound:
+        raise _not_found(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
 @router.get("/stores/{bizes_id}/google-place")
 def store_google_place(bizes_id: str) -> dict:
     """Google 장소 연결(요청한 매장 1곳만, Place ID 만 반환). 평점·리뷰는 브라우저의 Places UI Kit 이 직접 표시한다."""

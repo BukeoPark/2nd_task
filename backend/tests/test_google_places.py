@@ -108,3 +108,43 @@ def test_rate_limit(google_env, monkeypatch):
     assert google_places.link_store("S4", client=client)["status"] == "no_candidate"
     assert google_places.link_store("S5", client=client)["status"] == "rate_limited"
     assert len(calls) == 1
+
+
+def _matched(google_env, bid: str) -> None:
+    body = {"places": [_place("P1", "행복분식 당산점", "대한민국 서울특별시 영등포구 당산로 123")]}
+    client, _ = _client(lambda r: httpx.Response(200, json=body))
+    assert google_places.link_store(bid, client=client)["status"] == "matched"
+
+
+def test_ui_kit_view_only_for_matched_store(google_env):
+    assert google_places.reserve_ui_kit_view("S6")["allowed"] is False
+    _matched(google_env, "S6")
+    r = google_places.reserve_ui_kit_view("S6")
+    assert r["allowed"] and r["place_id"] == "P1"
+
+
+def test_ui_kit_daily_and_monthly_free_caps(google_env, monkeypatch):
+    _matched(google_env, "S7")
+    monkeypatch.setattr(settings, "google_ui_kit_daily_cap", 2)
+    assert google_places.reserve_ui_kit_view("S7")["allowed"]
+    assert google_places.reserve_ui_kit_view("S7")["allowed"]
+    blocked = google_places.reserve_ui_kit_view("S7")
+    assert blocked["allowed"] is False and blocked["reason"] == "quota" and "무료" in blocked["message"]
+    monkeypatch.setattr(settings, "google_ui_kit_daily_cap", 100)
+    monkeypatch.setattr(settings, "google_ui_kit_monthly_cap", 2)
+    assert google_places.reserve_ui_kit_view("S7")["allowed"] is False  # 이번 달 누적 2건으로 월 상한
+    usage = google_places.usage_summary()
+    assert usage["ui_kit"]["this_month"] == 2 and usage["text_search"]["this_month"] == 1
+
+
+def test_text_search_monthly_free_cap(google_env, monkeypatch):
+    monkeypatch.setattr(settings, "google_textsearch_monthly_cap", 1)
+    client, calls = _client(lambda r: httpx.Response(200, json={}))
+    assert google_places.link_store("S8", client=client)["status"] == "no_candidate"
+    assert google_places.link_store("S9", client=client)["status"] == "rate_limited"
+    assert len(calls) == 1
+
+
+def test_view_endpoint(client):
+    assert client.post("/api/stores/NOPE0000/google-place/view").status_code == 404
+    assert set(client.get("/api/google-usage").json()) == {"text_search", "ui_kit"}

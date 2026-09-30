@@ -4,7 +4,8 @@
 - 저장하는 것은 Place ID(캐싱 제한 예외)와 우리 쪽 연결 판정뿐이다. 이름·주소·좌표 등 Google 콘텐츠는
   판정에만 쓰고 저장·로그하지 않는다. 평점·리뷰는 서버가 받지 않는다(브라우저의 UI Kit 컴포넌트가 직접 렌더링).
 - 상호만 같다고 연결하지 않는다: 상호(지점 포함) + 위치(반경) + 도로명주소를 함께 확인한다.
-- 비용 보호: 매장당 결과 캐시, 매장별 동시요청 합치기, 분당·일일 호출 상한, 오류 직후 짧은 재시도 금지.
+- 비용 보호(무료 한도 안에서만): 매장당 결과 캐시, 매장별 동시요청 합치기, 분당·일일·월간 호출 상한,
+  오류 직후 짧은 재시도 금지. UI Kit 표시도 reserve_ui_kit_view() 로 서버가 일·월 상한 안에서만 허락한다.
 """
 from __future__ import annotations
 
@@ -34,7 +35,7 @@ MESSAGES = {
     "matched": "Google 장소와 연결됨",
     "needs_confirmation": "매장 연결 확인 필요 — 이름이 비슷한 Google 장소가 있지만 주소·위치·지점이 확실히 일치하지 않습니다",
     "no_candidate": "매장 연결 확인 필요 — Google 에서 같은 상호·위치의 장소를 찾지 못했습니다",
-    "rate_limited": "Google 조회 한도에 도달했습니다 — 잠시 후 다시 시도해 주세요",
+    "rate_limited": "Google 무료 사용 한도에 도달해 조회를 멈췄습니다 — 한도가 초기화된 뒤 다시 이용할 수 있습니다",
     "api_error": "Google 조회 실패 — 잠시 후 다시 시도해 주세요",
 }
 
@@ -68,17 +69,60 @@ def _fresh(entry: dict) -> bool:
     return datetime.now(timezone.utc) - checked < timedelta(days=NO_CANDIDATE_RECHECK_DAYS)
 
 
+def _usage_counts(cache: dict, kind: str) -> tuple[int, int]:
+    """(오늘, 이번 달) 사용 건수."""
+    usage = cache.setdefault("usage", {}).setdefault(kind, {})
+    today = date.today().isoformat()
+    return usage.get(today, 0), sum(v for d, v in usage.items() if d[:7] == today[:7])
+
+
+def _record_usage(cache: dict, kind: str) -> None:
+    usage = cache["usage"][kind]
+    today = date.today().isoformat()
+    usage[today] = usage.get(today, 0) + 1
+
+
 def _consume_quota(cache: dict) -> bool:
     now = time.monotonic()
     while _minute_calls and now - _minute_calls[0] > 60:
         _minute_calls.popleft()
-    today = date.today().isoformat()
-    usage = cache.setdefault("usage", {})
-    if len(_minute_calls) >= settings.google_textsearch_per_minute or usage.get(today, 0) >= settings.google_textsearch_daily_cap:
+    day, month = _usage_counts(cache, "text_search")
+    if (len(_minute_calls) >= settings.google_textsearch_per_minute or day >= settings.google_textsearch_daily_cap
+            or month >= settings.google_textsearch_monthly_cap):
         return False
     _minute_calls.append(now)
-    usage[today] = usage.get(today, 0) + 1
+    _record_usage(cache, "text_search")
     return True
+
+
+def reserve_ui_kit_view(bizes_id: str) -> dict:
+    """브라우저가 UI Kit 컴포넌트를 만들기 직전에 호출한다. 컴포넌트 1회 생성 = 과금 1건이므로 여기서 상한을 건다."""
+    store_profile.get_store(bizes_id)
+    with _lock:
+        cache = _load_cache()
+        entry = cache["links"].get(bizes_id)
+        if not entry or entry["status"] != "matched":
+            return {"allowed": False, "reason": "not_matched", "message": "Google 장소와 연결된 매장이 아닙니다"}
+        day, month = _usage_counts(cache, "ui_kit")
+        if day >= settings.google_ui_kit_daily_cap or month >= settings.google_ui_kit_monthly_cap:
+            _save_cache(cache)
+            return {"allowed": False, "reason": "quota", "message": MESSAGES["rate_limited"]}
+        _record_usage(cache, "ui_kit")
+        _save_cache(cache)
+    return {"allowed": True, "place_id": entry["place_id"],
+            "remaining_today": settings.google_ui_kit_daily_cap - day - 1,
+            "remaining_month": settings.google_ui_kit_monthly_cap - month - 1}
+
+
+def usage_summary() -> dict:
+    with _lock:
+        cache = _load_cache()
+    out = {}
+    for kind, (dcap, mcap) in {"text_search": (settings.google_textsearch_daily_cap, settings.google_textsearch_monthly_cap),
+                               "ui_kit": (settings.google_ui_kit_daily_cap, settings.google_ui_kit_monthly_cap)}.items():
+        day, month = _usage_counts(cache, kind)
+        out[kind] = {"today": day, "daily_cap": dcap, "this_month": month, "monthly_cap": mcap}
+    return out
 
 
 def evaluate(store: dict, places: list[dict]) -> tuple[str, str | None, str]:

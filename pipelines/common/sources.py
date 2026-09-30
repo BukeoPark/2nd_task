@@ -217,7 +217,8 @@ SOURCES: dict[str, DataSource] = {
             terms="Place ID 는 캐싱 제한 예외(무기한 저장 가능)",
             verification="docs_only",
             status="pending",
-            notes="서버 키(GOOGLE_MAPS_SERVER_KEY)가 없어 연동 준비 중.",
+            notes="서버 키(GOOGLE_MAPS_SERVER_KEY)가 없어 연동 준비 중. 약관 해석(2026-09-30 결정): Places API 콘텐츠는 "
+                  "비Google 지도와 함께 표시하지 않고 서버의 연결 판정에만 일시 사용한다(표시·저장 안 함). 무료 한도 안에서만 호출.",
         ),
     ]
 }
