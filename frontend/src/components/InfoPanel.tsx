@@ -21,7 +21,7 @@ interface InfoPanelProps {
   children?: ReactNode;
 }
 
-/** 격자·행정동·상권 마커를 눌렀을 때의 서랍 내용: [3초 브리핑] -> [핵심 지표 카드] -> [상권 변화 추이] -> (매장 목록 등 children) -> [AI 리포트 버튼]. */
+/** 격자·행정동·상권 마커를 눌렀을 때의 서랍 내용: [3초 브리핑] -> [핵심 지표 카드] -> [상권 변화 추이] -> (매장 목록 등 children) -> [리포트 안내]. */
 export function InfoPanel({ title, brief, rows, trend, onClose, children }: InfoPanelProps) {
   return (
     <Drawer title={title} onClose={onClose}>
@@ -53,24 +53,9 @@ export function InfoPanel({ title, brief, rows, trend, onClose, children }: Info
 
       {children}
 
-      <button
-        type="button"
-        disabled
-        title="AI 창업 컨설팅 리포트 기능은 아직 준비 중입니다"
-        style={{
-          width: "100%",
-          marginTop: 16,
-          padding: "10px 0",
-          borderRadius: 8,
-          border: "1px solid #e5e7eb",
-          background: "#F3F4F6",
-          color: "#9ca3af",
-          fontSize: 13,
-          cursor: "not-allowed",
-        }}
-      >
-        AI 창업 컨설팅 리포트 보기 (준비 중)
-      </button>
+      <div style={{ marginTop: 16, fontSize: 12, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
+        목록에서 매장을 고르면 '매출 개선 리포트'를 볼 수 있어요.
+      </div>
     </Drawer>
   );
 }

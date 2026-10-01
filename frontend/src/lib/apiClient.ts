@@ -287,6 +287,28 @@ export interface SalesBenchmarkResponse {
   floating?: FloatingComparison | null;
 }
 
+export interface ImprovementRecommendation {
+  area: string;
+  title: string;
+  evidence: string[];
+  suggestion: string;
+  score: number;
+}
+
+export interface ImprovementReportResponse {
+  status: "ok" | "no_match" | "no_sales" | "no_data_in_dong";
+  message?: string;
+  unit?: SalesBenchmarkResponse["unit"];
+  svc_nm?: string;
+  quarter_label?: string;
+  benchmark?: { per_store_month: number | null; rank: number; peer_count: number };
+  top_group?: { count: number; peers: number; names: string[]; per_store_month_min: number } | null;
+  top_group_note?: string | null;
+  recommendations?: ImprovementRecommendation[];
+  disclaimer: string;
+  source?: { title: string; reference?: string };
+}
+
 export interface GoogleViewReservation {
   allowed: boolean;
   place_id?: string;
@@ -313,6 +335,8 @@ export const apiClient = {
   },
   getSalesBenchmark: (storeId: string) =>
     request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
+  getImprovementReport: (storeId: string) =>
+    request<ImprovementReportResponse>(`/api/stores/${encodeURIComponent(storeId)}/improvement-report`),
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),

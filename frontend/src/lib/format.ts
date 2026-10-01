@@ -35,3 +35,11 @@ export function formatSignedPct(value: number | null | undefined): string {
   if (value === null || value === undefined) return "비교 불가";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
+
+/** '3,500' 같은 만원 단위 입력을 원 단위로. 비었거나 숫자가 아니면 null. */
+export function parseManwon(input: string): number | null {
+  const s = input.replace(/,/g, "").trim();
+  if (s === "") return null;
+  const v = Number(s) * 1e4;
+  return Number.isFinite(v) && v >= 0 ? v : null;
+}
