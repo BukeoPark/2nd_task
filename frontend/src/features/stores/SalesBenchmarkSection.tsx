@@ -4,7 +4,7 @@ import { Notice, Section, SourceNote } from "../../components/Notice";
 import { apiClient, type FloatingComparison, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct } from "../../lib/format";
 
-/** '동네 매출 비교' — 같은 행정동·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
+/** '동네 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
  * 입력한 매출은 이 화면 안에서만 계산하고 서버로 보내거나 저장하지 않는다. */
 export function SalesBenchmarkSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error } = useQuery({
@@ -40,13 +40,18 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
-        {data.dong} · 서울시 업종 '{data.svc_nm}' · {data.quarter_label}
+        비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' · {data.quarter_label}
         {data.crosswalk_note && <span style={{ color: "#6B7280" }}> ({data.crosswalk_note})</span>}
       </div>
+      {data.unit?.fallback_reason && (
+        <div style={{ marginBottom: 8 }}>
+          <Notice tone="muted">{data.unit.fallback_reason}</Notice>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Card label="점포당 월평균 추정매출" value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균`} />
-        <Card label="파일럿 동네 순위" value={`${data.rank} / ${data.peer_count}위`} sub="같은 업종 점포당 평균 기준" />
+        <Card label={`${data.unit?.peer_label ?? "파일럿"} 중 순위`} value={`${data.rank} / ${data.peer_count}위`} sub="같은 업종 점포당 평균 기준" />
         <Card label="전년 동기 대비" value={formatSignedPct(data.per_store_yoy_pct)} sub="점포당 평균" />
         <Card label="전 분기 대비" value={formatSignedPct(data.per_store_qoq_pct)} sub="계절 영향 있음" />
       </div>
@@ -57,7 +62,7 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
         </div>
       ))}
 
-      <MyRevenueInput dongAvg={avg} peers={data.peers ?? []} />
+      <MyRevenueInput dongAvg={avg} peers={data.peers ?? []} unitLabel={data.unit?.label ?? "동네"} peerLabel={data.unit?.peer_label ?? "파일럿"} />
 
       <div style={{ fontSize: 11, color: "#6b7280", margin: "12px 0 4px" }}>점포당 월평균 추정매출 추이</div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 56 }}>
@@ -78,7 +83,9 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
 
       {(data.insights ?? []).length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>이 동네 같은 업종 매출의 특징 (파일럿 평균과 비교)</div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+            이 {data.unit?.label ?? "동네"} 같은 업종 매출의 특징 ({data.unit?.peer_label ?? "파일럿"} 평균과 비교)
+          </div>
           {data.insights!.map((i) => (
             <div key={i.label} style={{ fontSize: 12 }}>
               · {i.text}
@@ -101,7 +108,7 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
       {(data.composition ?? []).map((g) => (
         <div key={g.group} style={{ marginTop: 10 }}>
           <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
-            {g.group} 매출 비중 <Swatch color="#3B82F6" /> 이 동네 <Swatch color="#D1D5DB" /> 파일럿 평균
+            {g.group} 매출 비중 <Swatch color="#3B82F6" /> 이 {data.unit?.label ?? "동네"} <Swatch color="#D1D5DB" /> {data.unit?.peer_label ?? "파일럿"} 평균
           </div>
           {g.items.map((it) => (
             <div key={it.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
@@ -131,7 +138,7 @@ function FloatingBlock({ fl }: { fl: FloatingComparison }) {
         <Card
           label="유동인구 1만 명당 분기 매출"
           value={formatKrw(fl.sales_per_10k)}
-          sub={`${fl.rank} / ${fl.peer_count}위 · 파일럿 중앙값 ${formatKrw(fl.pilot_median_per_10k)}`}
+          sub={`${fl.rank} / ${fl.peer_count}위 · 비교군 중앙값 ${formatKrw(fl.pilot_median_per_10k)}`}
         />
       </div>
 
@@ -174,7 +181,17 @@ function FloatingBlock({ fl }: { fl: FloatingComparison }) {
 }
 
 /** 사장님 월 매출 입력 → 동네 평균·다른 동네 평균들과 비교. 값은 이 컴포넌트 상태에만 있고 네트워크로 나가지 않는다. */
-function MyRevenueInput({ dongAvg, peers }: { dongAvg: number | null; peers: { dong: string; per_store_month: number | null }[] }) {
+function MyRevenueInput({
+  dongAvg,
+  peers,
+  unitLabel,
+  peerLabel,
+}: {
+  dongAvg: number | null;
+  peers: { name: string; per_store_month: number | null }[];
+  unitLabel: string;
+  peerLabel: string;
+}) {
   const [manwon, setManwon] = useState("");
   const value = Number(manwon.replace(/,/g, "")) * 1e4;
   const valid = manwon.trim() !== "" && Number.isFinite(value) && value >= 0;
@@ -199,15 +216,15 @@ function MyRevenueInput({ dongAvg, peers }: { dongAvg: number | null; peers: { d
       {valid && dongAvg !== null && dongAvg > 0 && (
         <div style={{ marginTop: 6, fontSize: 12 }}>
           <div>
-            동네 같은 업종 점포당 평균의 <strong>{((value / dongAvg) * 100).toFixed(0)}%</strong> 수준
+            이 {unitLabel} 같은 업종 점포당 평균의 <strong>{((value / dongAvg) * 100).toFixed(0)}%</strong> 수준
             ({value >= dongAvg ? "+" : "-"}
             {formatKrw(Math.abs(value - dongAvg))})
           </div>
           <div style={{ color: "#374151" }}>
-            파일럿 {peerValues.length}개 동의 점포당 평균 중 {above}곳보다 높거나 같음
+            {peerLabel} {peerValues.length}곳의 점포당 평균 중 {above}곳보다 높거나 같음
           </div>
           <div style={{ fontSize: 11, color: "#6B7280" }}>
-            비교 대상은 개별 매장이 아니라 동네별 평균입니다. 카드 결제 외 현금·배달앱 정산 방식에 따라 기준이 다를 수 있습니다.
+            비교 대상은 개별 매장이 아니라 {unitLabel}별 평균입니다. 카드 결제 외 현금·배달앱 정산 방식에 따라 기준이 다를 수 있습니다.
           </div>
         </div>
       )}

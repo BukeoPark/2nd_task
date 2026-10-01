@@ -49,6 +49,10 @@ DATASETS: dict[str, tuple[str, bool, str]] = {
     "change_index": ("VwsmAdstrdIxQq", True, "상권분석서비스(상권변화지표-행정동)"),
     "resident_pop": ("VwsmAdstrdRepopW", True, "상권분석서비스(상주인구-행정동)"),
     "boundary_centroid": ("TbgisAdstrdRelmW", False, "상권분석서비스(영역-행정동, 중심좌표+면적)"),
+    # 상권(골목·발달·전통시장·관광특구) 단위 — 행정동보다 촘촘한 비교용. 2026-10-01 실호출로 분기 필터 동작 확인.
+    "trdar_sales": ("VwsmTrdarSelngQq", True, "상권분석서비스(추정매출-상권)"),
+    "trdar_stores": ("VwsmTrdarStorQq", True, "상권분석서비스(점포-상권)"),
+    "trdar_flpop": ("VwsmTrdarFlpopQq", True, "상권분석서비스(길단위인구-상권)"),
 }
 
 # 2026-09-14 기준 실호출로 확인한 가장 최근 분기(추정매출 등 공통). 데이터가 갱신되면 --quarter 로 덮어쓴다.

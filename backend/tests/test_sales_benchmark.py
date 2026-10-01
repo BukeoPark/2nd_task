@@ -11,7 +11,8 @@ from app.services import data_store
 def stores_cw() -> pd.DataFrame:
     stores = data_store.load_parquet("stores.parquet")
     cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
-    return stores.merge(cw[["indsSclsCd", "svc_cd", "status"]], on="indsSclsCd")
+    st = data_store.load_parquet("store_trdar.parquet")[["bizesId", "trdar_cd"]]
+    return stores.merge(cw[["indsSclsCd", "svc_cd", "status"]], on="indsSclsCd").merge(st, on="bizesId", how="left")
 
 
 def test_crosswalk_covers_all_small_categories():
@@ -24,9 +25,11 @@ def test_benchmark_matches_source_numbers(client, stores_cw):
     sales = data_store.load_parquet("dong_industry_sales.parquet")
     latest = sales["quarter"].max()
     have = sales.loc[(sales["quarter"] == latest) & (sales["svc_cd"] == "CS100001") & sales["per_store_q"].notna()]
-    store = stores_cw.loc[(stores_cw["indsSclsCd"] == "I20101") & stores_cw["adongCd"].isin(have["adongCd"])].sort_values("bizesId").iloc[0]
+    store = stores_cw.loc[(stores_cw["indsSclsCd"] == "I20101") & stores_cw["adongCd"].isin(have["adongCd"])
+                          & stores_cw["trdar_cd"].isna()].sort_values("bizesId").iloc[0]
     body = client.get(f"/api/stores/{store['bizesId']}/sales-benchmark").json()
     assert body["status"] == "ok" and body["svc_nm"] == "한식음식점"
+    assert body["unit"]["level"] == "dong" and "상권" in body["unit"]["fallback_reason"]
     src = have.loc[have["adongCd"] == store["adongCd"]].iloc[0]
     assert body["per_store_month"] == pytest.approx(src["sales_q"] / src["stores"] / 3, rel=1e-6)
     assert 1 <= body["rank"] <= body["peer_count"] == len(have)
@@ -59,7 +62,8 @@ def test_floating_population_comparison(client, stores_cw):
     sales = data_store.load_parquet("dong_industry_sales.parquet")
     latest = sales["quarter"].max()
     have = sales.loc[(sales["quarter"] == latest) & (sales["svc_cd"] == "CS100001") & sales["sales_per_10k_flpop"].notna()]
-    store = stores_cw.loc[(stores_cw["indsSclsCd"] == "I20101") & stores_cw["adongCd"].isin(have["adongCd"])].sort_values("bizesId").iloc[0]
+    store = stores_cw.loc[(stores_cw["indsSclsCd"] == "I20101") & stores_cw["adongCd"].isin(have["adongCd"])
+                          & stores_cw["trdar_cd"].isna()].sort_values("bizesId").iloc[0]
     fl = client.get(f"/api/stores/{store['bizesId']}/sales-benchmark").json()["floating"]
     src = have.loc[have["adongCd"] == store["adongCd"]].iloc[0]
     assert fl["sales_per_10k"] == pytest.approx(src["sales_q"] / src["flpop"] * 1e4, rel=1e-6)
@@ -68,3 +72,18 @@ def test_floating_population_comparison(client, stores_cw):
     assert sum(i["flpop"] for i in times) == pytest.approx(1.0, abs=1e-3)
     assert any("상대 지수" in c for c in fl["caveats"])
     assert all(g["label"] != "0~6시" for g in fl["gaps"])  # 새벽 시간대는 주민 체류 인구라 기회로 안내하지 않는다
+
+
+def test_store_in_commercial_area_uses_trdar(client, stores_cw):
+    sales = data_store.load_parquet("trdar_industry_sales.parquet")
+    latest = sales["quarter"].max()
+    have = sales.loc[(sales["quarter"] == latest) & (sales["svc_cd"] == "CS100001") & sales["per_store_q"].notna()]
+    store = stores_cw.loc[(stores_cw["indsSclsCd"] == "I20101") & stores_cw["trdar_cd"].isin(have["trdar_cd"])].sort_values("bizesId").iloc[0]
+    body = client.get(f"/api/stores/{store['bizesId']}/sales-benchmark").json()
+    src = have.loc[have["trdar_cd"] == store["trdar_cd"]].iloc[0]
+    assert body["unit"]["level"] == "trdar" and body["unit"]["fallback_reason"] is None
+    assert body["unit"]["name"] == src["trdar_nm"] and body["unit"]["type"] in {"골목상권", "발달상권", "전통시장"}
+    assert body["per_store_month"] == pytest.approx(src["sales_q"] / src["stores"] / 3, rel=1e-6)
+    assert body["peer_count"] == len(have)
+    if body["floating"]:
+        assert body["floating"]["sales_per_10k"] == pytest.approx(src["sales_q"] / src["flpop"] * 1e4, rel=1e-6)

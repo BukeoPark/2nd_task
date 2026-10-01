@@ -270,6 +270,7 @@ export interface SalesBenchmarkResponse {
   caveats: string[];
   svc_nm?: string;
   crosswalk_note?: string | null;
+  unit?: { level: "trdar" | "dong"; label: string; name: string; type: string | null; peer_label: string; fallback_reason: string | null };
   dong?: string;
   quarter_label?: string;
   per_store_month?: number | null;
@@ -278,7 +279,7 @@ export interface SalesBenchmarkResponse {
   per_store_yoy_pct?: number | null;
   rank?: number;
   peer_count?: number;
-  peers?: { dong: string; per_store_month: number | null; stores: number }[];
+  peers?: { name: string; per_store_month: number | null; stores: number }[];
   trend?: { quarter: string; label: string; per_store_month: number | null; stores: number | null }[];
   composition?: { group: string; items: SalesShareItem[] }[];
   insights?: { group: string; label: string; gap_pctp: number; text: string }[];
