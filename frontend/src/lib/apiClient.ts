@@ -250,6 +250,19 @@ export interface SalesShareItem {
   pilot: number | null;
 }
 
+export interface FloatingComparison {
+  flpop: number | null;
+  flpop_yoy_pct: number | null;
+  sales_per_10k: number | null;
+  rank: number;
+  peer_count: number;
+  pilot_median_per_10k: number | null;
+  mix: { group: string; items: { key: string; label: string; flpop: number | null; sales: number | null }[] }[];
+  gaps: { label: string; gap_pctp: number; text: string }[];
+  caveats: string[];
+  source: { title: string; reference: string };
+}
+
 export interface SalesBenchmarkResponse {
   status: "ok" | "no_match" | "no_sales" | "no_data_in_dong";
   message?: string;
@@ -270,6 +283,7 @@ export interface SalesBenchmarkResponse {
   composition?: { group: string; items: SalesShareItem[] }[];
   insights?: { group: string; label: string; gap_pctp: number; text: string }[];
   warnings?: string[];
+  floating?: FloatingComparison | null;
 }
 
 export interface GoogleViewReservation {

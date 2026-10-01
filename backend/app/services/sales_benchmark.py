@@ -32,6 +32,46 @@ CAVEATS = [
 ]
 
 
+# 0~6시 유동인구는 생활인구 기반이라 대부분 집에 있는 주민이다 → 비중 비교 안내 문장에서는 뺀다(막대에는 표시).
+GAP_EXCLUDED = {"share_t00_06"}
+
+FLOATING_CAVEATS = [
+    "유동인구는 서울시·KT 생활인구를 길 단위로 배분한 추정치로, 실제 행인 수가 아니라 동네끼리 비교하는 상대 지수입니다.",
+    "길 위의 인구라 오피스·대형 건물 안 인구는 적게 잡혀, 오피스 상권은 '유동인구 대비 매출'이 높게 나올 수 있습니다.",
+    "유동인구와 매출의 관계는 상관이지 인과가 아닙니다.",
+]
+
+
+def _floating(store: dict, cur, peers: pd.DataFrame, latest: str) -> dict | None:
+    fl = data_store.load_parquet("dong_floating_pop.parquet")
+    row = fl.loc[(fl["quarter"] == latest) & (fl["adongCd"] == store["adongCd"])]
+    if row.empty or pd.isna(cur["sales_per_10k_flpop"]):
+        return None
+    f = row.iloc[0]
+    conv = peers.dropna(subset=["sales_per_10k_flpop"]).sort_values("sales_per_10k_flpop", ascending=False)
+    mix, gaps = [], []
+    for group, cols in GROUPS.items():
+        items = []
+        for c in cols:
+            fs, ss = _num(f[c]), _num(cur[c])
+            items.append({"key": c, "label": SHARE_LABELS[c], "flpop": fs, "sales": ss})
+            if c not in GAP_EXCLUDED and fs is not None and ss is not None and abs(fs - ss) * 100 >= INSIGHT_GAP_PCTP:
+                gap = (fs - ss) * 100
+                gaps.append({"label": SHARE_LABELS[c], "gap_pctp": round(gap, 1),
+                             "text": (f"{SHARE_LABELS[c]}: 유동인구 비중 {fs * 100:.0f}% · 매출 비중 {ss * 100:.0f}% — "
+                                      + ("사람은 많은데 매출로 덜 이어짐" if gap > 0 else "유동인구 비중보다 매출 비중이 큼"))})
+        mix.append({"group": group, "items": items})
+    gaps.sort(key=lambda g: -abs(g["gap_pctp"]))
+    return {
+        "flpop": _num(f["flpop"]), "flpop_yoy_pct": _num(f["flpop_yoy_pct"]),
+        "sales_per_10k": _num(cur["sales_per_10k_flpop"]),
+        "rank": int((conv["adongCd"] == store["adongCd"]).to_numpy().argmax()) + 1, "peer_count": len(conv),
+        "pilot_median_per_10k": _num(conv["sales_per_10k_flpop"].median()),
+        "mix": mix, "gaps": gaps[:4], "caveats": FLOATING_CAVEATS,
+        "source": {"title": "서울시 상권분석서비스(길단위인구-행정동)", "reference": f"{quarter_label(latest)} 기준"},
+    }
+
+
 def quarter_label(q: str) -> str:
     return f"{q[:4]}년 {q[4]}분기"
 
@@ -105,4 +145,5 @@ def benchmark(bizes_id: str) -> dict:
         "composition": composition,
         "insights": insights[:4],
         "warnings": warnings,
+        "floating": _floating(store, cur, peers, latest),
     }

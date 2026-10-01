@@ -3,8 +3,10 @@
 실행: .venv/bin/python -m pipelines.transform.build_sales_timeseries
 입력: data/raw/seoul/{sales_VwsmAdstrdSelngW,stores_VwsmAdstrdStorW}_<분기>_<수집일>.json (분기별 최신 파일)
       data/processed/dong_crosswalk.parquet (파일럿 36개 행정동)
-출력: data/processed/dong_industry_sales.parquet  분기 × 행정동 × 서비스업종 1행
+      data/processed/seoul_floating_pop.parquet (길단위인구-행정동, 22개 분기 — filter_seoul_trdar 산출물)
+출력: data/processed/dong_industry_sales.parquet  분기 × 행정동 × 서비스업종 1행 (+ 유동인구 1만 명당 매출)
       data/processed/dong_sales_growth.parquet    행정동별 최신 분기 매출 증감률(업종 합계)
+      data/processed/dong_floating_pop.parquet    분기 × 행정동 유동인구 총량·구성비·전년 동기 대비
       outputs/tables/sales_timeseries_log.csv     제외·보정 기준과 건수
 
 해석 기준
@@ -13,6 +15,8 @@
   - 점포당 평균의 분모는 유사업종 점포수(SIMILR_INDUTY_STOR_CO = 일반 점포 + 프랜차이즈, 실제 데이터로 확인).
   - 성별·연령 매출에는 법인 매출이 없어 합계와 다를 수 있다 → 구성비는 해당 항목들의 합을 분모로 쓴다.
   - 행정동 전체 증감률은 두 분기에 모두 있는 업종만 합산한다(업종 구성 변화로 생기는 착시 방지).
+  - 유동인구(TOT_FLPOP_CO)는 서울시·KT 생활인구를 길 단위로 배분한 추정치다. 시간대 합 = 요일 합 = 총계라
+    실제 행인 수가 아니라 동네끼리 비교하는 상대 지수로 쓴다. '유동인구 1만 명당 매출' = 분기 매출 ÷ 유동인구 × 10,000.
 """
 from __future__ import annotations
 
@@ -61,6 +65,29 @@ def _shift_quarter(q: str, n: int) -> str:
     return f"{idx // 4}{idx % 4 + 1}"
 
 
+def _floating_pop(dongs: set[str], log: list) -> pd.DataFrame:
+    f = pd.read_parquet(config.PROCESSED_DIR / "seoul_floating_pop.parquet")
+    f = f.loc[f["ADSTRD_CD"].isin(dongs)].drop_duplicates(["STDR_YYQU_CD", "ADSTRD_CD"], keep="last")
+    cols = [c for c in f.columns if c.endswith("_FLPOP_CO")]
+    f[cols] = f[cols].apply(pd.to_numeric, errors="coerce")
+    tot = f["TOT_FLPOP_CO"].replace(0, np.nan)
+    out = pd.DataFrame({"quarter": f["STDR_YYQU_CD"], "adongCd": f["ADSTRD_CD"], "flpop": f["TOT_FLPOP_CO"]})
+    days = f[["MON_FLPOP_CO", "TUES_FLPOP_CO", "WED_FLPOP_CO", "THUR_FLPOP_CO", "FRI_FLPOP_CO", "SAT_FLPOP_CO", "SUN_FLPOP_CO"]]
+    out["share_weekend"] = (f["SAT_FLPOP_CO"] + f["SUN_FLPOP_CO"]) / days.sum(axis=1).replace(0, np.nan)
+    out["share_female"] = f["FML_FLPOP_CO"] / (f["ML_FLPOP_CO"] + f["FML_FLPOP_CO"]).replace(0, np.nan)
+    tcols = [c for c in cols if c.startswith("TMZON_")]
+    for c in tcols:
+        out["share_t" + c.split("_")[1] + "_" + c.split("_")[2]] = f[c] / f[tcols].sum(axis=1).replace(0, np.nan)
+    acols = [c for c in cols if c.startswith("AGRDE_")]
+    for c in acols:
+        out["share_age" + c.split("_")[1]] = f[c] / f[acols].sum(axis=1).replace(0, np.nan)
+    prev = out[["quarter", "adongCd", "flpop"]].assign(quarter=lambda d: d["quarter"].map(lambda q: _shift_quarter(q, -4)))
+    out = out.merge(prev.rename(columns={"flpop": "_prev"}), on=["quarter", "adongCd"], how="left")
+    out["flpop_yoy_pct"] = ((out["flpop"] / out["_prev"] - 1) * 100).round(2)
+    log.append(("유동인구: 분기×행정동 행 수", len(out)))
+    return out.drop(columns=["_prev"]).sort_values(["quarter", "adongCd"]).reset_index(drop=True)
+
+
 def main() -> None:
     log: list[tuple[str, int]] = []
     cw = pd.read_parquet(config.PROCESSED_DIR / "dong_crosswalk.parquet")
@@ -107,6 +134,12 @@ def main() -> None:
         out = out.drop(columns=[f"_ps_{label}", f"_s_{label}"])
     rate_cols = [c for c in out.columns if c.endswith("_pct")]
     out[rate_cols] = out[rate_cols].replace([np.inf, -np.inf], np.nan).round(2)
+
+    flpop = _floating_pop(dongs, log)
+    out = out.merge(flpop[["quarter", "adongCd", "flpop"]], on=["quarter", "adongCd"], how="left")
+    out["sales_per_10k_flpop"] = out["sales_q"] / out["flpop"].replace(0, np.nan) * 1e4
+    log.append(("매출 행 중 같은 분기·행정동 유동인구 없음(1만 명당 매출 계산 불가)", int(out["flpop"].isna().sum())))
+    flpop.to_parquet(config.PROCESSED_DIR / "dong_floating_pop.parquet", index=False)
 
     out = out.sort_values(["quarter", "adongCd", "svc_cd"], kind="stable").reset_index(drop=True)
     out.to_parquet(config.PROCESSED_DIR / "dong_industry_sales.parquet", index=False)

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Notice, Section, SourceNote } from "../../components/Notice";
-import { apiClient, type SalesBenchmarkResponse } from "../../lib/apiClient";
+import { apiClient, type FloatingComparison, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct } from "../../lib/format";
 
 /** '동네 매출 비교' — 같은 행정동·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
@@ -90,6 +90,14 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
         </div>
       )}
 
+      {data.floating ? (
+        <FloatingBlock fl={data.floating} />
+      ) : (
+        <div style={{ marginTop: 10 }}>
+          <Notice tone="muted">이 동네·업종은 유동인구 대비 매출을 계산할 자료가 없습니다.</Notice>
+        </div>
+      )}
+
       {(data.composition ?? []).map((g) => (
         <div key={g.group} style={{ marginTop: 10 }}>
           <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
@@ -107,6 +115,58 @@ function Body({ data }: { data: SalesBenchmarkResponse }) {
               </span>
             </div>
           ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FloatingBlock({ fl }: { fl: FloatingComparison }) {
+  const times = fl.mix.find((g) => g.group === "시간대별")?.items ?? [];
+  return (
+    <div style={{ marginTop: 12, borderTop: "1px dashed #E5E7EB", paddingTop: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>유동인구 대비 매출</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Card label="분기 유동인구(상대 지수)" value={fl.flpop === null ? "정보 없음" : `${Math.round(fl.flpop / 1e4).toLocaleString()}만`} sub={`전년 동기 대비 ${formatSignedPct(fl.flpop_yoy_pct)}`} />
+        <Card
+          label="유동인구 1만 명당 분기 매출"
+          value={formatKrw(fl.sales_per_10k)}
+          sub={`${fl.rank} / ${fl.peer_count}위 · 파일럿 중앙값 ${formatKrw(fl.pilot_median_per_10k)}`}
+        />
+      </div>
+
+      <div style={{ fontSize: 11, color: "#6b7280", margin: "10px 0 2px" }}>
+        시간대별 비중 <Swatch color="#10B981" /> 유동인구 <Swatch color="#3B82F6" /> 이 업종 매출
+      </div>
+      {times.map((it) => (
+        <div key={it.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+          <span style={{ width: 52, color: "#374151" }}>{it.label}</span>
+          <div style={{ flex: 1 }}>
+            <ShareBar value={it.flpop} color="#10B981" />
+            <ShareBar value={it.sales} color="#3B82F6" />
+          </div>
+          <span style={{ width: 70, textAlign: "right", color: "#374151" }}>
+            {pct(it.flpop)} / {pct(it.sales)}
+          </span>
+        </div>
+      ))}
+
+      {fl.gaps.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {fl.gaps.map((g) => (
+            <div key={g.label} style={{ fontSize: 12 }}>
+              · {g.text}
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
+            사람은 많은데 매출로 덜 이어지는 시간대·손님층은 영업시간·메뉴·홍보를 점검해 볼 만한 후보입니다.
+          </div>
+        </div>
+      )}
+      <SourceNote title={fl.source.title} reference={fl.source.reference} />
+      {fl.caveats.map((c) => (
+        <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
+          · {c}
         </div>
       ))}
     </div>
