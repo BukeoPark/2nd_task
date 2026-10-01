@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import data_store, google_places, nearby_analysis, store_profile, taxonomy
+from app.services import data_store, google_places, nearby_analysis, sales_benchmark, store_profile, taxonomy
 
 router = APIRouter(prefix="/api", tags=["stores"])
 
@@ -72,6 +72,17 @@ def store_nearby(bizes_id: str, radius_m: float = Query(500, ge=100, le=1000, de
     """주변 상권 분석 — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율."""
     try:
         return nearby_analysis.analyze(bizes_id, radius_m)
+    except store_profile.StoreNotFound:
+        raise _not_found(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/stores/{bizes_id}/sales-benchmark")
+def store_sales_benchmark(bizes_id: str) -> dict:
+    """동네 같은 업종의 점포당 월평균 추정매출·증감·매출 구성(서울시 추정매출, 개별 매장 매출 아님)."""
+    try:
+        return sales_benchmark.benchmark(bizes_id)
     except store_profile.StoreNotFound:
         raise _not_found(bizes_id)
     except data_store.DataNotReady as e:

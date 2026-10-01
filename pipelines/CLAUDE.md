@@ -21,6 +21,12 @@
 `collect_sbiz_upjong` → `collect_seoul_localdata` (→ `collect_neis_academy`, 키 있을 때) → `transform.build_licenses`
 → `transform.build_industry_crosswalk` → `transform.compute_store_density` → `transform.link_store_licenses` → `transform.export_source_registry`
 
+## 추정매출 시계열 실행 순서
+`collect_seoul_trdar --datasets sales stores --quarter <분기>` 를 분기마다(2021Q1~최신) → `transform.build_sales_timeseries`
+→ `transform.build_sales_crosswalk` → `transform.build_dong_metrics`
+- 추정매출(THSMON_SELNG_AMT)은 분기 합계로 해석, 점포당 평균 분모는 유사업종 점포수(일반+프랜차이즈).
+- 소분류→서울시 업종 대응은 `common/sales_industry_crosswalk.py` 에서만 한다.
+
 ## transform/ (변환)
 - 입력은 `data/raw/`·`data/external/`, 출력은 `data/interim/`·`data/processed/`.
 - 좌표: 저장은 WGS84(EPSG:4326) `lon`/`lat`, 거리·면적 연산은 EPSG:5179 로 투영. (`config.CRS_*`)

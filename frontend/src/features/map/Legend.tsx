@@ -1,4 +1,4 @@
-import { OVERLAY_Z_INDEX, REB_ZONE_COLOR, TREND_COLORS, ZONE_COLORS } from "../../lib/vizConfig";
+import { OVERLAY_Z_INDEX, REB_ZONE_COLOR, SALES_FLAT_PCT, TREND_COLORS, ZONE_COLORS } from "../../lib/vizConfig";
 import type { ViewMode } from "./types";
 
 interface LegendProps {
@@ -31,9 +31,10 @@ export function Legend({ viewMode, rebZonesVisible }: LegendProps) {
         </>
       ) : (
         <>
-          <LegendDot color={TREND_COLORS.up} label="상승 (상권확장)" />
-          <LegendDot color={TREND_COLORS.down} label="하강 (상권축소)" />
-          <LegendDot color={TREND_COLORS.flat} label="보합 (정체·다이나믹)" />
+          <div style={{ fontSize: 11, color: "#6B7280" }}>전년 동기 대비 추정매출(업종 합계)</div>
+          <LegendDot color={TREND_COLORS.up} label={`상승 (+${SALES_FLAT_PCT}% 이상)`} />
+          <LegendDot color={TREND_COLORS.down} label={`하강 (-${SALES_FLAT_PCT}% 이하)`} />
+          <LegendDot color={TREND_COLORS.flat} label={`보합 (±${SALES_FLAT_PCT}% 미만)`} />
         </>
       )}
       {rebZonesVisible && <LegendDot color={REB_ZONE_COLOR} label="R-ONE 임대동향 상권 (크기 = 임대료)" />}

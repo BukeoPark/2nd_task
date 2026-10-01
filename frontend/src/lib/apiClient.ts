@@ -53,6 +53,9 @@ export interface DongMetric {
   floating_pop: number | null;
   resident_pop: number | null;
   workplace_pop: number | null;
+  sales_yoy_pct: number | null;
+  sales_qoq_pct: number | null;
+  yoy_base_quarter: string | null;
 }
 
 export interface DongMetricsResponse {
@@ -240,6 +243,35 @@ export interface GooglePlaceLinkResponse {
   cached: boolean;
 }
 
+export interface SalesShareItem {
+  key: string;
+  label: string;
+  dong: number | null;
+  pilot: number | null;
+}
+
+export interface SalesBenchmarkResponse {
+  status: "ok" | "no_match" | "no_sales" | "no_data_in_dong";
+  message?: string;
+  source: { title: string; reference?: string };
+  caveats: string[];
+  svc_nm?: string;
+  crosswalk_note?: string | null;
+  dong?: string;
+  quarter_label?: string;
+  per_store_month?: number | null;
+  stores?: number;
+  per_store_qoq_pct?: number | null;
+  per_store_yoy_pct?: number | null;
+  rank?: number;
+  peer_count?: number;
+  peers?: { dong: string; per_store_month: number | null; stores: number }[];
+  trend?: { quarter: string; label: string; per_store_month: number | null; stores: number | null }[];
+  composition?: { group: string; items: SalesShareItem[] }[];
+  insights?: { group: string; label: string; gap_pctp: number; text: string }[];
+  warnings?: string[];
+}
+
 export interface GoogleViewReservation {
   allowed: boolean;
   place_id?: string;
@@ -264,6 +296,8 @@ export const apiClient = {
     }
     return request<StoreListResponse>(`/api/competitors?${q}`);
   },
+  getSalesBenchmark: (storeId: string) =>
+    request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),

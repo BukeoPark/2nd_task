@@ -38,7 +38,7 @@ export function InfoPanel({ title, brief, rows, trend, onClose, children }: Info
 
       {trend && trend.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>최근 상권 변화 추이(분기별)</div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>상권변화지표 추이(분기별 · 개폐업 흐름 기준, 매출 아님)</div>
           <div style={{ display: "flex", gap: 3 }}>
             {trend.map((dot) => (
               <span

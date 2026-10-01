@@ -22,3 +22,16 @@ export function formatPerArea(value: number | null): string {
   if (value === null) return "정보 없음";
   return `${value.toFixed(1)}천원/㎡`;
 }
+
+/** 금액을 억/만원 단위로 짧게. 1억 이상은 소수 한 자리 억원, 그 아래는 만원. */
+export function formatKrw(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "정보 없음";
+  if (Math.abs(value) >= 1e8) return `${(value / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억원`;
+  return `${Math.round(value / 1e4).toLocaleString("ko-KR")}만원`;
+}
+
+/** 증감률(%) — 부호를 붙이고, 값이 없으면 '비교 불가'. */
+export function formatSignedPct(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "비교 불가";
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+}

@@ -28,14 +28,24 @@ export const REGION_OUTLINE = {
   fillOpacity: 0.02,
 } as const;
 
-// 상권 변화지표(TRDAR_CHNGE_IX) 색상 — 서울 열린데이터광장 분류를 상승/하강/보합 3색으로 단순화.
-// LH(상권확장)=상승, HL(상권축소)=하강, HH(정체)·LL(다이나믹)·결측=보합.
+// 상승/하강/보합 3색 — 지도(전년 동기 대비 추정매출)와 행정동 분기 추이 점(상권변화지표)이 같은 색을 쓴다.
 export const TREND_COLORS = {
   up: "#EF4444",
   down: "#3B82F6",
   flat: "#9CA3AF",
 } as const;
 
+/** 전년 동기 대비 증감률이 ±이 값(%) 안이면 보합으로 본다. */
+export const SALES_FLAT_PCT = 3;
+
+export function salesGrowthToColor(pct: number | null | undefined): string {
+  if (pct === null || pct === undefined) return "#e5e7eb";
+  if (pct >= SALES_FLAT_PCT) return TREND_COLORS.up;
+  if (pct <= -SALES_FLAT_PCT) return TREND_COLORS.down;
+  return TREND_COLORS.flat;
+}
+
+// 상권변화지표(TRDAR_CHNGE_IX): LH(상권확장)=상승, HL(상권축소)=하강, HH(정체)·LL(다이나믹)·결측=보합.
 export function changeIndexToTrendColor(changeIndex: string | null | undefined): string {
   if (changeIndex === "LH") return TREND_COLORS.up;
   if (changeIndex === "HL") return TREND_COLORS.down;

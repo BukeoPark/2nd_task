@@ -14,7 +14,7 @@ import { apiClient, type DongMetric, type DongTrendRecord, type GridRecord, type
 import type { CategorySelection } from "../features/categories/CategoryPicker";
 import { StoreList } from "../features/stores/StoreList";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
-import { formatCount, formatDistance, formatPerArea, formatPercent, formatWon } from "../lib/format";
+import { formatCount, formatDistance, formatPerArea, formatPercent, formatSignedPct, formatWon } from "../lib/format";
 import { changeIndexToTrendColor, OVERLAY_Z_INDEX } from "../lib/vizConfig";
 
 const GRID_SIZES = [100, 250] as const;
@@ -55,12 +55,12 @@ function dongToSelection(record: DongMetric, trendRecord: DongTrendRecord | unde
   return {
     kind: "dong",
     title: `${record.sggnm} ${record.adongNm}`,
-    brief: `최근 분기 기준 '${record.change_index_nm ?? "정보 없음"}' 상권이며, 분기 추정매출은 ${formatWon(record.sales_total)}입니다.`,
+    brief: `분기 추정매출 ${formatWon(record.sales_total)}, 전년 동기 대비 ${formatSignedPct(record.sales_yoy_pct)}입니다. 상권변화지표는 '${record.change_index_nm ?? "정보 없음"}'입니다.`,
     rows: [
       { label: "분기 추정매출", value: formatWon(record.sales_total) },
+      { label: "전년 동기 대비", value: formatSignedPct(record.sales_yoy_pct) },
+      { label: "전 분기 대비", value: formatSignedPct(record.sales_qoq_pct) },
       { label: "점포수", value: formatCount(record.stores_total) },
-      { label: "유동인구", value: formatCount(record.floating_pop, "명") },
-      { label: "상권 변화", value: record.change_index_nm ?? "-" },
     ],
     trend,
   };

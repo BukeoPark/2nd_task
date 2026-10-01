@@ -3,6 +3,7 @@ import { Notice, SourceNote } from "../../components/Notice";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { OperationHistorySection } from "./OperationHistorySection";
+import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
 import { useStoreDetail } from "./useStores";
 
 interface StoreDetailPanelProps {
@@ -11,7 +12,7 @@ interface StoreDetailPanelProps {
   onClose: () => void;
 }
 
-/** 매장 상세: 기본정보 + 'Google 고객평가' / '매장 운영이력' / '주변 상권 분석'. 정보가 부족해도 제공 가능한 영역은 그대로 보여준다.
+/** 매장 상세: 기본정보 + '동네 매출 비교' + 'Google 고객평가' / '매장 운영이력' / '주변 상권 분석'. 정보가 부족해도 제공 가능한 영역은 그대로 보여준다.
  * 세 영역을 합친 점수(매장 신뢰도 등)는 만들지 않는다. */
 export function StoreDetailPanel({ storeId, onBack, onClose }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
@@ -33,6 +34,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose }: StoreDetailPanelP
           </div>
           <SourceNote title={store.source.title} reference={store.source.reference} />
 
+          <SalesBenchmarkSection storeId={storeId} />
           <GoogleReviewSection storeId={storeId} />
           <OperationHistorySection history={data.operation_history} />
           <NearbyAnalysisSection storeId={storeId} />

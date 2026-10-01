@@ -5,13 +5,15 @@
 프로젝트 루트에서: .venv/bin/python -m pipelines.transform.build_dong_metrics
 
 입력: data/processed/{seoul_sales,seoul_stores,seoul_change_index,seoul_floating_pop,
-      seoul_resident_pop,seoul_workplace_pop,dong_crosswalk}.parquet
+      seoul_resident_pop,seoul_workplace_pop,dong_crosswalk,dong_sales_growth}.parquet
+      (dong_sales_growth 는 build_sales_timeseries 가 만든다 — 먼저 실행)
 
 출력: data/processed/dong_metrics.parquet
       (region_id, adongCd, adongNm, sggnm,
        sales_total, sales_top_category, stores_total,
        change_index, change_index_nm,
-       floating_pop, resident_pop, workplace_pop)
+       floating_pop, resident_pop, workplace_pop,
+       sales_yoy_pct, sales_qoq_pct, yoy_base_quarter — 실제 추정매출 증감률, 업종 합계)
 
 주의
 ----
@@ -69,8 +71,11 @@ def main() -> None:
         columns={"TOT_WRC_POPLTN_CO": "workplace_pop"}
     )
 
+    growth = pd.read_parquet(config.PROCESSED_DIR / "dong_sales_growth.parquet").set_index("adongCd")[
+        ["sales_yoy_pct", "sales_qoq_pct", "yoy_base_quarter"]]
+
     result = base.set_index("adongCd")
-    for piece in (sales_agg, top_cat, stores_agg, change_agg, floating_agg, resident_agg, workplace_agg):
+    for piece in (sales_agg, top_cat, stores_agg, change_agg, floating_agg, resident_agg, workplace_agg, growth):
         result = result.join(piece, how="left")
     result = result.reset_index().rename(columns={"index": "adongCd"})
 
