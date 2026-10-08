@@ -142,23 +142,6 @@ export interface GridCountsResponse {
   counts: Record<string, number>;
 }
 
-export interface StoreListItem {
-  store_id: string;
-  name: string;
-  branch: string | null;
-  category: string;
-  category_detail: string;
-  category_code: string;
-  address: string;
-  distance_m: number;
-}
-
-export interface StoreListResponse {
-  total_in_radius: number;
-  total_matched: number;
-  records: StoreListItem[];
-}
-
 export interface SourceRef {
   title: string;
   reference: string;
@@ -361,6 +344,7 @@ export interface FoodBubblesResponse {
   kind: "count" | "money" | "growth" | "rate";
   unit: string;
   size_source: string;
+  metric_source: string | null;
   bubbles: FoodBubble[];
 }
 
@@ -371,6 +355,23 @@ export interface FoodStorePoint {
   category: string;
   lon: number;
   lat: number;
+}
+
+export interface FoodUnitStore {
+  store_id: string;
+  name: string;
+  branch: string | null;
+  category_detail: string;
+  distance_m: number;
+}
+
+export interface FoodUnitStoresResponse {
+  level: FoodLevel;
+  code: string;
+  name: string;
+  total: number;
+  truncated: boolean;
+  records: FoodUnitStore[];
 }
 
 export interface GoogleViewReservation {
@@ -389,14 +390,6 @@ export const apiClient = {
   getCategoryTree: () => request<CategoryTreeResponse>("/api/categories/tree"),
   getGridCounts: (sizeM: number, level: CategoryLevel, code: string) =>
     request<GridCountsResponse>(`/api/grid-counts?size_m=${sizeM}&level=${level}&code=${encodeURIComponent(code)}`),
-  getStoresNear: (lon: number, lat: number, radiusM: number, category: { level: CategoryLevel; code: string } | null, limit = 30) => {
-    const q = new URLSearchParams({ lon: String(lon), lat: String(lat), radius_m: String(radiusM), limit: String(limit) });
-    if (category) {
-      q.set("category_level", category.level);
-      q.set("category_code", category.code);
-    }
-    return request<StoreListResponse>(`/api/competitors?${q}`);
-  },
   getSalesBenchmark: (storeId: string) =>
     request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
   getImprovementReport: (storeId: string) =>
@@ -414,6 +407,12 @@ export const apiClient = {
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<{ total: number; truncated: boolean; stores: FoodStorePoint[] }>(`/api/food/stores?${q}`);
+  },
+  getFoodUnitStores: (level: FoodLevel, code: string, svc: string | null, scls: string | null, limit = 50) => {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<FoodUnitStoresResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/stores?${q}`);
   },
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>

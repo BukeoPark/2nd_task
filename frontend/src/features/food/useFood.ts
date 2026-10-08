@@ -35,3 +35,12 @@ export function useFoodStores(bounds: Bounds | null, svc: string | null, scls: s
     placeholderData: keepPreviousData,
   });
 }
+
+/** 버블 하나에 속한 매장 — 버블 점포 수와 같은 경계 기준. */
+export function useFoodUnitStores(level: FoodLevel, code: string, svc: string | null, scls: string | null) {
+  return useQuery({
+    queryKey: ["food-unit-stores", level, code, svc, scls],
+    queryFn: () => apiClient.getFoodUnitStores(level, code, svc, scls),
+    staleTime: LONG,
+  });
+}

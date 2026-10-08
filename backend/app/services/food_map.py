@@ -3,6 +3,8 @@
 업종은 두 단계다.
   - 서울시 외식 10개 업종(CS100001~CS100010): 매출·증감·유동인구·개폐업·프랜차이즈 지표가 있는 단위
   - 소상공인 세부 업종(음식 소분류): 점포 수와 매장 점만 거를 수 있다(매출 자료는 서울시 업종 단위뿐)
+버블의 점포 수(크기)는 소상공인 상가정보 매장을 단위 경계(행정동 코드·상권 소속)로 센다. 버블을 눌렀을 때의
+매장 목록도 같은 기준이라 두 숫자가 항상 일치한다. 매출·개폐업 지표는 서울시 상권분석서비스 값이다.
 값이 없는 단위는 None('자료 없음') — 0 과 구분한다.
 """
 from __future__ import annotations
@@ -14,7 +16,7 @@ import pandas as pd
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
-from app.services import data_store
+from app.services import data_store, taxonomy
 
 FOOD_SVC_PREFIX = "CS1"
 LEVELS = ("gu", "dong", "trdar")
@@ -74,15 +76,31 @@ def categories() -> dict:
             "note": "매출 지표는 서울시 외식 10개 업종 단위로만 계산됩니다. 세부 업종은 점포 수·매장 위치만 거릅니다."}
 
 
-def _sbiz_counts(level: str, sclss: set[str]) -> pd.Series:
+def _sbiz_month() -> str:
+    ym = taxonomy.sources()["sbiz_store"]["reference"].get("stdrYm", "")
+    return f"{ym[:4]}-{ym[4:]}" if len(ym) == 6 else "기준월 미상"
+
+
+def _food_stores(svc: str | None, scls: str | None) -> pd.DataFrame:
+    """소상공인 외식 매장(I2) — 세부 업종이 있으면 그것만, 없으면 서울시 업종 대응표로 거른다."""
     stores = data_store.load_parquet("stores.parquet")
-    s = stores.loc[stores["indsSclsCd"].isin(sclss)]
+    s = stores.loc[stores["indsLclsCd"] == "I2"]
+    if scls:
+        return s.loc[s["indsSclsCd"] == scls]
+    if svc:
+        cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
+        return s.loc[s["indsSclsCd"].isin(cw.loc[cw["svc_cd"] == svc, "indsSclsCd"])]
+    return s
+
+
+def _with_unit(s: pd.DataFrame, level: str) -> pd.DataFrame:
+    """매장에 단위 코드(_unit) 를 붙인다. 상권은 경계 안 매장만 남는다(상권 밖 매장은 어느 상권에도 안 셈)."""
     if level == "dong":
-        return s.groupby("adongCd").size()
+        return s.assign(_unit=s["adongCd"])
     if level == "gu":
-        return s.groupby("signguNm").size()
-    st = data_store.load_parquet("store_trdar.parquet")
-    return s.merge(st, on="bizesId").groupby("trdar_cd").size()
+        return s.assign(_unit=s["signguNm"])
+    st = data_store.load_parquet("store_trdar.parquet")[["bizesId", "trdar_cd"]]
+    return s.merge(st, on="bizesId").assign(_unit=lambda d: d["trdar_cd"])
 
 
 def _aggregate(df: pd.DataFrame, key: str) -> pd.DataFrame:
@@ -127,14 +145,11 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
     cur["frc_share"] = (cur["frc_stores"] / cur["stores"] * 100).where(~small)
 
     units = _units()[level].set_index("code")
-    detail_counts = None
-    if scls:
-        detail_counts = _sbiz_counts(level, {scls})
+    counts = _with_unit(_food_stores(svc, scls), level).groupby("_unit").size()
     out = []
     for code, u in units.iterrows():
         row = cur.loc[code] if code in cur.index else None
-        size = (int(detail_counts.get(code, 0)) if detail_counts is not None
-                else (None if row is None or pd.isna(row["stores"]) else int(row["stores"])))
+        size = int(counts.get(code, 0))
         if metric == "stores":
             value = size
         else:
@@ -142,22 +157,36 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
         out.append({"code": code, "name": u["name"], "type": u.get("type"), "lon": round(float(u["lon"]), 6),
                     "lat": round(float(u["lat"]), 6), "size": size, "value": value})
     return {"level": level, "quarter": latest, "metric": metric, **METRICS[metric], "svc": svc, "scls": scls,
-            "size_source": "소상공인 상가정보(세부 업종)" if scls else "서울시 상권분석서비스(유사업종 점포수)",
+            "size_source": f"소상공인 상가(상권)정보 {_sbiz_month()} 기준 · 경계 안 매장 수",
+            "metric_source": None if metric == "stores" else "서울시 상권분석서비스(추정매출·점포)",
             "bubbles": out}
 
 
 def stores_in_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float,
                    svc: str | None, scls: str | None, limit: int) -> dict:
-    stores = data_store.load_parquet("stores.parquet")
-    s = stores.loc[stores["indsLclsCd"] == "I2"]
-    if scls:
-        s = s.loc[s["indsSclsCd"] == scls]
-    elif svc:
-        cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
-        s = s.loc[s["indsSclsCd"].isin(cw.loc[cw["svc_cd"] == svc, "indsSclsCd"])]
+    s = _food_stores(svc, scls)
     s = s.loc[s["lon"].between(min_lon, max_lon) & s["lat"].between(min_lat, max_lat)]
     total = len(s)
     s = s.sort_values("bizesId").head(limit)
     return {"total": total, "truncated": total > limit,
             "stores": [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category": r.indsSclsNm,
                         "lon": float(r.lon), "lat": float(r.lat)} for r in s.itertuples()]}
+
+
+def stores_in_unit(level: str, code: str, svc: str | None, scls: str | None, limit: int) -> dict:
+    """버블 하나(자치구·행정동·상권)에 속한 매장 — 버블 점포 수와 같은 기준. 버블 중심에서 가까운 순."""
+    if level not in LEVELS:
+        raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
+    units = _units()[level].set_index("code")
+    if code not in units.index:
+        raise KeyError(code)
+    u = units.loc[code]
+    s = _with_unit(_food_stores(svc, scls), level)
+    s = s.loc[s["_unit"] == code]
+    # 좁은 범위라 위경도 차를 미터로 바로 환산(위도 37.5° 기준 근사)
+    dist = np.hypot((s["lon"] - u["lon"]) * 111_320 * np.cos(np.radians(u["lat"])), (s["lat"] - u["lat"]) * 110_950)
+    total = len(s)
+    s = s.assign(dist_m=dist).sort_values(["dist_m", "bizesId"]).head(limit)
+    return {"level": level, "code": code, "name": u["name"], "total": total, "truncated": total > limit,
+            "records": [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category_detail": r.indsSclsNm,
+                         "distance_m": round(float(r.dist_m))} for r in s.itertuples()]}

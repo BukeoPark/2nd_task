@@ -1,29 +1,27 @@
 import { Notice } from "../../components/Notice";
-import type { CategoryLevel } from "../../lib/apiClient";
+import type { FoodLevel } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
-import { useStoresNear } from "./useStores";
+import { useFoodUnitStores } from "./useFood";
 
-export interface StoreFilter {
-  level: CategoryLevel;
+const UNIT_NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
+
+interface UnitStoreListProps {
+  level: FoodLevel;
   code: string;
-  name: string;
-}
-
-interface StoreListProps {
-  center: { lon: number; lat: number };
-  radiusM: number;
-  category: StoreFilter | null;
+  svc: string | null;
+  scls: string | null;
+  filterName: string;
   onSelect: (storeId: string) => void;
 }
 
-/** 선택한 지역 주변 매장(거리순). 고객평가 유무와 무관하게 모든 매장을 같은 기준으로 나열한다. */
-export function StoreList({ center, radiusM, category, onSelect }: StoreListProps) {
-  const { data, isLoading, isError, error } = useStoresNear(center, radiusM, category);
+/** 버블에 속한 매장(경계 안, 버블 중심에서 가까운 순) — 버블 점포 수와 같은 기준이라 총수가 일치한다. */
+export function UnitStoreList({ level, code, svc, scls, filterName, onSelect }: UnitStoreListProps) {
+  const { data, isLoading, isError, error } = useFoodUnitStores(level, code, svc, scls);
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
-        주변 매장 (반경 {radiusM}m{category ? ` · ${category.name}` : ""}, 거리순)
-        {data && ` — ${data.total_matched.toLocaleString()}곳`}
+        이 {UNIT_NOUN[level]} 안 매장 ({filterName}, 가까운 순){data && ` — ${data.total.toLocaleString()}곳`}
+        {data?.truncated && ` 중 ${data.records.length}곳 표시`}
       </div>
       {isLoading && <Notice tone="muted">매장 목록을 불러오는 중...</Notice>}
       {isError && <Notice tone="error">매장 목록 조회 실패: {error.message}</Notice>}
@@ -40,7 +38,7 @@ export function StoreList({ center, radiusM, category, onSelect }: StoreListProp
               {s.name} {s.branch && <span style={{ fontWeight: 400, color: "#6B7280" }}>{s.branch}</span>}
             </div>
             <div style={{ fontSize: 11, color: "#6B7280" }}>
-              {s.category_detail} · {formatDistance(s.distance_m)}
+              {s.category_detail} · 중심에서 {formatDistance(s.distance_m)}
             </div>
           </button>
         ))}

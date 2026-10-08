@@ -24,7 +24,26 @@ def test_bubbles_per_zoom_level(client, level, count):
 def test_dong_sizes_add_up_to_gu(client):
     dong = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "svc": "CS100001"}).json()
     gu = client.get("/api/food/bubbles", params={"level": "gu", "metric": "stores", "svc": "CS100001"}).json()
-    assert sum(b["size"] or 0 for b in dong["bubbles"]) == sum(b["size"] or 0 for b in gu["bubbles"])
+    assert sum(b["size"] for b in dong["bubbles"]) == sum(b["size"] for b in gu["bubbles"])
+
+
+@pytest.mark.parametrize("level,svc,scls", [("trdar", "CS100010", "I21008"), ("trdar", None, None), ("dong", "CS100001", None)])
+def test_unit_store_list_matches_bubble_size(client, level, svc, scls):
+    """버블 점포 수 = 버블을 눌렀을 때 매장 목록 총수(같은 경계 기준)."""
+    params = {k: v for k, v in {"svc": svc, "scls": scls}.items() if v}
+    bubbles = client.get("/api/food/bubbles", params={"level": level, "metric": "stores", **params}).json()["bubbles"]
+    for b in sorted(bubbles, key=lambda b: -b["size"])[:5]:
+        body = client.get(f"/api/food/units/{level}/{b['code']}/stores", params={**params, "limit": 3}).json()
+        assert body["total"] == b["size"]
+        assert [r["distance_m"] for r in body["records"]] == sorted(r["distance_m"] for r in body["records"])
+
+
+def test_trdar_list_includes_stores_outside_radius(client):
+    """국회의사당역 상권 아이스크림/빙수 2곳 — 중심 250m 밖(약 430m) 매장도 목록에 포함."""
+    body = client.get("/api/food/units/trdar/3120148/stores", params={"scls": "I21008"}).json()
+    assert body["total"] == 2 and max(r["distance_m"] for r in body["records"]) > 250
+    assert client.get("/api/food/units/trdar/0/stores").status_code == 404
+    assert client.get("/api/food/units/x/1/stores").status_code == 400
 
 
 def test_detail_filter_uses_sbiz_counts(client):

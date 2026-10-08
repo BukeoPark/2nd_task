@@ -43,3 +43,20 @@ def food_stores(
         return food_map.stores_in_bbox(min_lon, min_lat, max_lon, max_lat, svc, scls, limit)
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/units/{level}/{code}/stores")
+def food_unit_stores(
+    level: str, code: str,
+    svc: str | None = None, scls: str | None = None,
+    limit: int = Query(50, gt=0, le=500),
+) -> dict:
+    """버블 하나에 속한 매장 목록 — 버블 점포 수와 같은 기준(경계 안 매장)."""
+    try:
+        return food_map.stores_in_unit(level, code, svc, scls, limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"단위를 찾을 수 없습니다: {level}/{code}")
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))

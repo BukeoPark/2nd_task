@@ -28,8 +28,13 @@ export function FoodLegend({ data, showStores, rebZonesVisible }: { data: FoodBu
               </div>
             )}
             <Dot color={NO_DATA_COLOR} label="자료 없음 (0 아님)" />
-            <div style={{ color: "#6B7280" }}>원 크기 = 점포 수 · {data.quarter.slice(0, 4)}년 {data.quarter[4]}분기</div>
-            <div style={{ color: "#9CA3AF", fontSize: 11 }}>점포 수 출처: {data.size_source}</div>
+            <div style={{ color: "#6B7280" }}>원 크기 = 점포 수</div>
+            <div style={{ color: "#9CA3AF", fontSize: 11 }}>점포 수: {data.size_source}</div>
+            {data.metric_source && (
+              <div style={{ color: "#9CA3AF", fontSize: 11 }}>
+                {data.label}: {data.metric_source} {data.quarter.slice(0, 4)}년 {data.quarter[4]}분기
+              </div>
+            )}
           </>
         )
       )}

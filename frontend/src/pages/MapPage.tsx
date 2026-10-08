@@ -9,18 +9,25 @@ import { StorePointLayer } from "../features/food/StorePointLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
-import { StoreList, type StoreFilter } from "../features/stores/StoreList";
+import { UnitStoreList } from "../features/food/UnitStoreList";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
-import type { FoodBubble, FoodBubblesResponse, FoodMetric, RebZone } from "../lib/apiClient";
+import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone } from "../lib/apiClient";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
 import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { OVERLAY_Z_INDEX, zoomToUnit } from "../lib/vizConfig";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
-const LIST_RADIUS_M = { gu: null, dong: 600, trdar: 250 } as const;
 const ZOOM_IN_TO = { gu: 7, dong: 5, trdar: 3 } as const;
 
-type Selection = { title: string; brief: string; rows: InfoRow[]; center?: { lon: number; lat: number }; radiusM?: number | null; zoomTo?: number };
+type Selection = {
+  title: string;
+  brief: string;
+  rows: InfoRow[];
+  center?: { lon: number; lat: number };
+  /** 매장 목록을 보여줄 단위(자치구는 매장이 너무 많아 목록 대신 확대 안내) */
+  unit?: { level: FoodLevel; code: string };
+  zoomTo?: number;
+};
 
 function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection {
   const level = data.level;
@@ -32,11 +39,11 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
     rows: [
       ...(data.metric === "stores" ? [] : [{ label: data.label, value: formatMetric(data.kind, b.value) }]),
       { label: "점포 수", value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
-      { label: "기준", value: `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` },
+      ...(data.metric === "stores" ? [] : [{ label: `${data.label} 기준`, value: `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` }]),
       { label: "단위", value: UNIT_LABEL[level] },
     ],
     center: { lon: b.lon, lat: b.lat },
-    radiusM: LIST_RADIUS_M[level],
+    unit: level === "gu" ? undefined : { level, code: b.code },
     zoomTo: ZOOM_IN_TO[level],
   };
 }
@@ -95,9 +102,8 @@ export function MapPage() {
   // 업종·지표를 바꾸면 이전 조건으로 만든 요약 패널은 닫는다(값이 섞여 보이지 않도록).
   const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); };
 
-  const storeFilter: StoreFilter | null = scls
-    ? { level: "scls", code: scls, name: categories.data?.groups.flatMap((g) => g.details).find((d) => d.code === scls)?.name ?? "세부 업종" }
-    : { level: "lcls", code: "I2", name: "외식 전체" };
+  const svcGroup = categories.data?.groups.find((g) => g.svc_cd === svc);
+  const filterName = scls ? (svcGroup?.details.find((d) => d.code === scls)?.name ?? "세부 업종") : (svcGroup?.svc_nm ?? "외식 전체");
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
@@ -146,8 +152,8 @@ export function MapPage() {
                   이 지역 확대해서 보기
                 </button>
               )}
-              {selection.center && selection.radiusM && (
-                <StoreList center={selection.center} radiusM={selection.radiusM} category={storeFilter} onSelect={setStoreId} />
+              {selection.unit && (
+                <UnitStoreList level={selection.unit.level} code={selection.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
               )}
             </InfoPanel>
           )

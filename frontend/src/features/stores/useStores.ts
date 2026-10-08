@@ -1,16 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient, type CategoryLevel } from "../../lib/apiClient";
+import { apiClient } from "../../lib/apiClient";
 
 const LONG = 10 * 60 * 1000;
-
-export function useStoresNear(center: { lon: number; lat: number } | null, radiusM: number, category: { level: CategoryLevel; code: string } | null) {
-  return useQuery({
-    queryKey: ["stores-near", center?.lon, center?.lat, radiusM, category?.level, category?.code],
-    queryFn: () => apiClient.getStoresNear(center!.lon, center!.lat, radiusM, category),
-    enabled: center !== null,
-    staleTime: LONG,
-  });
-}
 
 export function useStoreDetail(storeId: string) {
   return useQuery({ queryKey: ["store", storeId], queryFn: () => apiClient.getStore(storeId), staleTime: LONG });
