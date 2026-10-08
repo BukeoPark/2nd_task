@@ -1,16 +1,22 @@
 import { Notice } from "../../components/Notice";
-import type { CategorySelection } from "../categories/CategoryPicker";
+import type { CategoryLevel } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
 import { useStoresNear } from "./useStores";
+
+export interface StoreFilter {
+  level: CategoryLevel;
+  code: string;
+  name: string;
+}
 
 interface StoreListProps {
   center: { lon: number; lat: number };
   radiusM: number;
-  category: CategorySelection | null;
+  category: StoreFilter | null;
   onSelect: (storeId: string) => void;
 }
 
-/** 격자 주변 매장(거리순). 고객평가 유무와 무관하게 모든 매장을 같은 기준으로 나열한다. */
+/** 선택한 지역 주변 매장(거리순). 고객평가 유무와 무관하게 모든 매장을 같은 기준으로 나열한다. */
 export function StoreList({ center, radiusM, category, onSelect }: StoreListProps) {
   const { data, isLoading, isError, error } = useStoresNear(center, radiusM, category);
   return (

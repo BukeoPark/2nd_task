@@ -334,6 +334,45 @@ export interface ImprovementReportResponse {
   source?: { title: string; reference?: string };
 }
 
+export type FoodLevel = "gu" | "dong" | "trdar";
+export type FoodMetric = "stores" | "per_store_month" | "sales_yoy_pct" | "sales_per_10k_flpop" | "open_rate" | "close_rate" | "frc_share";
+
+export interface FoodCategoriesResponse {
+  groups: { svc_cd: string; svc_nm: string; has_sales: boolean; store_count: number; details: { code: string; name: string; store_count: number }[] }[];
+  other: { code: string; name: string; store_count: number }[];
+  note: string;
+}
+
+export interface FoodBubble {
+  code: string;
+  name: string;
+  type: string | null;
+  lon: number;
+  lat: number;
+  size: number | null;
+  value: number | null;
+}
+
+export interface FoodBubblesResponse {
+  level: FoodLevel;
+  quarter: string;
+  metric: FoodMetric;
+  label: string;
+  kind: "count" | "money" | "growth" | "rate";
+  unit: string;
+  size_source: string;
+  bubbles: FoodBubble[];
+}
+
+export interface FoodStorePoint {
+  store_id: string;
+  name: string;
+  branch: string | null;
+  category: string;
+  lon: number;
+  lat: number;
+}
+
 export interface GoogleViewReservation {
   allowed: boolean;
   place_id?: string;
@@ -363,6 +402,19 @@ export const apiClient = {
   getImprovementReport: (storeId: string) =>
     request<ImprovementReportResponse>(`/api/stores/${encodeURIComponent(storeId)}/improvement-report`),
   getFranchise: (storeId: string) => request<FranchiseResponse>(`/api/stores/${encodeURIComponent(storeId)}/franchise`),
+  getFoodCategories: () => request<FoodCategoriesResponse>("/api/food/categories"),
+  getFoodBubbles: (level: FoodLevel, metric: FoodMetric, svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams({ level, metric });
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<FoodBubblesResponse>(`/api/food/bubbles?${q}`);
+  },
+  getFoodStores: (b: { minLon: number; minLat: number; maxLon: number; maxLat: number }, svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams({ min_lon: String(b.minLon), min_lat: String(b.minLat), max_lon: String(b.maxLon), max_lat: String(b.maxLat) });
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<{ total: number; truncated: boolean; stores: FoodStorePoint[] }>(`/api/food/stores?${q}`);
+  },
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),

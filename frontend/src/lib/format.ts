@@ -43,3 +43,12 @@ export function parseManwon(input: string): number | null {
   const v = Number(s) * 1e4;
   return Number.isFinite(v) && v >= 0 ? v : null;
 }
+
+/** 외식 지도 버블 안 숫자. */
+export function formatMetric(kind: string, value: number | null): string {
+  if (value === null) return "자료 없음";
+  if (kind === "count") return `${value.toLocaleString("ko-KR")}곳`;
+  if (kind === "money") return formatKrw(value);
+  if (kind === "growth") return formatSignedPct(value);
+  return `${value.toFixed(1)}%`;
+}

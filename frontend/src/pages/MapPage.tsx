@@ -1,74 +1,48 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { InfoPanel, type InfoRow, type TrendDot } from "../components/InfoPanel";
+import { useCallback, useEffect, useState } from "react";
+import { InfoPanel, type InfoRow } from "../components/InfoPanel";
 import { KakaoMap } from "../features/map/KakaoMap";
-import { GridBubbleLayer } from "../features/map/GridBubbleLayer";
 import { RegionOutlineLayer } from "../features/map/RegionOutlineLayer";
-import { RegionChoroplethLayer } from "../features/map/RegionChoroplethLayer";
 import { RebZoneLayer } from "../features/map/RebZoneLayer";
-import { Legend } from "../features/map/Legend";
-import { TopBar } from "../features/map/TopBar";
-import type { ViewMode } from "../features/map/types";
-import { useGridData, useRegions, useDongMetrics, useDongTrend, useRebZones } from "../features/map/useGridData";
-import { apiClient, type DongMetric, type DongTrendRecord, type GridRecord, type RebZone } from "../lib/apiClient";
-import type { CategorySelection } from "../features/categories/CategoryPicker";
-import { StoreList } from "../features/stores/StoreList";
+import { useRegions, useRebZones } from "../features/map/useGridData";
+import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
+import { StorePointLayer } from "../features/food/StorePointLayer";
+import { FoodTopBar } from "../features/food/FoodTopBar";
+import { FoodLegend } from "../features/food/FoodLegend";
+import { useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
+import { StoreList, type StoreFilter } from "../features/stores/StoreList";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
-import { formatCount, formatDistance, formatPerArea, formatPercent, formatSignedPct, formatWon } from "../lib/format";
-import { changeIndexToTrendColor, OVERLAY_Z_INDEX } from "../lib/vizConfig";
+import type { FoodBubble, FoodBubblesResponse, FoodMetric, RebZone } from "../lib/apiClient";
+import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
+import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
+import { OVERLAY_Z_INDEX, zoomToUnit } from "../lib/vizConfig";
 
-const GRID_SIZES = [100, 250] as const;
-const TREND_QUARTERS_SHOWN = 8; // 최근 2년치만 (22분기 전부는 너무 빽빽함)
+const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
+const LIST_RADIUS_M = { gu: null, dong: 600, trdar: 250 } as const;
+const ZOOM_IN_TO = { gu: 7, dong: 5, trdar: 3 } as const;
 
-type Selection = {
-  kind: "grid" | "dong" | "zone";
-  title: string;
-  brief: string;
-  rows: InfoRow[];
-  trend?: TrendDot[];
-  center?: { lon: number; lat: number };
-};
+type Selection = { title: string; brief: string; rows: InfoRow[]; center?: { lon: number; lat: number }; radiusM?: number | null; zoomTo?: number };
 
-function gridToSelection(record: GridRecord, category: CategorySelection | null): Selection {
-  const zone = record.starbucks_zone ? "스세권" : record.daiso_zone ? "다세권" : null;
-  const countLabel = category ? `${category.name} 점포` : "점포";
+function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection {
+  const level = data.level;
   return {
-    kind: "grid",
-    title: "격자 상세",
-    brief: `${countLabel} ${record.store_count}개${category ? "" : `, 주요 업종은 '${record.top_category ?? "정보 없음"}'`}입니다.${zone ? ` ${zone}에 속합니다.` : ""}`,
-    center: { lon: record.lon, lat: record.lat },
+    title: `${b.name}${b.type ? ` (${b.type})` : ""}`,
+    brief: data.metric === "stores"
+      ? `${UNIT_LABEL[level]} 기준 점포 ${formatMetric("count", b.size)}입니다.`
+      : `${UNIT_LABEL[level]} 기준 ${data.label} ${formatMetric(data.kind, b.value)}, 점포 ${formatMetric("count", b.size)}입니다.`,
     rows: [
-      { label: `${countLabel}수`, value: formatCount(record.store_count) },
-      { label: "주요 업종", value: record.top_category ?? "-" },
-      { label: "스타벅스까지", value: formatDistance(record.starbucks_nearest_m) },
-      { label: "다이소까지", value: formatDistance(record.daiso_nearest_m) },
+      ...(data.metric === "stores" ? [] : [{ label: data.label, value: formatMetric(data.kind, b.value) }]),
+      { label: "점포 수", value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
+      { label: "기준", value: `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` },
+      { label: "단위", value: UNIT_LABEL[level] },
     ],
-  };
-}
-
-function dongToSelection(record: DongMetric, trendRecord: DongTrendRecord | undefined): Selection {
-  const trend = trendRecord?.quarters.slice(-TREND_QUARTERS_SHOWN).map((q) => ({
-    quarter: q.quarter,
-    label: q.change_index_nm,
-    color: changeIndexToTrendColor(q.change_index),
-  }));
-  return {
-    kind: "dong",
-    title: `${record.sggnm} ${record.adongNm}`,
-    brief: `분기 추정매출 ${formatWon(record.sales_total)}, 전년 동기 대비 ${formatSignedPct(record.sales_yoy_pct)}입니다. 상권변화지표는 '${record.change_index_nm ?? "정보 없음"}'입니다.`,
-    rows: [
-      { label: "분기 추정매출", value: formatWon(record.sales_total) },
-      { label: "전년 동기 대비", value: formatSignedPct(record.sales_yoy_pct) },
-      { label: "전 분기 대비", value: formatSignedPct(record.sales_qoq_pct) },
-      { label: "점포수", value: formatCount(record.stores_total) },
-    ],
-    trend,
+    center: { lon: b.lon, lat: b.lat },
+    radiusM: LIST_RADIUS_M[level],
+    zoomTo: ZOOM_IN_TO[level],
   };
 }
 
 function zoneToSelection(zone: RebZone): Selection {
   return {
-    kind: "zone",
     title: `${zone.reb_zone_nm} (R-ONE)`,
     brief: `소규모상가 공실률 ${formatPercent(zone.vacancy_small_shop_pct)}, 임대료 ${formatPerArea(zone.rent_small_shop)}입니다.`,
     rows: [
@@ -81,114 +55,108 @@ function zoneToSelection(zone: RebZone): Selection {
 }
 
 export function MapPage() {
-  const [sizeM, setSizeM] = useState<number>(250);
-  const [viewMode, setViewMode] = useState<ViewMode>("stores");
-  const [category, setCategory] = useState<CategorySelection | null>(null);
-  const [storeId, setStoreId] = useState<string | null>(null);
+  const [svc, setSvc] = useState<string | null>(null);
+  const [scls, setScls] = useState<string | null>(null);
+  const [metric, setMetric] = useState<FoodMetric>("stores");
   const [rebZonesVisible, setRebZonesVisible] = useState(false);
   const [mapKakao, setMapKakao] = useState<{ map: any; kakao: typeof window.kakao } | null>(null);
+  const [zoom, setZoom] = useState(DEFAULT_LEVEL);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [storeId, setStoreId] = useState<string | null>(null);
 
-  const gridQuery = useGridData(sizeM);
-  const regionsQuery = useRegions();
-  const dongMetricsQuery = useDongMetrics();
-  const dongTrendQuery = useDongTrend();
-  const rebZonesQuery = useRebZones();
+  useEffect(() => {
+    if (!mapKakao) return;
+    const { map, kakao } = mapKakao;
+    const sync = () => {
+      setZoom(map.getLevel());
+      const b = map.getBounds();
+      setBounds({ minLon: b.getSouthWest().getLng(), minLat: b.getSouthWest().getLat(), maxLon: b.getNorthEast().getLng(), maxLat: b.getNorthEast().getLat() });
+    };
+    sync();
+    kakao.maps.event.addListener(map, "idle", sync);
+    return () => kakao.maps.event.removeListener(map, "idle", sync);
+  }, [mapKakao]);
 
-  const gridCountsQuery = useQuery({
-    queryKey: ["grid-counts", sizeM, category?.level, category?.code],
-    queryFn: () => apiClient.getGridCounts(sizeM, category!.level, category!.code),
-    enabled: category !== null && viewMode === "stores",
-    staleTime: 10 * 60 * 1000,
-  });
+  const unit = zoomToUnit(zoom);
+  const categories = useFoodCategories();
+  const bubbles = useFoodBubbles(unit === "stores" ? null : unit, metric, svc, scls);
+  const points = useFoodStores(unit === "stores" ? bounds : null, svc, scls);
+  const regions = useRegions();
+  const rebZones = useRebZones();
 
-  const trendByAdongCd = useMemo(
-    () => new Map((dongTrendQuery.data?.records ?? []).map((r) => [r.adongCd, r])),
-    [dongTrendQuery.data],
-  );
+  const onBubble = useCallback((b: FoodBubble) => {
+    if (!bubbles.data) return;
+    setStoreId(null);
+    setSelection(bubbleToSelection(b, bubbles.data));
+  }, [bubbles.data]);
+  const onStore = useCallback((id: string) => setStoreId(id), []);
+  const onZone = useCallback((z: RebZone) => setSelection(zoneToSelection(z)), []);
+  // 업종·지표를 바꾸면 이전 조건으로 만든 요약 패널은 닫는다(값이 섞여 보이지 않도록).
+  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); };
+
+  const storeFilter: StoreFilter | null = scls
+    ? { level: "scls", code: scls, name: categories.data?.groups.flatMap((g) => g.details).find((d) => d.code === scls)?.name ?? "세부 업종" }
+    : { level: "lcls", code: "I2", name: "외식 전체" };
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <KakaoMap onReady={(map, kakao) => setMapKakao({ map, kakao })}>
-        {mapKakao && regionsQuery.data && viewMode === "stores" && (
-          <RegionOutlineLayer map={mapKakao.map} kakao={mapKakao.kakao} features={regionsQuery.data.features} />
+        {mapKakao && regions.data && unit !== "gu" && (
+          <RegionOutlineLayer map={mapKakao.map} kakao={mapKakao.kakao} features={regions.data.features} />
         )}
-        {mapKakao && regionsQuery.data && dongMetricsQuery.data && viewMode === "trend" && (
-          <RegionChoroplethLayer
-            map={mapKakao.map}
-            kakao={mapKakao.kakao}
-            features={regionsQuery.data.features}
-            metrics={dongMetricsQuery.data.records}
-            onSelect={(record) => setSelection(dongToSelection(record, trendByAdongCd.get(record.adongCd)))}
-          />
+        {mapKakao && bubbles.data && unit !== "stores" && (
+          <AreaBubbleLayer map={mapKakao.map} kakao={mapKakao.kakao} data={bubbles.data} onSelect={onBubble} />
         )}
-        {mapKakao && gridQuery.data && viewMode === "stores" && (
-          <GridBubbleLayer
-            map={mapKakao.map}
-            kakao={mapKakao.kakao}
-            records={gridQuery.data.records}
-            countOverride={category ? (gridCountsQuery.data?.counts ?? {}) : null}
-            onSelect={(record) => {
-              setStoreId(null);
-              setSelection(gridToSelection(record, category));
-            }}
-          />
+        {mapKakao && points.data && unit === "stores" && (
+          <StorePointLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} />
         )}
-        {mapKakao && rebZonesVisible && rebZonesQuery.data && (
-          <RebZoneLayer
-            map={mapKakao.map}
-            kakao={mapKakao.kakao}
-            zones={rebZonesQuery.data.records}
-            onSelect={(zone) => setSelection(zoneToSelection(zone))}
-          />
+        {mapKakao && rebZonesVisible && rebZones.data && (
+          <RebZoneLayer map={mapKakao.map} kakao={mapKakao.kakao} zones={rebZones.data.records} onSelect={onZone} />
         )}
 
-        <TopBar
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          category={category}
-          onCategoryChange={setCategory}
-          sizeM={sizeM}
-          onSizeChange={setSizeM}
-          sizes={GRID_SIZES}
+        <FoodTopBar
+          categories={categories.data}
+          svc={svc}
+          onSvcChange={withReset(setSvc)}
+          scls={scls}
+          onSclsChange={withReset(setScls)}
+          metric={metric}
+          onMetricChange={withReset(setMetric)}
+          unitLabel={UNIT_LABEL[unit]}
           rebZonesVisible={rebZonesVisible}
           onRebZonesVisibleChange={setRebZonesVisible}
         />
-        <Legend viewMode={viewMode} rebZonesVisible={rebZonesVisible} />
+        <FoodLegend data={bubbles.data} showStores={unit === "stores"} rebZonesVisible={rebZonesVisible} />
+
         {storeId ? (
-          <StoreDetailPanel
-            storeId={storeId}
-            onBack={() => setStoreId(null)}
-            onClose={() => {
-              setStoreId(null);
-              setSelection(null);
-            }}
-          />
+          <StoreDetailPanel storeId={storeId} onBack={() => setStoreId(null)} onClose={() => { setStoreId(null); setSelection(null); }} />
         ) : (
           selection && (
-            <InfoPanel
-              title={selection.title}
-              brief={selection.brief}
-              rows={selection.rows}
-              trend={selection.trend}
-              onClose={() => setSelection(null)}
-            >
-              {selection.center && (
-                <StoreList center={selection.center} radiusM={Math.round(sizeM * 0.71)} category={category} onSelect={setStoreId} />
+            <InfoPanel title={selection.title} brief={selection.brief} rows={selection.rows} onClose={() => setSelection(null)}>
+              {selection.center && selection.zoomTo !== undefined && mapKakao && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    mapKakao.map.setLevel(selection.zoomTo);
+                    mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, selection.center!));
+                  }}
+                  style={{ width: "100%", padding: "8px 0", marginBottom: 12, borderRadius: 8, border: "1px solid #3B82F6", background: "white", color: "#3B82F6", cursor: "pointer" }}
+                >
+                  이 지역 확대해서 보기
+                </button>
+              )}
+              {selection.center && selection.radiusM && (
+                <StoreList center={selection.center} radiusM={selection.radiusM} category={storeFilter} onSelect={setStoreId} />
               )}
             </InfoPanel>
           )
         )}
 
-        {gridQuery.isLoading && viewMode === "stores" && <StatusBanner text="격자 데이터를 불러오는 중..." />}
-        {gridCountsQuery.isError && <StatusBanner text={`업종별 점포수 조회 실패: ${gridCountsQuery.error.message}`} />}
-        {gridQuery.isError && viewMode === "stores" && (
-          <StatusBanner text={`격자 데이터를 불러오지 못했습니다: ${gridQuery.error.message}`} />
+        {unit === "stores" && points.data?.truncated && (
+          <StatusBanner text={`이 범위의 매장 ${points.data.total.toLocaleString()}곳 중 ${points.data.stores.length}곳만 표시 — 더 확대하세요`} />
         )}
-        {dongMetricsQuery.isLoading && viewMode === "trend" && <StatusBanner text="상권 변화 데이터를 불러오는 중..." />}
-        {dongMetricsQuery.isError && viewMode === "trend" && (
-          <StatusBanner text={`상권 변화 데이터를 불러오지 못했습니다: ${dongMetricsQuery.error.message}`} />
-        )}
+        {bubbles.isError && <StatusBanner text={`지도 데이터를 불러오지 못했습니다: ${bubbles.error.message}`} />}
       </KakaoMap>
     </div>
   );
@@ -198,16 +166,8 @@ function StatusBanner({ text }: { text: string }) {
   return (
     <div
       style={{
-        position: "absolute",
-        zIndex: OVERLAY_Z_INDEX,
-        top: 72,
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: "white",
-        borderRadius: 8,
-        padding: "8px 16px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        fontSize: 13,
+        position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 72, left: "50%", transform: "translateX(-50%)", background: "white",
+        borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 13,
       }}
     >
       {text}

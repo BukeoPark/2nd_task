@@ -62,3 +62,34 @@ export function rentToRadiusPx(rentPerM2: number | null, maxRent: number): numbe
   const ratio = Math.sqrt(rentPerM2 / maxRent);
   return REB_ZONE_MIN_RADIUS_PX + ratio * (REB_ZONE_MAX_RADIUS_PX - REB_ZONE_MIN_RADIUS_PX);
 }
+
+// 외식 지도 버블 — 크기는 점포 수(sqrt), 색은 지표. 증감률은 상승/하강/보합 3색, 나머지는 같은 화면 안 순위로 연→진 파랑.
+export const FOOD_BUBBLE_MIN_PX = 14;
+export const FOOD_BUBBLE_MAX_PX = 46;
+export const NO_DATA_COLOR = "#D1D5DB";
+const SEQ_LOW = { r: 191, g: 219, b: 254 };
+const SEQ_HIGH = { r: 30, g: 64, b: 175 };
+
+export function foodBubbleRadius(size: number | null, maxSize: number): number {
+  if (!size || maxSize <= 0) return FOOD_BUBBLE_MIN_PX;
+  return FOOD_BUBBLE_MIN_PX + Math.sqrt(size / maxSize) * (FOOD_BUBBLE_MAX_PX - FOOD_BUBBLE_MIN_PX);
+}
+
+export function foodBubbleColor(kind: string, value: number | null, rank01: number | null): string {
+  if (value === null) return NO_DATA_COLOR;
+  if (kind === "growth") return salesGrowthToColor(value);
+  const t = rank01 ?? 0.5;
+  const c = (k: "r" | "g" | "b") => Math.round(SEQ_LOW[k] + (SEQ_HIGH[k] - SEQ_LOW[k]) * t);
+  return `rgb(${c("r")}, ${c("g")}, ${c("b")})`;
+}
+
+export const SEQ_LOW_CSS = `rgb(${SEQ_LOW.r}, ${SEQ_LOW.g}, ${SEQ_LOW.b})`;
+export const SEQ_HIGH_CSS = `rgb(${SEQ_HIGH.r}, ${SEQ_HIGH.g}, ${SEQ_HIGH.b})`;
+
+/** 카카오맵 확대 레벨(작을수록 확대) → 버블 묶음 단위. 가장 확대하면 매장 점. */
+export function zoomToUnit(level: number): "gu" | "dong" | "trdar" | "stores" {
+  if (level >= 8) return "gu";
+  if (level >= 6) return "dong";
+  if (level >= 4) return "trdar";
+  return "stores";
+}
