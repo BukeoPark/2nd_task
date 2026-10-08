@@ -177,6 +177,22 @@ SOURCES: dict[str, DataSource] = {
             extra={"services": SEOUL_MODEL_RESTAURANT_SERVICE},
         ),
         DataSource(
+            key="ftc_brand_frcs_stats",
+            title="공정거래위원회 가맹정보 — 브랜드별 가맹점 현황(전국)",
+            provider="공정거래위원회 (공공데이터포털 15110241)",
+            endpoint="https://apis.data.go.kr/1130000/FftcBrandFrcsStatsService/getBrandFrcsStats",
+            docs_url="https://www.data.go.kr/data/15110241/openapi.do",
+            fields=["yr", "indutyLclasNm", "indutyMlsfcNm", "corpNm", "brandNm", "frcsCnt", "newFrcsRgsCnt",
+                    "ctrtEndCnt", "ctrtCncltnCnt", "nmChgCnt", "avrgSlsAmt", "arUnitAvrgSlsAmt"],
+            update_cycle="연 1회(정보공개서 기준)",
+            crs="-",
+            terms="공공데이터포털 이용허락범위",
+            verification="api_call_ok",
+            status="connected",
+            notes="2017~2025년 76,846행 수집(2026-10-01). 전국 브랜드 평균이라 상권 값이 아니다. 평균매출 단위(천원 추정)와 "
+                  "yr 이 실적 연도인지 공시 연도인지는 공식 문서로 재확인 필요. 2025년 평균매출 공개 브랜드는 5,557/11,724.",
+        ),
+        DataSource(
             key="neis_academy",
             title="NEIS 학원교습소정보",
             provider="교육부 나이스 교육정보 개방 포털",
