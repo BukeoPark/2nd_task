@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Notice, Section, SourceNote } from "../../components/Notice";
-import { apiClient, type ChurnSummary, type FloatingComparison, type SalesBenchmarkResponse } from "../../lib/apiClient";
+import { apiClient, type ChurnSummary, type FloatingComparison, type HinterlandPopulation, type HinterlandSummary, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
 /** '동네 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
@@ -72,6 +72,7 @@ function Body({
       </div>
 
       {data.churn && <ChurnRow churn={data.churn} unitLabel={data.unit?.label ?? "동네"} />}
+      {data.hinterland && <HinterlandBlock hl={data.hinterland} unitLabel={data.unit?.label ?? "동네"} />}
 
       {(data.warnings ?? []).map((w) => (
         <div key={w} style={{ marginTop: 6 }}>
@@ -273,6 +274,52 @@ function ChurnRow({ churn, unitLabel }: { churn: ChurnSummary; unitLabel: string
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
         평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
       </div>
+    </div>
+  );
+}
+
+const AGE_LABEL = { age10: "10대", age20: "20대", age30: "30대", age40: "40대", age50: "50대", age60: "60대+" } as const;
+
+/** 인구에서 비중이 가장 큰 연령대 두 개 — "30대 31% · 40대 27%". */
+function topAges(p: HinterlandPopulation): string {
+  return (Object.entries(p.age_share) as [keyof typeof AGE_LABEL, number | null][])
+    .filter(([, v]) => v !== null)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .slice(0, 2)
+    .map(([k, v]) => `${AGE_LABEL[k]} ${Math.round((v ?? 0) * 100)}%`)
+    .join(" · ");
+}
+
+function HinterlandBlock({ hl, unitLabel }: { hl: HinterlandSummary; unitLabel: string }) {
+  const med = (v: number | null, unit: string) => (v === null ? "" : ` · ${hl.peer_label} 중앙값 ${Math.round(v).toLocaleString()}${unit}`);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>이 {unitLabel} 수요 기반 (직장·상주인구·집객시설)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Card
+          label="직장인구"
+          value={hl.workplace ? `${hl.workplace.total.toLocaleString()}명` : "자료 없음"}
+          sub={hl.workplace ? `${topAges(hl.workplace)}${med(hl.peer_median.workplace, "명")}` : undefined}
+        />
+        <Card
+          label="상주인구"
+          value={hl.resident ? `${hl.resident.total.toLocaleString()}명` : "자료 없음"}
+          sub={
+            hl.resident
+              ? `${hl.resident.households ? `${hl.resident.households.toLocaleString()}세대 · ` : ""}${topAges(hl.resident)}${med(hl.peer_median.resident, "명")}`
+              : undefined
+          }
+        />
+      </div>
+      <div style={{ fontSize: 12, color: "#374151", marginTop: 6 }}>
+        집객시설{" "}
+        {hl.facility
+          ? `${hl.facility.total.toLocaleString()}곳${med(hl.peer_median.facility, "곳")}` +
+            (hl.facility.items.length ? ` — ${hl.facility.items.map((it) => `${it.label} ${it.count}`).join(", ")}` : "")
+          : "자료 없음"}
+      </div>
+      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{hl.caveat}</div>
+      <SourceNote title={hl.source.title} reference={hl.source.reference} />
     </div>
   );
 }

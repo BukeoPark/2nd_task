@@ -270,6 +270,25 @@ export interface SalesBenchmarkResponse {
   floating?: FloatingComparison | null;
   franchise_share?: { share: number | null; frc_stores: number; stores: number; peer_median: number | null } | null;
   churn?: ChurnSummary | null;
+  hinterland?: HinterlandSummary | null;
+}
+
+export interface HinterlandPopulation {
+  total: number;
+  female_share: number | null;
+  age_share: Record<"age10" | "age20" | "age30" | "age40" | "age50" | "age60", number | null>;
+  quarter: string;
+}
+
+/** 상권(행정동) 안 직장인구·상주인구·집객시설 — 서울시 상권분석서비스. 배후지(상권 밖)는 포함하지 않는다. */
+export interface HinterlandSummary {
+  workplace: HinterlandPopulation | null;
+  resident: (HinterlandPopulation & { households: number | null; apt_share: number | null }) | null;
+  facility: { total: number; quarter: string; items: { key: string; label: string; count: number; peer_median: number | null }[] } | null;
+  peer_median: { workplace: number | null; resident: number | null; facility: number | null };
+  peer_label: string;
+  caveat: string;
+  source: SourceRef;
 }
 
 /** 최근 1년(4개 분기) 같은 업종 개업·폐업 — 비율은 4개 분기 합 ÷ 평균 점포 수. */

@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 
 from app.services import data_store, store_profile
@@ -44,10 +46,12 @@ FLOATING_CAVEATS = [
 
 
 UNITS = {
-    "trdar": {"table": "trdar_industry_sales.parquet", "floating": "trdar_floating_pop.parquet", "cd": "trdar_cd",
+    "trdar": {"table": "trdar_industry_sales.parquet", "floating": "trdar_floating_pop.parquet", "hinterland": "trdar_hinterland.parquet",
+              "cd": "trdar_cd",
               "nm": "trdar_nm", "label": "상권", "peer_label": "파일럿 구 상권",
               "source": "서울시 상권분석서비스(추정매출·점포·길단위인구-상권)"},
-    "dong": {"table": "dong_industry_sales.parquet", "floating": "dong_floating_pop.parquet", "cd": "adongCd",
+    "dong": {"table": "dong_industry_sales.parquet", "floating": "dong_floating_pop.parquet", "hinterland": "dong_hinterland.parquet",
+             "cd": "adongCd",
              "nm": "adongNm", "label": "행정동", "peer_label": "파일럿 행정동",
              "source": "서울시 상권분석서비스(추정매출·점포·길단위인구-행정동)"},
 }
@@ -109,6 +113,64 @@ def _churn(unit: dict, code: str, sel: pd.DataFrame, latest: str) -> dict | None
         "peer_median_open": _num(agg["open_rate"].median()), "peer_p75_open": _num(agg["open_rate"].quantile(0.75)),
         "peer_median_close": _num(agg["close_rate"].median()), "peer_p75_close": _num(agg["close_rate"].quantile(0.75)),
         "caveat": CHURN_CAVEAT,
+    }
+
+
+HINTERLAND_AGES = ["age10", "age20", "age30", "age40", "age50", "age60"]
+FACILITY_LABELS = {  # 화면에 보여줄 집객시설(많이 쓰는 것만, 순서 고정)
+    "fac_subway": "지하철역", "fac_bus_stop": "버스정류장", "fac_university": "대학교", "fac_school": "초·중·고",
+    "fac_hospital_all": "병원", "fac_public_office": "관공서", "fac_bank": "은행", "fac_department_store": "백화점",
+    "fac_supermarket": "슈퍼마켓", "fac_theater": "극장", "fac_lodging": "숙박시설",
+}
+HINTERLAND_CAVEAT = ("서울시 상권분석서비스의 직장인구·상주인구·집객시설입니다. 상권(행정동) 영역 안의 값이며 상권 밖 배후지는 포함하지 않습니다. "
+                     "소득·소비 자료는 서울시가 공급·갱신을 중단해 싣지 않았습니다.")
+
+
+def _int_half_up(v) -> int | None:
+    """인원·개수 중앙값은 정수로(.5 는 올림) — 화면과 리포트 문장이 같은 숫자를 쓰도록 서버에서 한 번만 반올림한다."""
+    return None if v is None or pd.isna(v) else int(math.floor(float(v) + 0.5))
+
+
+def _pop_block(row, prefix: str) -> dict | None:
+    total = _num(row[f"{prefix}_total"])
+    if not total:
+        return None
+    ages = {a: _num(row[f"{prefix}_{a}"] / total) for a in HINTERLAND_AGES}
+    return {"total": int(total), "female_share": _num(row[f"{prefix}_female"] / total), "age_share": ages,
+            "quarter": row[f"{prefix}_quarter"]}
+
+
+def hinterland(level: str, code: str) -> dict | None:
+    """단위의 직장·상주인구·집객시설 + 같은 단위(파일럿) 중앙값. 표가 없거나 단위가 없으면 None."""
+    unit = UNITS[level]
+    try:
+        df = data_store.load_parquet(unit["hinterland"])
+    except data_store.DataNotReady:
+        return None
+    df = df.assign(fac_school=df[["fac_elementary", "fac_middle", "fac_high"]].sum(axis=1, min_count=1),
+                   fac_hospital_all=df[["fac_general_hospital", "fac_hospital"]].sum(axis=1, min_count=1))
+    hit = df.loc[df[unit["cd"]] == code]
+    if hit.empty:
+        return None
+    r = hit.iloc[0]
+    fac = None if pd.isna(r["fac_total"]) else {
+        "total": int(r["fac_total"]), "quarter": r["fac_quarter"],
+        "items": [{"key": k, "label": v, "count": int(r[k]), "peer_median": _num(df[k].median())}
+                  for k, v in FACILITY_LABELS.items() if not pd.isna(r[k]) and r[k] > 0],
+    }
+    return {
+        "workplace": _pop_block(r, "wrc"),
+        "resident": None if (b := _pop_block(r, "repop")) is None else {
+            **b, "households": _num(r["households"]),
+            "apt_share": _num(r["apt_households"] / r["households"]) if r["households"] else None},
+        "facility": fac,
+        "peer_median": {"workplace": _int_half_up(df["wrc_total"].median()), "resident": _int_half_up(df["repop_total"].median()),
+                        "facility": _int_half_up(df["fac_total"].median())},
+        "peer_label": unit["peer_label"],
+        "caveat": HINTERLAND_CAVEAT,
+        "source": {"title": "서울시 상권분석서비스(직장인구·상주인구·집객시설)",
+                   "reference": f"{quarter_label(q)} 기준" if (q := next((r[c] for c in ("wrc_quarter", "repop_quarter", "fac_quarter")
+                                                                       if isinstance(r[c], str)), None)) else None},
     }
 
 
@@ -206,6 +268,7 @@ def benchmark(bizes_id: str) -> dict:
         "warnings": warnings,
         "floating": _floating(unit, code, cur, peers, latest),
         "churn": _churn(unit, code, sel, latest),
+        "hinterland": hinterland(level, code),
         "franchise_share": None if pd.isna(cur.get("frc_share")) else {
             "share": _num(cur["frc_share"]), "frc_stores": int(cur["frc_stores"]), "stores": int(cur["stores"]),
             "peer_median": _num(peers["frc_share"].median()),

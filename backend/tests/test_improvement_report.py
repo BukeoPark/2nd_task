@@ -133,3 +133,51 @@ def test_benchmark_churn_matches_raw_quarters(client):
         if checked >= 3:
             break
     assert checked >= 1
+
+
+def _hl(wrc_total=1000, rep_total=1000, age30=0.3, female=0.5, med_wrc=1000, med_rep=1000):
+    block = {"total": 0, "female_share": female, "age_share": {"age10": 0.1, "age20": 0.2, "age30": age30, "age40": 0.2, "age50": 0.1, "age60": 0.1}}
+    return {"workplace": {**block, "total": wrc_total}, "resident": {**block, "total": rep_total, "households": 500.0},
+            "facility": {"total": 10, "items": [{"key": "fac_subway", "label": "지하철역", "count": 1, "peer_median": 0}, {"key": "fac_bus_stop", "label": "버스정류장", "count": 4, "peer_median": 6}]},
+            "peer_median": {"workplace": med_wrc, "resident": med_rep, "facility": 5}, "peer_label": "파일럿 구 상권"}
+
+
+def test_hinterland_strengthens_customer_recs():
+    top = {"mix": {"share_age30": 0.30}}
+    bm = _bm(share_age30=0.20)
+    base = build_recommendations(bm, top)[0]
+    bm["hinterland"] = _hl(age30=0.35)  # 직장·상주인구 30대 35% vs 매출 20% → 주변 손님층
+    rec = build_recommendations(bm, top)[0]
+    assert rec["score"] == base["score"] + 5.0
+    assert any("직장·상주인구 2,000명 중 30대 35%" in e for e in rec["evidence"])
+    bm["hinterland"] = _hl(age30=0.10)  # 주변에 30대가 적으면 가산 없이 외부 유입 필요를 적는다
+    rec = build_recommendations(bm, top)[0]
+    assert rec["score"] == base["score"] and any("주변 밖에서" in e for e in rec["evidence"])
+
+
+def test_large_worker_population_backs_lunch_rec():
+    top = {"mix": {"share_t11_14": 0.45}}
+    bm = _bm(share_t11_14=0.30)
+    bm["hinterland"] = _hl(wrc_total=5000, med_wrc=1000)
+    rec = build_recommendations(bm, top)[0]
+    assert rec["score"] == 18.0 and any("직장인구 5,000명" in e for e in rec["evidence"])
+    bm["hinterland"] = _hl(wrc_total=1200, med_wrc=1000)  # 중앙값 1.5배 미만이면 근거로 쓰지 않음
+    assert build_recommendations(bm, top)[0]["score"] == 15.0
+
+
+def test_benchmark_hinterland_api(client):
+    stores = data_store.load_parquet("stores.parquet")
+    trdar = data_store.load_parquet("store_trdar.parquet")
+    sid = stores.loc[stores["bizesId"].isin(trdar["bizesId"]) & (stores["indsSclsCd"] == "I21201")].sort_values("bizesId")["bizesId"].iloc[0]
+    hl = client.get(f"/api/stores/{sid}/sales-benchmark").json()["hinterland"]
+    assert hl and hl["workplace"]["total"] > 0
+    assert abs(sum(hl["workplace"]["age_share"].values()) - 1) < 0.01
+    assert "배후지는 포함하지 않습니다" in hl["caveat"]
+
+
+def test_transit_evidence_only_above_peer_median():
+    bm = _bm()
+    bm["floating"] = {"rank": 9, "peer_count": 10}
+    bm["hinterland"] = _hl()
+    rec = next(r for r in build_recommendations(bm, None) if r["area"] == "유입 전환")
+    assert rec["evidence"][1] == "이 상권 안 지하철역 1곳(중앙값 0곳) — 교통시설이 많아 지나가는 사람이 많은 자리"  # 버스 4곳 < 중앙값 6곳은 뺀다

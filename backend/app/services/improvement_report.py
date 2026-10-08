@@ -21,9 +21,17 @@ EXTREME_YOY_PCT = 50.0
 FRANCHISE_HEAVY_SHARE = 0.5
 MIN_UNIT_STORES_FOR_SHARE = 5
 BRAND_CHURN_HIGH = 0.10
+HINTERLAND_GAP_PCTP = 5.0   # 직장·상주인구 연령/성별 비중이 매출 비중보다 이만큼 이상 높으면 '주변에 있는 손님층'
+HINTERLAND_BONUS = 5.0
+LARGE_POP_RATIO = 1.5       # 직장·상주인구가 비교 단위 중앙값의 1.5배 이상이면 시간대 제안 근거로 쓴다
+LARGE_POP_BONUS = 3.0
+WORKER_TIME_KEYS = {"share_t11_14"}                                      # 점심 — 직장인구
+RESIDENT_TIME_KEYS = {"share_t17_21", "share_t21_24", "share_weekend"}   # 저녁·주말 — 상주인구
 MIN_CHURN_EVENTS = 2       # 1년에 1곳 열고 닫힌 정도는 우연일 수 있어 규칙에서 뺀다
 CHURN_GAP_PCTP = 5.0       # 비교군 중앙값보다 이만큼(%p) 이상 높을 때만
 CHURN_SCORE_CAP = 20.0
+SHARE_LABELS_SHORT = {"share_female": "여성", "share_age20": "20대", "share_age30": "30대", "share_age40": "40대",
+                      "share_age50": "50대", "share_age60": "60대 이상"}
 TIME_KEYS = ["share_t06_11", "share_t11_14", "share_t14_17", "share_t17_21", "share_t21_24"]  # 0~6시는 제외(주민 체류)
 AGE_KEYS = ["share_age20", "share_age30", "share_age40", "share_age50", "share_age60"]
 DISCLAIMER = ("서울시 추정매출·유동인구(상권·행정동 평균)로 찾은 점검 후보입니다. 개별 매장 진단이 아니며 매출 증가를 보장하지 않습니다. "
@@ -87,6 +95,9 @@ def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None)
             if flp and flp["flpop"] is not None and flp["sales"] is not None and (flp["flpop"] - flp["sales"]) * 100 >= FLPOP_BONUS_PCTP:
                 evidence.append(f"이 {unit_label}의 {label} 유동인구 비중 {flp['flpop'] * 100:.0f}% · 매출 비중 {flp['sales'] * 100:.0f}% — 사람은 있는데 매출로 덜 이어짐")
                 score += FLPOP_BONUS_PCTP
+            extra, bonus = _hinterland_evidence(bm.get("hinterland"), key, mine, unit_label)
+            evidence += extra
+            score += bonus
             if key in TIME_KEYS:
                 area, title = "영업시간", f"{label} 매출 비중 늘리기"
                 suggestion = f"{label}에 {action['hours']}과 {action['offer']}가 맞춰져 있는지 점검해 보세요."
@@ -122,7 +133,7 @@ def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None)
 
     if fl.get("rank") and fl.get("peer_count", 0) >= MIN_PEERS and fl["rank"] / fl["peer_count"] > 0.7:
         recs.append({"area": "유입 전환", "title": "다니는 사람을 손님으로 바꾸기",
-                     "evidence": [f"유동인구 1만 명당 매출 {fl['rank']}/{fl['peer_count']}위(하위 30%)"],
+                     "evidence": [f"유동인구 1만 명당 매출 {fl['rank']}/{fl['peer_count']}위(하위 30%)"] + _transit_evidence(bm.get("hinterland"), unit_label),
                      "suggestion": "간판·입구 노출, 테이크아웃·포장, 지나가는 사람이 보는 가격·대표 상품 안내를 점검해 보세요.",
                      "score": round(10 * fl["rank"] / fl["peer_count"], 1)})
 
@@ -144,6 +155,57 @@ def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None)
 
     recs.sort(key=lambda r: -r["score"])
     return recs[:MAX_RECS]
+
+
+def _transit_evidence(hl: dict | None, unit_label: str) -> list[str]:
+    fac = (hl or {}).get("facility") or {}
+    items = {it["key"]: it for it in fac.get("items", [])}
+    # 비교 단위 중앙값보다 많을 때만 근거로 쓴다(행정동은 버스정류장 수십 곳이 보통이라 개수만으로는 의미가 없다).
+    parts = [f"{name} {it['count']}곳(중앙값 {it['peer_median']:g}곳)"
+             for k, name in (("fac_subway", "지하철역"), ("fac_bus_stop", "버스정류장"))
+             if (it := items.get(k)) and it.get("peer_median") is not None and it["count"] > it["peer_median"]]
+    return [f"이 {unit_label} 안 " + "·".join(parts) + " — 교통시설이 많아 지나가는 사람이 많은 자리"] if parts else []
+
+
+def _demand_share(hl: dict, key: str) -> tuple[float, int] | None:
+    """직장+상주인구에서 해당 연령대·여성 비중(인구 가중)과 인구 합. 매출 비중과 같은 축으로 비교한다."""
+    blocks = [b for b in (hl.get("workplace"), hl.get("resident")) if b]
+    if not blocks:
+        return None
+    total = sum(b["total"] for b in blocks)
+    if key == "share_female":
+        part = sum(b["female_share"] * b["total"] for b in blocks if b["female_share"] is not None)
+    elif key.startswith("share_age"):
+        age = key.removeprefix("share_")
+        part = sum((b["age_share"].get(age) or 0) * b["total"] for b in blocks)
+    else:
+        return None
+    return part / total, total
+
+
+def _hinterland_evidence(hl: dict | None, key: str, mine: float, unit_label: str) -> tuple[list[str], float]:
+    """손님층·시간대 제안에 직장·상주인구 근거를 붙이고 가산점을 준다. 근거가 약하면 그 사실도 적는다."""
+    if not hl:
+        return [], 0.0
+    label = SHARE_LABELS_SHORT.get(key, key)
+    ds = _demand_share(hl, key)
+    if ds is not None:
+        share, total = ds
+        gap = (share - mine) * 100
+        if gap >= HINTERLAND_GAP_PCTP:
+            return [f"이 {unit_label} 직장·상주인구 {total:,}명 중 {label} {share * 100:.0f}% · 매출 비중 {mine * 100:.0f}% "
+                    "— 주변에 있는 손님층이 매출로 덜 이어짐"], HINTERLAND_BONUS
+        if gap <= -HINTERLAND_GAP_PCTP:
+            return [f"이 {unit_label} 직장·상주인구 중 {label}은 {share * 100:.0f}%로 많지 않아, 주변 밖에서 오게 하는 홍보·배달·예약 채널이 함께 필요"], 0.0
+        return [], 0.0
+    med = hl.get("peer_median") or {}
+    wrc, rep = hl.get("workplace"), hl.get("resident")
+    if key in WORKER_TIME_KEYS and wrc and med.get("workplace") and wrc["total"] >= med["workplace"] * LARGE_POP_RATIO:
+        return [f"이 {unit_label} 직장인구 {wrc['total']:,}명({hl['peer_label']} 중앙값 {med['workplace']:,.0f}명) — 점심 수요 기반이 큼"], LARGE_POP_BONUS
+    if key in RESIDENT_TIME_KEYS and rep and med.get("resident") and rep["total"] >= med["resident"] * LARGE_POP_RATIO:
+        hh = f"·{rep['households']:,.0f}세대" if rep.get("households") else ""
+        return [f"이 {unit_label} 상주인구 {rep['total']:,}명{hh}({hl['peer_label']} 중앙값 {med['resident']:,.0f}명) — 저녁·주말 동네 수요 기반이 큼"], LARGE_POP_BONUS
+    return [], 0.0
 
 
 def _churn_flag(ch: dict, kind: str) -> float | None:

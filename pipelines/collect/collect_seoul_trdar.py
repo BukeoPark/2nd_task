@@ -53,7 +53,16 @@ DATASETS: dict[str, tuple[str, bool, str]] = {
     "trdar_sales": ("VwsmTrdarSelngQq", True, "상권분석서비스(추정매출-상권)"),
     "trdar_stores": ("VwsmTrdarStorQq", True, "상권분석서비스(점포-상권)"),
     "trdar_flpop": ("VwsmTrdarFlpopQq", True, "상권분석서비스(길단위인구-상권)"),
+    # 상권 배후 수요(직장·상주인구·집객시설). 2026-10-08 실호출: 아래 셋은 분기 파라미터를 무시하고 전 분기를 돌려줘서
+    # 분기 없이 전량 받고(파일 태그 all) transform 에서 분기를 고른다.
+    # 소득소비(VwsmTrdarIncmCnsmpQq·VwsmAdstrdIncmCnsmpW)는 ERROR-500 — 서울시 공지상 소득 컬럼은 2020년 공급 중단으로
+    # 2026-05-13 삭제, 소비-상권은 갱신 중단이라 수집하지 않는다.
+    "trdar_workplace": ("VwsmTrdarWrcPopltnQq", False, "상권분석서비스(직장인구-상권)"),
+    "trdar_resident": ("VwsmTrdarRepopQq", False, "상권분석서비스(상주인구-상권)"),
+    "trdar_facility": ("VwsmTrdarFcltyQq", False, "상권분석서비스(집객시설-상권)"),
+    "dong_facility": ("VwsmAdstrdFcltyW", False, "상권분석서비스(집객시설-행정동)"),
 }
+ALL_QUARTERS = {"trdar_workplace", "trdar_resident", "trdar_facility", "dong_facility"}  # 정적 표가 아니라 전 분기 묶음
 
 # 2026-09-14 기준 실호출로 확인한 가장 최근 분기(추정매출 등 공통). 데이터가 갱신되면 --quarter 로 덮어쓴다.
 DEFAULT_QUARTER = "20262"
@@ -88,7 +97,7 @@ def _fetch_page(client: httpx.Client, key: str, service: str, start: int, end: i
 def collect_one(client: httpx.Client, key: str, dataset_key: str, service: str, needs_quarter: bool, desc: str, quarter: str, *, force: bool) -> None:
     q = quarter if needs_quarter else None
     today = date.today().strftime("%Y%m%d")
-    tag = q or "static"
+    tag = q or ("all" if dataset_key in ALL_QUARTERS else "static")
     out_path = OUT_DIR / f"{dataset_key}_{service}_{tag}_{today}.json"
     if out_path.exists() and not force:
         print(f"[skip] {out_path.relative_to(config.ROOT)} 이미 있음 (--force 로 재수집)")

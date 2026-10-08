@@ -208,6 +208,26 @@ SOURCES: dict[str, DataSource] = {
                   "'frcsCnt' 칸은 이름과 달리 평균매출금액으로 판단(2024 서울 한식 471,736천원, 면적당 매출과 대조).",
         ),
         DataSource(
+            key="seoul_trdar_hinterland",
+            title="서울시 상권분석서비스 — 직장인구·상주인구·집객시설(상권·행정동)",
+            provider="서울 열린데이터광장",
+            endpoint=f"{SEOUL_OPENAPI_BASE}/{{KEY}}/json/{{VwsmTrdarWrcPopltnQq|VwsmTrdarRepopQq|VwsmTrdarFcltyQq|"
+                     "VwsmAdstrdWrcPopltnW|VwsmAdstrdRepopW|VwsmAdstrdFcltyW}/{start}/{end}/",
+            docs_url="https://data.seoul.go.kr/",
+            fields=["STDR_YYQU_CD", "TRDAR_CD|ADSTRD_CD", "TOT_WRC_POPLTN_CO", "FML_WRC_POPLTN_CO", "AGRDE_*_WRC_POPLTN_CO",
+                    "TOT_REPOP_CO", "FML_REPOP_CO", "AGRDE_*_REPOP_CO", "TOT_HSHLD_CO", "APT_HSHLD_CO",
+                    "VIATR_FCLTY_CO", "SUBWAY_STATN_CO", "BUS_STTN_CO", "UNIV_CO", "*_CO(시설 종류별)"],
+            update_cycle="분기",
+            crs="-(상권·행정동 코드로 연결)",
+            terms="서울 열린데이터광장 이용약관(출처표시)",
+            verification="api_call_ok",
+            status="connected",
+            notes="2026-10-08 실호출. 상권 3종·행정동 집객시설은 분기 파라미터를 무시하고 2021Q1~최신 전 분기를 돌려줘 전량 수집 후 "
+                  "최신 분기만 쓴다. 인구는 상권(행정동) 영역 안 인구이며 배후지(주변)는 포함하지 않는다. "
+                  "소득소비(VwsmTrdarIncmCnsmpQq·VwsmAdstrdIncmCnsmpW)는 ERROR-500 — 서울시 공지상 소득 컬럼 공급 중단(2020)·"
+                  "2026-05-13 삭제, 소비-상권 갱신 중단이라 연결하지 않는다.",
+        ),
+        DataSource(
             key="neis_academy",
             title="NEIS 학원교습소정보",
             provider="교육부 나이스 교육정보 개방 포털",
