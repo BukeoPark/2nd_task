@@ -26,6 +26,10 @@
 → `transform.build_sales_crosswalk` → `transform.build_dong_metrics`
 - 추정매출(THSMON_SELNG_AMT)은 분기 합계로 해석, 점포당 평균 분모는 유사업종 점포수(일반+프랜차이즈).
 - 소분류→서울시 업종 대응은 `common/sales_industry_crosswalk.py` 에서만 한다.
+- 상권 단위: `transform.build_trdar_areas`(경계 data/external/seoul_trdar_area) → `collect_seoul_trdar --datasets trdar_sales trdar_stores trdar_flpop` → `transform.build_sales_timeseries --level trdar`
+
+## 프랜차이즈(공정위) 실행 순서
+`collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 
 ## transform/ (변환)
 - 입력은 `data/raw/`·`data/external/`, 출력은 `data/interim/`·`data/processed/`.

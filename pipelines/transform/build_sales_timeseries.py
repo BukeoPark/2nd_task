@@ -15,6 +15,7 @@
   - 매출(THSMON_SELNG_AMT, 칼럼명은 '당월_매출_금액')은 분기 합계로 해석한다. 서울 열린데이터광장 안내:
     '분기 매출 금액은 개인 매출과 법인 매출의 합'. 월평균은 3으로 나눈다.
   - 점포당 평균의 분모는 유사업종 점포수(SIMILR_INDUTY_STOR_CO = 일반 점포 + 프랜차이즈, 실제 데이터로 확인).
+  - 프랜차이즈 비율 = FRC_STOR_CO ÷ 유사업종 점포수. 개업·폐업 점포수/률(OPBIZ_*, CLSBIZ_*)은 서울시 원천 값을 그대로 싣는다.
   - 성별·연령 매출에는 법인 매출이 없어 합계와 다를 수 있다 → 구성비는 해당 항목들의 합을 분모로 쓴다.
   - 행정동 전체 증감률은 두 분기에 모두 있는 업종만 합산한다(업종 구성 변화로 생기는 착시 방지).
   - 유동인구(TOT_FLPOP_CO)는 서울시·KT 생활인구를 길 단위로 배분한 추정치다. 시간대 합 = 요일 합 = 총계라
@@ -111,9 +112,10 @@ def build(level: str) -> None:
     num = ["THSMON_SELNG_AMT", "THSMON_SELNG_CO", "MDWK_SELNG_AMT", "WKEND_SELNG_AMT", "ML_SELNG_AMT", "FML_SELNG_AMT",
            *TIME_COLS, *AGE_COLS]
     sales[num] = sales[num].apply(pd.to_numeric, errors="coerce")
-    stores["SIMILR_INDUTY_STOR_CO"] = pd.to_numeric(stores["SIMILR_INDUTY_STOR_CO"], errors="coerce")
+    store_cols = ["SIMILR_INDUTY_STOR_CO", "FRC_STOR_CO", "OPBIZ_STOR_CO", "CLSBIZ_STOR_CO", "OPBIZ_RT", "CLSBIZ_RT"]
+    stores[store_cols] = stores[store_cols].apply(pd.to_numeric, errors="coerce")
 
-    df = sales.merge(stores[[*key, "SIMILR_INDUTY_STOR_CO"]], on=key, how="left")
+    df = sales.merge(stores[[*key, *store_cols]], on=key, how="left")
     no_store = df["SIMILR_INDUTY_STOR_CO"].isna() | (df["SIMILR_INDUTY_STOR_CO"] <= 0)
     log.append(("매출은 있으나 점포수 0·없음 → 점포당 평균 계산 불가(행 유지)", int(no_store.sum())))
 
@@ -122,7 +124,11 @@ def build(level: str) -> None:
         "svc_cd": df["SVC_INDUTY_CD"], "svc_nm": df["SVC_INDUTY_CD_NM"],
         "sales_q": df["THSMON_SELNG_AMT"], "tx_count_q": df["THSMON_SELNG_CO"],
         "stores": df["SIMILR_INDUTY_STOR_CO"],
+        "frc_stores": df["FRC_STOR_CO"],
+        "open_stores": df["OPBIZ_STOR_CO"], "close_stores": df["CLSBIZ_STOR_CO"],
+        "open_rate": df["OPBIZ_RT"], "close_rate": df["CLSBIZ_RT"],
     })
+    out["frc_share"] = out["frc_stores"] / out["stores"].replace(0, np.nan)
     out["per_store_q"] = np.where(no_store, np.nan, out["sales_q"] / out["stores"])
     out["per_store_month"] = out["per_store_q"] / 3
     wk = df["MDWK_SELNG_AMT"] + df["WKEND_SELNG_AMT"]

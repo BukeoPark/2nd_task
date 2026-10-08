@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from app.services import data_store, sales_benchmark
+from app.services import data_store, franchise, sales_benchmark
 
 TOP_SHARE = 0.25
 MIN_TOP_GROUP = 3
@@ -18,6 +18,9 @@ FLPOP_BONUS_PCTP = 5.0
 MAX_RECS = 5
 TREND_SCORE_CAP = 30.0
 EXTREME_YOY_PCT = 50.0
+FRANCHISE_HEAVY_SHARE = 0.5
+MIN_UNIT_STORES_FOR_SHARE = 5
+BRAND_CHURN_HIGH = 0.10
 TIME_KEYS = ["share_t06_11", "share_t11_14", "share_t14_17", "share_t17_21", "share_t21_24"]  # 0~6시는 제외(주민 체류)
 AGE_KEYS = ["share_age20", "share_age30", "share_age40", "share_age50", "share_age60"]
 DISCLAIMER = ("서울시 추정매출·유동인구(상권·행정동 평균)로 찾은 점검 후보입니다. 개별 매장 진단이 아니며 매출 증가를 보장하지 않습니다. "
@@ -58,7 +61,7 @@ def _share(bm: dict, key: str) -> float | None:
     return None
 
 
-def build_recommendations(bm: dict, top: dict | None) -> list[dict]:
+def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None) -> list[dict]:
     """순수 함수 — benchmark 결과와 상위 그룹 구성으로 우선순위가 매겨진 점검 후보 목록을 만든다."""
     recs: list[dict] = []
     action = ACTION.get((bm.get("svc_cd") or "")[:3], ACTION["CS1"])
@@ -118,6 +121,22 @@ def build_recommendations(bm: dict, top: dict | None) -> list[dict]:
                      "suggestion": "간판·입구 노출, 테이크아웃·포장, 지나가는 사람이 보는 가격·대표 상품 안내를 점검해 보세요.",
                      "score": round(10 * fl["rank"] / fl["peer_count"], 1)})
 
+    fs = bm.get("franchise_share")
+    if (brand is None and fs and fs["share"] is not None and fs["stores"] >= MIN_UNIT_STORES_FOR_SHARE
+            and fs["share"] >= FRANCHISE_HEAVY_SHARE):
+        recs.append({"area": "경쟁", "title": "프랜차이즈가 많은 곳에서 개인 가게만의 강점 만들기",
+                     "evidence": [f"이 {unit_label} 같은 업종 {fs['stores']}곳 중 프랜차이즈 {fs['frc_stores']}곳({fs['share'] * 100:.0f}%)"
+                                  + (f", 비교군 중앙값 {fs['peer_median'] * 100:.0f}%" if fs.get("peer_median") is not None else "")],
+                     "suggestion": f"가격 경쟁보다 프랜차이즈가 하기 어려운 {action['offer']}·단골 관리·지역 맞춤 서비스를 점검해 보세요.",
+                     "score": round(fs["share"] * 20, 1)})
+
+    if brand and brand.get("churn_rate") is not None and brand["churn_rate"] >= BRAND_CHURN_HIGH:
+        recs.append({"area": "브랜드", "title": "브랜드 가맹점 이탈 현황 확인하기",
+                     "evidence": [f"'{brand['brand']}' {brand['year']}년 가맹점 {brand['frcs_cnt']:.0f}곳 중 계약 종료·해지 "
+                                  f"{(brand['end_cnt'] or 0) + (brand['cancel_cnt'] or 0):.0f}곳({brand['churn_rate'] * 100:.1f}%) — 공정위 전국 자료"],
+                     "suggestion": "본사 지원(판촉·원가)·계약 조건·영업지역 보호 범위를 가맹본부와 점검해 보세요. 매장 개별 평가는 아닙니다.",
+                     "score": round(brand["churn_rate"] * 60, 1)})
+
     recs.sort(key=lambda r: -r["score"])
     return recs[:MAX_RECS]
 
@@ -127,7 +146,8 @@ def report(bizes_id: str) -> dict:
     if bm["status"] != "ok":
         return {"status": bm["status"], "message": bm.get("message"), "disclaimer": DISCLAIMER}
     top = top_group_mix(bm["unit"]["level"], bm["svc_cd"])
-    recs = build_recommendations(bm, top)
+    brand = franchise.brand_info(bizes_id)
+    recs = build_recommendations(bm, top, brand)
     return {
         "status": "ok",
         "unit": bm["unit"], "svc_nm": bm["svc_nm"], "quarter_label": bm["quarter_label"],
@@ -135,6 +155,7 @@ def report(bizes_id: str) -> dict:
         "top_group": None if top is None else {k: top[k] for k in ("count", "peers", "names", "per_store_month_min")},
         "top_group_note": None if top else f"비교 단위가 {MIN_PEERS}곳 미만이라 '잘 되는 곳' 비교는 생략했습니다.",
         "recommendations": recs,
+        "brand": None if brand is None else {k: brand[k] for k in ("brand", "avg_sales_month", "avg_sales_year_label")},
         "disclaimer": DISCLAIMER,
         "source": bm["source"],
     }

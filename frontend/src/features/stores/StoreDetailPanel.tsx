@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Notice, SourceNote } from "../../components/Notice";
+import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { ImprovementReportSection } from "./ImprovementReportSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
@@ -39,6 +40,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose }: StoreDetailPanelP
           <SourceNote title={store.source.title} reference={store.source.reference} />
 
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
+          <FranchiseSection storeId={storeId} manwon={manwon} />
           <ImprovementReportSection storeId={storeId} manwon={manwon} />
           <GoogleReviewSection storeId={storeId} />
           <OperationHistorySection history={data.operation_history} />

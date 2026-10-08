@@ -285,6 +285,31 @@ export interface SalesBenchmarkResponse {
   insights?: { group: string; label: string; gap_pctp: number; text: string }[];
   warnings?: string[];
   floating?: FloatingComparison | null;
+  franchise_share?: { share: number | null; frc_stores: number; stores: number; peer_median: number | null } | null;
+}
+
+export interface FranchiseBrand {
+  brand: string;
+  corp: string;
+  match_type: string;
+  industry: string;
+  year: number;
+  frcs_cnt: number | null;
+  new_cnt: number | null;
+  end_cnt: number | null;
+  cancel_cnt: number | null;
+  churn_rate: number | null;
+  avg_sales_month: number | null;
+  avg_sales_year_label: number | null;
+  trend: { year: number; frcs_cnt: number | null; new_cnt: number | null; out_cnt: number | null }[];
+}
+
+export interface FranchiseResponse {
+  brand: FranchiseBrand | null;
+  seoul_avg: { mlsfc: string; year: number; avg_sales_month: number } | null;
+  message: string | null;
+  caveats: string[];
+  source: { title: string; reference: string };
 }
 
 export interface ImprovementRecommendation {
@@ -337,6 +362,7 @@ export const apiClient = {
     request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
   getImprovementReport: (storeId: string) =>
     request<ImprovementReportResponse>(`/api/stores/${encodeURIComponent(storeId)}/improvement-report`),
+  getFranchise: (storeId: string) => request<FranchiseResponse>(`/api/stores/${encodeURIComponent(storeId)}/franchise`),
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),

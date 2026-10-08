@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import data_store, google_places, improvement_report, nearby_analysis, sales_benchmark, store_profile, taxonomy
+from app.services import data_store, franchise, google_places, improvement_report, nearby_analysis, sales_benchmark, store_profile, taxonomy
 
 router = APIRouter(prefix="/api", tags=["stores"])
 
@@ -94,6 +94,17 @@ def store_improvement_report(bizes_id: str) -> dict:
     """매출 개선 리포트 — 규칙 + 같은 업종 상위 25% 비교군 벤치마크로 만든 점검 후보(외부 AI 미사용)."""
     try:
         return improvement_report.report(bizes_id)
+    except store_profile.StoreNotFound:
+        raise _not_found(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/stores/{bizes_id}/franchise")
+def store_franchise(bizes_id: str) -> dict:
+    """프랜차이즈 참고 정보 — 상호·업종으로 연결한 브랜드의 전국 평균 매출·가맹점 증감, 서울 업종 평균(공정위)."""
+    try:
+        return franchise.franchise(bizes_id)
     except store_profile.StoreNotFound:
         raise _not_found(bizes_id)
     except data_store.DataNotReady as e:

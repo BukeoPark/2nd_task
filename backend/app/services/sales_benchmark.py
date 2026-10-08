@@ -176,4 +176,8 @@ def benchmark(bizes_id: str) -> dict:
         "insights": insights[:4],
         "warnings": warnings,
         "floating": _floating(unit, code, cur, peers, latest),
+        "franchise_share": None if pd.isna(cur.get("frc_share")) else {
+            "share": _num(cur["frc_share"]), "frc_stores": int(cur["frc_stores"]), "stores": int(cur["stores"]),
+            "peer_median": _num(peers["frc_share"].median()),
+        },
     }

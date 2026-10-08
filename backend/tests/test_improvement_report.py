@@ -69,3 +69,14 @@ def test_report_api(client):
     bid2 = stores.loc[stores["indsSclsCd"] == code].sort_values("bizesId").iloc[0]["bizesId"]
     assert client.get(f"/api/stores/{bid2}/improvement-report").json()["status"] == "no_match"
     assert client.get("/api/stores/NOPE0000/improvement-report").status_code == 404
+
+
+def test_franchise_rules():
+    bm = _bm()
+    bm["franchise_share"] = {"share": 0.6, "frc_stores": 6, "stores": 10, "peer_median": 0.2}
+    indie = build_recommendations(bm, None)
+    assert indie[0]["area"] == "경쟁" and "6곳(60%)" in indie[0]["evidence"][0]
+    brand = {"brand": "테스트커피", "year": 2025, "frcs_cnt": 100.0, "end_cnt": 9.0, "cancel_cnt": 3.0, "churn_rate": 0.12}
+    owned = build_recommendations(bm, None, brand)
+    assert [r["area"] for r in owned] == ["브랜드"]  # 가맹점에는 '개인 가게 차별화' 규칙을 내지 않는다
+    assert "12곳(12.0%)" in owned[0]["evidence"][0]
