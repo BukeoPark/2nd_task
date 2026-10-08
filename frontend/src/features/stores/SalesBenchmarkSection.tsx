@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Notice, Section, SourceNote } from "../../components/Notice";
-import { apiClient, type FloatingComparison, type SalesBenchmarkResponse } from "../../lib/apiClient";
+import { apiClient, type ChurnSummary, type FloatingComparison, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
 /** '동네 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
@@ -70,6 +70,8 @@ function Body({
         <Card label="전년 동기 대비" value={formatSignedPct(data.per_store_yoy_pct)} sub="점포당 평균" />
         <Card label="전 분기 대비" value={formatSignedPct(data.per_store_qoq_pct)} sub="계절 영향 있음" />
       </div>
+
+      {data.churn && <ChurnRow churn={data.churn} unitLabel={data.unit?.label ?? "동네"} />}
 
       {(data.warnings ?? []).map((w) => (
         <div key={w} style={{ marginTop: 6 }}>
@@ -253,6 +255,24 @@ function MyRevenueInput({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ChurnRow({ churn, unitLabel }: { churn: ChurnSummary; unitLabel: string }) {
+  const pct = (v: number | null) => (v === null ? "자료 없음" : `${Math.round(v * 100)}%`);
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+        최근 1년 이 {unitLabel} 같은 업종 개업·폐업 ({churn.period})
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Card label="개업" value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}`} />
+        <Card label="폐업" value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}`} />
+      </div>
+      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+        평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
+      </div>
     </div>
   );
 }

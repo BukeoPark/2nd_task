@@ -21,6 +21,9 @@ EXTREME_YOY_PCT = 50.0
 FRANCHISE_HEAVY_SHARE = 0.5
 MIN_UNIT_STORES_FOR_SHARE = 5
 BRAND_CHURN_HIGH = 0.10
+MIN_CHURN_EVENTS = 2       # 1년에 1곳 열고 닫힌 정도는 우연일 수 있어 규칙에서 뺀다
+CHURN_GAP_PCTP = 5.0       # 비교군 중앙값보다 이만큼(%p) 이상 높을 때만
+CHURN_SCORE_CAP = 20.0
 TIME_KEYS = ["share_t06_11", "share_t11_14", "share_t14_17", "share_t17_21", "share_t21_24"]  # 0~6시는 제외(주민 체류)
 AGE_KEYS = ["share_age20", "share_age30", "share_age40", "share_age50", "share_age60"]
 DISCLAIMER = ("서울시 추정매출·유동인구(상권·행정동 평균)로 찾은 점검 후보입니다. 개별 매장 진단이 아니며 매출 증가를 보장하지 않습니다. "
@@ -115,6 +118,8 @@ def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None)
         recs.append({"area": "상권 흐름", "title": "상권 전체 하락인지 먼저 구분하기", "evidence": evidence,
                      "suggestion": suggestion, "score": round(min(abs(yoy), TREND_SCORE_CAP), 1)})
 
+    recs.extend(_churn_recs(bm.get("churn"), unit_label, action))
+
     if fl.get("rank") and fl.get("peer_count", 0) >= MIN_PEERS and fl["rank"] / fl["peer_count"] > 0.7:
         recs.append({"area": "유입 전환", "title": "다니는 사람을 손님으로 바꾸기",
                      "evidence": [f"유동인구 1만 명당 매출 {fl['rank']}/{fl['peer_count']}위(하위 30%)"],
@@ -139,6 +144,45 @@ def build_recommendations(bm: dict, top: dict | None, brand: dict | None = None)
 
     recs.sort(key=lambda r: -r["score"])
     return recs[:MAX_RECS]
+
+
+def _churn_flag(ch: dict, kind: str) -> float | None:
+    """비교군 상위 25% 이상 + 중앙값보다 5%p 이상 높고 1년 2곳 이상이면 (중앙값 대비 %p 차) 를 돌려준다."""
+    rate, med, p75 = ch[f"{kind}_rate"], ch[f"peer_median_{kind}"], ch[f"peer_p75_{kind}"]
+    count = ch["opened" if kind == "open" else "closed"]
+    if rate is None or med is None or p75 is None or count < MIN_CHURN_EVENTS:
+        return None
+    gap = (rate - med) * 100
+    return gap if rate >= p75 and gap >= CHURN_GAP_PCTP else None
+
+
+def _churn_recs(ch: dict | None, unit_label: str, action: dict) -> list[dict]:
+    if not ch or ch.get("peer_count", 0) < MIN_PEERS:
+        return []
+    o_gap, c_gap = _churn_flag(ch, "open"), _churn_flag(ch, "close")
+    base = (f"최근 1년({ch['period']}) 이 {unit_label} 같은 업종 평균 {ch['avg_stores']:g}곳 중 "
+            f"개업 {ch['opened']}곳 · 폐업 {ch['closed']}곳")
+    o_ev = f"연 개업률 {ch['open_rate'] * 100:.0f}% vs 비교 단위 중앙값 {ch['peer_median_open'] * 100:.0f}%"
+    c_ev = f"연 폐업률 {ch['close_rate'] * 100:.0f}% vs 비교 단위 중앙값 {ch['peer_median_close'] * 100:.0f}%"
+    if o_gap is not None and c_gap is not None:
+        return [{"area": "개폐업", "title": "가게가 자주 바뀌는 자리 — 오래 버티는 가게와의 차이 찾기",
+                 "evidence": [base, o_ev, c_ev],
+                 "suggestion": (f"새로 여는 곳도 문 닫는 곳도 많습니다. 오래 영업 중인 주변 가게의 {action['offer']}·{action['hours']}을 "
+                                "살펴보고, 고정비(임대료·인건비)가 이 상권 매출 수준에서 버틸 만한지 점검해 보세요."),
+                 "score": round(min(max(o_gap, c_gap), CHURN_SCORE_CAP), 1)}]
+    if c_gap is not None:
+        return [{"area": "개폐업", "title": "같은 업종 폐업이 많은 곳 — 비용 구조와 수요 점검",
+                 "evidence": [base, c_ev],
+                 "suggestion": (f"문 닫는 곳이 비교 단위보다 많습니다. 고정비 비중, 주력 손님층과 {action['offer']}가 "
+                                "이 상권 수요와 맞는지 먼저 점검해 보세요."),
+                 "score": round(min(c_gap, CHURN_SCORE_CAP), 1)}]
+    if o_gap is not None:
+        return [{"area": "개폐업", "title": "새 경쟁 가게가 계속 들어오는 곳 — 단골 지키기",
+                 "evidence": [base, o_ev],
+                 "suggestion": (f"새로 문 여는 같은 업종 가게가 비교 단위보다 많습니다. 근처에 새 가게가 열리는 시기에 단골 관리(재방문 혜택·안내)와 "
+                                f"내 가게만의 {action['offer']}를 점검해 보세요."),
+                 "score": round(min(o_gap, CHURN_SCORE_CAP), 1)}]
+    return []
 
 
 def report(bizes_id: str) -> dict:

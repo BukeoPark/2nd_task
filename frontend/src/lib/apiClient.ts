@@ -269,6 +269,21 @@ export interface SalesBenchmarkResponse {
   warnings?: string[];
   floating?: FloatingComparison | null;
   franchise_share?: { share: number | null; frc_stores: number; stores: number; peer_median: number | null } | null;
+  churn?: ChurnSummary | null;
+}
+
+/** 최근 1년(4개 분기) 같은 업종 개업·폐업 — 비율은 4개 분기 합 ÷ 평균 점포 수. */
+export interface ChurnSummary {
+  period: string;
+  opened: number;
+  closed: number;
+  avg_stores: number;
+  open_rate: number | null;
+  close_rate: number | null;
+  peer_count: number;
+  peer_median_open: number | null;
+  peer_median_close: number | null;
+  caveat: string;
 }
 
 export interface FranchiseBrand {

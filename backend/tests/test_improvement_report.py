@@ -80,3 +80,56 @@ def test_franchise_rules():
     owned = build_recommendations(bm, None, brand)
     assert [r["area"] for r in owned] == ["브랜드"]  # 가맹점에는 '개인 가게 차별화' 규칙을 내지 않는다
     assert "12곳(12.0%)" in owned[0]["evidence"][0]
+
+
+def _churn(**kw) -> dict:
+    base = {"period": "2025년 3분기~2026년 2분기", "opened": 1, "closed": 1, "avg_stores": 10.0, "open_rate": 0.1, "close_rate": 0.1,
+            "peer_count": 20, "peer_median_open": 0.1, "peer_p75_open": 0.15, "peer_median_close": 0.1, "peer_p75_close": 0.15}
+    return {**base, **kw}
+
+
+def test_churn_rules():
+    bm = _bm()
+    bm["churn"] = _churn(closed=3, close_rate=0.3)
+    recs = build_recommendations(bm, None)
+    assert recs[0]["area"] == "개폐업" and "폐업" in recs[0]["title"] and "연 폐업률 30%" in recs[0]["evidence"][1]
+    assert recs[0]["score"] == 20.0  # 중앙값 대비 +20%p, 상한 20
+
+    bm["churn"] = _churn(opened=3, open_rate=0.3)
+    assert "새 경쟁" in build_recommendations(bm, None)[0]["title"]
+
+    bm["churn"] = _churn(opened=3, open_rate=0.3, closed=2, close_rate=0.2)
+    both = build_recommendations(bm, None)
+    assert len([r for r in both if r["area"] == "개폐업"]) == 1 and "자주 바뀌는" in both[0]["title"]
+
+
+def test_churn_rules_skip_small_or_normal():
+    bm = _bm()
+    bm["churn"] = _churn(closed=1, close_rate=0.3)  # 1년 1곳은 우연일 수 있음
+    assert build_recommendations(bm, None) == []
+    bm["churn"] = _churn(closed=2, close_rate=0.14)  # 상위 25% 아님
+    assert build_recommendations(bm, None) == []
+    bm["churn"] = _churn(closed=3, close_rate=0.3, peer_count=5)  # 비교 단위 부족
+    assert build_recommendations(bm, None) == []
+
+
+def test_benchmark_churn_matches_raw_quarters(client):
+    """API 의 최근 1년 개·폐업 수가 원 분기 자료 합과 같은지(실제 산출물)."""
+    stores = data_store.load_parquet("stores.parquet")
+    sample = stores.loc[stores["indsSclsCd"] == "I20101"].sort_values("bizesId").head(40)
+    checked = 0
+    for sid in sample["bizesId"]:
+        bm = client.get(f"/api/stores/{sid}/sales-benchmark").json()
+        ch = bm.get("churn")
+        if bm.get("status") != "ok" or not ch:
+            continue
+        lvl = bm["unit"]["level"]
+        table, cd, nm = ("trdar_industry_sales.parquet", "trdar_cd", "trdar_nm") if lvl == "trdar" else ("dong_industry_sales.parquet", "adongCd", "adongNm")
+        df = data_store.load_parquet(table)
+        qs = sorted(df["quarter"].unique())[-4:]
+        rows = df.loc[(df["svc_cd"] == bm["svc_cd"]) & (df[nm] == bm["unit"]["name"]) & df["quarter"].isin(qs)]
+        assert ch["closed"] == int(rows["close_stores"].sum()) and ch["opened"] == int(rows["open_stores"].sum())
+        checked += 1
+        if checked >= 3:
+            break
+    assert checked >= 1

@@ -83,6 +83,35 @@ def _floating(unit: dict, code: str, cur, peers: pd.DataFrame, latest: str) -> d
     }
 
 
+CHURN_QUARTERS = 4
+MIN_CHURN_STORES = 5
+CHURN_CAVEAT = ("서울시 상권분석서비스의 분기별 개업·폐업 점포 수를 최근 4개 분기 합산한 값입니다. "
+                "연 개업률·폐업률 = 4개 분기 합 ÷ 같은 기간 평균 점포 수. 업종 변경·이전도 개폐업으로 잡힐 수 있습니다.")
+
+
+def _churn(unit: dict, code: str, sel: pd.DataFrame, latest: str) -> dict | None:
+    """최근 1년(4개 분기) 개업·폐업 — 분기 값은 작아서 흔들리므로 1년 합으로 보고, 같은 업종 비교 단위 분포와 견준다."""
+    qs = sorted(q for q in sel["quarter"].unique() if q <= latest)[-CHURN_QUARTERS:]
+    if len(qs) < CHURN_QUARTERS:
+        return None
+    agg = (sel.loc[sel["quarter"].isin(qs)].groupby(unit["cd"])
+           .agg(n=("quarter", "nunique"), opened=("open_stores", "sum"), closed=("close_stores", "sum"), avg_stores=("stores", "mean")))
+    agg = agg.loc[(agg["n"] == CHURN_QUARTERS) & (agg["avg_stores"] >= MIN_CHURN_STORES)]
+    if code not in agg.index:
+        return None
+    agg = agg.assign(open_rate=agg["opened"] / agg["avg_stores"], close_rate=agg["closed"] / agg["avg_stores"])
+    me = agg.loc[code]
+    return {
+        "period": f"{quarter_label(qs[0])}~{quarter_label(qs[-1])}",
+        "opened": int(me["opened"]), "closed": int(me["closed"]), "avg_stores": round(float(me["avg_stores"]), 1),
+        "open_rate": _num(me["open_rate"]), "close_rate": _num(me["close_rate"]),
+        "peer_count": len(agg),
+        "peer_median_open": _num(agg["open_rate"].median()), "peer_p75_open": _num(agg["open_rate"].quantile(0.75)),
+        "peer_median_close": _num(agg["close_rate"].median()), "peer_p75_close": _num(agg["close_rate"].quantile(0.75)),
+        "caveat": CHURN_CAVEAT,
+    }
+
+
 def quarter_label(q: str) -> str:
     return f"{q[:4]}년 {q[4]}분기"
 
@@ -176,6 +205,7 @@ def benchmark(bizes_id: str) -> dict:
         "insights": insights[:4],
         "warnings": warnings,
         "floating": _floating(unit, code, cur, peers, latest),
+        "churn": _churn(unit, code, sel, latest),
         "franchise_share": None if pd.isna(cur.get("frc_share")) else {
             "share": _num(cur["frc_share"]), "frc_stores": int(cur["frc_stores"]), "stores": int(cur["stores"]),
             "peer_median": _num(peers["frc_share"].median()),
