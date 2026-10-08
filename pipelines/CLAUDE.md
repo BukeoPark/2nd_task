@@ -28,6 +28,18 @@
 - 소분류→서울시 업종 대응은 `common/sales_industry_crosswalk.py` 에서만 한다.
 - 상권 단위: `transform.build_trdar_areas`(경계 data/external/seoul_trdar_area) → `collect_seoul_trdar --datasets trdar_sales trdar_stores trdar_flpop` → `transform.build_sales_timeseries --level trdar`
 
+## 상권 수요 기반(직장·상주인구·집객시설)
+`collect_seoul_trdar --datasets trdar_workplace trdar_resident trdar_facility dong_facility` → `transform.build_hinterland`
+- 이 넷은 API 가 분기 파라미터를 무시하고 전 분기를 돌려줘 `_all_` 태그로 전량 받고 변환에서 최신 분기를 고른다.
+- 소득·소비는 서울시가 공급·갱신을 중단(API ERROR-500)해 연결하지 않는다.
+
+## 상가정보 스냅샷(점포수 변동성)
+`collect_sbiz_stores` 를 분기마다 → `transform.build_store_snapshots` (stdrYm 별로 쌓아 두 스냅샷 사이 신규·소멸 매장 수)
+
+## 분기 갱신 한 번에 돌리기
+`.venv/bin/python -m pipelines.run_quarterly --quarter <YYYYQ>` — 위 순서 전체(수집 → 변환 → backend 테스트).
+`--dry-run` 으로 순서 확인, `--skip-collect` 로 변환만, 실패하면 `--from <단계>` 로 이어서. 새 수집·변환 모듈을 만들면 `STEPS` 에도 넣는다.
+
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 

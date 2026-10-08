@@ -52,6 +52,9 @@ def main() -> None:
         rows = pd.DataFrame(envelope["rows"])
 
         code_col = "ADSTRD_CD"
+        if code_col not in rows:  # 상권(TRDAR_CD) 단위 원천은 build_sales_timeseries --level trdar·build_hinterland 가 직접 읽는다
+            print(f"  [건너뜀] {desc}: 행정동 단위가 아님")
+            continue
         filtered = rows.loc[rows[code_col].isin(pilot_codes)].reset_index(drop=True)
 
         out_path = config.PROCESSED_DIR / f"seoul_{dataset_key}.parquet"
