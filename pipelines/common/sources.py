@@ -193,6 +193,21 @@ SOURCES: dict[str, DataSource] = {
                   "yr 이 실적 연도인지 공시 연도인지는 공식 문서로 재확인 필요. 2025년 평균매출 공개 브랜드는 5,557/11,724.",
         ),
         DataSource(
+            key="ftc_area_induty_avr",
+            title="공정거래위원회 가맹정보 — 지역별 업종별 평균매출(시도)",
+            provider="공정거래위원회 (공공데이터포털 15110302)",
+            endpoint="https://apis.data.go.kr/1130000/FftcAreaIndutyAvrStatsService/getAreaIndutyAvr{Out|Srvc|Whrt}Stats",
+            docs_url="https://www.data.go.kr/data/15110302/openapi.do",
+            fields=["yr", "indutyMlsfcNm", "areaNm", "frcsCnt(실제로는 평균매출금액)", "arUnitAvrgSlsAmt", "crrncyUnitCdNm"],
+            update_cycle="연 1회",
+            crs="-",
+            terms="공공데이터포털 이용허락범위",
+            verification="api_call_ok",
+            status="connected",
+            notes="2017~2025년, 외식·서비스·도소매, 지역은 시도 단위(서울 전체가 한 값). 단위 천원(응답에 명시). "
+                  "'frcsCnt' 칸은 이름과 달리 평균매출금액으로 판단(2024 서울 한식 471,736천원, 면적당 매출과 대조).",
+        ),
+        DataSource(
             key="neis_academy",
             title="NEIS 학원교습소정보",
             provider="교육부 나이스 교육정보 개방 포털",
