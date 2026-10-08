@@ -65,3 +65,18 @@ def test_stores_in_bbox(client):
                                                  "max_lat": 37.53, "svc": "CS100010", "limit": 5}).json()
     assert body["total"] > 5 and body["truncated"] and len(body["stores"]) == 5
     assert all(126.92 <= s["lon"] <= 126.93 for s in body["stores"])
+
+
+def test_store_dynamics_metrics(client):
+    """2년 증감률·분기 변동폭 — 행정동 합 기준 값이 원 시계열로 다시 계산한 값과 같고, 작은 단위는 자료 없음."""
+    body = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores_change_2y", "svc": "CS100010"}).json()
+    assert body["kind"] == "growth" and body["period"] == "2024년 3분기~2026년 2분기"
+    df = data_store.load_parquet("dong_industry_sales.parquet")
+    b = next(x for x in body["bubbles"] if x["value"] is not None)
+    s = df.loc[(df["adongCd"] == b["code"]) & (df["svc_cd"] == "CS100010")].set_index("quarter")["stores"]
+    assert b["value"] == round((s["20262"] / s["20243"] - 1) * 100, 2)
+
+    vol = client.get("/api/food/bubbles", params={"level": "trdar", "metric": "stores_volatility"}).json()
+    assert any(x["value"] is None for x in vol["bubbles"]) and any(x["value"] is not None for x in vol["bubbles"])
+    assert all(x["value"] is None or x["value"] >= 0 for x in vol["bubbles"])
+    assert client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores"}).json()["period"] is None

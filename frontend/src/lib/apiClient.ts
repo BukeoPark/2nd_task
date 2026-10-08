@@ -352,7 +352,16 @@ export interface ImprovementReportResponse {
 }
 
 export type FoodLevel = "gu" | "dong" | "trdar";
-export type FoodMetric = "stores" | "per_store_month" | "sales_yoy_pct" | "sales_per_10k_flpop" | "open_rate" | "close_rate" | "frc_share";
+export type FoodMetric =
+  | "stores"
+  | "per_store_month"
+  | "sales_yoy_pct"
+  | "sales_per_10k_flpop"
+  | "open_rate"
+  | "close_rate"
+  | "frc_share"
+  | "stores_change_2y"
+  | "stores_volatility";
 
 export interface FoodCategoriesResponse {
   groups: { svc_cd: string; svc_nm: string; has_sales: boolean; store_count: number; details: { code: string; name: string; store_count: number }[] }[];
@@ -379,6 +388,8 @@ export interface FoodBubblesResponse {
   unit: string;
   size_source: string;
   metric_source: string | null;
+  /** 여러 분기를 보는 지표(점포 수 증감·변동성)의 기간. 한 분기 지표는 null */
+  period: string | null;
   bubbles: FoodBubble[];
 }
 

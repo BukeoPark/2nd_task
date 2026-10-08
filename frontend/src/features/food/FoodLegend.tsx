@@ -28,11 +28,14 @@ export function FoodLegend({ data, showStores, rebZonesVisible }: { data: FoodBu
               </div>
             )}
             <Dot color={NO_DATA_COLOR} label="자료 없음 (0 아님)" />
+            {data.metric === "stores_volatility" && (
+              <div style={{ color: "#6B7280", fontSize: 11 }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
+            )}
             <div style={{ color: "#6B7280" }}>원 크기 = 점포 수</div>
             <div style={{ color: "#9CA3AF", fontSize: 11 }}>점포 수: {data.size_source}</div>
             {data.metric_source && (
               <div style={{ color: "#9CA3AF", fontSize: 11 }}>
-                {data.label}: {data.metric_source} {data.quarter.slice(0, 4)}년 {data.quarter[4]}분기
+                {data.label}: {data.metric_source} {data.period ?? `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기`}
               </div>
             )}
           </>

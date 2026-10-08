@@ -9,6 +9,8 @@ const METRIC_OPTIONS: { value: FoodMetric; label: string }[] = [
   { value: "open_rate", label: "개업률" },
   { value: "close_rate", label: "폐업률" },
   { value: "frc_share", label: "프랜차이즈 비율" },
+  { value: "stores_change_2y", label: "점포 수 증감률(2년)" },
+  { value: "stores_volatility", label: "점포수 변동성" },
 ];
 
 interface FoodTopBarProps {

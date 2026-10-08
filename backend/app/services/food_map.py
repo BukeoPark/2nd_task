@@ -28,8 +28,13 @@ METRICS = {
     "open_rate": {"label": "개업률(분기)", "kind": "rate", "unit": "%"},
     "close_rate": {"label": "폐업률(분기)", "kind": "rate", "unit": "%"},
     "frc_share": {"label": "프랜차이즈 비율", "kind": "rate", "unit": "%"},
+    "stores_change_2y": {"label": "점포 수 증감률(2년)", "kind": "growth", "unit": "%"},
+    "stores_volatility": {"label": "점포수 변동성(분기 평균 변동폭)", "kind": "rate", "unit": "%"},
 }
 MIN_STORES_FOR_RATE = 3
+DYNAMICS_QUARTERS = 8            # 상권 시계열이 8개 분기라 두 단위 모두 같은 창(최근 2년)을 쓴다
+MIN_STORES_FOR_VOLATILITY = 10   # 평균 10곳 미만은 1~2곳 증감만으로 변동폭이 크게 튀어 '자료 없음'으로 둔다
+DYNAMICS_METRICS = {"stores_change_2y", "stores_volatility"}
 
 
 def _shift(q: str, n: int) -> str:
@@ -110,6 +115,24 @@ def _aggregate(df: pd.DataFrame, key: str) -> pd.DataFrame:
     return sums.join(flpop)
 
 
+def _store_dynamics(df: pd.DataFrame, latest: str) -> tuple[pd.DataFrame, str | None]:
+    """최근 8개 분기 서울시 점포 수(유사업종 점포수)로 단위별 2년 증감률과 분기 평균 변동폭.
+
+    8개 분기 모두 있는 (원 단위·업종)만 합산한다 — 어떤 분기에 업종 행이 빠지면(점포 3곳 미만 비공개 등)
+    합계가 가짜로 출렁이기 때문이다.
+    """
+    qs = [_shift(latest, n) for n in range(DYNAMICS_QUARTERS - 1, -1, -1)]
+    win = df.loc[df["quarter"].isin(qs)]
+    full = win.groupby(["_unit_raw", "svc_cd"])["quarter"].transform("nunique") == DYNAMICS_QUARTERS
+    tot = win.loc[full].groupby(["_unit", "quarter"])["stores"].sum().unstack().reindex(columns=qs)
+    if tot.empty:
+        return pd.DataFrame(columns=list(DYNAMICS_METRICS)), None
+    change = (tot[qs[-1]] / tot[qs[0]].replace(0, np.nan) - 1) * 100
+    vol = (tot.pct_change(axis=1).abs().iloc[:, 1:].mean(axis=1) * 100).where(tot.mean(axis=1) >= MIN_STORES_FOR_VOLATILITY)
+    period = f"{qs[0][:4]}년 {qs[0][4]}분기~{qs[-1][:4]}년 {qs[-1][4]}분기"
+    return pd.DataFrame({"stores_change_2y": change, "stores_volatility": vol}), period
+
+
 def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
     if level not in LEVELS:
         raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
@@ -144,6 +167,11 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
     cur["close_rate"] = (cur["close_stores"] / cur["stores"] * 100).where(~small)
     cur["frc_share"] = (cur["frc_stores"] / cur["stores"] * 100).where(~small)
 
+    period = None
+    if metric in DYNAMICS_METRICS:
+        dyn, period = _store_dynamics(df, latest)
+        cur = cur.join(dyn, how="outer")
+
     units = _units()[level].set_index("code")
     counts = _with_unit(_food_stores(svc, scls), level).groupby("_unit").size()
     out = []
@@ -159,6 +187,7 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
     return {"level": level, "quarter": latest, "metric": metric, **METRICS[metric], "svc": svc, "scls": scls,
             "size_source": f"소상공인 상가(상권)정보 {_sbiz_month()} 기준 · 경계 안 매장 수",
             "metric_source": None if metric == "stores" else "서울시 상권분석서비스(추정매출·점포)",
+            "period": period,
             "bubbles": out}
 
 

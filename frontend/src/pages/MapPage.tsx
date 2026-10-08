@@ -39,7 +39,9 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
     rows: [
       ...(data.metric === "stores" ? [] : [{ label: data.label, value: formatMetric(data.kind, b.value) }]),
       { label: "점포 수", value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
-      ...(data.metric === "stores" ? [] : [{ label: `${data.label} 기준`, value: `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` }]),
+      ...(data.metric === "stores"
+        ? []
+        : [{ label: data.period ? "기간" : `${data.label} 기준`, value: data.period ?? `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` }]),
       { label: "단위", value: UNIT_LABEL[level] },
     ],
     center: { lon: b.lon, lat: b.lat },
