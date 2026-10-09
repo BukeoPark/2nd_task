@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { FoodStorePoint } from "../../lib/apiClient";
 import { toKakaoLatLng } from "../../lib/geo";
+import { STORE_POINT_COLOR } from "../../lib/vizConfig";
 
 interface StorePointLayerProps {
   map: any;
@@ -20,7 +21,7 @@ export function StorePointLayer({ map, kakao, stores, onSelect }: StorePointLaye
       const el = document.createElement("div");
       Object.assign(el.style, {
         width: "12px", height: "12px", marginLeft: "-6px", marginTop: "-6px", borderRadius: "50%",
-        background: "#F97316", border: "2px solid white", boxShadow: "0 1px 3px rgba(0,0,0,0.4)", cursor: "pointer",
+        background: STORE_POINT_COLOR, border: "2px solid white", boxShadow: "0 1px 3px rgba(0,0,0,0.4)", cursor: "pointer",
       });
       el.title = `${s.name}${s.branch ? ` ${s.branch}` : ""} · ${s.category}`;
       el.addEventListener("click", () => onSelect(s.store_id));

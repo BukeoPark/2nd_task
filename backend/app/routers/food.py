@@ -41,6 +41,8 @@ def food_stores(
     """지도 화면 범위 안의 외식 매장(가장 확대했을 때 점으로 표시)."""
     try:
         return food_map.stores_in_bbox(min_lon, min_lat, max_lon, max_lat, svc, scls, limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
 

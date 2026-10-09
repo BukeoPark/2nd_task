@@ -1,5 +1,5 @@
 import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClient";
-import { NO_DATA_COLOR, OVERLAY_Z_INDEX, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
+import { NO_DATA_COLOR, OVERLAY_Z_INDEX, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
 export function FoodLegend({ data, showStores, rebZonesVisible, anchors }: {
@@ -16,7 +16,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors }: {
       }}
     >
       {showStores ? (
-        <Dot color="#F97316" label="외식 매장 (점을 누르면 매장 상세)" />
+        <Dot color={STORE_POINT_COLOR} label="외식 매장 (점을 누르면 매장 상세)" />
       ) : (
         data && (
           <>

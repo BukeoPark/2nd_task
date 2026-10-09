@@ -5,6 +5,8 @@ export const ZONE_COLORS = {
   daiso: "#E4002B", // 다이소 브랜드 레드 = 다세권
 } as const;
 export const ANCHOR_MARK = { starbucks: "S", daiso: "D" } as const;
+/** 외식 매장 점(가장 확대했을 때) — 지도 점과 범례가 같은 값을 쓴다. */
+export const STORE_POINT_COLOR = "#F97316";
 
 /** 카카오맵이 내부적으로 그리는 SVG 레이어(z-index 미지정)보다 위에 뜨도록,
  * 지도 위 플로팅 UI(컨트롤·범례·상세패널)는 전부 이 값을 z-index 로 쓴다. */

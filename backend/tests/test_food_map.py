@@ -121,3 +121,63 @@ def test_compare_validation(client):
     assert client.get("/api/food/compare", params={"level": "trdar", "codes": "1,2,3,4,5"}).status_code == 400
     assert client.get("/api/food/compare", params={"level": "trdar", "codes": "NOPE"}).status_code == 404
     assert client.get("/api/food/compare", params={"level": "x", "codes": "1"}).status_code == 400
+
+
+def test_invalid_filters_are_400_not_500(client):
+    bad_svc = {"svc": "CS999999"}
+    assert client.get("/api/food/bubbles", params={"level": "trdar", "metric": "stores", **bad_svc}).status_code == 400
+    assert client.get("/api/food/compare", params={"level": "dong", "codes": "11470510", **bad_svc}).status_code == 400
+    assert client.get("/api/food/units/dong/11470510/stores", params=bad_svc).status_code == 400
+    assert client.get("/api/food/stores", params={"min_lon": 126.9, "min_lat": 37.5, "max_lon": 126.95, "max_lat": 37.55, **bad_svc}).status_code == 400
+    res = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "scls": "ZZZ"})
+    assert res.status_code == 400 and "details.code" in res.json()["detail"]
+    # 세부 업종(카페)이 다른 업종(한식)에 속한다고 주면 거절
+    res = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "svc": "CS100001", "scls": "I21201"})
+    assert res.status_code == 400 and "속하지 않습니다" in res.json()["detail"]
+    # 비외식 소분류도 거절
+    assert client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "scls": "S20701"}).status_code == 400
+
+
+def test_every_food_category_computes_at_every_level(client):
+    """업종마다 어느 단위에서든 매출 행이 없는 경우가 있어도 500 이 나지 않는다."""
+    for g in client.get("/api/food/categories").json()["groups"]:
+        for level in ("gu", "dong", "trdar"):
+            res = client.get("/api/food/bubbles", params={"level": level, "metric": "close_rate", "svc": g["svc_cd"]})
+            assert res.status_code == 200, (g["svc_cd"], level)
+
+
+def test_gu_compare_leaves_out_rows_without_a_gu_basis(client):
+    body = client.get("/api/food/compare", params={"level": "gu", "codes": "영등포구,양천구", "svc": "CS100010"}).json()
+    keys = {r["key"] for r in body["rows"]}
+    assert {"per_store_month", "stores_sbiz", "close_rate_y"} <= keys
+    assert not keys & {"wrc_total", "repop_total", "fac_total", "rent_small_shop", "vacancy_small_shop_pct"}
+    assert "자치구 단위" in body["notes"][-1]
+
+
+def test_compare_hinterland_rows_use_their_own_quarter(client):
+    hl = data_store.load_parquet("trdar_hinterland.parquet")
+    code = str(hl.dropna(subset=["wrc_total", "repop_total", "fac_total"]).iloc[0]["trdar_cd"])
+    rows = {r["key"]: r for r in client.get("/api/food/compare", params={"level": "trdar", "codes": code}).json()["rows"]}
+    row = hl.loc[hl["trdar_cd"].astype(str) == code].iloc[0]
+    for key, col in (("wrc_total", "wrc_quarter"), ("repop_total", "repop_quarter"), ("fac_total", "fac_quarter")):
+        q = row[col]
+        assert rows[key]["as_of"] == f"{q[:4]}년 {q[4]}분기"
+
+
+def test_compare_churn_matches_store_detail_churn(client):
+    """입지 비교의 연 개업·폐업률 = 같은 상권·업종의 동네 매출 비교 카드 값(같은 계산을 공유)."""
+    stores = data_store.load_parquet("stores.parquet")
+    trdar = data_store.load_parquet("store_trdar.parquet")
+    cand = stores.loc[(stores["indsSclsCd"] == "I21201")].merge(trdar, on="bizesId").sort_values("bizesId")
+    checked = 0
+    for r in cand.head(60).itertuples():
+        bm = client.get(f"/api/stores/{r.bizesId}/sales-benchmark").json()
+        if bm.get("status") != "ok" or bm["unit"]["level"] != "trdar" or not bm.get("churn"):
+            continue
+        rows = {x["key"]: x for x in client.get("/api/food/compare", params={"level": "trdar", "codes": r.trdar_cd, "svc": bm["svc_cd"]}).json()["rows"]}
+        assert rows["open_rate_y"]["cells"][0]["value"] == pytest.approx(bm["churn"]["open_rate"] * 100, abs=0.01)
+        assert rows["close_rate_y"]["cells"][0]["value"] == pytest.approx(bm["churn"]["close_rate"] * 100, abs=0.01)
+        checked += 1
+        if checked >= 3:
+            break
+    assert checked >= 1

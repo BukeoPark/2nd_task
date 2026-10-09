@@ -106,7 +106,7 @@ def main() -> None:
         path = config.PROCESSED_DIR / f"{level}_hinterland.parquet"
         out.to_parquet(path, index=False)
         print(f"[done] {path.relative_to(config.ROOT)} ({len(out)}행)")
-    pd.DataFrame(log).to_csv(config.ROOT / "outputs" / "tables" / "hinterland_log.csv", index=False)
+    pd.DataFrame(log).to_csv(config.TABLES_DIR / "hinterland_log.csv", index=False)
     for r in log:
         print(f"  {r['source']}: {r['item']} {r['count']}")
 

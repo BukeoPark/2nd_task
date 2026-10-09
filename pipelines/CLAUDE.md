@@ -34,11 +34,14 @@
 - 소득·소비는 서울시가 공급·갱신을 중단(API ERROR-500)해 연결하지 않는다.
 
 ## 상가정보 스냅샷(점포수 변동성)
-`collect_sbiz_stores` 를 분기마다 → `transform.build_store_snapshots` (stdrYm 별로 쌓아 두 스냅샷 사이 신규·소멸 매장 수)
+`collect_sbiz_stores` 를 분기마다 → `transform.build_store_snapshots` (스냅샷을 쌓아 두 스냅샷 사이 신규·소멸 매장 수)
+- 스냅샷 이름은 API 기준월(stdrYm). 같은 기준월을 30일 이상 뒤에 다시 받으면 `기준월#2` 로 별도 스냅샷, 30일 안 재실행은 나중 파일로 대체.
 
 ## 분기 갱신 한 번에 돌리기
 `.venv/bin/python -m pipelines.run_quarterly --quarter <YYYYQ>` — 위 순서 전체(수집 → 변환 → backend 테스트).
-`--dry-run` 으로 순서 확인, `--skip-collect` 로 변환만, 실패하면 `--from <단계>` 로 이어서. 새 수집·변환 모듈을 만들면 `STEPS` 에도 넣는다.
+`--dry-run` 으로 순서 확인, `--skip-collect` 로 변환만, 실패하면 `--from <단계>` 로 이어서.
+새 수집·변환 모듈을 만들면 `STEPS` 에 넣거나(의존 순서 지켜서) `NOT_IN_QUARTERLY` 에 이유와 함께 적는다.
+`.venv/bin/python -m pytest pipelines/tests` 가 둘 다 빠진 모듈과 순서 어긋남을 잡는다(분기 갱신 마지막 단계에서도 돈다).
 
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)

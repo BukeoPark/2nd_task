@@ -9,7 +9,9 @@ import math
 
 import pandas as pd
 
-from app.services import data_store, store_profile
+from app.services import data_store, store_churn, store_profile
+
+quarter_label = store_churn.quarter_label
 
 TREND_QUARTERS = 8
 MIN_STORES = 3
@@ -87,24 +89,17 @@ def _floating(unit: dict, code: str, cur, peers: pd.DataFrame, latest: str) -> d
     }
 
 
-CHURN_QUARTERS = 4
-MIN_CHURN_STORES = 5
 CHURN_CAVEAT = ("서울시 상권분석서비스의 분기별 개업·폐업 점포 수를 최근 4개 분기 합산한 값입니다. "
                 "연 개업률·폐업률 = 4개 분기 합 ÷ 같은 기간 평균 점포 수. 업종 변경·이전도 개폐업으로 잡힐 수 있습니다.")
 
 
 def _churn(unit: dict, code: str, sel: pd.DataFrame, latest: str) -> dict | None:
     """최근 1년(4개 분기) 개업·폐업 — 분기 값은 작아서 흔들리므로 1년 합으로 보고, 같은 업종 비교 단위 분포와 견준다."""
-    qs = sorted(q for q in sel["quarter"].unique() if q <= latest)[-CHURN_QUARTERS:]
-    if len(qs) < CHURN_QUARTERS:
-        return None
-    agg = (sel.loc[sel["quarter"].isin(qs)].groupby(unit["cd"])
-           .agg(n=("quarter", "nunique"), opened=("open_stores", "sum"), closed=("close_stores", "sum"), avg_stores=("stores", "mean")))
-    agg = agg.loc[(agg["n"] == CHURN_QUARTERS) & (agg["avg_stores"] >= MIN_CHURN_STORES)]
+    agg = store_churn.annual_churn(sel, latest, unit["cd"], unit["cd"])  # 이 표는 업종 하나라 원 단위 = 단위
     if code not in agg.index:
         return None
-    agg = agg.assign(open_rate=agg["opened"] / agg["avg_stores"], close_rate=agg["closed"] / agg["avg_stores"])
     me = agg.loc[code]
+    qs = store_churn.churn_quarters(latest)
     return {
         "period": f"{quarter_label(qs[0])}~{quarter_label(qs[-1])}",
         "opened": int(me["opened"]), "closed": int(me["closed"]), "avg_stores": round(float(me["avg_stores"]), 1),
@@ -172,10 +167,6 @@ def hinterland(level: str, code: str) -> dict | None:
                    "reference": f"{quarter_label(q)} 기준" if (q := next((r[c] for c in ("wrc_quarter", "repop_quarter", "fac_quarter")
                                                                        if isinstance(r[c], str)), None)) else None},
     }
-
-
-def quarter_label(q: str) -> str:
-    return f"{q[:4]}년 {q[4]}분기"
 
 
 def _num(v):

@@ -1,4 +1,4 @@
-"""분기 갱신 — 수집 → 변환 → 검증을 정해진 순서로 한 번에 돌린다.
+"""분기 갱신 — 수집 → 변환 → 검증(pipelines·backend 테스트)을 정해진 순서로 한 번에 돌린다.
 
 실행 (프로젝트 루트):
     .venv/bin/python -m pipelines.run_quarterly --quarter 20263            # 수집·변환·검증 전부
@@ -53,6 +53,16 @@ SEOUL_QUARTER_DATASETS = ("sales", "stores", "floating_pop", "workplace_pop", "c
                           "trdar_sales", "trdar_stores", "trdar_flpop")
 SEOUL_ALL_QUARTER_DATASETS = ("trdar_workplace", "trdar_resident", "trdar_facility", "dong_facility")
 
+# 분기 갱신에서 일부러 뺀 모듈(정적 자료·수동 수집·라이브러리). 새 수집·변환 모듈은 STEPS 에 넣거나 여기에 이유와 함께 적는다
+# (pipelines/tests/test_run_quarterly.py 가 둘 중 어디에도 없는 모듈을 잡아낸다).
+NOT_IN_QUARTERLY: dict[str, str] = {
+    "pipelines.transform.build_regions": "행정동 경계·격자 — 분기마다 바뀌지 않는 정적 자료",
+    "pipelines.collect.collect_kakao_geocode": "R-ONE 상권 좌표 후보 — 상권 목록이 바뀔 때만 수동 수집",
+    "pipelines.transform.build_reb_zone_coords": "R-ONE 상권 좌표 — collect_kakao_geocode 와 함께 수동",
+    "pipelines.collect.collect_naver_local": "앵커(다이소) 보강 수집 — 호출량이 커 수동(원본이 있으면 merge_naver_anchors 가 합침)",
+    "pipelines.transform.anchor_metrics": "거리·밀집도 계산 라이브러리(compute_anchor_features 가 부름)",
+}
+
 STEPS: list[Step] = [
     # ── 수집 ───────────────────────────────────────────────
     Step("collect_sbiz_upjong", "pipelines.collect.collect_sbiz_upjong", collect=True),
@@ -88,6 +98,7 @@ STEPS: list[Step] = [
     Step("build_reb_zone_metrics", "pipelines.transform.build_reb_zone_metrics"),
     # ── 마무리 ─────────────────────────────────────────────
     Step("export_source_registry", "pipelines.transform.export_source_registry"),
+    Step("pipeline_tests", "pytest", ("-q", "pipelines/tests")),
     Step("backend_tests", "pytest", ("-q",), cwd="backend"),
 ]
 
@@ -97,7 +108,7 @@ def _skip_reason(step: Step, args: argparse.Namespace) -> str | None:
         return "--skip-collect"
     if step.annual and not args.with_annual:
         return "연 1회 원천(--with-annual 일 때만)"
-    if step.name == "backend_tests" and args.no_check:
+    if step.name in ("pipeline_tests", "backend_tests") and args.no_check:
         return "--no-check"
     if missing := [k for k in step.env if not os.environ.get(k, "").strip()]:
         return f"키 없음({', '.join(missing)}) — 선택 원천"
@@ -118,7 +129,7 @@ def main() -> None:
     ap.add_argument("--quarter", help="서울시 상권분석서비스 기준 분기 YYYYQ (수집 시 필수, 예: 20263)")
     ap.add_argument("--skip-collect", action="store_true", help="수집 단계를 건너뛰고 이미 받은 원천으로 변환만")
     ap.add_argument("--with-annual", action="store_true", help="연 1회 원천(공정위 가맹정보)도 수집")
-    ap.add_argument("--no-check", action="store_true", help="마지막 backend 테스트를 건너뜀")
+    ap.add_argument("--no-check", action="store_true", help="마지막 pipelines·backend 테스트를 건너뜀")
     ap.add_argument("--from", dest="start", choices=[s.name for s in STEPS], help="이 단계부터 시작(실패 후 재시작용)")
     ap.add_argument("--dry-run", action="store_true", help="실행하지 않고 순서와 건너뛸 단계만 출력")
     args = ap.parse_args()
