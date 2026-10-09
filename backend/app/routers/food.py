@@ -69,3 +69,20 @@ def food_anchors() -> dict:
         return food_map.anchors()
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/compare")
+def food_compare(
+    level: str = Query(..., description="gu|dong|trdar — 같은 단위끼리만 비교"),
+    codes: str = Query(..., description="단위 코드 쉼표 구분, 최대 4곳"),
+    svc: str | None = None, scls: str | None = None,
+) -> dict:
+    """입지 비교 — 단위 몇 곳의 매출·점포·개폐업·수요 기반·앵커·임대 지표를 나란히(종합 점수 없음)."""
+    try:
+        return food_map.compare(level, [c for c in codes.split(",") if c], svc, scls)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"단위를 찾을 수 없습니다: {e}")
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))

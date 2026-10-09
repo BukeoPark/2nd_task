@@ -11,6 +11,7 @@ import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
 import { UnitStoreList } from "../features/food/UnitStoreList";
+import { ComparePanel } from "../features/food/ComparePanel";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
 import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone } from "../lib/apiClient";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
@@ -27,6 +28,8 @@ type Selection = {
   center?: { lon: number; lat: number };
   /** 매장 목록을 보여줄 단위(자치구는 매장이 너무 많아 목록 대신 확대 안내) */
   unit?: { level: FoodLevel; code: string };
+  /** 입지 비교에 담을 수 있는 버블 */
+  compare?: { level: FoodLevel; code: string };
   zoomTo?: number;
 };
 
@@ -45,6 +48,7 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
     ],
     center: { lon: b.lon, lat: b.lat },
     unit: level === "gu" ? undefined : { level, code: b.code },
+    compare: { level, code: b.code },
     zoomTo: ZOOM_IN_TO[level],
   };
 }
@@ -73,6 +77,9 @@ export function MapPage() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
+  // 입지 비교 목록 — 같은 지도 단위끼리만, 최대 MAX_COMPARE 곳
+  const [basket, setBasket] = useState<{ level: FoodLevel; codes: string[] } | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   useEffect(() => {
     if (!mapKakao) return;
@@ -94,7 +101,8 @@ export function MapPage() {
   const regions = useRegions();
   const rebZones = useRebZones();
   // 스세권·다세권 지표를 고르면 매장 위치도 함께 보여준다.
-  const showAnchors = anchorsVisible || metric === "starbucks_zone_share" || metric === "daiso_zone_share";
+  const anchorsForced = metric === "starbucks_zone_share" || metric === "daiso_zone_share";
+  const showAnchors = anchorsVisible || anchorsForced;
   const anchors = useFoodAnchors(showAnchors);
 
   const onBubble = useCallback((b: FoodBubble) => {
@@ -141,6 +149,7 @@ export function MapPage() {
           rebZonesVisible={rebZonesVisible}
           onRebZonesVisibleChange={setRebZonesVisible}
           anchorsVisible={showAnchors}
+          anchorsForced={anchorsForced}
           onAnchorsVisibleChange={setAnchorsVisible}
         />
         <FoodLegend data={bubbles.data} showStores={unit === "stores"} rebZonesVisible={rebZonesVisible} anchors={showAnchors ? anchors.data : undefined} />
@@ -162,6 +171,17 @@ export function MapPage() {
                   이 지역 확대해서 보기
                 </button>
               )}
+              {selection.compare && (
+                <CompareButton
+                  basket={basket}
+                  target={selection.compare}
+                  onAdd={() => {
+                    const c = selection.compare!;
+                    setBasket((b) => (b && b.level === c.level ? { level: c.level, codes: [...b.codes, c.code] } : { level: c.level, codes: [c.code] }));
+                    setCompareOpen(true);
+                  }}
+                />
+              )}
               {selection.unit && (
                 <UnitStoreList level={selection.unit.level} code={selection.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
               )}
@@ -169,11 +189,68 @@ export function MapPage() {
           )
         )}
 
+        {basket && !compareOpen && (
+          <button
+            type="button"
+            onClick={() => setCompareOpen(true)}
+            style={{
+              position: "absolute", zIndex: OVERLAY_Z_INDEX, bottom: 24, left: "50%", transform: "translateX(-50%)", padding: "10px 18px",
+              borderRadius: 999, border: "none", background: "#1D4ED8", color: "white", fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.25)", cursor: "pointer",
+            }}
+          >
+            입지 비교 {basket.codes.length}곳 보기
+          </button>
+        )}
+        {basket && compareOpen && (
+          <ComparePanel
+            level={basket.level}
+            codes={basket.codes}
+            svc={svc}
+            scls={scls}
+            filterName={filterName}
+            onRemove={(code) => setBasket((b) => (b && b.codes.length > 1 ? { ...b, codes: b.codes.filter((c) => c !== code) } : null))}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
+
         {unit === "stores" && points.data?.truncated && (
           <StatusBanner text={`이 범위의 매장 ${points.data.total.toLocaleString()}곳 중 ${points.data.stores.length}곳만 표시 — 더 확대하세요`} />
         )}
         {bubbles.isError && <StatusBanner text={`지도 데이터를 불러오지 못했습니다: ${bubbles.error.message}`} />}
       </KakaoMap>
+    </div>
+  );
+}
+
+const MAX_COMPARE = 4;
+
+function CompareButton({ basket, target, onAdd }: {
+  basket: { level: FoodLevel; codes: string[] } | null;
+  target: { level: FoodLevel; code: string };
+  onAdd: () => void;
+}) {
+  const otherLevel = basket !== null && basket.level !== target.level;
+  const added = !otherLevel && basket?.codes.includes(target.code);
+  const full = !otherLevel && (basket?.codes.length ?? 0) >= MAX_COMPARE;
+  const label = added ? "비교 목록에 있음" : full ? `비교는 최대 ${MAX_COMPARE}곳` : otherLevel ? `비우고 이 ${UNIT_LABEL[target.level]}부터 비교` : `비교에 담기 (${basket?.codes.length ?? 0}/${MAX_COMPARE})`;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button
+        type="button"
+        disabled={added || full}
+        onClick={onAdd}
+        style={{
+          width: "100%", padding: "8px 0", borderRadius: 8, border: "none", fontWeight: 600,
+          background: added || full ? "#E5E7EB" : "#1D4ED8", color: added || full ? "#6B7280" : "white", cursor: added || full ? "default" : "pointer",
+        }}
+      >
+        {label}
+      </button>
+      {otherLevel && (
+        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+          지금 비교 목록은 {UNIT_LABEL[basket!.level]} 단위예요. 크기가 다른 단위는 섞어 비교하지 않습니다.
+        </div>
+      )}
     </div>
   );
 }

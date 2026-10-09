@@ -48,3 +48,13 @@ export function useFoodUnitStores(level: FoodLevel, code: string, svc: string | 
 export function useFoodAnchors(enabled: boolean) {
   return useQuery({ queryKey: ["food-anchors"], queryFn: () => apiClient.getFoodAnchors(), enabled, staleTime: Infinity });
 }
+
+export function useFoodCompare(level: FoodLevel | null, codes: string[], svc: string | null, scls: string | null) {
+  return useQuery({
+    queryKey: ["food-compare", level, codes, svc, scls],
+    queryFn: () => apiClient.getFoodCompare(level!, codes, svc, scls),
+    enabled: level !== null && codes.length > 0,
+    staleTime: LONG,
+    placeholderData: keepPreviousData,
+  });
+}

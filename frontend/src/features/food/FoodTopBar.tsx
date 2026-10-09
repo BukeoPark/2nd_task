@@ -27,6 +27,8 @@ interface FoodTopBarProps {
   rebZonesVisible: boolean;
   onRebZonesVisibleChange: (v: boolean) => void;
   anchorsVisible: boolean;
+  /** 스세권·다세권 지표를 보는 동안은 매장 위치를 끌 수 없다 */
+  anchorsForced: boolean;
   onAnchorsVisibleChange: (v: boolean) => void;
 }
 
@@ -59,7 +61,13 @@ export function FoodTopBar(p: FoodTopBarProps) {
       <Select value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap" }}>지도 단위: {p.unitLabel}</span>
       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
-        <input type="checkbox" checked={p.anchorsVisible} onChange={(e) => p.onAnchorsVisibleChange(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={p.anchorsVisible}
+          disabled={p.anchorsForced}
+          title={p.anchorsForced ? "스세권·다세권 지표를 보는 동안은 매장 위치를 항상 표시합니다" : undefined}
+          onChange={(e) => p.onAnchorsVisibleChange(e.target.checked)}
+        />
         스타벅스·다이소
       </label>
       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", whiteSpace: "nowrap" }}>

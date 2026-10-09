@@ -37,6 +37,7 @@ MIN_STORES_FOR_RATE = 3
 DYNAMICS_QUARTERS = 8            # 상권 시계열이 8개 분기라 두 단위 모두 같은 창(최근 2년)을 쓴다
 MIN_STORES_FOR_VOLATILITY = 10   # 평균 10곳 미만은 1~2곳 증감만으로 변동폭이 크게 튀어 '자료 없음'으로 둔다
 DYNAMICS_METRICS = {"stores_change_2y", "stores_volatility"}
+MIN_STORES_FOR_CHURN = 5         # 연 개업률·폐업률 — 동네 매출 비교(sales_benchmark)와 같은 기준
 ANCHOR_METRICS = {"starbucks_zone_share": "starbucks", "daiso_zone_share": "daiso"}  # 소상공인 매장 기준(세부 업종 필터 반영)
 ANCHOR_LABELS = {"starbucks": "스타벅스", "daiso": "다이소"}
 
@@ -137,11 +138,22 @@ def _store_dynamics(df: pd.DataFrame, latest: str) -> tuple[pd.DataFrame, str | 
     return pd.DataFrame({"stores_change_2y": change, "stores_volatility": vol}), period
 
 
-def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
+def _annual_churn(df: pd.DataFrame, latest: str) -> pd.DataFrame:
+    """최근 4개 분기 개업·폐업 합 ÷ 평균 점포 수(연 개업률·폐업률, %). 4개 분기 모두 있는 (원 단위·업종)만, 평균 5곳 미만은 None."""
+    qs = [_shift(latest, n) for n in range(3, -1, -1)]
+    win = df.loc[df["quarter"].isin(qs)]
+    win = win.loc[win.groupby(["_unit_raw", "svc_cd"])["quarter"].transform("nunique") == 4]
+    g = win.groupby("_unit")
+    avg = g["stores"].sum() / 4
+    ok = avg >= MIN_STORES_FOR_CHURN
+    return pd.DataFrame({"open_rate_y": (g["open_stores"].sum() / avg * 100).where(ok),
+                         "close_rate_y": (g["close_stores"].sum() / avg * 100).where(ok)})
+
+
+def _unit_table(level: str, svc: str | None, scls: str | None) -> tuple[pd.DataFrame, str, str | None, pd.DataFrame]:
+    """단위별 모든 지표 한 표 — (표, 최신 분기, 2년 기간 라벨, 단위 목록). bubbles·compare 가 같은 계산을 쓴다."""
     if level not in LEVELS:
         raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
-    if metric not in METRICS:
-        raise ValueError(f"metric 은 {sorted(METRICS)} 중 하나여야 합니다")
     table = "trdar_industry_sales.parquet" if level == "trdar" else "dong_industry_sales.parquet"
     raw_key = "trdar_cd" if level == "trdar" else "adongCd"
     df = data_store.load_parquet(table)
@@ -170,29 +182,36 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
     cur["open_rate"] = (cur["open_stores"] / cur["stores"] * 100).where(~small)
     cur["close_rate"] = (cur["close_stores"] / cur["stores"] * 100).where(~small)
     cur["frc_share"] = (cur["frc_stores"] / cur["stores"] * 100).where(~small)
-
-    period = None
-    if metric in DYNAMICS_METRICS:
-        dyn, period = _store_dynamics(df, latest)
-        cur = cur.join(dyn, how="outer")
+    dyn, period = _store_dynamics(df, latest)
+    cur = cur.join(dyn, how="outer").join(_annual_churn(df, latest), how="outer")
 
     units = _units()[level].set_index("code")
     food = _with_unit(_food_stores(svc, scls), level)
     counts = food.groupby("_unit").size()
-    if metric in ANCHOR_METRICS:
-        brand = ANCHOR_METRICS[metric]
-        za = data_store.load_parquet("store_anchor.parquet")[["bizesId", f"{brand}_zone"]]
-        z = food.merge(za, on="bizesId", how="left").groupby("_unit")[f"{brand}_zone"].mean() * 100
-        cur = cur.reindex(cur.index.union(z.index))
-        cur[metric] = z.where(counts.reindex(z.index) >= MIN_STORES_FOR_RATE)
+    za = data_store.load_parquet("store_anchor.parquet")[["bizesId", *(f"{b}_zone" for b in ANCHOR_LABELS)]]
+    zones = food.merge(za, on="bizesId", how="left").groupby("_unit")[[f"{b}_zone" for b in ANCHOR_LABELS]].mean() * 100
+    cur = cur.reindex(cur.index.union(units.index))
+    enough = counts.reindex(cur.index).fillna(0) >= MIN_STORES_FOR_RATE
+    for metric, brand in ANCHOR_METRICS.items():
+        cur[metric] = zones[f"{brand}_zone"].reindex(cur.index).where(enough)
+    cur["stores_sbiz"] = counts.reindex(cur.index).fillna(0).astype(int)
+    return cur, latest, period, units
+
+
+def _val(row, key: str):
+    return None if row is None or pd.isna(row[key]) else round(float(row[key]), 2)
+
+
+def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
+    if metric not in METRICS:
+        raise ValueError(f"metric 은 {sorted(METRICS)} 중 하나여야 합니다")
+    cur, latest, period, units = _unit_table(level, svc, scls)
+    period = period if metric in DYNAMICS_METRICS else None
     out = []
     for code, u in units.iterrows():
         row = cur.loc[code] if code in cur.index else None
-        size = int(counts.get(code, 0))
-        if metric == "stores":
-            value = size
-        else:
-            value = None if row is None or pd.isna(row[metric]) else round(float(row[metric]), 2)
+        size = int(row["stores_sbiz"]) if row is not None else 0
+        value = size if metric == "stores" else _val(row, metric)
         out.append({"code": code, "name": u["name"], "type": u.get("type"), "lon": round(float(u["lon"]), 6),
                     "lat": round(float(u["lat"]), 6), "size": size, "value": value})
     return {"level": level, "quarter": latest, "metric": metric, **METRICS[metric], "svc": svc, "scls": scls,
@@ -257,3 +276,94 @@ def store_anchor(bizes_id: str) -> dict | None:
          "count_500m": int(r[f"{b}_cnt_500m"]), "in_zone": bool(r[f"{b}_zone"])}
         for b, label in ANCHOR_LABELS.items()],
         "note": "직선거리입니다. 파일럿 두 구 밖 매장은 포함하지 않아 구 경계 근처는 실제보다 멀게 나올 수 있습니다."}
+
+
+MAX_COMPARE = 4
+REB_NEAR_M = 1000  # R-ONE 조사 상권 중심에서 이 거리 안이면 그 상권 임대료를 참고값으로 붙인다
+COMPARE_ROWS = [  # (그룹, key, 라벨, kind, 출처 구분)
+    ("매출", "per_store_month", "점포당 월평균 매출", "money", "seoul"),
+    ("매출", "sales_yoy_pct", "매출 증감률(전년 동기)", "growth", "seoul"),
+    ("매출", "sales_per_10k_flpop", "유동인구 1만 명당 분기 매출", "money", "seoul"),
+    ("점포", "stores_sbiz", "점포 수(현재)", "count", "sbiz"),
+    ("점포", "stores_change_2y", "점포 수 증감률(2년)", "growth", "dynamics"),
+    ("점포", "stores_volatility", "점포수 변동성(분기 평균 변동폭)", "rate", "dynamics"),
+    ("점포", "open_rate_y", "연 개업률(최근 1년)", "rate", "churn"),
+    ("점포", "close_rate_y", "연 폐업률(최근 1년)", "rate", "churn"),
+    ("점포", "frc_share", "프랜차이즈 비율", "rate", "seoul"),
+    ("수요 기반", "wrc_total", "직장인구", "people", "hinterland"),
+    ("수요 기반", "repop_total", "상주인구", "people", "hinterland"),
+    ("수요 기반", "fac_total", "집객시설", "count", "hinterland"),
+    ("앵커", "starbucks_zone_share", "스세권 매장 비율(스타벅스 250m)", "rate", "anchor"),
+    ("앵커", "daiso_zone_share", "다세권 매장 비율(다이소 250m)", "rate", "anchor"),
+    ("임대", "rent_small_shop", "소규모 상가 임대료(R-ONE)", "rent", "reb"),
+    ("임대", "vacancy_small_shop_pct", "소규모 상가 공실률(R-ONE)", "rate", "reb"),
+]
+
+
+def _haversine_m(lon1, lat1, lon2, lat2) -> float:
+    lon1, lat1, lon2, lat2 = map(np.radians, (lon1, lat1, lon2, lat2))
+    a = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
+    return float(2 * 6_371_008.8 * np.arcsin(np.sqrt(a)))
+
+
+def _nearest_reb(lon: float, lat: float) -> dict | None:
+    """가장 가까운 R-ONE 조사 상권(1km 이내)의 소규모 상가 임대료·공실률. 없으면 None."""
+    try:
+        reb = data_store.load_parquet("reb_zone_metrics.parquet")
+    except data_store.DataNotReady:
+        return None
+    reb = reb.assign(d=[_haversine_m(lon, lat, r.lon, r.lat) for r in reb.itertuples()]).sort_values("d")
+    r = reb.iloc[0]
+    if r["d"] > REB_NEAR_M:
+        return None
+    return {"zone": r["reb_zone_nm"], "distance_m": round(float(r["d"])),
+            "rent_small_shop": None if pd.isna(r["rent_small_shop"]) else round(float(r["rent_small_shop"]), 1),
+            "vacancy_small_shop_pct": None if pd.isna(r["vacancy_small_shop_pct"]) else round(float(r["vacancy_small_shop_pct"]), 1)}
+
+
+def compare(level: str, codes: list[str], svc: str | None, scls: str | None) -> dict:
+    """같은 지도 단위 2~4곳을 지표별로 나란히. 종합 점수는 만들지 않고 값만 보여준다(무엇이 중요한지는 창업자가 정한다)."""
+    codes = list(dict.fromkeys(codes))
+    if not 1 <= len(codes) <= MAX_COMPARE:
+        raise ValueError(f"비교할 단위는 1~{MAX_COMPARE}곳이어야 합니다")
+    cur, latest, period, units = _unit_table(level, svc, scls)
+    missing = [c for c in codes if c not in units.index]
+    if missing:
+        raise KeyError(", ".join(missing))
+    hl = None
+    if level in ("dong", "trdar"):
+        cd = "trdar_cd" if level == "trdar" else "adongCd"
+        hl = data_store.load_parquet(f"{level}_hinterland.parquet").set_index(cd)
+    rebs = {c: _nearest_reb(float(units.loc[c, "lon"]), float(units.loc[c, "lat"])) for c in codes}
+    as_of = {"seoul": f"{latest[:4]}년 {latest[4]}분기", "sbiz": _sbiz_month(), "dynamics": period,
+             "churn": f"{_shift(latest, 3)[:4]}년 {_shift(latest, 3)[4]}분기~{latest[:4]}년 {latest[4]}분기",
+             "hinterland": f"{latest[:4]}년 {latest[4]}분기", "anchor": _sbiz_month(), "reb": "R-ONE 최신 분기"}
+    source = {"seoul": "서울시 상권분석서비스(추정매출·점포)", "sbiz": "소상공인 상가(상권)정보", "dynamics": "서울시 상권분석서비스(점포)",
+              "churn": "서울시 상권분석서비스(개업·폐업)", "hinterland": "서울시 상권분석서비스(직장·상주인구·집객시설)",
+              "anchor": "소상공인 상가(상권)정보 매장 좌표", "reb": "한국부동산원 R-ONE 임대동향(천원/㎡)"}
+    rows = []
+    for group, key, label, kind, src in COMPARE_ROWS:
+        cells = []
+        for c in codes:
+            if src == "hinterland":
+                v = None if hl is None or c not in hl.index or pd.isna(hl.loc[c, key]) else round(float(hl.loc[c, key]))
+                cells.append({"value": v})
+            elif src == "reb":
+                r = rebs[c]
+                if r is None:
+                    note = f"{REB_NEAR_M:,}m 안에 R-ONE 조사 상권 없음"
+                elif r[key] is None:
+                    note = f"가까운 '{r['zone']}'({r['distance_m']:,}m)은 소규모 상가 조사가 없음"
+                else:
+                    note = f"'{r['zone']}' 조사값 · {r['distance_m']:,}m"
+                cells.append({"value": None if r is None else r[key], "note": note})
+            else:
+                row = cur.loc[c] if c in cur.index else None
+                cells.append({"value": None if row is None else (int(row[key]) if key == "stores_sbiz" else _val(row, key))})
+        rows.append({"group": group, "key": key, "label": label, "kind": kind, "source": source[src], "as_of": as_of[src], "cells": cells})
+    return {"level": level, "svc": svc, "scls": scls,
+            "units": [{"code": c, "name": units.loc[c, "name"], "type": units.loc[c].get("type") if "type" in units else None} for c in codes],
+            "rows": rows,
+            "notes": ["점수나 순위로 합치지 않았습니다. 어떤 지표가 중요한지는 업종·자금·운영 방식에 따라 다릅니다.",
+                      "매출·개폐업·변동성은 서울시 외식 업종 단위 값이라 세부 업종을 골라도 바뀌지 않습니다(점포 수·앵커 비율만 세부 업종 반영).",
+                      "R-ONE 임대료는 5개 조사 상권 값만 있어, 가까운 조사 상권 값을 참고로 붙였습니다(해당 상권 실제 임대료 아님)."]}

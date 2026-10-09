@@ -48,6 +48,8 @@ export function parseManwon(input: string): number | null {
 export function formatMetric(kind: string, value: number | null): string {
   if (value === null) return "자료 없음";
   if (kind === "count") return `${value.toLocaleString("ko-KR")}곳`;
+  if (kind === "people") return `${value.toLocaleString("ko-KR")}명`;
+  if (kind === "rent") return formatPerArea(value);
   if (kind === "money") return formatKrw(value);
   if (kind === "growth") return formatSignedPct(value);
   return `${value.toFixed(1)}%`;

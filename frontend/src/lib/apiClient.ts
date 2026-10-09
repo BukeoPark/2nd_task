@@ -367,6 +367,24 @@ export type FoodMetric =
 
 export type AnchorBrand = "starbucks" | "daiso";
 
+/** 입지 비교 — 행(지표) × 열(단위). 값은 그대로 보여주고 점수로 합치지 않는다. */
+export interface FoodCompareResponse {
+  level: FoodLevel;
+  svc: string | null;
+  scls: string | null;
+  units: { code: string; name: string; type: string | null }[];
+  rows: {
+    group: string;
+    key: string;
+    label: string;
+    kind: "money" | "growth" | "rate" | "count" | "people" | "rent";
+    source: string;
+    as_of: string | null;
+    cells: { value: number | null; note?: string }[];
+  }[];
+  notes: string[];
+}
+
 export interface FoodAnchorsResponse {
   walk_m: number;
   brands: Record<AnchorBrand, string>;
@@ -477,6 +495,12 @@ export const apiClient = {
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<FoodUnitStoresResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/stores?${q}`);
+  },
+  getFoodCompare: (level: FoodLevel, codes: string[], svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams({ level, codes: codes.join(",") });
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<FoodCompareResponse>(`/api/food/compare?${q}`);
   },
   getFoodAnchors: () => request<FoodAnchorsResponse>("/api/food/anchors"),
   getStoreAnchors: (storeId: string) => request<StoreAnchorsResponse>(`/api/stores/${encodeURIComponent(storeId)}/anchors`),

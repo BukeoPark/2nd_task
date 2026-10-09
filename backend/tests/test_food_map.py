@@ -102,3 +102,22 @@ def test_anchor_endpoints(client):
     sb = next(b for b in detail["brands"] if b["brand"] == "starbucks")
     assert sb["nearest_m"] == 0 and sb["in_zone"]  # 스타벅스 매장 자신
     assert client.get("/api/stores/NOPE/anchors").status_code == 404
+
+
+def test_compare_units(client):
+    bubbles = client.get("/api/food/bubbles", params={"level": "trdar", "metric": "per_store_month", "svc": "CS100010"}).json()["bubbles"]
+    pick = sorted(bubbles, key=lambda b: -b["size"])[:3]
+    body = client.get("/api/food/compare", params={"level": "trdar", "codes": ",".join(b["code"] for b in pick), "svc": "CS100010"}).json()
+    assert [u["code"] for u in body["units"]] == [b["code"] for b in pick]
+    rows = {r["key"]: r for r in body["rows"]}
+    # 비교 화면 값 = 지도 버블 값(같은 계산)
+    assert [c["value"] for c in rows["per_store_month"]["cells"]] == [b["value"] for b in pick]
+    assert [c["value"] for c in rows["stores_sbiz"]["cells"]] == [b["size"] for b in pick]
+    assert all("note" in c for c in rows["rent_small_shop"]["cells"])
+    assert "점수" in body["notes"][0]
+
+
+def test_compare_validation(client):
+    assert client.get("/api/food/compare", params={"level": "trdar", "codes": "1,2,3,4,5"}).status_code == 400
+    assert client.get("/api/food/compare", params={"level": "trdar", "codes": "NOPE"}).status_code == 404
+    assert client.get("/api/food/compare", params={"level": "x", "codes": "1"}).status_code == 400
