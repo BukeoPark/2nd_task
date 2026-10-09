@@ -8,7 +8,10 @@
 - 서버 상태: React Query. 클라이언트 전역 상태가 필요하면 zustand(가볍게).
 
 ## 구조
-- `src/features/<기능>/` 단위로 컴포넌트·훅·API 호출을 함께 둔다(예: `features/map`, `features/competitors`, `features/report`).
+- `src/features/<기능>/` 단위로 컴포넌트·훅·API 호출을 함께 둔다.
+  - `features/map`: 카카오맵 바탕(`KakaoMap`)·행정동 경계·R-ONE 임대료 마커
+  - `features/food`: 요식업·카페 지도 — 확대 단계별 버블(구·행정동·상권·매장 점), 업종·지표 필터, 범례, 스타벅스·다이소 표시, 입지 비교(`ComparePanel`)
+  - `features/stores`: 매장 상세 서랍 — 동네 매출 비교·프랜차이즈·매출 개선 리포트·Google 고객평가·매장 운영이력·주변 상권 분석
 - `src/components/`는 기능 독립적인 공용 UI 만.
 - `src/lib/`는 apiClient(백엔드 `/api` 베이스), 지도 헬퍼, 포맷터.
 - 페이지 조립은 `src/pages/`.

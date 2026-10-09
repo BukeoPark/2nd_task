@@ -3,7 +3,7 @@ import { InfoPanel, type InfoRow } from "../components/InfoPanel";
 import { KakaoMap } from "../features/map/KakaoMap";
 import { RegionOutlineLayer } from "../features/map/RegionOutlineLayer";
 import { RebZoneLayer } from "../features/map/RebZoneLayer";
-import { useRegions, useRebZones } from "../features/map/useGridData";
+import { useRegions, useRebZones } from "../features/map/useMapData";
 import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
 import { AnchorLayer } from "../features/food/AnchorLayer";

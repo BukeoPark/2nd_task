@@ -8,7 +8,6 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.services import data_store
-from app.services.dong_trend import list_dong_trend
 
 router = APIRouter(prefix="/api", tags=["regions"])
 
@@ -26,36 +25,6 @@ def list_regions() -> dict:
         return data_store.load_json("regions.geojson")
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
-
-
-@router.get("/grid")
-def grid(size_m: int = 250) -> dict:
-    """버블 시각화용 격자 집계 지표."""
-    try:
-        recs = data_store.records(f"grid_{size_m}m.parquet")
-    except data_store.DataNotReady as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    return {"size_m": size_m, "count": len(recs), "records": recs}
-
-
-@router.get("/dong-metrics")
-def dong_metrics() -> dict:
-    """행정동(36개) 단위 매출·점포·인구·상권변화지표 — 지도 코로플레스용."""
-    try:
-        recs = data_store.records("dong_metrics.parquet")
-    except data_store.DataNotReady as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    return {"count": len(recs), "records": recs}
-
-
-@router.get("/dong-trend")
-def dong_trend() -> dict:
-    """행정동별 상권변화지표 분기 이력(2021Q1~) — 매출 트렌드 그래프 대신 실측 추이."""
-    try:
-        recs = list_dong_trend()
-    except data_store.DataNotReady as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    return {"count": len(recs), "records": recs}
 
 
 @router.get("/reb-zones")

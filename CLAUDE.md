@@ -20,13 +20,14 @@ PostGIS 도입 전까지는 `data/processed/` 파일 기반으로 동작한다.
 ```
 pipelines/     데이터 수집·변환 (Python).            → pipelines/CLAUDE.md
   collect/       공공데이터·카카오·네이버 수집기
-  transform/     정제, 격자 생성, 앵커 연산, 감성분석
+  transform/     정제, 상권·행정동 경계, 매출·개폐업·수요 기반 시계열, 앵커 연산, 상가정보 스냅샷
+  run_quarterly.py  분기 갱신(수집 → 변환 → backend 테스트)을 순서대로 한 번에
   common/        config, io, geo 공용 유틸
 backend/       FastAPI 서버.                         → backend/CLAUDE.md
   app/{routers,services,schemas,core}
   tests/
 frontend/      React + 카카오맵 대시보드.            → frontend/CLAUDE.md
-  src/{features,components,lib,pages}
+  src/{features/{map,food,stores},components,lib,pages}
 data/
   raw/           API/다운로드 원본. 수정·덮어쓰기 금지.
   external/       경계 GeoJSON, 코드 매핑 등 외부 참조자료.

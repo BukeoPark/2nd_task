@@ -33,33 +33,6 @@ def test_regions_200_when_pipeline_has_run(client):
     assert len(body["features"]) >= 1
 
 
-def test_dong_metrics_200(client):
-    res = client.get("/api/dong-metrics")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["count"] == 36
-    assert {"adongNm", "sales_total", "stores_total", "change_index_nm"} <= body["records"][0].keys()
-
-
-def test_dong_metrics_503_when_not_ready(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(data_store, "PROCESSED", tmp_path)
-    data_store.load_parquet.cache_clear()
-    res = client.get("/api/dong-metrics")
-    assert res.status_code == 503
-    data_store.load_parquet.cache_clear()
-
-
-def test_dong_trend_200(client):
-    res = client.get("/api/dong-trend")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["count"] == 36
-    record = body["records"][0]
-    assert {"adongNm", "sggnm", "quarters"} <= record.keys()
-    assert len(record["quarters"]) == 22
-    assert {"quarter", "change_index", "change_index_nm"} <= record["quarters"][0].keys()
-
-
 def test_reb_zones_200_and_null_safe(client):
     res = client.get("/api/reb-zones")
     assert res.status_code == 200

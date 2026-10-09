@@ -52,10 +52,11 @@ def test_unknown_store_404(client):
     assert client.get("/api/stores/NOPE0000/sales-benchmark").status_code == 404
 
 
-def test_dong_metrics_have_real_sales_growth(client):
-    recs = client.get("/api/dong-metrics").json()["records"]
-    assert all("sales_yoy_pct" in r for r in recs)
-    assert sum(r["sales_yoy_pct"] is not None for r in recs) >= 30
+def test_dong_metrics_have_real_sales_growth():
+    """행정동 표(dong_metrics.parquet)의 매출 증감률이 실제 값으로 채워져 있다(라우트는 없애고 산출물만 검증)."""
+    dm = data_store.load_parquet("dong_metrics.parquet")
+    assert len(dm) == 36 and "sales_yoy_pct" in dm
+    assert dm["sales_yoy_pct"].notna().sum() >= 30
 
 
 def test_floating_population_comparison(client, stores_cw):

@@ -11,24 +11,6 @@ async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise
   return res.json() as Promise<T>;
 }
 
-export interface GridRecord {
-  grid_id: string;
-  lon: number;
-  lat: number;
-  starbucks_nearest_m: number | null;
-  starbucks_zone: boolean;
-  daiso_nearest_m: number | null;
-  daiso_zone: boolean;
-  store_count: number;
-  top_category: string | null;
-}
-
-export interface GridResponse {
-  size_m: number;
-  count: number;
-  records: GridRecord[];
-}
-
 export interface RegionFeature {
   type: "Feature";
   geometry: { type: string; coordinates: unknown };
@@ -38,29 +20,6 @@ export interface RegionFeature {
 export interface RegionsResponse {
   type: "FeatureCollection";
   features: RegionFeature[];
-}
-
-export interface DongMetric {
-  region_id: number;
-  adongCd: string;
-  adongNm: string;
-  sggnm: string;
-  sales_total: number | null;
-  sales_top_category: string | null;
-  stores_total: number | null;
-  change_index: string | null;
-  change_index_nm: string | null;
-  floating_pop: number | null;
-  resident_pop: number | null;
-  workplace_pop: number | null;
-  sales_yoy_pct: number | null;
-  sales_qoq_pct: number | null;
-  yoy_base_quarter: string | null;
-}
-
-export interface DongMetricsResponse {
-  count: number;
-  records: DongMetric[];
 }
 
 export interface RebZone {
@@ -81,66 +40,6 @@ export interface RebZonesResponse {
   records: RebZone[];
 }
 
-export interface DongTrendQuarter {
-  quarter: string;
-  change_index: string;
-  change_index_nm: string;
-}
-
-export interface DongTrendRecord {
-  region_id: number;
-  adongCd: string;
-  adongNm: string;
-  sggnm: string;
-  quarters: DongTrendQuarter[];
-}
-
-export interface DongTrendResponse {
-  count: number;
-  records: DongTrendRecord[];
-}
-
-export type CategoryLevel = "lcls" | "mcls" | "scls";
-export type Coverage = "connected" | "pending" | "not_connected" | "not_applicable";
-
-export interface CategorySmall {
-  code: string;
-  name: string;
-  store_count: number;
-  coverage: Coverage;
-  coverage_label: string;
-  license_names: string[];
-  note: string;
-}
-
-export interface CategoryMiddle {
-  code: string;
-  name: string;
-  store_count: number;
-  children: CategorySmall[];
-}
-
-export interface CategoryLarge {
-  code: string;
-  name: string;
-  store_count: number;
-  children: CategoryMiddle[];
-}
-
-export interface CategoryTreeResponse {
-  standard: { stdrDt?: string };
-  counts: { lcls: number; mcls: number; scls: number };
-  coverage: { status: Coverage; label: string; scls: number; stores: number }[];
-  tree: CategoryLarge[];
-}
-
-export interface GridCountsResponse {
-  size_m: number;
-  level: CategoryLevel;
-  code: string;
-  store_total: number;
-  counts: Record<string, number>;
-}
 
 export interface SourceRef {
   title: string;
@@ -160,6 +59,8 @@ export interface StoreBasic {
   lat: number;
   source: SourceRef;
 }
+
+type Coverage = "connected" | "pending" | "not_connected" | "not_applicable";
 
 export interface OperationHistory {
   coverage: { status: Coverage; label: string; license_names: string[]; note: string };
@@ -464,14 +365,8 @@ export interface GoogleViewReservation {
 }
 
 export const apiClient = {
-  getGrid: (sizeM: number) => request<GridResponse>(`/api/grid?size_m=${sizeM}`),
   getRegions: () => request<RegionsResponse>("/api/regions"),
-  getDongMetrics: () => request<DongMetricsResponse>("/api/dong-metrics"),
-  getDongTrend: () => request<DongTrendResponse>("/api/dong-trend"),
   getRebZones: () => request<RebZonesResponse>("/api/reb-zones"),
-  getCategoryTree: () => request<CategoryTreeResponse>("/api/categories/tree"),
-  getGridCounts: (sizeM: number, level: CategoryLevel, code: string) =>
-    request<GridCountsResponse>(`/api/grid-counts?size_m=${sizeM}&level=${level}&code=${encodeURIComponent(code)}`),
   getSalesBenchmark: (storeId: string) =>
     request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
   getImprovementReport: (storeId: string) =>

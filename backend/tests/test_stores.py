@@ -24,16 +24,14 @@ def _pick(df: pd.DataFrame, scls: str | None = None, status: str | None = None) 
     return sel.sort_values("bizesId").iloc[0]["bizesId"]
 
 
-def test_category_tree_exposes_full_official_taxonomy(client):
-    body = client.get("/api/categories/tree").json()
-    assert body["counts"] == {"lcls": 10, "mcls": 75, "scls": 247}
-    smalls = [s for l in body["tree"] for m in l["children"] for s in m["children"]]
-    assert len(smalls) == 247 and len({s["code"] for s in smalls}) == 247
-    assert all(s["coverage"] in {"connected", "pending", "not_connected", "not_applicable"} for s in smalls)
-    assert sum(s["store_count"] for s in smalls) == len(data_store.load_parquet("stores.parquet"))
+def test_taxonomy_covers_full_official_classification():
+    """공식 업종 분류 전체(대 10·중 75·소 247)가 업종표에 있고 모든 매장이 어느 소분류에 속한다."""
+    df = data_store.load_parquet("industry_taxonomy.parquet")
+    assert (df["indsLclsCd"].nunique(), df["indsMclsCd"].nunique(), len(df)) == (10, 75, 247)
+    assert df["indsSclsCd"].is_unique and set(df["status"]) <= {"connected", "pending", "not_connected", "not_applicable"}
+    assert df["store_count"].sum() == len(data_store.load_parquet("stores.parquet"))
     # 예시 업종만이 아니라 서로 다른 대분류의 소분류가 모두 들어있다
-    codes = {s["code"] for s in smalls}
-    assert {"I20101", "S20701", "R10307", "I10102", "P10501", "G20405", "M10301", "L10203"} <= codes
+    assert {"I20101", "S20701", "R10307", "I10102", "P10501", "G20405", "M10301", "L10203"} <= set(df["indsSclsCd"])
 
 
 def test_sources_have_reference_dates(client):
@@ -121,11 +119,3 @@ def test_lodging_without_close_dates_is_insufficient(client, stores_links):
 def test_unknown_store_404(client):
     for path in ("", "/nearby-analysis", "/google-place"):
         assert client.get(f"/api/stores/NOPE0000{path}").status_code == 404
-
-
-def test_grid_counts_by_category(client):
-    body = client.get("/api/grid-counts", params={"size_m": 250, "level": "scls", "code": "R10307"}).json()
-    stores = data_store.load_parquet("stores.parquet")
-    assert body["store_total"] == int((stores["indsSclsCd"] == "R10307").sum())
-    assert client.get("/api/grid-counts", params={"size_m": 250, "level": "mcls", "code": "없는코드"}).status_code == 404
-    assert client.get("/api/grid-counts", params={"size_m": 300, "level": "scls", "code": "R10307"}).status_code == 400
