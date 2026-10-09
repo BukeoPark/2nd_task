@@ -360,8 +360,25 @@ export type FoodMetric =
   | "open_rate"
   | "close_rate"
   | "frc_share"
+  | "starbucks_zone_share"
+  | "daiso_zone_share"
   | "stores_change_2y"
   | "stores_volatility";
+
+export type AnchorBrand = "starbucks" | "daiso";
+
+export interface FoodAnchorsResponse {
+  walk_m: number;
+  brands: Record<AnchorBrand, string>;
+  stores: { brand: AnchorBrand; name: string; branch: string | null; lon: number; lat: number }[];
+  note: string;
+}
+
+export interface StoreAnchorsResponse {
+  walk_m: number;
+  brands: { brand: AnchorBrand; label: string; nearest_m: number | null; count_500m: number; in_zone: boolean }[];
+  note: string;
+}
 
 export interface FoodCategoriesResponse {
   groups: { svc_cd: string; svc_nm: string; has_sales: boolean; store_count: number; details: { code: string; name: string; store_count: number }[] }[];
@@ -390,6 +407,8 @@ export interface FoodBubblesResponse {
   metric_source: string | null;
   /** 여러 분기를 보는 지표(점포 수 증감·변동성)의 기간. 한 분기 지표는 null */
   period: string | null;
+  /** 지표 값의 기준(기간·기준월·분기) — 범례·요약 패널은 이 값만 쓴다 */
+  as_of: string;
   bubbles: FoodBubble[];
 }
 
@@ -459,6 +478,8 @@ export const apiClient = {
     if (scls) q.set("scls", scls);
     return request<FoodUnitStoresResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/stores?${q}`);
   },
+  getFoodAnchors: () => request<FoodAnchorsResponse>("/api/food/anchors"),
+  getStoreAnchors: (storeId: string) => request<StoreAnchorsResponse>(`/api/stores/${encodeURIComponent(storeId)}/anchors`),
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),

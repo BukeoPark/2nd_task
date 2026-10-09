@@ -44,3 +44,7 @@ export function useFoodUnitStores(level: FoodLevel, code: string, svc: string | 
     staleTime: LONG,
   });
 }
+
+export function useFoodAnchors(enabled: boolean) {
+  return useQuery({ queryKey: ["food-anchors"], queryFn: () => apiClient.getFoodAnchors(), enabled, staleTime: Infinity });
+}

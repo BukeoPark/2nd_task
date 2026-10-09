@@ -13,8 +13,8 @@ export function storeCountToRadiusPx(count: number, maxCount: number): number {
 export const ZONE_COLORS = {
   starbucks: "#00704A", // 스타벅스 브랜드 그린 = 스세권
   daiso: "#E4002B", // 다이소 브랜드 레드 = 다세권
-  base: "#3B82F6", // 앵커 존 밖(기본 점포 밀도) = 파랑
 } as const;
+export const ANCHOR_MARK = { starbucks: "S", daiso: "D" } as const;
 
 /** 카카오맵이 내부적으로 그리는 SVG 레이어(z-index 미지정)보다 위에 뜨도록,
  * 지도 위 플로팅 UI(컨트롤·범례·상세패널)는 전부 이 값을 z-index 로 쓴다. */

@@ -9,6 +9,8 @@ const METRIC_OPTIONS: { value: FoodMetric; label: string }[] = [
   { value: "open_rate", label: "개업률" },
   { value: "close_rate", label: "폐업률" },
   { value: "frc_share", label: "프랜차이즈 비율" },
+  { value: "starbucks_zone_share", label: "스세권 매장 비율" },
+  { value: "daiso_zone_share", label: "다세권 매장 비율" },
   { value: "stores_change_2y", label: "점포 수 증감률(2년)" },
   { value: "stores_volatility", label: "점포수 변동성" },
 ];
@@ -24,6 +26,8 @@ interface FoodTopBarProps {
   unitLabel: string;
   rebZonesVisible: boolean;
   onRebZonesVisibleChange: (v: boolean) => void;
+  anchorsVisible: boolean;
+  onAnchorsVisibleChange: (v: boolean) => void;
 }
 
 /** 요식업·카페 전용 GNB — 업종(서울시 외식 10개) → 세부 업종(소상공인 소분류), 지표. */
@@ -54,7 +58,11 @@ export function FoodTopBar(p: FoodTopBarProps) {
       />
       <Select value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap" }}>지도 단위: {p.unitLabel}</span>
-      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", marginLeft: "auto" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
+        <input type="checkbox" checked={p.anchorsVisible} onChange={(e) => p.onAnchorsVisibleChange(e.target.checked)} />
+        스타벅스·다이소
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", whiteSpace: "nowrap" }}>
         <input type="checkbox" checked={p.rebZonesVisible} onChange={(e) => p.onRebZonesVisibleChange(e.target.checked)} />
         임대료(R-ONE)
       </label>

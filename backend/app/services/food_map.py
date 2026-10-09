@@ -28,6 +28,8 @@ METRICS = {
     "open_rate": {"label": "개업률(분기)", "kind": "rate", "unit": "%"},
     "close_rate": {"label": "폐업률(분기)", "kind": "rate", "unit": "%"},
     "frc_share": {"label": "프랜차이즈 비율", "kind": "rate", "unit": "%"},
+    "starbucks_zone_share": {"label": "스세권 매장 비율(스타벅스 250m)", "kind": "rate", "unit": "%"},
+    "daiso_zone_share": {"label": "다세권 매장 비율(다이소 250m)", "kind": "rate", "unit": "%"},
     "stores_change_2y": {"label": "점포 수 증감률(2년)", "kind": "growth", "unit": "%"},
     "stores_volatility": {"label": "점포수 변동성(분기 평균 변동폭)", "kind": "rate", "unit": "%"},
 }
@@ -35,6 +37,8 @@ MIN_STORES_FOR_RATE = 3
 DYNAMICS_QUARTERS = 8            # 상권 시계열이 8개 분기라 두 단위 모두 같은 창(최근 2년)을 쓴다
 MIN_STORES_FOR_VOLATILITY = 10   # 평균 10곳 미만은 1~2곳 증감만으로 변동폭이 크게 튀어 '자료 없음'으로 둔다
 DYNAMICS_METRICS = {"stores_change_2y", "stores_volatility"}
+ANCHOR_METRICS = {"starbucks_zone_share": "starbucks", "daiso_zone_share": "daiso"}  # 소상공인 매장 기준(세부 업종 필터 반영)
+ANCHOR_LABELS = {"starbucks": "스타벅스", "daiso": "다이소"}
 
 
 def _shift(q: str, n: int) -> str:
@@ -173,7 +177,14 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
         cur = cur.join(dyn, how="outer")
 
     units = _units()[level].set_index("code")
-    counts = _with_unit(_food_stores(svc, scls), level).groupby("_unit").size()
+    food = _with_unit(_food_stores(svc, scls), level)
+    counts = food.groupby("_unit").size()
+    if metric in ANCHOR_METRICS:
+        brand = ANCHOR_METRICS[metric]
+        za = data_store.load_parquet("store_anchor.parquet")[["bizesId", f"{brand}_zone"]]
+        z = food.merge(za, on="bizesId", how="left").groupby("_unit")[f"{brand}_zone"].mean() * 100
+        cur = cur.reindex(cur.index.union(z.index))
+        cur[metric] = z.where(counts.reindex(z.index) >= MIN_STORES_FOR_RATE)
     out = []
     for code, u in units.iterrows():
         row = cur.loc[code] if code in cur.index else None
@@ -186,8 +197,12 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
                     "lat": round(float(u["lat"]), 6), "size": size, "value": value})
     return {"level": level, "quarter": latest, "metric": metric, **METRICS[metric], "svc": svc, "scls": scls,
             "size_source": f"소상공인 상가(상권)정보 {_sbiz_month()} 기준 · 경계 안 매장 수",
-            "metric_source": None if metric == "stores" else "서울시 상권분석서비스(추정매출·점포)",
+            "metric_source": (None if metric == "stores"
+                              else "소상공인 상가(상권)정보 매장 좌표" if metric in ANCHOR_METRICS
+                              else "서울시 상권분석서비스(추정매출·점포)"),
             "period": period,
+            # 지표 값의 기준 — 여러 분기 지표는 기간, 앵커 지표는 상가정보 기준월, 나머지는 서울시 분기
+            "as_of": period or (_sbiz_month() if metric in ANCHOR_METRICS else f"{latest[:4]}년 {latest[4]}분기"),
             "bubbles": out}
 
 
@@ -219,3 +234,26 @@ def stores_in_unit(level: str, code: str, svc: str | None, scls: str | None, lim
     return {"level": level, "code": code, "name": u["name"], "total": total, "truncated": total > limit,
             "records": [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category_detail": r.indsSclsNm,
                          "distance_m": round(float(r.dist_m))} for r in s.itertuples()]}
+
+
+def anchors() -> dict:
+    """앵커 브랜드 매장 위치(지도 표시용). 파일럿 두 구 안 매장만 — 경계 밖 매장은 없어 경계 인근 거리는 크게 나올 수 있다."""
+    a = data_store.load_parquet("anchor_stores.parquet").sort_values(["brand", "bizesId"])
+    return {"walk_m": 250, "brands": ANCHOR_LABELS,
+            "stores": [{"brand": r.brand, "name": r.bizesNm, "branch": r.brchNm or None, "lon": round(float(r.lon), 6),
+                        "lat": round(float(r.lat), 6)} for r in a.itertuples()],
+            "note": "스타벅스는 상가정보 상호, 다이소는 상가정보 상호 + 네이버 지역 검색으로 보강한 매장입니다. 파일럿 두 구 밖 매장은 포함하지 않습니다."}
+
+
+def store_anchor(bizes_id: str) -> dict | None:
+    """매장 한 곳의 브랜드별 최근접 거리·반경 500m 매장 수·도보권(250m) 여부."""
+    sa = data_store.load_parquet("store_anchor.parquet")
+    hit = sa.loc[sa["bizesId"] == bizes_id]
+    if hit.empty:
+        return None
+    r = hit.iloc[0]
+    return {"walk_m": 250, "brands": [
+        {"brand": b, "label": label, "nearest_m": None if pd.isna(r[f"{b}_nearest_m"]) else round(float(r[f"{b}_nearest_m"])),
+         "count_500m": int(r[f"{b}_cnt_500m"]), "in_zone": bool(r[f"{b}_zone"])}
+        for b, label in ANCHOR_LABELS.items()],
+        "note": "직선거리입니다. 파일럿 두 구 밖 매장은 포함하지 않아 구 경계 근처는 실제보다 멀게 나올 수 있습니다."}

@@ -25,3 +25,7 @@ export function useGooglePlaceLink(storeId: string, enabled: boolean) {
     retry: false,
   });
 }
+
+export function useStoreAnchors(storeId: string) {
+  return useQuery({ queryKey: ["store-anchors", storeId], queryFn: () => apiClient.getStoreAnchors(storeId), staleTime: LONG });
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import data_store, franchise, google_places, improvement_report, nearby_analysis, sales_benchmark, store_profile, taxonomy
+from app.services import data_store, food_map, franchise, google_places, improvement_report, nearby_analysis, sales_benchmark, store_profile, taxonomy
 
 router = APIRouter(prefix="/api", tags=["stores"])
 
@@ -109,6 +109,18 @@ def store_franchise(bizes_id: str) -> dict:
         raise _not_found(bizes_id)
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/stores/{bizes_id}/anchors")
+def store_anchors(bizes_id: str) -> dict:
+    """앵커 브랜드(스타벅스·다이소)까지 직선거리와 도보권(250m) 여부."""
+    try:
+        res = food_map.store_anchor(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    if res is None:
+        raise _not_found(bizes_id)
+    return res
 
 
 @router.get("/google-usage")

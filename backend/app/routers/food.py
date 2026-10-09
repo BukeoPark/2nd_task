@@ -60,3 +60,12 @@ def food_unit_stores(
         raise HTTPException(status_code=404, detail=f"단위를 찾을 수 없습니다: {level}/{code}")
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/anchors")
+def food_anchors() -> dict:
+    """앵커 브랜드(스타벅스·다이소) 매장 위치."""
+    try:
+        return food_map.anchors()
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))

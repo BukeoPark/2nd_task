@@ -80,3 +80,25 @@ def test_store_dynamics_metrics(client):
     assert any(x["value"] is None for x in vol["bubbles"]) and any(x["value"] is not None for x in vol["bubbles"])
     assert all(x["value"] is None or x["value"] >= 0 for x in vol["bubbles"])
     assert client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores"}).json()["period"] is None
+
+
+def test_anchor_zone_share_metric(client):
+    body = client.get("/api/food/bubbles", params={"level": "dong", "metric": "starbucks_zone_share"}).json()
+    assert body["kind"] == "rate" and "상가" in body["metric_source"]
+    sa = data_store.load_parquet("store_anchor.parquet")
+    stores = data_store.load_parquet("stores.parquet")
+    food = stores.loc[stores["indsLclsCd"] == "I2"].merge(sa, on="bizesId")
+    b = max(body["bubbles"], key=lambda x: x["size"])
+    expected = food.loc[food["adongCd"] == b["code"], "starbucks_zone"].mean() * 100
+    assert b["value"] == round(expected, 2)
+    assert all(x["value"] is None or 0 <= x["value"] <= 100 for x in body["bubbles"])
+
+
+def test_anchor_endpoints(client):
+    body = client.get("/api/food/anchors").json()
+    assert {s["brand"] for s in body["stores"]} == {"starbucks", "daiso"} and body["walk_m"] == 250
+    sid = data_store.load_parquet("anchor_stores.parquet").query("brand == 'starbucks' and source == 'sbiz_name_match'")["bizesId"].iloc[0]
+    detail = client.get(f"/api/stores/{sid}/anchors").json()
+    sb = next(b for b in detail["brands"] if b["brand"] == "starbucks")
+    assert sb["nearest_m"] == 0 and sb["in_zone"]  # 스타벅스 매장 자신
+    assert client.get("/api/stores/NOPE/anchors").status_code == 404

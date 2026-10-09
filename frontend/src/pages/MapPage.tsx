@@ -6,9 +6,10 @@ import { RebZoneLayer } from "../features/map/RebZoneLayer";
 import { useRegions, useRebZones } from "../features/map/useGridData";
 import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
+import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
-import { useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
+import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
 import { UnitStoreList } from "../features/food/UnitStoreList";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
 import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone } from "../lib/apiClient";
@@ -39,9 +40,7 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
     rows: [
       ...(data.metric === "stores" ? [] : [{ label: data.label, value: formatMetric(data.kind, b.value) }]),
       { label: "점포 수", value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
-      ...(data.metric === "stores"
-        ? []
-        : [{ label: data.period ? "기간" : `${data.label} 기준`, value: data.period ?? `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기` }]),
+      ...(data.metric === "stores" ? [] : [{ label: "기준", value: data.as_of }]),
       { label: "단위", value: UNIT_LABEL[level] },
     ],
     center: { lon: b.lon, lat: b.lat },
@@ -68,6 +67,7 @@ export function MapPage() {
   const [scls, setScls] = useState<string | null>(null);
   const [metric, setMetric] = useState<FoodMetric>("stores");
   const [rebZonesVisible, setRebZonesVisible] = useState(false);
+  const [anchorsVisible, setAnchorsVisible] = useState(false);
   const [mapKakao, setMapKakao] = useState<{ map: any; kakao: typeof window.kakao } | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_LEVEL);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -93,6 +93,9 @@ export function MapPage() {
   const points = useFoodStores(unit === "stores" ? bounds : null, svc, scls);
   const regions = useRegions();
   const rebZones = useRebZones();
+  // 스세권·다세권 지표를 고르면 매장 위치도 함께 보여준다.
+  const showAnchors = anchorsVisible || metric === "starbucks_zone_share" || metric === "daiso_zone_share";
+  const anchors = useFoodAnchors(showAnchors);
 
   const onBubble = useCallback((b: FoodBubble) => {
     if (!bubbles.data) return;
@@ -119,6 +122,9 @@ export function MapPage() {
         {mapKakao && points.data && unit === "stores" && (
           <StorePointLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} />
         )}
+        {mapKakao && showAnchors && anchors.data && (
+          <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
+        )}
         {mapKakao && rebZonesVisible && rebZones.data && (
           <RebZoneLayer map={mapKakao.map} kakao={mapKakao.kakao} zones={rebZones.data.records} onSelect={onZone} />
         )}
@@ -134,8 +140,10 @@ export function MapPage() {
           unitLabel={UNIT_LABEL[unit]}
           rebZonesVisible={rebZonesVisible}
           onRebZonesVisibleChange={setRebZonesVisible}
+          anchorsVisible={showAnchors}
+          onAnchorsVisibleChange={setAnchorsVisible}
         />
-        <FoodLegend data={bubbles.data} showStores={unit === "stores"} rebZonesVisible={rebZonesVisible} />
+        <FoodLegend data={bubbles.data} showStores={unit === "stores"} rebZonesVisible={rebZonesVisible} anchors={showAnchors ? anchors.data : undefined} />
 
         {storeId ? (
           <StoreDetailPanel storeId={storeId} onBack={() => setStoreId(null)} onClose={() => { setStoreId(null); setSelection(null); }} />

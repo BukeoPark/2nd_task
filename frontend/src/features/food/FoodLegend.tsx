@@ -1,8 +1,13 @@
-import type { FoodBubblesResponse } from "../../lib/apiClient";
-import { NO_DATA_COLOR, OVERLAY_Z_INDEX, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
+import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClient";
+import { NO_DATA_COLOR, OVERLAY_Z_INDEX, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
-export function FoodLegend({ data, showStores, rebZonesVisible }: { data: FoodBubblesResponse | undefined; showStores: boolean; rebZonesVisible: boolean }) {
+export function FoodLegend({ data, showStores, rebZonesVisible, anchors }: {
+  data: FoodBubblesResponse | undefined;
+  showStores: boolean;
+  rebZonesVisible: boolean;
+  anchors?: FoodAnchorsResponse;
+}) {
   return (
     <div
       style={{
@@ -35,11 +40,18 @@ export function FoodLegend({ data, showStores, rebZonesVisible }: { data: FoodBu
             <div style={{ color: "#9CA3AF", fontSize: 11 }}>점포 수: {data.size_source}</div>
             {data.metric_source && (
               <div style={{ color: "#9CA3AF", fontSize: 11 }}>
-                {data.label}: {data.metric_source} {data.period ?? `${data.quarter.slice(0, 4)}년 ${data.quarter[4]}분기`}
+                {data.label}: {data.metric_source} · {data.as_of}
               </div>
             )}
           </>
         )
+      )}
+      {anchors && (
+        <>
+          <Dot color={ZONE_COLORS.starbucks} label={`스타벅스 (${anchors.stores.filter((s) => s.brand === "starbucks").length}곳)`} />
+          <Dot color={ZONE_COLORS.daiso} label={`다이소 (${anchors.stores.filter((s) => s.brand === "daiso").length}곳)`} />
+          <div style={{ color: "#9CA3AF", fontSize: 11 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
+        </>
       )}
       {rebZonesVisible && <Dot color={REB_ZONE_COLOR} label="R-ONE 임대동향 상권" />}
     </div>
