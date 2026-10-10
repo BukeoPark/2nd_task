@@ -55,6 +55,17 @@ def store_sales_benchmark(bizes_id: str) -> dict:
         raise HTTPException(status_code=503, detail=str(e))
 
 
+@router.get("/stores/{bizes_id}/peer-stores")
+def store_peer_stores(bizes_id: str) -> dict:
+    """동네 매출 비교의 비교 단위(상권·행정동) 안 같은 업종 매장 id 와 단위 경계 — 지도에서 '어느 매장들과 비교한 숫자인지' 강조하는 데 쓴다."""
+    try:
+        return sales_benchmark.peer_stores(bizes_id)
+    except store_profile.StoreNotFound:
+        raise _not_found(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
 @router.get("/stores/{bizes_id}/improvement-report")
 def store_improvement_report(bizes_id: str) -> dict:
     """상권 운영 점검 — 규칙 + 같은 유형·비슷한 수요 구조의 비교 상권으로 만든 관측·해석·확인 항목(외부 AI 미사용)."""

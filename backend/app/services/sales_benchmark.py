@@ -194,18 +194,23 @@ def _pick_unit(store: dict, svc: str) -> tuple[str, str, str | None, str | None]
     return "trdar", t["trdar_cd"], t["trdar_type"], None
 
 
+def _unmatched(store: dict, row) -> dict | None:
+    """서울시 업종과 대응이 없거나 추정매출이 제공되지 않으면 그 사유(동네 매출 비교와 비교 단위 매장이 같은 문구를 쓴다)."""
+    if row["status"] == "no_match":
+        return {"status": "no_match", "message": f"'{store['indsSclsNm']}' 업종은 서울시 추정매출 업종 분류에 대응하는 항목이 없습니다."}
+    if row["status"] == "no_sales":
+        return {"status": "no_sales", "svc_nm": row["svc_nm"], "message": f"서울시가 '{row['svc_nm']}' 업종의 추정매출을 제공하지 않습니다."}
+    return None
+
+
 def benchmark(bizes_id: str) -> dict:
     store = store_profile.get_store(bizes_id)
     cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
     row = cw.loc[cw["indsSclsCd"] == store["indsSclsCd"]].iloc[0]
     base = {"source": {"title": UNITS["dong"]["source"]}, "caveats": CAVEATS}
-    if row["status"] == "no_match":
-        return {**base, "status": "no_match",
-                "message": f"'{store['indsSclsNm']}' 업종은 서울시 추정매출 업종 분류에 대응하는 항목이 없습니다."}
+    if (bad := _unmatched(store, row)) is not None:
+        return {**base, **bad}
     svc, svc_nm = row["svc_cd"], row["svc_nm"]
-    if row["status"] == "no_sales":
-        return {**base, "status": "no_sales", "svc_nm": svc_nm,
-                "message": f"서울시가 '{svc_nm}' 업종의 추정매출을 제공하지 않습니다."}
 
     level, code, trdar_type, fallback = _pick_unit(store, svc)
     unit = UNITS[level]
@@ -272,4 +277,50 @@ def benchmark(bizes_id: str) -> dict:
             "share": _num(cur["frc_share"]), "frc_stores": int(cur["frc_stores"]), "stores": int(cur["stores"]),
             "peer_median": _num(peers["frc_share"].median()),
         },
+    }
+
+
+def _boundary(level: str, code: str) -> dict | None:
+    """비교 단위의 경계(GeoJSON geometry). 상권은 trdar_areas, 행정동은 공식 행정동 경계에서 찾고 없으면 None."""
+    if level == "trdar":
+        features = data_store.load_json("trdar_areas.geojson")["features"]
+        return next((f["geometry"] for f in features if f["properties"]["trdar_cd"] == code), None)
+    cw = data_store.load_parquet("dong_crosswalk.parquet")
+    hit = cw.loc[cw["adongCd"] == code]
+    if hit.empty:
+        return None
+    region_id = int(hit.iloc[0]["region_id"])
+    features = data_store.load_json("regions.geojson")["features"]
+    return next((f["geometry"] for f in features if f["properties"].get("region_id") == region_id), None)
+
+
+def peer_stores(bizes_id: str) -> dict:
+    """이 매장의 동네 매출 비교가 쓰는 '비교 단위 × 같은 서울시 업종' 안의 상가정보 매장 id 와 단위 경계.
+
+    비교 단위와 업종은 benchmark() 와 같은 규칙(_pick_unit·업종 대응표)이라, 화면의 비교 숫자와 지도에서 강조되는 매장이 같은 기준이다.
+    매장 수는 소상공인 상가정보를 센 값이라 서울시 점포수(점포당 평균의 분모)와 다를 수 있다.
+    """
+    store = store_profile.get_store(bizes_id)
+    cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
+    row = cw.loc[cw["indsSclsCd"] == store["indsSclsCd"]].iloc[0]
+    if (bad := _unmatched(store, row)) is not None:
+        return bad
+    svc, svc_nm = row["svc_cd"], row["svc_nm"]
+    level, code, trdar_type, fallback = _pick_unit(store, svc)
+
+    stores = data_store.load_parquet("stores.parquet")
+    same_svc = stores.loc[stores["indsSclsCd"].isin(set(cw.loc[cw["svc_cd"] == svc, "indsSclsCd"]))]
+    if level == "trdar":
+        st = data_store.load_parquet("store_trdar.parquet")
+        in_unit = st.loc[st["trdar_cd"] == code]
+        members = same_svc.loc[same_svc["bizesId"].isin(set(in_unit["bizesId"]))]
+        name = in_unit.iloc[0]["trdar_nm"]
+    else:
+        members = same_svc.loc[same_svc["adongCd"] == code]
+        name = store["adongNm"]
+    return {
+        "status": "ok", "svc_cd": svc, "svc_nm": svc_nm,
+        "unit": {"level": level, "label": UNITS[level]["label"], "code": code, "name": name, "type": trdar_type, "fallback_reason": fallback},
+        "count": len(members), "store_ids": sorted(members["bizesId"]),
+        "boundary": _boundary(level, code),
     }

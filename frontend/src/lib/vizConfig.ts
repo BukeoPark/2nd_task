@@ -78,3 +78,19 @@ export function zoomToUnit(level: number): "gu" | "dong" | "trdar" | "stores" {
   if (level >= 4) return "trdar";
   return "stores";
 }
+
+// 선택한 매장·같은 비교 단위/업종 매장·비교 단위 경계 강조 — 지도 점과 상세 요약의 안내가 같은 값을 쓴다.
+export const SELECTED_RING_COLOR = "#111827";
+export const PEER_RING_COLOR = "#1D4ED8";
+export const UNIT_BOUNDARY = {
+  strokeColor: PEER_RING_COLOR,
+  strokeWeight: 3,
+  strokeOpacity: 0.9,
+  fillColor: PEER_RING_COLOR,
+  fillOpacity: 0.06,
+} as const;
+
+/** 지도 왼쪽에 뜨는 상세·요약 패널(Drawer) 너비 — 이 아래 가려지는 점을 찾는 데도 같은 값을 쓴다. */
+export const SIDE_PANEL_WIDTH_PX = 360;
+/** 지도 위 상단 바 높이. */
+export const TOP_BAR_HEIGHT_PX = 56;

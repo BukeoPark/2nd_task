@@ -194,6 +194,20 @@ export interface SalesBenchmarkResponse {
   hinterland?: HinterlandSummary | null;
 }
 
+/** 동네 매출 비교의 비교 단위(상권·행정동) 안 같은 업종 매장 — 지도에서 어느 매장들과 비교한 숫자인지 강조하는 데 쓴다. */
+export type PeerStoresResponse =
+  | { status: "no_match" | "no_sales"; message: string; svc_nm?: string }
+  | {
+      status: "ok";
+      svc_cd: string;
+      svc_nm: string;
+      unit: { level: "trdar" | "dong"; label: string; code: string; name: string; type: string | null; fallback_reason: string | null };
+      count: number;
+      store_ids: string[];
+      /** 비교 단위 경계(GeoJSON geometry). 없으면 null */
+      boundary: { type: string; coordinates: unknown } | null;
+    };
+
 export interface HinterlandPopulation {
   total: number;
   female_share: number | null;
@@ -484,6 +498,7 @@ export const apiClient = {
     request<SalesBenchmarkResponse>(`/api/stores/${encodeURIComponent(storeId)}/sales-benchmark`),
   getImprovementReport: (storeId: string) =>
     request<ImprovementReportResponse>(`/api/stores/${encodeURIComponent(storeId)}/improvement-report`),
+  getPeerStores: (storeId: string) => request<PeerStoresResponse>(`/api/stores/${encodeURIComponent(storeId)}/peer-stores`),
   getFranchise: (storeId: string) => request<FranchiseResponse>(`/api/stores/${encodeURIComponent(storeId)}/franchise`),
   getFoodCategories: () => request<FoodCategoriesResponse>("/api/food/categories"),
   getFoodBubbles: (level: FoodLevel, metric: FoodMetric, svc: string | null, scls: string | null) => {

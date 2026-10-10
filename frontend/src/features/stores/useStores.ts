@@ -3,8 +3,8 @@ import { apiClient } from "../../lib/apiClient";
 
 const LONG = 10 * 60 * 1000;
 
-export function useStoreDetail(storeId: string) {
-  return useQuery({ queryKey: ["store", storeId], queryFn: () => apiClient.getStore(storeId), staleTime: LONG });
+export function useStoreDetail(storeId: string, enabled = true) {
+  return useQuery({ queryKey: ["store", storeId], queryFn: () => apiClient.getStore(storeId), staleTime: LONG, enabled });
 }
 
 export function useNearbyAnalysis(storeId: string, radiusM: number) {
@@ -28,4 +28,14 @@ export function useGooglePlaceLink(storeId: string, enabled: boolean) {
 
 export function useStoreAnchors(storeId: string) {
   return useQuery({ queryKey: ["store-anchors", storeId], queryFn: () => apiClient.getStoreAnchors(storeId), staleTime: LONG });
+}
+
+/** 선택한 매장의 비교 단위·업종 안 매장과 단위 경계. 매장을 고르지 않았으면(null) 조회하지 않는다. */
+export function usePeerStores(storeId: string | null) {
+  return useQuery({
+    queryKey: ["peer-stores", storeId],
+    queryFn: () => apiClient.getPeerStores(storeId as string),
+    enabled: storeId !== null,
+    staleTime: LONG,
+  });
 }
