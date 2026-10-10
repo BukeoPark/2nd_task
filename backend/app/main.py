@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import competitors, food, regions, stores
+from app.routers import competitors, food, regions, search, stores
 
 app = FastAPI(title="상권 분석 API", version="0.1.0")
 
@@ -24,6 +24,7 @@ app.include_router(regions.router)
 app.include_router(competitors.router)
 app.include_router(stores.router)
 app.include_router(food.router)
+app.include_router(search.router)
 
 
 @app.get("/health")

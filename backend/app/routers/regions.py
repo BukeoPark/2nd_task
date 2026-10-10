@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.services import data_store
+from app.services.reb import reb_quarters
 
 router = APIRouter(prefix="/api", tags=["regions"])
 
@@ -34,4 +35,4 @@ def reb_zones() -> dict:
         recs = data_store.records("reb_zone_metrics.parquet")
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))
-    return {"count": len(recs), "records": recs}
+    return {"count": len(recs), "records": recs, "quarters": reb_quarters(recs)}

@@ -51,11 +51,13 @@ def food_stores(
 def food_unit_stores(
     level: str, code: str,
     svc: str | None = None, scls: str | None = None,
-    limit: int = Query(50, gt=0, le=500),
+    limit: int = Query(50, gt=0, le=200),
+    offset: int = Query(0, ge=0, description="이어 받기 시작 위치(응답의 next_offset)"),
+    sort: str = Query("distance", description="distance(버블 중심에서 가까운 순)|name(상호 가나다순)"),
 ) -> dict:
-    """버블 하나에 속한 매장 목록 — 버블 점포 수와 같은 기준(경계 안 매장)."""
+    """버블 하나에 속한 매장 목록 — 버블 점포 수와 같은 기준(경계 안 매장). offset 으로 이어 받는다."""
     try:
-        return food_map.stores_in_unit(level, code, svc, scls, limit)
+        return food_map.stores_in_unit(level, code, svc, scls, limit, offset, sort)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except KeyError:

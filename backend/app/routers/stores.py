@@ -57,7 +57,7 @@ def store_sales_benchmark(bizes_id: str) -> dict:
 
 @router.get("/stores/{bizes_id}/improvement-report")
 def store_improvement_report(bizes_id: str) -> dict:
-    """매출 개선 리포트 — 규칙 + 같은 업종 상위 25% 비교군 벤치마크로 만든 점검 후보(외부 AI 미사용)."""
+    """상권 운영 점검 — 규칙 + 같은 유형·비슷한 수요 구조의 비교 상권으로 만든 관측·해석·확인 항목(외부 AI 미사용)."""
     try:
         return improvement_report.report(bizes_id)
     except store_profile.StoreNotFound:

@@ -76,7 +76,7 @@ def _floating(unit: dict, code: str, cur, peers: pd.DataFrame, latest: str) -> d
                 gap = (fs - ss) * 100
                 gaps.append({"label": SHARE_LABELS[c], "gap_pctp": round(gap, 1),
                              "text": (f"{SHARE_LABELS[c]}: 유동인구 비중 {fs * 100:.0f}% · 매출 비중 {ss * 100:.0f}% — "
-                                      + ("사람은 많은데 매출로 덜 이어짐" if gap > 0 else "유동인구 비중보다 매출 비중이 큼"))})
+                                      + ("유동인구 비중이 매출 비중보다 큼(두 비중의 차이일 뿐 구매 전환율은 아님)" if gap > 0 else "매출 비중이 유동인구 비중보다 큼"))})
         mix.append({"group": group, "items": items})
     gaps.sort(key=lambda g: -abs(g["gap_pctp"]))
     return {
@@ -94,14 +94,21 @@ CHURN_CAVEAT = ("서울시 상권분석서비스의 분기별 개업·폐업 점
 
 
 def _churn(unit: dict, code: str, sel: pd.DataFrame, latest: str) -> dict | None:
-    """최근 1년(4개 분기) 개업·폐업 — 분기 값은 작아서 흔들리므로 1년 합으로 보고, 같은 업종 비교 단위 분포와 견준다."""
-    agg = store_churn.annual_churn(sel, latest, unit["cd"], unit["cd"])  # 이 표는 업종 하나라 원 단위 = 단위
-    if code not in agg.index:
+    """최근 1년(4개 분기) 개업·폐업 — 분기 값은 작아서 흔들리므로 1년 합으로 보고, 같은 업종 비교 단위 분포와 견준다.
+
+    계산하지 못한 이유(자료 없음·관찰기간 부족·점포 수 적음)는 status/message 로 돌려줘 '0건'과 구분해 보여준다.
+    """
+    allc = store_churn.annual_churn(sel, latest, unit["cd"], unit["cd"])  # 이 표는 업종 하나라 원 단위 = 단위
+    if code not in allc.index:
         return None
-    me = agg.loc[code]
     qs = store_churn.churn_quarters(latest)
+    period = f"{quarter_label(qs[0])}~{quarter_label(qs[-1])}"
+    me = allc.loc[code]
+    if me["status"] not in store_churn.USABLE:
+        return {"status": me["status"], "message": store_churn.STATUS_MESSAGE[me["status"]], "period": period}
+    agg = store_churn.usable(allc)
     return {
-        "period": f"{quarter_label(qs[0])}~{quarter_label(qs[-1])}",
+        "status": me["status"], "message": None, "period": period,
         "opened": int(me["opened"]), "closed": int(me["closed"]), "avg_stores": round(float(me["avg_stores"]), 1),
         "open_rate": _num(me["open_rate"]), "close_rate": _num(me["close_rate"]),
         "peer_count": len(agg),
@@ -242,11 +249,12 @@ def benchmark(bizes_id: str) -> dict:
     return {
         **base,
         "status": "ok",
-        "svc_cd": svc, "svc_nm": svc_nm, "crosswalk_note": row["note"] or None,
-        "unit": {"level": level, "label": unit["label"], "name": cur[unit["nm"]], "type": trdar_type,
+        "svc_cd": svc, "svc_nm": svc_nm, "scls_nm": store["indsSclsNm"], "crosswalk_note": row["note"] or None,
+        "unit": {"level": level, "label": unit["label"], "code": code, "name": cur[unit["nm"]], "type": trdar_type,
                  "peer_label": unit["peer_label"], "fallback_reason": fallback},
         "dong": store["adongNm"], "quarter": latest, "quarter_label": quarter_label(latest),
-        "per_store_month": _num(cur["per_store_month"]), "stores": int(cur["stores"]), "sales_q": _num(cur["sales_q"]),
+        "per_store_month": _num(cur["per_store_month"]), "per_store_q": _num(cur["per_store_q"]),
+        "stores": int(cur["stores"]), "sales_q": _num(cur["sales_q"]),
         "per_store_qoq_pct": _num(cur["per_store_qoq_pct"]), "per_store_yoy_pct": _num(cur["per_store_yoy_pct"]),
         "rank": rank, "peer_count": len(peers),
         "peers": [{"name": getattr(r, unit["nm"]), "per_store_month": _num(r.per_store_month), "stores": int(r.stores)}

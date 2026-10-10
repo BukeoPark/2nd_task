@@ -172,7 +172,7 @@ def test_compare_churn_matches_store_detail_churn(client):
     checked = 0
     for r in cand.head(60).itertuples():
         bm = client.get(f"/api/stores/{r.bizesId}/sales-benchmark").json()
-        if bm.get("status") != "ok" or bm["unit"]["level"] != "trdar" or not bm.get("churn"):
+        if bm.get("status") != "ok" or bm["unit"]["level"] != "trdar" or (bm.get("churn") or {}).get("status") != "ok":
             continue
         rows = {x["key"]: x for x in client.get("/api/food/compare", params={"level": "trdar", "codes": r.trdar_cd, "svc": bm["svc_cd"]}).json()["rows"]}
         assert rows["open_rate_y"]["cells"][0]["value"] == pytest.approx(bm["churn"]["open_rate"] * 100, abs=0.01)
@@ -181,3 +181,53 @@ def test_compare_churn_matches_store_detail_churn(client):
         if checked >= 3:
             break
     assert checked >= 1
+
+
+def test_compare_rent_rows_show_the_real_reference_quarter(client):
+    body = client.get("/api/food/compare", params={"level": "trdar", "codes": "3120148", "svc": "CS100010"}).json()
+    rows = {r["key"]: r for r in body["rows"]}
+    assert rows["rent_small_shop"]["as_of"] == "2026년 2분기" and rows["vacancy_small_shop_pct"]["as_of"] == "2026년 2분기"
+    assert "최신 분기" not in rows["rent_small_shop"]["as_of"]
+
+
+def test_compare_scope_and_coverage_fields(client):
+    body = client.get("/api/food/compare", params={"level": "trdar", "codes": "3120148", "svc": "CS100010", "scls": "I21008"}).json()
+    rows = {r["key"]: r for r in body["rows"]}
+    assert rows["stores_sbiz"]["scope"] == "아이스크림/빙수 기준"
+    assert rows["per_store_month"]["scope"] == "커피-음료 전체 기준"
+    assert body["scope"]["differs"] and "커피-음료 전체" in body["notes"][1]
+    bub = client.get("/api/food/bubbles", params={"level": "dong", "metric": "per_store_month", "svc": "CS100010", "scls": "I21008"}).json()
+    assert bub["scope"]["metric_scope"] == "커피-음료 전체 기준" and "Σ분기 매출" in bub["basis"]
+    assert all(b["coverage"] is not None for b in bub["bubbles"])
+
+
+def test_unit_store_list_pages_without_duplicates_or_gaps_for_both_sorts(client):
+    """더 보기로 이어 받아도 중복·누락이 없고, 총 건수와 한 번에 받은 전체가 같다(정렬·업종 필터 유지)."""
+    base = {"svc": "CS100010"}
+    for sort in ("distance", "name"):
+        full = client.get("/api/food/units/trdar/3120148/stores", params={**base, "limit": 200, "sort": sort}).json()
+        assert full["total"] == len(full["records"]) and not full["has_more"]
+        got, offset, pages = [], 0, 0
+        while offset is not None:
+            page = client.get("/api/food/units/trdar/3120148/stores", params={**base, "limit": 40, "offset": offset, "sort": sort}).json()
+            assert page["total"] == full["total"] and page["offset"] == offset and page["sort"] == sort
+            got += page["records"]
+            offset, pages = page["next_offset"], pages + 1
+            assert pages < 20
+        assert [r["store_id"] for r in got] == [r["store_id"] for r in full["records"]]
+        assert len({r["store_id"] for r in got}) == full["total"] and pages >= 3
+    names = [(r["name"], r["branch"] or "") for r in client.get("/api/food/units/trdar/3120148/stores", params={**base, "limit": 200, "sort": "name"}).json()["records"]]
+    assert names == sorted(names)
+    dist = [r["distance_m"] for r in client.get("/api/food/units/trdar/3120148/stores", params={**base, "limit": 200}).json()["records"]]
+    assert dist == sorted(dist)
+
+
+def test_unit_store_list_keeps_the_category_filter_across_pages(client):
+    page = client.get("/api/food/units/trdar/3120148/stores", params={"scls": "I21008", "limit": 1}).json()
+    assert page["total"] == 2 and page["has_more"] and page["next_offset"] == 1
+    rest = client.get("/api/food/units/trdar/3120148/stores", params={"scls": "I21008", "limit": 1, "offset": 1}).json()
+    assert not rest["has_more"] and rest["next_offset"] is None
+    assert {r["category_detail"] for r in page["records"] + rest["records"]} == {"아이스크림/빙수"}
+    assert client.get("/api/food/units/trdar/3120148/stores", params={"offset": 99999}).json()["records"] == []
+    assert client.get("/api/food/units/trdar/3120148/stores", params={"sort": "x"}).status_code == 400
+    assert client.get("/api/food/units/trdar/3120148/stores", params={"offset": -1}).status_code == 422

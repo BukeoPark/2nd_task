@@ -41,3 +41,11 @@ def test_reb_zones_200_and_null_safe(client):
     # 여의도는 소규모 상가 통계가 없어 None(NaN 아님)이어야 JSON이 깨지지 않는다.
     yeouido = next(r for r in body["records"] if r["reb_zone_nm"] == "여의도")
     assert yeouido["vacancy_small_shop_pct"] is None
+
+
+def test_reb_zones_report_the_actual_reference_quarter(client):
+    body = client.get("/api/reb-zones").json()
+    assert body["quarters"]["rent_small_shop"] == "2026년 2분기"
+    assert all(rec["rent_small_shop_quarter"] == "202602" for rec in body["records"])
+    yeouido = next(r for r in body["records"] if r["reb_zone_nm"] == "여의도")
+    assert yeouido["rent_small_shop"] is None and yeouido["rent_small_shop_quarter"] == "202602"  # 값은 없어도 확인한 분기는 남는다
