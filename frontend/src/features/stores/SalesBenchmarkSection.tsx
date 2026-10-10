@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { Notice, Section, SourceNote } from "../../components/Notice";
 import { apiClient, type ChurnSummary, type FloatingComparison, type HinterlandPopulation, type HinterlandSummary, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
+import { SECTION_IDS } from "../../lib/sections";
+import { Term } from "../../components/Term";
 
 /** '동네 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
  * 입력한 매출은 이 화면 안에서만 계산하고 서버로 보내거나 저장하지 않는다. */
@@ -20,7 +23,7 @@ export function SalesBenchmarkSection({
     staleTime: 10 * 60 * 1000,
   });
   return (
-    <Section title="동네 매출 비교">
+    <Section title="동네 매출 비교" id={SECTION_IDS.sales} collapsible>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
@@ -70,7 +73,7 @@ function Body({
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="점포당 월평균 추정매출" value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균`} />
+        <Card label={<Term id="perStoreMonth" />} value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균`} />
         <Card label={`${data.unit?.peer_label ?? "파일럿"} 중 순위`} value={`${data.rank} / ${data.peer_count}위`} sub="같은 업종 점포당 평균 기준" />
         <Card label="전년 동기 대비" value={formatSignedPct(data.per_store_yoy_pct)} sub="점포당 평균" />
         <Card label="전 분기 대비" value={formatSignedPct(data.per_store_qoq_pct)} sub="계절 영향 있음" />
@@ -164,9 +167,9 @@ function FloatingBlock({ fl }: { fl: FloatingComparison }) {
     <div style={{ marginTop: 12, borderTop: "1px dashed #E5E7EB", paddingTop: 10 }}>
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>유동인구 대비 매출</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="분기 유동인구(상대 지수)" value={fl.flpop === null ? "정보 없음" : `${Math.round(fl.flpop / 1e4).toLocaleString()}만`} sub={`전년 동기 대비 ${formatSignedPct(fl.flpop_yoy_pct)}`} />
+        <Card label={<Term id="floatingIndex" label="분기 유동인구(상대 지수)" />} value={fl.flpop === null ? "정보 없음" : `${Math.round(fl.flpop / 1e4).toLocaleString()}만`} sub={`전년 동기 대비 ${formatSignedPct(fl.flpop_yoy_pct)}`} />
         <Card
-          label="유동인구 1만 명당 분기 매출"
+          label={<Term id="floatingPerTenK" />}
           value={formatKrw(fl.sales_per_10k)}
           sub={`${fl.rank} / ${fl.peer_count}위 · 비교군 중앙값 ${formatKrw(fl.pilot_median_per_10k)}`}
         />
@@ -282,8 +285,8 @@ function ChurnRow({ churn, unitLabel }: { churn: ChurnSummary; unitLabel: string
     <div style={{ marginTop: 8 }}>
       <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{heading}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="개업" value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}${real0(churn.opened)}`} />
-        <Card label="폐업" value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}${real0(churn.closed)}`} />
+        <Card label={<Term id="churnOpen" label="개업" />} value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}${real0(churn.opened)}`} />
+        <Card label={<Term id="churnClose" label="폐업" />} value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}${real0(churn.closed)}`} />
       </div>
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
         4개 분기 값이 모두 확인된 경우만 계산 · 평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
@@ -308,7 +311,9 @@ function HinterlandBlock({ hl, unitLabel }: { hl: HinterlandSummary; unitLabel: 
   const med = (v: number | null, unit: string) => (v === null ? "" : ` · ${hl.peer_label} 중앙값 ${Math.round(v).toLocaleString()}${unit}`);
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>이 {unitLabel} 수요 기반 (직장·상주인구·집객시설)</div>
+      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+        이 {unitLabel} 수요 기반 <Term id="hinterland" label="(직장·상주인구·집객시설)" />
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Card
           label="직장인구"
@@ -338,7 +343,7 @@ function HinterlandBlock({ hl, unitLabel }: { hl: HinterlandSummary; unitLabel: 
   );
 }
 
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
       <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>

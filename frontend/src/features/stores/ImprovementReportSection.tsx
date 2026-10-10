@@ -28,7 +28,7 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
   const ok = data?.status === "ok";
 
   return (
-    <Section title="상권 운영 점검">
+    <Section title="상권 운영 점검" collapsible>
       {isLoading && <Notice tone="muted">점검 항목을 만드는 중...</Notice>}
       {isError && (
         <Notice tone="error">

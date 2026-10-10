@@ -12,7 +12,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
   const mine = parseManwon(manwon);
 
   return (
-    <Section title="프랜차이즈 참고">
+    <Section title="프랜차이즈 참고" collapsible>
       {share && share.share !== null && (
         <div style={{ fontSize: 12, marginBottom: 8 }}>
           이 {bm.data?.unit?.label} 같은 업종 {share.stores}곳 중 프랜차이즈 <strong>{share.frc_stores}곳({(share.share * 100).toFixed(0)}%)</strong>

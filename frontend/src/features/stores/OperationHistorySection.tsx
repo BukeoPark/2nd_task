@@ -17,7 +17,7 @@ const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
 export function OperationHistorySection({ history }: { history: OperationHistory }) {
   const { link, license, certifications, sources } = history;
   return (
-    <Section title="매장 운영이력">
+    <Section title="매장 운영이력" collapsible>
       {link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
 
       {license && (
