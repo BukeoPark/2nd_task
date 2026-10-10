@@ -27,14 +27,46 @@ export function SourceNote({ title, reference }: { title: string; reference: str
   );
 }
 
-export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+/** collapsible 이면 제목 줄을 눌러 접고 펼친다(기본은 접힘). 접혀 있어도 내용은 화면에 그려져 있어 조회·계산은 그대로 돈다.
+ * id 를 주면 lib/sections 의 openSection(id) 로 다른 곳(요약)에서 펼치며 이동할 수 있다. */
+export function Section({
+  title,
+  children,
+  right,
+  id,
+  collapsible = false,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: ReactNode;
+  right?: ReactNode;
+  id?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}) {
+  const head = (
+    <div style={{ display: "inline-flex", width: "calc(100% - 20px)", justifyContent: "space-between", alignItems: "center", verticalAlign: "middle" }}>
+      <strong style={{ fontSize: 14 }}>{title}</strong>
+      {right}
+    </div>
+  );
+  if (!collapsible) {
+    return (
+      <section id={id} style={{ borderTop: "1px solid #E5E7EB", paddingTop: 12, marginTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <strong style={{ fontSize: 14 }}>{title}</strong>
+          {right}
+        </div>
+        {children}
+      </section>
+    );
+  }
   return (
-    <section style={{ borderTop: "1px solid #E5E7EB", paddingTop: 12, marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong style={{ fontSize: 14 }}>{title}</strong>
-        {right}
-      </div>
-      {children}
+    <section id={id} style={{ borderTop: "1px solid #E5E7EB", paddingTop: 12, marginTop: 12 }}>
+      <details open={defaultOpen}>
+        <summary style={{ cursor: "pointer", marginBottom: 8 }}>{head}</summary>
+        {children}
+      </details>
     </section>
   );
 }

@@ -15,6 +15,9 @@
   - `features/stores`: 매장 상세 서랍 — 동네 매출 비교·내 가게 점검·프랜차이즈·상권 운영 점검·Google 고객평가·매장 운영이력·주변 상권 분석
     - 내 가게 점검(`MyStoreCheckupSection`): 월 매출 기록을 동네 같은 업종의 **변화율**과 견주고(금액 수준은 카드 추정과 달라 비교하지 않는다), 비용을 넣어 손익분기를 본다.
       기록은 `lib/myStoreStorage`(localStorage, 가게별)에만 두고 서버로 보내지 않는다. 판단은 `lib/checkup`·`lib/breakeven` 순수 함수.
+    - 한눈에 보기(`StoreSummary`): 상세 맨 위에 순위·전년 대비·개폐업·수요를 사실 몇 줄로 먼저 보여 준다(`lib/summary`). 점수·좋고 나쁨 판정은 만들지 않는다.
+      나머지 섹션은 `Section collapsible`(기본 접힘)로 두고 `lib/sections` 의 `openSection` 으로 펼치며 이동한다. 결과를 눌러 불러오는 섹션(Google 고객평가)은 접지 않는다.
+    - 어려운 말은 `components/Term`(`?` 버튼)과 `lib/glossary` 로 풀이한다. 풀이 문구는 서버·계산 모듈의 실제 정의와 같게 유지한다.
 - `src/components/`는 기능 독립적인 공용 UI 만.
 - `src/lib/`는 apiClient(백엔드 `/api` 베이스), 지도 헬퍼, 포맷터.
 - 페이지 조립은 `src/pages/`.

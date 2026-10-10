@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Notice, Section, SourceNote } from "../../components/Notice";
 import { apiClient } from "../../lib/apiClient";
 import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
 import { assess, buildRows, checkupText, GAP_PP, quarterLabel } from "../../lib/checkup";
 import { formatKrw } from "../../lib/format";
 import { clearRecord, loadRecord, saveRecord, type CostKey, type StoreRecord } from "../../lib/myStoreStorage";
+import { Term } from "../../components/Term";
+import { SECTION_IDS } from "../../lib/sections";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -92,7 +94,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
   const bep = breakeven(cost, latestRevenue, benchWon === null ? null : benchWon / 1e4);
 
   return (
-    <Section title="내 가게 점검" right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
+    <Section title="내 가게 점검" id={SECTION_IDS.checkup} collapsible right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
       {saveFailed && (
         <div style={{ marginBottom: 8 }}>
           <Notice tone="warn">이 브라우저에서 저장이 막혀 있어(시크릿 창·저장 차단 등) 지금 화면에서만 계산됩니다. 새로고침하면 사라져요.</Notice>
@@ -202,7 +204,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
         {bep.status === "ok" && bep.bep !== null && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <Card label="월 고정비 합" value={manwon(bep.fixed)} />
-            <Card label="손익분기 월 매출" value={manwon(bep.bep)} sub={bep.vsBenchPct === null ? undefined : `${unitLabel} 같은 업종 점포당 평균의 ${bep.vsBenchPct.toFixed(0)}%`} />
+            <Card label={<Term id="breakeven" />} value={manwon(bep.bep)} sub={bep.vsBenchPct === null ? undefined : `${unitLabel} 같은 업종 점포당 평균의 ${bep.vsBenchPct.toFixed(0)}%`} />
             {bep.profit !== null && latestMonth && (
               <Card
                 label={`예상 월 이익 (${latestMonth} 매출 ${manwon(latestRevenue ?? 0)} 기준)`}
@@ -210,7 +212,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
                 sub={bep.profit < 0 ? "손익분기보다 매출이 낮은 달" : undefined}
               />
             )}
-            {bep.safetyPct !== null && <Card label="안전마진" value={`${bep.safetyPct.toFixed(0)}%`} sub="매출이 이만큼 줄어도 적자가 아닌 정도(음수면 이미 적자)" />}
+            {bep.safetyPct !== null && <Card label={<Term id="safetyMargin" />} value={`${bep.safetyPct.toFixed(0)}%`} sub="매출이 이만큼 줄어도 적자가 아닌 정도(음수면 이미 적자)" />}
           </div>
         )}
       </div>
@@ -226,7 +228,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
   );
 }
 
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
       <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>

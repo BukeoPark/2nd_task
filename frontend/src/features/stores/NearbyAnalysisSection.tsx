@@ -10,7 +10,7 @@ const RADIUS_M = 500;
 export function NearbyAnalysisSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, RADIUS_M);
   return (
-    <Section title="주변 상권 분석">
+    <Section title="주변 상권 분석" collapsible>
       <AnchorRow storeId={storeId} />
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}

@@ -8,6 +8,7 @@ import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
+import { StoreSummary } from "./StoreSummary";
 import { useStoreDetail } from "./useStores";
 
 interface StoreDetailPanelProps {
@@ -40,6 +41,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose }: StoreDetailPanelP
           </div>
           <SourceNote title={store.source.title} reference={store.source.reference} />
 
+          <StoreSummary storeId={storeId} />
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
           <MyStoreCheckupSection key={storeId} storeId={storeId} />
           <FranchiseSection storeId={storeId} manwon={manwon} />
