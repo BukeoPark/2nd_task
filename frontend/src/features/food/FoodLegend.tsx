@@ -1,6 +1,6 @@
 import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClient";
 import { scopeLine } from "../../lib/foodText";
-import { NO_DATA_COLOR, OVERLAY_Z_INDEX, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
+import { ANCHOR_MARK, NO_DATA_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
 export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale = false, rebQuarter = null }: {
@@ -14,13 +14,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
   rebQuarter?: string | null;
 }) {
   return (
-    <div
-      style={{
-        position: "absolute", zIndex: OVERLAY_Z_INDEX, bottom: 16, right: 16, background: "rgba(255,255,255,0.94)",
-        borderRadius: 8, padding: "10px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 12, lineHeight: 1.6, maxWidth: 290,
-        opacity: stale ? 0.55 : 1,
-      }}
-    >
+    <div style={{ opacity: stale ? 0.55 : 1 }}>
       {stale && !showStores && <div style={{ color: "#B45309", fontWeight: 600 }}>새 조건을 불러오는 중 — 아래는 이전 조건의 범례</div>}
       {showStores ? (
         <Dot color={STORE_POINT_COLOR} label="외식 매장 (점을 누르면 매장 상세)" />
@@ -53,9 +47,9 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               )}
             </div>
             <div style={{ color: "#6B7280", fontSize: 11 }}>계산: {data.basis}</div>
-            <div style={{ color: "#9CA3AF", fontSize: 11 }}>점포 수 출처: {data.size_source}</div>
+            <div style={{ color: "#6B7280", fontSize: 11 }}>점포 수 출처: {data.size_source}</div>
             {data.metric_source && (
-              <div style={{ color: "#9CA3AF", fontSize: 11 }}>
+              <div style={{ color: "#6B7280", fontSize: 11 }}>
                 {data.label} 출처: {data.metric_source} · {data.as_of}
               </div>
             )}
@@ -64,9 +58,9 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
       )}
       {anchors && (
         <>
-          <Dot color={ZONE_COLORS.starbucks} label={`스타벅스 (${anchors.stores.filter((s) => s.brand === "starbucks").length}곳)`} />
-          <Dot color={ZONE_COLORS.daiso} label={`다이소 (${anchors.stores.filter((s) => s.brand === "daiso").length}곳)`} />
-          <div style={{ color: "#9CA3AF", fontSize: 11 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
+          <Mark brand="starbucks" label={`스타벅스 (${anchors.stores.filter((s) => s.brand === "starbucks").length}곳)`} />
+          <Mark brand="daiso" label={`다이소 (${anchors.stores.filter((s) => s.brand === "daiso").length}곳)`} />
+          <div style={{ color: "#6B7280", fontSize: 11 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
         </>
       )}
       {rebZonesVisible && <Dot color={REB_ZONE_COLOR} label={`R-ONE 임대동향 상권 (${rebQuarter ?? "기준 분기 기록 없음"})`} />}
@@ -74,10 +68,28 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
   );
 }
 
+/** 스타벅스·다이소 — 지도 마커(AnchorLayer)와 같은 글자 든 네모. 빨간 동그라미인 '상승'과 헷갈리지 않게 모양을 다르게 한다. */
+function Mark({ brand, label }: { brand: "starbucks" | "daiso"; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span
+        aria-hidden="true"
+        style={{
+          width: 16, height: 16, borderRadius: 4, background: ZONE_COLORS[brand], color: "white", fontSize: 10, fontWeight: 700, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid white", boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+        }}
+      >
+        {ANCHOR_MARK[brand]}
+      </span>
+      {label}
+    </div>
+  );
+}
+
 function Dot({ color, label }: { color: string; label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ width: 11, height: 11, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: "50%", background: color, flexShrink: 0 }} />
       {label}
     </div>
   );

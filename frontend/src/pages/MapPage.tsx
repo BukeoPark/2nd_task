@@ -11,6 +11,8 @@ import { FlowGuide } from "../features/food/FlowGuide";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
+import { MapDock } from "../features/food/MapDock";
+import { RankingTable } from "../features/food/RankingTable";
 import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
 import { UnitStoreList } from "../features/food/UnitStoreList";
 import { ComparePanel } from "../features/food/ComparePanel";
@@ -156,6 +158,11 @@ export function MapPage() {
     setStoreId(null);
     setSelection(bubbleToSelection(b, bubbles.data));
   }, [bubbles.data, bubblesActionable]);
+  // 순위표 행을 고르면 버블을 눌렀을 때와 같은 요약을 열고, 지도도 그 위치로 옮긴다.
+  const onRankPick = useCallback((b: FoodBubble) => {
+    onBubble(b);
+    if (mapKakao) mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, b));
+  }, [onBubble, mapKakao]);
   const onStore = useCallback((id: string) => setStoreId(id), []);
   const rebQuarters = rebZones.data?.quarters;
   const onZone = useCallback((z: RebZone) => setSelection(zoneToSelection(z, rebQuarters)), [rebQuarters]);
@@ -225,13 +232,24 @@ export function MapPage() {
           onAnchorsVisibleChange={setAnchorsVisible}
         />
         <FlowGuide placeChosen={place !== null} svcChosen={svc !== null} basketCount={basket?.codes.length ?? 0} />
-        <FoodLegend
-          data={bubbles.data}
-          showStores={unit === "stores"}
-          rebZonesVisible={rebZonesVisible}
-          anchors={showAnchors ? anchors.data : undefined}
-          stale={bubblesStale}
-          rebQuarter={rebQuarters?.rent_small_shop ?? null}
+        <MapDock
+          legend={
+            <FoodLegend
+              data={bubbles.data}
+              showStores={unit === "stores"}
+              rebZonesVisible={rebZonesVisible}
+              anchors={showAnchors ? anchors.data : undefined}
+              stale={bubblesStale}
+              rebQuarter={rebQuarters?.rent_small_shop ?? null}
+            />
+          }
+          ranking={
+            unit === "stores" ? (
+              <div style={{ color: "#4B5563" }}>가장 확대한 화면은 개별 매장 점이라 순위표가 없어요. 지도를 축소하면 {UNIT_LABEL.trdar}·{UNIT_LABEL.dong} 순위표를 볼 수 있어요.</div>
+            ) : (
+              <RankingTable data={bubbles.data} unitLabel={UNIT_LABEL[unit]} stale={bubblesStale} actionable={bubblesActionable} onPick={onRankPick} />
+            )
+          }
         />
 
         {storeId ? (
