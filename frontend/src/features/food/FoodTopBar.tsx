@@ -49,6 +49,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
       <strong style={{ fontSize: 16, color: "#111827", whiteSpace: "nowrap" }}>상권분석 · 요식업</strong>
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} />
       <Select
+        label="업종"
         value={p.svc ?? ""}
         onChange={(v) => {
           p.onSvcChange(v || null);
@@ -57,13 +58,14 @@ export function FoodTopBar(p: FoodTopBarProps) {
         options={[{ value: "", label: "외식 전체" }, ...(p.categories?.groups ?? []).map((g) => ({ value: g.svc_cd, label: `${g.svc_nm} (${g.store_count.toLocaleString()})` }))]}
       />
       <Select
+        label="세부 업종"
         value={p.scls ?? ""}
         disabled={!group}
         title={group ? "세부 업종은 점포 수·매장 위치에만 적용됩니다. 매출 지표가 어느 업종 기준인지는 범례와 요약 패널에 항상 표시됩니다." : "업종을 먼저 고르세요"}
         onChange={(v) => p.onSclsChange(v || null)}
         options={[{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))]}
       />
-      <Select value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
+      <Select label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap" }}>지도 단위: {p.unitLabel}</span>
       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#374151", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
         <input
@@ -83,7 +85,9 @@ export function FoodTopBar(p: FoodTopBarProps) {
   );
 }
 
-function Select({ value, onChange, options, disabled, title }: {
+function Select({ label, value, onChange, options, disabled, title }: {
+  /** 화면에는 보이지 않지만 스크린리더가 '무엇을 고르는 칸인지' 읽는 이름 — 이게 없으면 현재 선택값만 읽힌다 */
+  label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
@@ -92,6 +96,7 @@ function Select({ value, onChange, options, disabled, title }: {
 }) {
   return (
     <select
+      aria-label={label}
       value={value}
       disabled={disabled}
       title={title}
