@@ -5,6 +5,7 @@ import type { StoreBasic } from "../../lib/apiClient";
 import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { ImprovementReportSection } from "./ImprovementReportSection";
+import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { AnchorSection, NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
@@ -69,6 +70,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
           <AnchorSection storeId={storeId} />
           <NearbyAnalysisSection storeId={storeId} />
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
+          <MyStoreCheckupSection key={storeId} storeId={storeId} />
           <Section title="소속 상권 — 행정동·발달/골목상권">
             <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균).</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

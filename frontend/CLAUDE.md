@@ -18,6 +18,8 @@
     - 화면에 라벨이 없는 `<select>` 등은 `aria-label` 로 용도 이름을 단다. 작은 보조 글씨는 흰 배경에서 `#6B7280`(대비 4.5:1) 이상으로 쓴다.
   - `features/stores`: 매장 상세 서랍 — 기본·영업 상태·업력 → Google 고객평가 → 인증·지정 이력 → 스타벅스·다이소 최근접 거리 → 반경 500m 경쟁·개폐업 → 내 매출 벤치마킹 → 소속 행정동·상권 분석 링크.
     상권 통계(매출 추이·인구·시간대)는 `features/area` 에만 둔다(매장 상세에 반복하지 않는다).
+    - 내 가게 점검(`MyStoreCheckupSection`): 월 매출 기록을 동네 같은 업종의 **변화율**과 견주고(금액 수준은 카드 추정과 달라 비교하지 않는다), 비용을 넣어 손익분기를 본다.
+      기록은 `lib/myStoreStorage`(localStorage, 가게별)에만 두고 서버로 보내지 않는다. 판단은 `lib/checkup`·`lib/breakeven` 순수 함수.
 - `src/components/`는 기능 독립적인 공용 UI 만.
 - `src/lib/`는 apiClient(백엔드 `/api` 베이스), 지도 헬퍼, 포맷터.
 - 페이지 조립은 `src/pages/`.
