@@ -9,10 +9,12 @@ interface AreaBubbleLayerProps {
   kakao: typeof window.kakao;
   data: FoodBubblesResponse;
   onSelect: (bubble: FoodBubble) => void;
+  /** 새 조건의 결과를 기다리는 중 — 보이는 버블은 이전 조건의 것이라 흐리게 하고 누를 수 없게 한다 */
+  stale?: boolean;
 }
 
 /** 자치구·행정동·상권 중심에 놓는 숫자 버블(호갱노노식). 크기 = 점포 수, 색 = 지표, 안에 지역명과 값을 쓴다. */
-export function AreaBubbleLayer({ map, kakao, data, onSelect }: AreaBubbleLayerProps) {
+export function AreaBubbleLayer({ map, kakao, data, onSelect, stale = false }: AreaBubbleLayerProps) {
   const overlaysRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -30,12 +32,12 @@ export function AreaBubbleLayer({ map, kakao, data, onSelect }: AreaBubbleLayerP
       const el = document.createElement("div");
       Object.assign(el.style, {
         width: `${r * 2}px`, height: `${r * 2}px`, marginLeft: `${-r}px`, marginTop: `${-r}px`, borderRadius: "50%",
-        background: color, opacity: "0.88", border: b.value === null ? "1px dashed #9CA3AF" : "2px solid white",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.25)", cursor: "pointer", display: "flex", flexDirection: "column",
+        background: color, opacity: stale ? "0.35" : "0.88", pointerEvents: stale ? "none" : "auto", border: b.value === null ? "1px dashed #9CA3AF" : "2px solid white",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.25)", cursor: stale ? "default" : "pointer", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: "1.15",
         color: dark || data.kind === "growth" ? "white" : "#111827", fontSize: r > 24 ? "11px" : "9px", overflow: "hidden",
       });
-      el.title = `${b.name} · ${data.label} ${formatMetric(data.kind, b.value)} · 점포 ${b.size ?? "-"}곳`;
+      el.title = stale ? "새 조건을 불러오는 중 — 이전 조건의 값" : `${b.name} · ${data.label} ${formatMetric(data.kind, b.value)} · 점포 ${b.size ?? "-"}곳`;
       if (r >= 20) {
         const name = document.createElement("div");
         name.textContent = b.name.length > 6 ? `${b.name.slice(0, 6)}…` : b.name;
@@ -45,14 +47,14 @@ export function AreaBubbleLayer({ map, kakao, data, onSelect }: AreaBubbleLayerP
       const val = document.createElement("div");
       val.textContent = formatMetric(data.kind, b.value);
       el.appendChild(val);
-      el.addEventListener("click", () => onSelect(b));
+      if (!stale) el.addEventListener("click", () => onSelect(b));
       overlaysRef.current.push(new kakao.maps.CustomOverlay({ position: toKakaoLatLng(kakao, b), content: el, map, zIndex: 2 }));
     }
     return () => {
       overlaysRef.current.forEach((o) => o.setMap(null));
       overlaysRef.current = [];
     };
-  }, [map, kakao, data, onSelect]);
+  }, [map, kakao, data, onSelect, stale]);
 
   return null;
 }

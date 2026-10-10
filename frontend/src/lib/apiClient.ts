@@ -2,11 +2,20 @@
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
 
+/** 서버가 거절한 요청(HTTP 상태 포함) — 4xx 는 같은 요청을 다시 해도 같은 결과라 재시도 대상이 아니다. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, { method });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}) as { detail?: string });
-    throw new Error(body.detail ?? `API 오류 (HTTP ${res.status})`);
+    throw new ApiError(body.detail ?? `API 오류 (HTTP ${res.status})`, res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -33,11 +42,20 @@ export interface RebZone {
   rent_midlarge_shop: number | null;
   vacancy_office_pct: number | null;
   rent_office: number | null;
+  /** 값을 고른 분기 코드('202602' = 2026년 2분기). 값이 없어도 확인한 분기는 채워진다. */
+  vacancy_small_shop_pct_quarter?: string | null;
+  rent_small_shop_quarter?: string | null;
+  vacancy_midlarge_shop_pct_quarter?: string | null;
+  rent_midlarge_shop_quarter?: string | null;
+  vacancy_office_pct_quarter?: string | null;
+  rent_office_quarter?: string | null;
 }
 
 export interface RebZonesResponse {
   count: number;
   records: RebZone[];
+  /** 지표 → 기준 분기('2026년 2분기'). 산출물에 분기가 없으면 null */
+  quarters: Record<string, string | null>;
 }
 
 
@@ -153,8 +171,10 @@ export interface SalesBenchmarkResponse {
   source: { title: string; reference?: string };
   caveats: string[];
   svc_nm?: string;
+  /** 이 매장의 세부 업종 — 서울시 매출은 svc_nm 업종 전체 기준이라 세부 업종만의 값이 아님 */
+  scls_nm?: string;
   crosswalk_note?: string | null;
-  unit?: { level: "trdar" | "dong"; label: string; name: string; type: string | null; peer_label: string; fallback_reason: string | null };
+  unit?: { level: "trdar" | "dong"; label: string; code?: string; name: string; type: string | null; peer_label: string; fallback_reason: string | null };
   dong?: string;
   quarter_label?: string;
   per_store_month?: number | null;
@@ -193,17 +213,22 @@ export interface HinterlandSummary {
 }
 
 /** 최근 1년(4개 분기) 같은 업종 개업·폐업 — 비율은 4개 분기 합 ÷ 평균 점포 수. */
+export type ChurnStatus = "ok" | "partial" | "missing_values" | "short_period" | "too_small";
+
+/** status 가 ok·partial 이 아니면 숫자 없이 message 만 온다 — 0건이 아니라 '자료 없음·관찰기간 부족·점포 적음'임을 말해 준다. */
 export interface ChurnSummary {
+  status: ChurnStatus;
+  message: string | null;
   period: string;
-  opened: number;
-  closed: number;
-  avg_stores: number;
-  open_rate: number | null;
-  close_rate: number | null;
-  peer_count: number;
-  peer_median_open: number | null;
-  peer_median_close: number | null;
-  caveat: string;
+  opened?: number;
+  closed?: number;
+  avg_stores?: number;
+  open_rate?: number | null;
+  close_rate?: number | null;
+  peer_count?: number;
+  peer_median_open?: number | null;
+  peer_median_close?: number | null;
+  caveat?: string;
 }
 
 export interface FranchiseBrand {
@@ -230,12 +255,24 @@ export interface FranchiseResponse {
   source: { title: string; reference: string };
 }
 
+/** 관측된 사실 / 가능한 해석(단정 아님) / 현장에서 확인할 사항을 나눈 점검 항목. */
 export interface ImprovementRecommendation {
   area: string;
   title: string;
-  evidence: string[];
-  suggestion: string;
+  observed: string[];
+  interpretations: string[];
+  checks: string[];
   score: number;
+}
+
+export interface PeerBasis {
+  unit_type?: string | null;
+  worker_share?: number;
+  band?: number;
+  peers: number;
+  candidates?: number;
+  text?: string;
+  reason?: string;
 }
 
 export interface ImprovementReportResponse {
@@ -243,9 +280,14 @@ export interface ImprovementReportResponse {
   message?: string;
   unit?: SalesBenchmarkResponse["unit"];
   svc_nm?: string;
+  /** 이 매장의 세부 업종 — 서울시 매출은 svc_nm 업종 전체 기준이라 세부 업종만의 값이 아님 */
+  scls_nm?: string;
   quarter_label?: string;
+  title?: string;
   benchmark?: { per_store_month: number | null; rank: number; peer_count: number };
-  top_group?: { count: number; peers: number; names: string[]; per_store_month_min: number } | null;
+  peer_basis?: PeerBasis;
+  top_group?: { count: number; peers: number; names: string[]; per_store_month_min: number; self_in_top: boolean } | null;
+  /** 비교군이 부족하면 '분석 자료 부족 — …' */
   top_group_note?: string | null;
   recommendations?: ImprovementRecommendation[];
   disclaimer: string;
@@ -281,8 +323,12 @@ export interface FoodCompareResponse {
     kind: "money" | "growth" | "rate" | "count" | "people" | "rent";
     source: string;
     as_of: string | null;
-    cells: { value: number | null; note?: string }[];
+    /** 이 지표가 적용된 업종 범위('커피-음료 전체 기준') — 값 바로 옆에 보인다. 수요·임대 행은 업종과 무관해 null */
+    scope: string | null;
+    basis?: string | null;
+    cells: { value: number | null; note?: string; partial?: boolean }[];
   }[];
+  scope: FoodScope;
   notes: string[];
 }
 
@@ -305,6 +351,23 @@ export interface FoodCategoriesResponse {
   note: string;
 }
 
+export interface FoodScope {
+  sales_label: string;
+  stores_label: string;
+  /** 점포 수 기준 업종과 매출 기준 업종이 다른지(세부 업종을 골랐을 때) */
+  differs: boolean;
+  notice: string | null;
+  metric_scope?: string;
+}
+
+export interface FoodCoverage {
+  used: number;
+  total: number;
+  excluded_sales_share: number | null;
+}
+
+export type FoodReason = "no_rows" | "missing_inputs" | "zero_stores" | "too_few_stores" | "short_period" | "no_stores";
+
 export interface FoodBubble {
   code: string;
   name: string;
@@ -313,12 +376,19 @@ export interface FoodBubble {
   lat: number;
   size: number | null;
   value: number | null;
+  /** 계산에 쓴 업종 집단/전체 — 일부만 썼으면 전체 평균으로 오해하지 않게 보여준다 */
+  coverage: FoodCoverage | null;
+  /** 값이 없을 때의 이유(0 이 아니라 자료 없음·점포 0·점포 적음 등) */
+  reason: FoodReason | null;
 }
 
 export interface FoodBubblesResponse {
   level: FoodLevel;
   quarter: string;
   metric: FoodMetric;
+  /** 이 결과가 조회된 업종 조건 — 조건이 바뀐 뒤 이전 결과가 보이는지 가려내는 데 쓴다 */
+  svc: string | null;
+  scls: string | null;
   label: string;
   kind: "count" | "money" | "growth" | "rate";
   unit: string;
@@ -328,6 +398,10 @@ export interface FoodBubblesResponse {
   period: string | null;
   /** 지표 값의 기준(기간·기준월·분기) — 범례·요약 패널은 이 값만 쓴다 */
   as_of: string;
+  /** 지표 계산 기준 한 줄 */
+  basis: string;
+  scope: FoodScope & { metric_scope: string };
+  reasons: Record<FoodReason, string>;
   bubbles: FoodBubble[];
 }
 
@@ -348,13 +422,52 @@ export interface FoodUnitStore {
   distance_m: number;
 }
 
+/** 화면 범위 안 매장 점 — svc/scls 는 이 결과가 어떤 업종 조건으로 조회됐는지(조건이 바뀐 뒤 이전 결과인지 가려내는 데 쓴다) */
+export interface FoodStoresResponse {
+  svc: string | null;
+  scls: string | null;
+  total: number;
+  truncated: boolean;
+  stores: FoodStorePoint[];
+}
+
+export type UnitStoreSort = "distance" | "name";
+
 export interface FoodUnitStoresResponse {
   level: FoodLevel;
   code: string;
   name: string;
+  sort: UnitStoreSort;
+  /** 조건에 맞는 전체 매장 수(버블 점포 수와 같은 기준) */
   total: number;
-  truncated: boolean;
+  offset: number;
+  returned: number;
+  has_more: boolean;
+  /** 이어 받을 시작 위치. 더 없으면 null */
+  next_offset: number | null;
   records: FoodUnitStore[];
+}
+
+export type SearchKind = "station" | "trdar" | "dong" | "address" | "store";
+
+export interface SearchResult {
+  kind: SearchKind;
+  name: string;
+  subtitle: string;
+  lon: number;
+  lat: number;
+  level?: FoodLevel;
+  code?: string;
+  store_id?: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  too_short: boolean;
+  min_chars: number;
+  results: SearchResult[];
+  counts: Partial<Record<SearchKind, number>>;
+  note?: string;
 }
 
 export interface GoogleViewReservation {
@@ -383,10 +496,11 @@ export const apiClient = {
     const q = new URLSearchParams({ min_lon: String(b.minLon), min_lat: String(b.minLat), max_lon: String(b.maxLon), max_lat: String(b.maxLat) });
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
-    return request<{ total: number; truncated: boolean; stores: FoodStorePoint[] }>(`/api/food/stores?${q}`);
+    return request<FoodStoresResponse>(`/api/food/stores?${q}`);
   },
-  getFoodUnitStores: (level: FoodLevel, code: string, svc: string | null, scls: string | null, limit = 50) => {
-    const q = new URLSearchParams({ limit: String(limit) });
+  searchPlaces: (query: string) => request<SearchResponse>(`/api/search?${new URLSearchParams({ q: query })}`),
+  getFoodUnitStores: (level: FoodLevel, code: string, svc: string | null, scls: string | null, offset = 0, sort: UnitStoreSort = "distance", limit = 50) => {
+    const q = new URLSearchParams({ limit: String(limit), offset: String(offset), sort });
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<FoodUnitStoresResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/stores?${q}`);

@@ -55,9 +55,14 @@ function Body({
   return (
     <div>
       <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
-        비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' · {data.quarter_label}
+        비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' 전체 기준 · {data.quarter_label}
         {data.crosswalk_note && <span style={{ color: "#6B7280" }}> ({data.crosswalk_note})</span>}
       </div>
+      {data.scls_nm && data.scls_nm !== data.svc_nm && (
+        <div style={{ fontSize: 11, color: "#92400E", background: "#FFFBEB", borderRadius: 6, padding: "4px 8px", marginBottom: 8 }}>
+          이 매장의 세부 업종은 '{data.scls_nm}'이지만 서울시는 '{data.svc_nm}' 단위로만 매출을 제공해, 아래 매출 숫자는 '{data.svc_nm}' 전체 평균입니다('{data.scls_nm}'만의 값이 아님).
+        </div>
+      )}
       {data.unit?.fallback_reason && (
         <div style={{ marginBottom: 8 }}>
           <Notice tone="muted">{data.unit.fallback_reason}</Notice>
@@ -117,7 +122,7 @@ function Body({
             </div>
           ))}
           <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
-            내 가게의 주력 시간대·손님층과 비교해 영업시간·메뉴·홍보 대상을 점검해 보세요.
+            평균과의 차이일 뿐 원인이나 개선 방향을 뜻하지 않습니다. 내 가게의 주력 시간대·손님층과 견주어 보는 참고로만 쓰세요.
           </div>
         </div>
       )}
@@ -191,7 +196,7 @@ function FloatingBlock({ fl }: { fl: FloatingComparison }) {
             </div>
           ))}
           <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
-            사람은 많은데 매출로 덜 이어지는 시간대·손님층은 영업시간·메뉴·홍보를 점검해 볼 만한 후보입니다.
+            유동인구 비중과 매출 비중의 차이는 구매 전환율이 아니라 단순한 비중 차이입니다(유동인구는 길 위 상대 지수). 현장 확인의 참고로만 쓰세요.
           </div>
         </div>
       )}
@@ -261,18 +266,27 @@ function MyRevenueInput({
 }
 
 function ChurnRow({ churn, unitLabel }: { churn: ChurnSummary; unitLabel: string }) {
-  const pct = (v: number | null) => (v === null ? "자료 없음" : `${Math.round(v * 100)}%`);
+  const pct = (v: number | null | undefined) => (v === null || v === undefined ? "자료 없음" : `${Math.round(v * 100)}%`);
+  const heading = `최근 1년 이 ${unitLabel} 같은 업종 개업·폐업 (${churn.period})`;
+  // 계산하지 못한 경우: 0건으로 보이지 않게 이유(자료 없음·관찰기간 부족·점포 적음)를 그대로 말한다.
+  if (churn.status !== "ok" && churn.status !== "partial") {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{heading}</div>
+        <Notice tone="muted">{churn.message}</Notice>
+      </div>
+    );
+  }
+  const real0 = (n: number | undefined) => (n === 0 ? " (실제 0건)" : "");
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
-        최근 1년 이 {unitLabel} 같은 업종 개업·폐업 ({churn.period})
-      </div>
+      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{heading}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="개업" value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}`} />
-        <Card label="폐업" value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}`} />
+        <Card label="개업" value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}${real0(churn.opened)}`} />
+        <Card label="폐업" value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}${real0(churn.closed)}`} />
       </div>
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
-        평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
+        4개 분기 값이 모두 확인된 경우만 계산 · 평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
       </div>
     </div>
   );

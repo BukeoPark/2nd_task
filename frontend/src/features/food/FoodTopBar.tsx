@@ -1,4 +1,5 @@
-import type { FoodCategoriesResponse, FoodMetric } from "../../lib/apiClient";
+import type { FoodCategoriesResponse, FoodMetric, SearchResult } from "../../lib/apiClient";
+import { SearchBox } from "./SearchBox";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 
 const METRIC_OPTIONS: { value: FoodMetric; label: string }[] = [
@@ -26,6 +27,9 @@ interface FoodTopBarProps {
   unitLabel: string;
   rebZonesVisible: boolean;
   onRebZonesVisibleChange: (v: boolean) => void;
+  onPickPlace: (r: SearchResult) => void;
+  pickedPlaceName: string | null;
+  onClearPlace: () => void;
   anchorsVisible: boolean;
   /** 스세권·다세권 지표를 보는 동안은 매장 위치를 끌 수 없다 */
   anchorsForced: boolean;
@@ -43,6 +47,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
       }}
     >
       <strong style={{ fontSize: 16, color: "#111827", whiteSpace: "nowrap" }}>상권분석 · 요식업</strong>
+      <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} />
       <Select
         value={p.svc ?? ""}
         onChange={(v) => {
@@ -54,7 +59,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
       <Select
         value={p.scls ?? ""}
         disabled={!group}
-        title={group ? "세부 업종은 점포 수·매장 위치만 거릅니다(매출 지표는 서울시 업종 단위)" : "업종을 먼저 고르세요"}
+        title={group ? "세부 업종은 점포 수·매장 위치에만 적용됩니다. 매출 지표가 어느 업종 기준인지는 범례와 요약 패널에 항상 표시됩니다." : "업종을 먼저 고르세요"}
         onChange={(v) => p.onSclsChange(v || null)}
         options={[{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))]}
       />

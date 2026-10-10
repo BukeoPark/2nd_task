@@ -32,7 +32,7 @@ export function InfoPanel({ title, brief, rows, onClose, children }: InfoPanelPr
       {children}
 
       <div style={{ marginTop: 16, fontSize: 12, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-        목록에서 매장을 고르면 '매출 개선 리포트'를 볼 수 있어요.
+        목록에서 매장을 고르면 '상권 운영 점검'를 볼 수 있어요.
       </div>
     </Drawer>
   );

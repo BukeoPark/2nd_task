@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoPanel, type InfoRow } from "../components/InfoPanel";
 import { KakaoMap } from "../features/map/KakaoMap";
 import { RegionOutlineLayer } from "../features/map/RegionOutlineLayer";
@@ -6,6 +6,8 @@ import { RebZoneLayer } from "../features/map/RebZoneLayer";
 import { useRegions, useRebZones } from "../features/map/useMapData";
 import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
+import { SearchMarker } from "../features/food/SearchMarker";
+import { FlowGuide } from "../features/food/FlowGuide";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
@@ -13,7 +15,10 @@ import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type 
 import { UnitStoreList } from "../features/food/UnitStoreList";
 import { ComparePanel } from "../features/food/ComparePanel";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
-import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone } from "../lib/apiClient";
+import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone, SearchResult } from "../lib/apiClient";
+import { coverageText, reasonText } from "../lib/foodText";
+import { canAct, classifyBubbles, viewState } from "../lib/queryState";
+import { searchTarget } from "../lib/searchTarget";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
 import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { OVERLAY_Z_INDEX, zoomToUnit } from "../lib/vizConfig";
@@ -25,6 +30,8 @@ type Selection = {
   title: string;
   brief: string;
   rows: InfoRow[];
+  /** 업종 범위가 점포 수와 매출에서 다를 때의 안내(요약 패널 맨 위에 항상 보임) */
+  notice?: string | null;
   center?: { lon: number; lat: number };
   /** 매장 목록을 보여줄 단위(자치구는 매장이 너무 많아 목록 대신 확대 안내) */
   unit?: { level: FoodLevel; code: string };
@@ -35,15 +42,25 @@ type Selection = {
 
 function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection {
   const level = data.level;
+  const stores = data.metric === "stores";
+  const value = formatMetric(data.kind, b.value);
+  const cover = coverageText(b.coverage);
   return {
     title: `${b.name}${b.type ? ` (${b.type})` : ""}`,
-    brief: data.metric === "stores"
-      ? `${UNIT_LABEL[level]} 기준 점포 ${formatMetric("count", b.size)}입니다.`
-      : `${UNIT_LABEL[level]} 기준 ${data.label} ${formatMetric(data.kind, b.value)}, 점포 ${formatMetric("count", b.size)}입니다.`,
+    brief: stores
+      ? `${UNIT_LABEL[level]} 기준 점포 ${formatMetric("count", b.size)}(${data.scope.stores_label} 기준)입니다.`
+      : `${UNIT_LABEL[level]} 기준 ${data.label} ${value}(${data.scope.metric_scope}), 점포 ${formatMetric("count", b.size)}(${data.scope.stores_label} 기준)입니다.`,
+    notice: data.scope.notice,
     rows: [
-      ...(data.metric === "stores" ? [] : [{ label: data.label, value: formatMetric(data.kind, b.value) }]),
-      { label: "점포 수", value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
-      ...(data.metric === "stores" ? [] : [{ label: "기준", value: data.as_of }]),
+      ...(stores ? [] : [
+        { label: data.label, value },
+        // 숫자 바로 옆에 이 값이 어느 업종 범위인지 항상 보인다
+        { label: "이 지표의 업종 범위", value: data.scope.metric_scope },
+        ...(b.value === null ? [{ label: "자료 없음 사유", value: reasonText(b.reason, data.reasons) }] : []),
+        ...(cover ? [{ label: "계산 범위", value: cover }] : []),
+      ]),
+      { label: `점포 수 · ${data.scope.stores_label}`, value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
+      ...(stores ? [] : [{ label: "기준", value: data.as_of }]),
       { label: "단위", value: UNIT_LABEL[level] },
     ],
     center: { lon: b.lon, lat: b.lat },
@@ -53,15 +70,23 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
   };
 }
 
-function zoneToSelection(zone: RebZone): Selection {
+/** R-ONE 임대동향 상권 — 지표마다 실제 기준 분기를 적고, 그 분기에 값이 없으면 이전 분기 값으로 채우지 않고 '조사값 없음'이라고 말한다. */
+function zoneToSelection(zone: RebZone, quarters: Record<string, string | null> | undefined): Selection {
+  const row = (label: string, col: string, value: number | null, fmt: (v: number | null) => string): InfoRow => {
+    const q = quarters?.[col] ?? null;
+    return { label: `${label} · ${q ?? "기준 분기 기록 없음"}`, value: value === null ? `${q ?? "해당 분기"} 조사값 없음` : fmt(value) };
+  };
+  const small = zone.vacancy_small_shop_pct;
   return {
     title: `${zone.reb_zone_nm} (R-ONE)`,
-    brief: `소규모상가 공실률 ${formatPercent(zone.vacancy_small_shop_pct)}, 임대료 ${formatPerArea(zone.rent_small_shop)}입니다.`,
+    brief: small === null
+      ? `이 상권은 소규모 상가 조사값이 없습니다(오피스 등 다른 유형만 조사).`
+      : `소규모상가 공실률 ${formatPercent(small)}, 임대료 ${formatPerArea(zone.rent_small_shop)}입니다(${quarters?.rent_small_shop ?? "기준 분기 기록 없음"}).`,
     rows: [
-      { label: "소규모상가 공실률", value: formatPercent(zone.vacancy_small_shop_pct) },
-      { label: "소규모상가 임대료", value: formatPerArea(zone.rent_small_shop) },
-      { label: "중대형상가 공실률", value: formatPercent(zone.vacancy_midlarge_shop_pct) },
-      { label: "오피스 임대료", value: formatPerArea(zone.rent_office) },
+      row("소규모상가 공실률", "vacancy_small_shop_pct", zone.vacancy_small_shop_pct, formatPercent),
+      row("소규모상가 임대료", "rent_small_shop", zone.rent_small_shop, formatPerArea),
+      row("중대형상가 공실률", "vacancy_midlarge_shop_pct", zone.vacancy_midlarge_shop_pct, formatPercent),
+      row("오피스 임대료", "rent_office", zone.rent_office, formatPerArea),
     ],
   };
 }
@@ -80,6 +105,9 @@ export function MapPage() {
   // 입지 비교 목록 — 같은 지도 단위끼리만, 최대 MAX_COMPARE 곳
   const [basket, setBasket] = useState<{ level: FoodLevel; codes: string[] } | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  // 검색으로 고른 위치와, 도착 뒤 요약을 열 버블(검색 → 위치 선택 → 업종 선택 → 후보 지역 비교 흐름)
+  const [place, setPlace] = useState<{ name: string; lon: number; lat: number } | null>(null);
+  const [pendingOpen, setPendingOpen] = useState<{ unit: FoodLevel; code: string } | null>(null);
 
   useEffect(() => {
     if (!mapKakao) return;
@@ -105,15 +133,55 @@ export function MapPage() {
   const showAnchors = anchorsVisible || anchorsForced;
   const anchors = useFoodAnchors(showAnchors);
 
+  // ── 화면 상태: 최초 로딩 / 조건 변경 후 재조회(이전 결과) / 정상 0곳 / 자료 없음 / 조회 실패 ──
+  // '이전 조건의 결과'는 조건(단위·지표·업종)이 실제로 다른 데이터가 대신 보이는 경우다 — 지도를 움직여 범위만 바뀐 것은 새 조건이 아니다.
+  const bubblesOutdated = bubbles.isPlaceholderData && bubbles.data !== undefined
+    && (bubbles.data.level !== unit || bubbles.data.metric !== metric || bubbles.data.svc !== svc || bubbles.data.scls !== scls);
+  const pointsOutdated = points.isPlaceholderData && points.data !== undefined && (points.data.svc !== svc || points.data.scls !== scls);
+  const bubbleState = unit === "stores" ? null : viewState(
+    { isPending: bubbles.isPending, isError: bubbles.isError, isPlaceholderData: bubblesOutdated, hasData: bubbles.data !== undefined },
+    bubbles.data ? classifyBubbles(metric, bubbles.data.bubbles) : {},
+  );
+  const pointState = unit !== "stores" ? null : viewState(
+    { isPending: points.isPending, isError: points.isError, isPlaceholderData: pointsOutdated, hasData: points.data !== undefined },
+    points.data ? { empty: points.data.total === 0 } : {},
+  );
+  const bubblesStale = bubbleState === "refetching" || bubbleState === "error";
+  const pointsStale = pointState === "refetching" || pointState === "error";
+  const bubblesActionable = bubbleState !== null && canAct(bubbleState);
+
   const onBubble = useCallback((b: FoodBubble) => {
-    if (!bubbles.data) return;
+    if (!bubbles.data || !bubblesActionable) return; // 이전 조건의 버블·실패한 조회로는 요약·비교로 진행하지 않는다
+    setPendingOpen(null);
     setStoreId(null);
     setSelection(bubbleToSelection(b, bubbles.data));
-  }, [bubbles.data]);
+  }, [bubbles.data, bubblesActionable]);
   const onStore = useCallback((id: string) => setStoreId(id), []);
-  const onZone = useCallback((z: RebZone) => setSelection(zoneToSelection(z)), []);
+  const rebQuarters = rebZones.data?.quarters;
+  const onZone = useCallback((z: RebZone) => setSelection(zoneToSelection(z, rebQuarters)), [rebQuarters]);
+
+  // 검색 결과를 골랐을 때: 그 위치로 가서 핀을 꽂고, 매장이면 상세를, 상권·행정동이면 도착 뒤 요약을 연다.
+  const onPickPlace = useCallback((r: SearchResult) => {
+    if (!mapKakao) return;
+    const target = searchTarget(r);
+    setPlace({ name: r.name, lon: r.lon, lat: r.lat });
+    setSelection(null);
+    setStoreId(target.storeId);
+    setPendingOpen(target.open ? { unit: target.open.unit, code: target.open.code } : null);
+    mapKakao.map.setLevel(target.level);
+    mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, r));
+  }, [mapKakao]);
+  const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
+
+  // 검색한 상권·행정동의 버블이 현재 조건으로 도착하면 그 요약을 연다(이전 조건의 결과가 아닐 때만).
+  const searchSelection = useMemo(() => {
+    if (!pendingOpen || !bubbles.data || !bubblesActionable || bubbles.data.level !== pendingOpen.unit) return null;
+    const b = bubbles.data.bubbles.find((x) => x.code === pendingOpen.code);
+    return b ? bubbleToSelection(b, bubbles.data) : null;
+  }, [pendingOpen, bubbles.data, bubblesActionable]);
+  const shownSelection = selection ?? searchSelection;
   // 업종·지표를 바꾸면 이전 조건으로 만든 요약 패널은 닫는다(값이 섞여 보이지 않도록).
-  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); };
+  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); setPendingOpen(null); };
 
   const svcGroup = categories.data?.groups.find((g) => g.svc_cd === svc);
   const filterName = scls ? (svcGroup?.details.find((d) => d.code === scls)?.name ?? "세부 업종") : (svcGroup?.svc_nm ?? "외식 전체");
@@ -125,14 +193,15 @@ export function MapPage() {
           <RegionOutlineLayer map={mapKakao.map} kakao={mapKakao.kakao} features={regions.data.features} />
         )}
         {mapKakao && bubbles.data && unit !== "stores" && (
-          <AreaBubbleLayer map={mapKakao.map} kakao={mapKakao.kakao} data={bubbles.data} onSelect={onBubble} />
+          <AreaBubbleLayer map={mapKakao.map} kakao={mapKakao.kakao} data={bubbles.data} onSelect={onBubble} stale={bubblesStale} />
         )}
         {mapKakao && points.data && unit === "stores" && (
-          <StorePointLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} />
+          <StorePointLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} stale={pointsStale} />
         )}
         {mapKakao && showAnchors && anchors.data && (
           <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
         )}
+        {mapKakao && <SearchMarker map={mapKakao.map} kakao={mapKakao.kakao} place={place} />}
         {mapKakao && rebZonesVisible && rebZones.data && (
           <RebZoneLayer map={mapKakao.map} kakao={mapKakao.kakao} zones={rebZones.data.records} onSelect={onZone} />
         )}
@@ -148,42 +217,56 @@ export function MapPage() {
           unitLabel={UNIT_LABEL[unit]}
           rebZonesVisible={rebZonesVisible}
           onRebZonesVisibleChange={setRebZonesVisible}
+          onPickPlace={onPickPlace}
+          pickedPlaceName={place?.name ?? null}
+          onClearPlace={onClearPlace}
           anchorsVisible={showAnchors}
           anchorsForced={anchorsForced}
           onAnchorsVisibleChange={setAnchorsVisible}
         />
-        <FoodLegend data={bubbles.data} showStores={unit === "stores"} rebZonesVisible={rebZonesVisible} anchors={showAnchors ? anchors.data : undefined} />
+        <FlowGuide placeChosen={place !== null} svcChosen={svc !== null} basketCount={basket?.codes.length ?? 0} />
+        <FoodLegend
+          data={bubbles.data}
+          showStores={unit === "stores"}
+          rebZonesVisible={rebZonesVisible}
+          anchors={showAnchors ? anchors.data : undefined}
+          stale={bubblesStale}
+          rebQuarter={rebQuarters?.rent_small_shop ?? null}
+        />
 
         {storeId ? (
-          <StoreDetailPanel storeId={storeId} onBack={() => setStoreId(null)} onClose={() => { setStoreId(null); setSelection(null); }} />
+          <StoreDetailPanel storeId={storeId} onBack={() => setStoreId(null)} onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }} />
         ) : (
-          selection && (
-            <InfoPanel title={selection.title} brief={selection.brief} rows={selection.rows} onClose={() => setSelection(null)}>
-              {selection.center && selection.zoomTo !== undefined && mapKakao && (
+          shownSelection && (
+            <InfoPanel title={shownSelection.title} brief={shownSelection.brief} rows={shownSelection.rows} onClose={() => { setSelection(null); setPendingOpen(null); }}>
+              {shownSelection.notice && (
+                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>{shownSelection.notice}</div>
+              )}
+              {shownSelection.center && shownSelection.zoomTo !== undefined && mapKakao && (
                 <button
                   type="button"
                   onClick={() => {
-                    mapKakao.map.setLevel(selection.zoomTo);
-                    mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, selection.center!));
+                    mapKakao.map.setLevel(shownSelection.zoomTo);
+                    mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, shownSelection.center!));
                   }}
                   style={{ width: "100%", padding: "8px 0", marginBottom: 12, borderRadius: 8, border: "1px solid #3B82F6", background: "white", color: "#3B82F6", cursor: "pointer" }}
                 >
                   이 지역 확대해서 보기
                 </button>
               )}
-              {selection.compare && (
+              {shownSelection.compare && (
                 <CompareButton
                   basket={basket}
-                  target={selection.compare}
+                  target={shownSelection.compare}
                   onAdd={() => {
-                    const c = selection.compare!;
+                    const c = shownSelection.compare!;
                     setBasket((b) => (b && b.level === c.level ? { level: c.level, codes: [...b.codes, c.code] } : { level: c.level, codes: [c.code] }));
                     setCompareOpen(true);
                   }}
                 />
               )}
-              {selection.unit && (
-                <UnitStoreList level={selection.unit.level} code={selection.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
+              {shownSelection.unit && (
+                <UnitStoreList level={shownSelection.unit.level} code={shownSelection.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
               )}
             </InfoPanel>
           )
@@ -213,10 +296,21 @@ export function MapPage() {
           />
         )}
 
-        {unit === "stores" && points.data?.truncated && (
-          <StatusBanner text={`이 범위의 매장 ${points.data.total.toLocaleString()}곳 중 ${points.data.stores.length}곳만 표시 — 더 확대하세요`} />
-        )}
-        {bubbles.isError && <StatusBanner text={`지도 데이터를 불러오지 못했습니다: ${bubbles.error.message}`} />}
+        <StatusArea
+          unit={unit}
+          bubbleState={bubbleState}
+          pointState={pointState}
+          bubbles={bubbles.data}
+          bubbleError={bubbles.error?.message}
+          pointError={points.error?.message}
+          points={points.data}
+          metricLabel={bubbles.data?.label ?? ""}
+          filterName={filterName}
+          onRetryBubbles={() => void bubbles.refetch()}
+          onRetryPoints={() => void points.refetch()}
+          categoriesError={categories.isError ? categories.error.message : null}
+          onRetryCategories={() => void categories.refetch()}
+        />
       </KakaoMap>
     </div>
   );
@@ -255,15 +349,62 @@ function CompareButton({ basket, target, onAdd }: {
   );
 }
 
-function StatusBanner({ text }: { text: string }) {
+type BannerTone = "info" | "warn" | "error";
+
+function StatusArea(p: {
+  unit: "gu" | "dong" | "trdar" | "stores";
+  bubbleState: ReturnType<typeof viewState> | null;
+  pointState: ReturnType<typeof viewState> | null;
+  bubbles: FoodBubblesResponse | undefined;
+  bubbleError?: string;
+  pointError?: string;
+  points: { total: number; truncated: boolean; stores: unknown[] } | undefined;
+  metricLabel: string;
+  filterName: string;
+  onRetryBubbles: () => void;
+  onRetryPoints: () => void;
+  categoriesError: string | null;
+  onRetryCategories: () => void;
+}) {
+  const unitLabel = UNIT_LABEL[p.unit];
+  const banners: { key: string; tone: BannerTone; text: string; retry?: () => void }[] = [];
+  const state = p.unit === "stores" ? p.pointState : p.bubbleState;
+  if (state === "loading") banners.push({ key: "loading", tone: "info", text: p.unit === "stores" ? "이 범위의 매장을 불러오는 중..." : "지도 데이터를 불러오는 중..." });
+  if (state === "refetching") {
+    banners.push({ key: "refetch", tone: "warn", text: "새 조건으로 다시 조회하는 중 — 지금 보이는 숫자는 이전 조건의 결과라 흐리게 표시하고 누를 수 없게 했습니다." });
+  }
+  if (state === "error") {
+    banners.push({
+      key: "error", tone: "error",
+      text: `${p.unit === "stores" ? "매장" : "지도"} 데이터를 불러오지 못했습니다: ${p.unit === "stores" ? p.pointError : p.bubbleError}`,
+      retry: p.unit === "stores" ? p.onRetryPoints : p.onRetryBubbles,
+    });
+  }
+  if (state === "empty") {
+    banners.push({ key: "empty", tone: "info", text: p.unit === "stores"
+      ? `이 화면 범위에는 '${p.filterName}' 매장이 0곳입니다(조회는 정상). 지도를 옮기거나 업종을 바꿔 보세요.`
+      : `'${p.filterName}' 조건에 맞는 매장이 이 ${unitLabel} 어디에도 0곳입니다(조회는 정상).` });
+  }
+  if (state === "no-data") {
+    banners.push({ key: "nodata", tone: "info", text: `'${p.metricLabel}' 값이 이 조건의 모든 ${unitLabel}에서 비어 있습니다 — 0 이 아니라 자료 없음입니다(회색 점선 버블을 눌러 사유 확인).` });
+  }
+  if (p.unit === "stores" && state === "ready" && p.points?.truncated) {
+    banners.push({ key: "trunc", tone: "info", text: `이 범위의 매장 ${p.points.total.toLocaleString()}곳 중 ${p.points.stores.length}곳만 표시 — 더 확대하세요` });
+  }
+  if (p.categoriesError) banners.push({ key: "cat", tone: "error", text: `업종 목록을 불러오지 못했습니다: ${p.categoriesError}`, retry: p.onRetryCategories });
+  const colors: Record<BannerTone, { bg: string; fg: string }> = { info: { bg: "white", fg: "#374151" }, warn: { bg: "#FFFBEB", fg: "#92400E" }, error: { bg: "#FEF2F2", fg: "#B91C1C" } };
   return (
-    <div
-      style={{
-        position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 72, left: "50%", transform: "translateX(-50%)", background: "white",
-        borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 13,
-      }}
-    >
-      {text}
+    <div style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 100, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", gap: 6, alignItems: "center", maxWidth: "min(720px, calc(100vw - 32px))" }}>
+      {banners.map((b) => (
+        <div key={b.key} role={b.tone === "error" ? "alert" : "status"} style={{ background: colors[b.tone].bg, color: colors[b.tone].fg, borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 13 }}>
+          {b.text}
+          {b.retry && (
+            <button type="button" onClick={b.retry} style={{ marginLeft: 10, border: "1px solid #B91C1C", background: "white", color: "#B91C1C", borderRadius: 6, padding: "2px 10px", cursor: "pointer", fontWeight: 600 }}>
+              다시 시도
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
