@@ -1,4 +1,4 @@
-"""상권·행정동 수요 기반(직장인구·상주인구·집객시설) — 매출 개선 리포트 '손님층' 제안의 근거.
+"""상권·행정동 수요 기반(직장인구·상주인구·집객시설) — 상권 운영 점검 '손님층' 제안의 근거.
 
 실행: .venv/bin/python -m pipelines.transform.build_hinterland
 입력: data/raw/seoul/ 의 최신 수집 파일

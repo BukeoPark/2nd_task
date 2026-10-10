@@ -43,6 +43,12 @@
 새 수집·변환 모듈을 만들면 `STEPS` 에 넣거나(의존 순서 지켜서) `NOT_IN_QUARTERLY` 에 이유와 함께 적는다.
 `.venv/bin/python -m pytest pipelines/tests` 가 둘 다 빠진 모듈과 순서 어긋남을 잡는다(분기 갱신 마지막 단계에서도 돈다).
 
+## 결측 처리와 R-ONE 기준 분기
+- 서울시 매출·점포 표(`build_sales_timeseries`)는 점포 수·개업·폐업이 비면 0 이 아니라 NaN, 점포 수 0 은 0 으로 둔다(둘을 구분해 backend 가 계산에서 제외하고 사유를 표시).
+  시간대·연령 구성비는 칸이 하나라도 비면 NaN. 제외·결측 건수는 로그에 남긴다.
+- R-ONE 임대료·공실률(`build_reb_zone_metrics`)은 분기를 코드에 박지 않고 통계표마다 원천의 실제 최신 분기를 쓴다. 지표별 `<지표>_quarter` 칸에 분기를 기록하고,
+  그 분기에 값이 없는 상권은 NaN(이전 분기로 채우지 않음).
+
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 

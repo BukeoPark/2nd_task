@@ -16,6 +16,8 @@
     '분기 매출 금액은 개인 매출과 법인 매출의 합'. 월평균은 3으로 나눈다.
   - 점포당 평균의 분모는 유사업종 점포수(SIMILR_INDUTY_STOR_CO = 일반 점포 + 프랜차이즈, 실제 데이터로 확인).
   - 프랜차이즈 비율 = FRC_STOR_CO ÷ 유사업종 점포수. 개업·폐업 점포수/률(OPBIZ_*, CLSBIZ_*)은 서울시 원천 값을 그대로 싣는다.
+  - 결측은 0 으로 바꾸지 않는다: 점포수·개업·폐업이 없으면 NaN, 점포수 0 은 0 으로 둔다(둘을 구분해 backend 가 집계에서 제외하고 사유를 표시).
+    시간대·연령 구성비는 칸이 하나라도 결측이면 NaN(남은 칸끼리 100%로 부풀리지 않음).
   - 성별·연령 매출에는 법인 매출이 없어 합계와 다를 수 있다 → 구성비는 해당 항목들의 합을 분모로 쓴다.
   - 행정동 전체 증감률은 두 분기에 모두 있는 업종만 합산한다(업종 구성 변화로 생기는 착시 방지).
   - 유동인구(TOT_FLPOP_CO)는 서울시·KT 생활인구를 길 단위로 배분한 추정치다. 시간대 합 = 요일 합 = 총계라
@@ -71,6 +73,14 @@ def _load(prefix: str, code_col: str, units: set[str], key: list[str], log: list
     return out.loc[~dup]
 
 
+def _full_sum(df: pd.DataFrame, cols: list[str]) -> pd.Series:
+    """칸을 모두 더한 값 — 하나라도 결측이면 NaN, 합이 0 이어도 NaN(0 으로 나누지 않게).
+
+    pandas 의 기본 sum 은 결측을 0 으로 건너뛰어, 일부 칸이 빠진 행의 구성비가 남은 칸끼리 100%로 부풀려진다.
+    """
+    return df[cols].sum(axis=1, min_count=len(cols)).replace(0, np.nan)
+
+
 def _shift_quarter(q: str, n: int) -> str:
     idx = int(q[:4]) * 4 + int(q[4]) - 1 - n
     return f"{idx // 4}{idx % 4 + 1}"
@@ -85,11 +95,13 @@ def _floating_pop(f: pd.DataFrame, code_col: str, out_cd: str, log: list) -> pd.
     out["share_weekend"] = (f["SAT_FLPOP_CO"] + f["SUN_FLPOP_CO"]) / days.sum(axis=1).replace(0, np.nan)
     out["share_female"] = f["FML_FLPOP_CO"] / (f["ML_FLPOP_CO"] + f["FML_FLPOP_CO"]).replace(0, np.nan)
     tcols = [c for c in cols if c.startswith("TMZON_")]
+    tsum = _full_sum(f, tcols)
     for c in tcols:
-        out["share_t" + c.split("_")[1] + "_" + c.split("_")[2]] = f[c] / f[tcols].sum(axis=1).replace(0, np.nan)
+        out["share_t" + c.split("_")[1] + "_" + c.split("_")[2]] = f[c] / tsum
     acols = [c for c in cols if c.startswith("AGRDE_")]
+    asum = _full_sum(f, acols)
     for c in acols:
-        out["share_age" + c.split("_")[1]] = f[c] / f[acols].sum(axis=1).replace(0, np.nan)
+        out["share_age" + c.split("_")[1]] = f[c] / asum
     prev = out[["quarter", out_cd, "flpop"]].assign(quarter=lambda d: d["quarter"].map(lambda q: _shift_quarter(q, -4)))
     out = out.merge(prev.rename(columns={"flpop": "_prev"}), on=["quarter", out_cd], how="left")
     out["flpop_yoy_pct"] = ((out["flpop"] / out["_prev"] - 1) * 100).round(2)
@@ -117,7 +129,9 @@ def build(level: str) -> None:
 
     df = sales.merge(stores[[*key, *store_cols]], on=key, how="left")
     no_store = df["SIMILR_INDUTY_STOR_CO"].isna() | (df["SIMILR_INDUTY_STOR_CO"] <= 0)
-    log.append(("매출은 있으나 점포수 0·없음 → 점포당 평균 계산 불가(행 유지)", int(no_store.sum())))
+    log.append(("매출은 있으나 점포수 없음(결측) → 점포당 평균 계산 불가(행 유지, stores=NaN)", int(df["SIMILR_INDUTY_STOR_CO"].isna().sum())))
+    log.append(("매출은 있으나 점포수 0 → 점포당 평균 계산 불가(행 유지, stores=0)", int((df["SIMILR_INDUTY_STOR_CO"] <= 0).sum())))
+    log.append(("개업·폐업 점포수 결측(0 과 구분해 NaN 으로 둠)", int(df[["OPBIZ_STOR_CO", "CLSBIZ_STOR_CO"]].isna().any(axis=1).sum())))
 
     out = pd.DataFrame({
         "quarter": df["STDR_YYQU_CD"], out_cd: df[code], out_nm: df[lv["name"]],
@@ -131,16 +145,18 @@ def build(level: str) -> None:
     out["frc_share"] = out["frc_stores"] / out["stores"].replace(0, np.nan)
     out["per_store_q"] = np.where(no_store, np.nan, out["sales_q"] / out["stores"])
     out["per_store_month"] = out["per_store_q"] / 3
-    wk = df["MDWK_SELNG_AMT"] + df["WKEND_SELNG_AMT"]
+    wk = df["MDWK_SELNG_AMT"] + df["WKEND_SELNG_AMT"]  # 둘 중 하나라도 결측이면 NaN 이 전파돼 구성비도 비운다
     out["share_weekend"] = df["WKEND_SELNG_AMT"] / wk.replace(0, np.nan)
     gender = df["ML_SELNG_AMT"] + df["FML_SELNG_AMT"]
     out["share_female"] = df["FML_SELNG_AMT"] / gender.replace(0, np.nan)
-    tsum = df[TIME_COLS].sum(axis=1).replace(0, np.nan)
+    tsum = _full_sum(df, TIME_COLS)
     for c in TIME_COLS:
         out["share_t" + c.split("_")[1] + "_" + c.split("_")[2]] = df[c] / tsum
-    asum = df[AGE_COLS].sum(axis=1).replace(0, np.nan)
+    asum = _full_sum(df, AGE_COLS)
     for c in AGE_COLS:
         out["share_age" + c.split("_")[1]] = df[c] / asum
+    for label, cols in (("시간대", TIME_COLS), ("연령대", AGE_COLS)):
+        log.append((f"매출 {label} 칸 일부 결측 → 구성비 계산 안 함(자료 없음)", int(df[cols].isna().any(axis=1).sum())))
 
     # 증감률: 같은 단위·업종의 전 분기 / 전년 동기 대비 (점포당 평균과 총액)
     prev = out[["quarter", out_cd, "svc_cd", "per_store_q", "sales_q"]]
