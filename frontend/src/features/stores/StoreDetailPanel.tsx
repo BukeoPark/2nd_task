@@ -4,6 +4,7 @@ import { Notice, SourceNote } from "../../components/Notice";
 import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { ImprovementReportSection } from "./ImprovementReportSection";
+import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
@@ -40,6 +41,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose }: StoreDetailPanelP
           <SourceNote title={store.source.title} reference={store.source.reference} />
 
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
+          <MyStoreCheckupSection key={storeId} storeId={storeId} />
           <FranchiseSection storeId={storeId} manwon={manwon} />
           <ImprovementReportSection storeId={storeId} manwon={manwon} />
           <GoogleReviewSection storeId={storeId} />

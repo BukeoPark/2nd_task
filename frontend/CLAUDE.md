@@ -12,7 +12,9 @@
   - `features/map`: 카카오맵 바탕(`KakaoMap`)·행정동 경계·R-ONE 임대료 마커
   - `features/food`: 요식업·카페 지도 — 확대 단계별 버블(구·행정동·상권·매장 점), 업종·지표 필터, 범례, 스타벅스·다이소 표시,
     위치 검색(`SearchBox`)과 이용 순서 안내(`FlowGuide`: 검색 → 위치 선택 → 업종 선택 → 후보 지역 비교), 입지 비교(`ComparePanel`), 매장 목록 '더 보기'(`UnitStoreList`)
-  - `features/stores`: 매장 상세 서랍 — 동네 매출 비교·프랜차이즈·상권 운영 점검·Google 고객평가·매장 운영이력·주변 상권 분석
+  - `features/stores`: 매장 상세 서랍 — 동네 매출 비교·내 가게 점검·프랜차이즈·상권 운영 점검·Google 고객평가·매장 운영이력·주변 상권 분석
+    - 내 가게 점검(`MyStoreCheckupSection`): 월 매출 기록을 동네 같은 업종의 **변화율**과 견주고(금액 수준은 카드 추정과 달라 비교하지 않는다), 비용을 넣어 손익분기를 본다.
+      기록은 `lib/myStoreStorage`(localStorage, 가게별)에만 두고 서버로 보내지 않는다. 판단은 `lib/checkup`·`lib/breakeven` 순수 함수.
 - `src/components/`는 기능 독립적인 공용 UI 만.
 - `src/lib/`는 apiClient(백엔드 `/api` 베이스), 지도 헬퍼, 포맷터.
 - 페이지 조립은 `src/pages/`.
