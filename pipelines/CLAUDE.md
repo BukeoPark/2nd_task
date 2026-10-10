@@ -7,6 +7,14 @@
 - 스크립트는 `from pipelines.common import config` 로 경로·상수를 가져온다. 하드코딩 금지.
 - 각 스크립트는 `--help` 로 입력·출력·옵션을 설명하고, 무엇을 몇 건 읽어 몇 건 썼는지 stdout 에 로그한다.
 
+## 외부 참조 파일 (`data/external/`, git 제외 — 새 PC 에서는 직접 받아 넣는다)
+수집기가 없어서 파이프라인이 자동으로 받지 않는다. 없으면 아래처럼 실패하거나 대체된다.
+- `seoul_admin_dong.geojson` — 서울 행정동 경계. GitHub `raqoon886/Local_HangJeongDong` 의 `hangjeongdong_서울특별시.geojson` 을 이 이름으로 저장.
+  없으면 `build_regions` 가 상가업소 convex hull 로 근사 경계를 만들고, `build_dong_crosswalk` 가 `adm_nm` 없음으로 실패한다.
+- `seoul_trdar_area/trdar_area.shp` (+ `.dbf` `.shx` `.prj` `.cpg`) — 서울시 상권 영역. 서울 열린데이터광장 OA-15560 '서울시 상권분석서비스(영역-상권)'.
+  파일은 `seoul_trdar_area/` 바로 아래에 둔다(압축을 풀며 폴더가 한 겹 더 생기기 쉽다). 없으면 `build_trdar_areas` 가 실패한다.
+- 키·`.env` 는 `.env.example`·`frontend/.env.example` 을 복사해 채운다. Windows 는 `uvloop` 가 설치되지 않아 `requirements.txt` 에서 제외돼 있다.
+
 ## collect/ (수집)
 - 출력은 `data/raw/<source>/<dataset>_<수집일 YYYYMMDD>.<ext>` 형식. 기존 파일을 덮어쓰지 않는다.
 - 원본 응답을 최대한 가공 없이 저장한다(스키마 변경·컬럼 선택은 transform 단계에서).
