@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { coverageText, reasonText, scopeLine } from "../src/lib/foodText.ts";
+import { cautionText, coverageText, reasonText, scopeLine } from "../src/lib/foodText.ts";
 
 test("전체 집단을 썼으면 범위 문구를 달지 않고, 일부만 썼으면 제외 범위를 말한다", () => {
   assert.equal(coverageText({ used: 2, total: 2, excluded_sales_share: 0 }), null);
@@ -24,4 +24,12 @@ test("값 없음 사유: 서버 문구를 그대로 쓰고 모르는 코드는 �
 test("업종 범위 줄", () => {
   assert.equal(scopeLine("점포 수", "아이스크림/빙수 기준"), "점포 수: 아이스크림/빙수 기준");
   assert.equal(scopeLine("매출", "커피-음료 전체 기준"), "매출: 커피-음료 전체 기준");
+});
+
+test("비교 점포 10~19곳만 변동성 주의를 달고, 20곳 이상·표본 정보 없음은 일반 표시", () => {
+  const base = { used: 1, total: 1, excluded_sales_share: 0 };
+  assert.equal(cautionText({ ...base, sample: 12, caution: true }), "소규모 상권: 변동성 주의(비교 점포 12곳)");
+  assert.equal(cautionText({ ...base, sample: 25, caution: false }), null);
+  assert.equal(cautionText(base), null);
+  assert.equal(cautionText(null), null);
 });

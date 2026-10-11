@@ -158,12 +158,11 @@ def scope_of(svc: str | None, scls: str | None) -> dict:
     sales_label = f"{svc_nm} 전체" if svc_nm else "외식 전체"
     stores_label = str(cw.loc[cw["indsSclsCd"] == scls, "indsSclsNm"].iloc[0]) if scls else sales_label
     differs = stores_label != sales_label
-    unmapped = int(cw.loc[cw["indsSclsCd"].str.startswith("I2") & cw["svc_cd"].isna(), "store_count"].sum())
-    if not svc and not scls and unmapped:
-        # 업종 필터가 없으면 점포 수는 상가정보 음식점 전부인데, 매출·개폐업은 서울시 10개 외식업종만 대상이다.
-        return {"sales_label": sales_label, "stores_label": stores_label, "differs": False, "unmapped_stores": unmapped,
-                "notice": (f"점포 수는 상가정보 음식점 전체라 서울시 10개 외식업종에 속하지 않는 {unmapped:,}곳(유흥주점·구내식당·동남아식·떡/한과 등)이 포함됩니다. "
-                           f"매출·개폐업·변동성은 그 10개 업종만 대상입니다.")}
+    if not svc and not scls:
+        # 업종 필터가 없으면 점포 수는 상가정보 음식점 전부인데, 매출·개폐업은 서울시 10개 외식업종만 대상이다(지역별 건수는 말하지 않는다).
+        return {"sales_label": sales_label, "stores_label": stores_label, "differs": False,
+                "notice": ("점포 수는 소상공인 상가정보의 음식점 전체이고, 매출·개폐업·변동성은 서울시 외식 10개 업종만 대상입니다. "
+                           "그래서 유흥주점·구내식당·동남아식 등 서울시 10개 업종에 속하지 않는 음식점은 점포 수에만 들어갑니다.")}
     return {"sales_label": sales_label, "stores_label": stores_label, "differs": differs,
             "notice": (f"점포 수·스세권 비율은 '{stores_label}' 기준이지만, 매출·개폐업·변동성은 원천(서울시)에 세부 업종 값이 없어 "
                        f"'{sales_label}' 기준입니다.") if differs else None}
@@ -226,7 +225,12 @@ def _coverage(row) -> dict | None:
     if row is None:
         return None
     share = None if pd.isna(row["excluded_sales_share"]) else round(float(row["excluded_sales_share"]), 4)
-    return {"used": int(row["used"]), "total": int(row["total"]), "excluded_sales_share": share}
+    out = {"used": int(row["used"]), "total": int(row["total"]), "excluded_sales_share": share}
+    sample = row.get("sample")
+    if sample is not None and pd.notna(sample):
+        out["sample"] = int(sample)
+        out["caution"] = unit_metrics.growth_status(sample) == "caution"
+    return out
 
 
 def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
@@ -398,9 +402,13 @@ def _cell(row) -> dict:
     if value is None:
         return {"value": None, "note": REASON_TEXT.get(_reason(row) or unit_metrics.MISSING_INPUTS)}
     cell: dict = {"value": value}
+    sample = row.get("sample")
+    if sample is not None and pd.notna(sample) and unit_metrics.growth_status(sample) == "caution":
+        cell["caution"] = True
+        cell["note"] = f"소규모 상권: 변동성 주의(비교 점포 {int(sample)}곳)"
     if row["total"] and row["used"] < row["total"]:
         share = row["excluded_sales_share"]
-        cell["note"] = f"업종 {int(row['total'])}개 중 {int(row['used'])}개만 반영" + ("" if pd.isna(share) else f"(제외된 업종 매출 {share * 100:.0f}%)")
+        cell["note"] = (cell["note"] + " · " if cell.get("note") else "") + f"업종 {int(row['total'])}개 중 {int(row['used'])}개만 반영" + ("" if pd.isna(share) else f"(제외된 업종 매출 {share * 100:.0f}%)")
         cell["partial"] = True
     return cell
 

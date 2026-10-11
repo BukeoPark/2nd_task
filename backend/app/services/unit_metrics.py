@@ -17,6 +17,7 @@ from app.services import store_churn
 MIN_STORES_FOR_RATE = 3          # 점포 3곳 미만이면 분기 개업률·폐업률·프랜차이즈 비율은 1~2곳 차이로 튀어 계산하지 않는다
 DYNAMICS_QUARTERS = 8            # 상권 시계열이 8개 분기라 두 단위 모두 같은 창(최근 2년)을 쓴다
 MIN_STORES_FOR_YOY = 10          # 매출 증감률은 비교에 쓴 업종의 점포가 (이번·전년 동기 중 적은 쪽) 10곳 미만이면 몇 곳의 변화만으로 수백 %가 튀어 계산하지 않는다
+YOY_CAUTION_BELOW = 20           # 비교 점포 10~19곳은 값은 보이되 '소규모 상권: 변동성 주의'를 붙인다(20곳 이상은 일반 표시)
 MIN_STORES_FOR_VOLATILITY = 10   # 평균 10곳 미만은 1~2곳 증감만으로 변동폭이 크게 튀어 '자료 없음'으로 둔다
 
 NO_ROWS = "no_rows"
@@ -24,12 +25,14 @@ MISSING_INPUTS = "missing_inputs"
 ZERO_STORES = "zero_stores"
 TOO_FEW_STORES = "too_few_stores"
 SHORT_PERIOD = "short_period"
+NO_COMPARE = "no_compare"
 REASON_TEXT = {
     NO_ROWS: "이 조건의 매출 행이 원천에 없음",
     MISSING_INPUTS: "필요한 값(매출·점포 수 등)이 원천에서 비어 있어 계산하지 않음(0 이 아니라 자료 없음)",
     ZERO_STORES: "점포 수가 0 이라 점포당·비율 값을 계산할 수 없음",
     TOO_FEW_STORES: "점포가 너무 적어(표본 작음) 비율·증감률을 계산하지 않음",
     SHORT_PERIOD: "관찰 기간이 부족해 계산하지 않음",
+    NO_COMPARE: "비교 분기(전년 동기·직전 분기)의 자료가 없어 계산하지 않음",
 }
 COLUMNS = ["value", "used", "total", "excluded_sales_share", "reason"]
 
@@ -47,6 +50,31 @@ def _reasons(frame: pd.DataFrame, missing: pd.Series, zero: pd.Series) -> pd.Ser
     reason[no_value & (frame["total"] > 0) & (frame["used"] == 0) & (missing > 0)] = MISSING_INPUTS
     reason[no_value & (frame["used"] > 0)] = TOO_FEW_STORES
     return reason
+
+
+def growth_status(sample) -> str:
+    """증감률 표시 정책 — 지도 상권분석과 매장 상세가 함께 쓴다.
+
+    sample = 비교하는 두 분기(이번 분기와 전년 동기, 또는 이번 분기와 직전 분기)의 점포 수 중 작은 값.
+      없음/결측 → no_compare(비교 분기 자료 없음) · 10곳 미만 → too_few(산출 제외) · 10~19곳 → caution(변동성 주의) · 20곳 이상 → ok
+    """
+    if sample is None or pd.isna(sample):
+        return "no_compare"
+    if sample < MIN_STORES_FOR_YOY:
+        return "too_few"
+    return "caution" if sample < YOY_CAUTION_BELOW else "ok"
+
+
+def per_store_growth(per_store_now, stores_now, per_store_cmp, stores_cmp) -> dict:
+    """점포당 평균매출(분기) 증감률 — 총매출 증감과는 다른 지표다(점포 수 변화가 분모에 반영됨). 같은 표본 정책을 쓴다.
+
+    값은 (이번 점포당 ÷ 비교 점포당 − 1) × 100. 비교 분기 값이 없거나 0 이면 no_compare.
+    """
+    ok = all(v is not None and not pd.isna(v) for v in (per_store_now, per_store_cmp, stores_now, stores_cmp)) and per_store_cmp > 0
+    sample = min(stores_now, stores_cmp) if ok else None
+    status = growth_status(sample)
+    value = (per_store_now / per_store_cmp - 1) * 100 if status in ("ok", "caution") else None
+    return {"value": None if value is None else round(float(value), 2), "status": status, "sample": None if sample is None else int(sample)}
 
 
 def ratio_metric(now: pd.DataFrame, key: str, num: str, den: str, *, scale: float = 1.0, min_den: float = 0.0,
@@ -90,7 +118,7 @@ def sales_per_flpop(now: pd.DataFrame, key: str, raw: str) -> pd.DataFrame:
 
 
 def sales_yoy(now: pd.DataFrame, ago: pd.DataFrame, key: str, raw: str) -> pd.DataFrame:
-    """전년 동기 대비 총매출 증감률(명목) — 이번·전년 동기 매출이 모두 값인 (원 단위·업종)만 양쪽에서 합산한다.
+    """비교 분기(전년 동기 또는 직전 분기) 대비 총매출 증감률(명목) — 이번·전년 동기 매출이 모두 값인 (원 단위·업종)만 양쪽에서 합산한다.
 
     점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않는다. 비교에 쓴 업종의 점포가 두 분기 중 적은 쪽이 10곳 미만이면
     표본이 너무 작아 값을 계산하지 않는다(사유 too_few_stores).
@@ -106,14 +134,18 @@ def sales_yoy(now: pd.DataFrame, ago: pd.DataFrame, key: str, raw: str) -> pd.Da
     base = g["sales_q_ago"].sum()
     # 점포 수는 값이 있는 칸만 더한다(결측을 0 으로 세지 않음). 둘 중 적은 쪽을 표본 크기로 본다.
     sample = pd.concat([g["stores"].sum(), g["stores_ago"].sum()], axis=1).min(axis=1).reindex(out.index)
-    small = (out["used"] > 0) & (sample < MIN_STORES_FOR_YOY)
-    out["value"] = ((g["sales_q"].sum() / base.where(base > 0) - 1) * 100).reindex(out.index).where(~small)
+    out["sample"] = sample  # 비교에 쓴 점포 수(이번·비교 분기 중 적은 쪽) — 화면의 '변동성 주의' 판단에 쓴다
+    unknown = (out["used"] > 0) & ((g["stores"].count().reindex(out.index).fillna(0) == 0) | (g["stores_ago"].count().reindex(out.index).fillna(0) == 0))
+    small = (out["used"] > 0) & ~unknown & (sample < MIN_STORES_FOR_YOY)
+    out["value"] = ((g["sales_q"].sum() / base.where(base > 0) - 1) * 100).reindex(out.index).where(~small & ~unknown)
     sales_all = now.groupby(key)["sales_q"].sum()
     used_sales = g["sales_q"].sum().reindex(out.index).fillna(0.0)
     out["excluded_sales_share"] = ((sales_all.reindex(out.index) - used_sales) / sales_all.reindex(out.index).where(sales_all.reindex(out.index) > 0)).clip(lower=0).where(sales_all.reindex(out.index) > 0)
     no_prev = out["value"].isna() & (out["total"] > 0) & ~small
     out["reason"] = pd.Series(None, index=out.index, dtype=object)
-    out.loc[no_prev, "reason"] = np.where(now["sales_q"].isna().groupby(now[key]).any().reindex(out.index)[no_prev], MISSING_INPUTS, SHORT_PERIOD)
+    # 이번 분기 매출이 비었으면 입력 결측, 그게 아닌데 비교할 쌍이 없으면 '비교 분기 자료 없음'(관찰 기간 부족과 구분)
+    out.loc[no_prev, "reason"] = np.where(now["sales_q"].isna().groupby(now[key]).any().reindex(out.index)[no_prev], MISSING_INPUTS, NO_COMPARE)
+    out.loc[unknown, "reason"] = MISSING_INPUTS
     out.loc[small, "reason"] = TOO_FEW_STORES
     out.loc[out["total"] == 0, "reason"] = NO_ROWS
     return out

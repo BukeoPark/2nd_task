@@ -124,7 +124,7 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
                     <div style={{ fontWeight: max !== null && c.value === max ? 700 : 400, color: c.value === null ? "#9CA3AF" : "#111827" }}>
                       {formatMetric(r.kind, c.value)}
                     </div>
-                    {c.note && <div style={{ fontSize: 10, color: c.partial ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
+                    {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
                   </td>
                 ))}
               </tr>,

@@ -9,7 +9,7 @@ import math
 
 import pandas as pd
 
-from app.services import data_store, store_churn, store_profile
+from app.services import data_store, store_churn, store_profile, unit_metrics
 
 quarter_label = store_churn.quarter_label
 
@@ -194,6 +194,46 @@ def _pick_unit(store: dict, svc: str) -> tuple[str, str, str | None, str | None]
     return "trdar", t["trdar_cd"], t["trdar_type"], None
 
 
+GROWTH_MESSAGE = {
+    "too_few": "비교 점포가 {n}곳(10곳 미만)이라 증감률을 계산하지 않음",
+    "no_compare": "비교 분기({q})의 자료가 없어 계산하지 않음",
+    "missing": "비교에 필요한 매출·점포 수가 원천에서 비어 있어 계산하지 않음(0 이 아니라 자료 없음)",
+    "caution": "소규모 상권: 변동성 주의(비교 점포 {n}곳)",
+    "ok": None,
+}
+
+
+def _growth(mine: pd.DataFrame, latest: str, shift: int, unit: dict, code: str) -> dict:
+    """이 단위·업종의 '비교 분기 대비' 증감 — 총매출과 점포당 평균매출은 서로 다른 지표라 따로 계산한다.
+
+    둘 다 지도 상권분석과 같은 정책을 쓴다: 비교하는 두 분기의 점포 수 중 작은 값이 10곳 미만이면 계산 제외, 10~19곳이면 변동성 주의.
+    총매출 증감은 지도와 같은 `unit_metrics.sales_yoy` 를 그대로 호출한다(전년 동기든 직전 분기든 비교 분기만 다르다).
+    """
+    cmp_q = store_churn.shift_quarter(latest, shift)
+    now = mine.loc[mine["quarter"] == latest].assign(_u=code)
+    ago = mine.loc[mine["quarter"] == cmp_q].assign(_u=code)
+    qlabel = quarter_label(cmp_q)
+
+    def pack(status: str, value, sample) -> dict:
+        n = None if sample is None or pd.isna(sample) else int(sample)
+        msg = GROWTH_MESSAGE[status]
+        return {"value": value, "status": status, "sample": n, "message": msg.format(n=n, q=qlabel) if msg else None}
+
+    tot = unit_metrics.sales_yoy(now, ago, "_u", unit["cd"]).loc[code]
+    reason = tot["reason"]
+    if tot["value"] == tot["value"]:  # NaN 이 아님
+        sales = pack(unit_metrics.growth_status(tot["sample"]), _num(tot["value"]), tot["sample"])
+    else:
+        status = {unit_metrics.TOO_FEW_STORES: "too_few", unit_metrics.MISSING_INPUTS: "missing"}.get(reason, "no_compare")
+        sales = pack(status, None, tot["sample"] if status == "too_few" else None)
+
+    c, a = (now.iloc[0] if len(now) else None), (ago.iloc[0] if len(ago) else None)
+    per = unit_metrics.per_store_growth(*(None if c is None else c["per_store_q"], None if c is None else c["stores"],
+                                          None if a is None else a["per_store_q"], None if a is None else a["stores"]))
+    per_store = pack(per["status"], per["value"], per["sample"])
+    return {"compare_quarter": cmp_q, "compare_label": qlabel, "total_sales": sales, "per_store": per_store}
+
+
 def benchmark(bizes_id: str) -> dict:
     store = store_profile.get_store(bizes_id)
     cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
@@ -256,6 +296,7 @@ def benchmark(bizes_id: str) -> dict:
         "per_store_month": _num(cur["per_store_month"]), "per_store_q": _num(cur["per_store_q"]),
         "stores": int(cur["stores"]), "sales_q": _num(cur["sales_q"]),
         "per_store_qoq_pct": _num(cur["per_store_qoq_pct"]), "per_store_yoy_pct": _num(cur["per_store_yoy_pct"]),
+        "growth": {"yoy": _growth(mine, latest, 4, unit, code), "qoq": _growth(mine, latest, 1, unit, code)},
         "rank": rank, "peer_count": len(peers),
         "peers": [{"name": getattr(r, unit["nm"]), "per_store_month": _num(r.per_store_month), "stores": int(r.stores)}
                   for r in peers.itertuples()],

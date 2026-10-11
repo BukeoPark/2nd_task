@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
-import { Notice, Section, SourceNote } from "../../components/Notice";
+import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import type { StoreBasic } from "../../lib/apiClient";
 import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
@@ -36,6 +36,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {store && data && (
         <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 2 }}>기본정보 · 이 매장</div>
           <div style={{ fontSize: 12, color: "#374151" }}>
             {store.address ?? "주소 정보 없음"}
             {store.building ? ` (${store.building})` : ""}
@@ -50,11 +51,8 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
           <AnchorSection storeId={storeId} />
           <NearbyAnalysisSection storeId={storeId} />
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
-          <FranchiseSection storeId={storeId} manwon={manwon} />
-          <ImprovementReportSection storeId={storeId} manwon={manwon} />
-
-          <Section title="소속 지역 분석">
-            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장 고유 정보가 아님).</div>
+          <Section title="소속 상권 — 행정동·발달/골목상권">
+            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균).</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>
               {store.trdar ? (
@@ -63,6 +61,14 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
                 <Notice tone="muted">이 매장은 서울시 지정 상권 경계 밖에 있어 세부 상권 분석이 없습니다.</Notice>
               )}
             </div>
+          </Section>
+
+          <Section title="추가 참고 — 상권 평균 기준">
+            <Fold title="프랜차이즈 참고·상권 운영 점검 펼치기">
+              <FranchiseSection storeId={storeId} manwon={manwon} />
+              <ImprovementReportSection storeId={storeId} manwon={manwon} />
+
+            </Fold>
           </Section>
         </>
       )}

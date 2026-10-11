@@ -4,6 +4,8 @@ export interface CoverageLike {
   used: number;
   total: number;
   excluded_sales_share: number | null;
+  sample?: number;
+  caution?: boolean;
 }
 
 /** 일부 업종 집단만 계산에 썼을 때의 범위 문구(전체를 썼으면 null). 전체 평균으로 오해하지 않게 화면에 그대로 보인다. */
@@ -21,4 +23,9 @@ export function reasonText(reason: string | null | undefined, reasons: Record<st
 /** 지표 숫자 옆에 항상 붙는 업종 범위 줄 — '커피-음료 전체 기준' */
 export function scopeLine(label: string, metricScope: string): string {
   return `${label}: ${metricScope}`;
+}
+
+/** 매출 증감률의 비교 점포가 10~19곳일 때의 안내(20곳 이상이면 null). */
+export function cautionText(c: CoverageLike | null | undefined): string | null {
+  return c?.caution && c.sample !== undefined ? `소규모 상권: 변동성 주의(비교 점포 ${c.sample}곳)` : null;
 }

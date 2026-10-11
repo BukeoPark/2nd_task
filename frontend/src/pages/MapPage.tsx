@@ -17,7 +17,7 @@ import { CompareDashboard } from "../features/food/CompareDashboard";
 import { AreaOverviewPanel } from "../features/area/AreaOverviewPanel";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
 import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, OverviewTrdar, RebZone, SearchResult } from "../lib/apiClient";
-import { coverageText, reasonText } from "../lib/foodText";
+import { cautionText, coverageText, reasonText } from "../lib/foodText";
 import { canAct, classifyBubbles, viewState } from "../lib/queryState";
 import { searchTarget } from "../lib/searchTarget";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
@@ -50,6 +50,7 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
   const stores = data.metric === "stores";
   const value = formatMetric(data.kind, b.value);
   const cover = coverageText(b.coverage);
+  const caution = cautionText(b.coverage);
   return {
     title: `${b.name}${b.type ? ` (${b.type})` : ""}`,
     brief: stores
@@ -63,6 +64,7 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
         { label: "이 지표의 업종 범위", value: data.scope.metric_scope },
         ...(b.value === null ? [{ label: "자료 없음 사유", value: reasonText(b.reason, data.reasons) }] : []),
         ...(cover ? [{ label: "계산 범위", value: cover }] : []),
+        ...(caution ? [{ label: "표본 주의", value: caution }] : []),
       ]),
       { label: `점포 수 · ${data.scope.stores_label}`, value: b.size === null ? "자료 없음" : `${b.size.toLocaleString()}곳` },
       ...(stores ? [] : [{ label: "기준", value: data.as_of }]),

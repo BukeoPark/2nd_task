@@ -121,7 +121,7 @@ function Card({ row, label, hint }: { row: Row | undefined; label: string; hint?
       <div style={{ fontWeight: 700, fontSize: 16, color: c?.value == null ? "#9CA3AF" : "#111827" }}>{row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"}</div>
       {row?.scope && <div style={{ fontSize: 10, fontWeight: 600, color: "#1D4ED8" }}>{row.scope}</div>}
       <div style={{ fontSize: 10, color: "#9CA3AF" }}>{hint ?? row?.as_of}</div>
-      {c?.note && <div style={{ fontSize: 10, color: c.partial ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
+      {c?.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
     </div>
   );
 }
@@ -131,7 +131,7 @@ function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?
     <div style={{ marginTop: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Card row={stores} label="점포 수" hint={`소상공인 상가정보 ${stores?.as_of ?? ""}`} />
-        <Card row={perStore} label="점포당 추정 월매출" hint={`서울시 추정 · ${perStore?.as_of ?? ""}`} />
+        <Card row={perStore} label="점포당 추정 월매출" hint={`서울시 공개 자료(추정) · ${perStore?.as_of ?? ""}`} />
       </div>
       <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</div>
@@ -150,7 +150,7 @@ function Rows({ rows }: { rows: (Row | undefined)[] }) {
             <div>
               <div>{r.label}</div>
               <div style={{ fontSize: 10, color: "#9CA3AF" }}>{r.scope ? `${r.scope} · ` : ""}{r.source} · {r.as_of ?? "기준 시점 없음"}</div>
-              {c.note && <div style={{ fontSize: 10, color: c.partial ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
+              {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
             </div>
             <div style={{ fontWeight: 600, whiteSpace: "nowrap", color: c.value === null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c.value)}</div>
           </div>

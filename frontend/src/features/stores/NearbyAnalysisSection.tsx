@@ -1,4 +1,4 @@
-import { Notice, Section, SourceNote } from "../../components/Notice";
+import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import type { NearbyAnalysisResponse } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
 import { ZONE_COLORS } from "../../lib/vizConfig";
@@ -75,6 +75,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
         )}
       </div>
 
+      <Fold title="연도별 개업(인허가)·폐업 건수 보기">
       <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
         연도별 개업(인허가)·폐업 건수 <Legend color="#3B82F6" label="개업" /> <Legend color="#EF4444" label="폐업" />
       </div>
@@ -89,6 +90,8 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
           </div>
         ))}
       </div>
+
+      </Fold>
 
       {(data.warnings ?? []).map((w) => (
         <div key={w} style={{ marginTop: 6 }}>

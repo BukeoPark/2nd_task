@@ -88,3 +88,34 @@ def test_store_in_commercial_area_uses_trdar(client, stores_cw):
     assert body["peer_count"] == len(have)
     if body["floating"]:
         assert body["floating"]["sales_per_10k"] == pytest.approx(src["sales_q"] / src["flpop"] * 1e4, rel=1e-6)
+
+
+def test_store_growth_matches_the_map_yoy_and_keeps_two_metrics_apart(client):
+    """매장 상세의 총매출 증감은 지도 상권분석과 같은 계산(같은 업종·단위·기간)이고, 점포당 증감은 별도 지표로 따로 나온다."""
+    import pandas as pd
+    from app.services import food_map
+    st = data_store.load_parquet("stores.parquet")
+    cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
+    checked = 0
+    for scls in ["I20101", "I21201", "I20301", "I21006"]:
+        bid = st.loc[st["indsSclsCd"] == scls].sort_values("bizesId").iloc[0]["bizesId"]
+        body = client.get(f"/api/stores/{bid}/sales-benchmark").json()
+        if body["status"] != "ok" or body["unit"]["level"] != "trdar":
+            continue
+        g = body["growth"]["yoy"]
+        svc = cw.loc[cw["indsSclsCd"] == scls, "svc_cd"].iloc[0]
+        bubble = next(b for b in food_map.bubbles("trdar", svc, None, "sales_yoy_pct")["bubbles"] if b["code"] == body["unit"]["code"])
+        assert g["total_sales"]["value"] == (None if bubble["value"] is None else pytest.approx(bubble["value"], abs=0.01))
+        assert g["compare_quarter"] == "20252" and body["growth"]["qoq"]["compare_quarter"] == "20261"
+        assert {"total_sales", "per_store"} <= g.keys()
+        checked += 1
+    assert checked >= 1
+
+
+def test_store_growth_hides_values_when_few_comparison_stores(client):
+    """영등포유통상가 일식 등 점포가 적은 상권은 증감률을 계산하지 않고 이유를 말한다."""
+    st = data_store.load_parquet("stores.parquet")
+    bid = st.loc[st["indsSclsCd"] == "I21201"].sort_values("bizesId").iloc[0]["bizesId"]
+    g = client.get(f"/api/stores/{bid}/sales-benchmark").json()["growth"]["yoy"]
+    for cell in (g["total_sales"], g["per_store"]):
+        assert cell["status"] == "too_few" and cell["value"] is None and cell["sample"] < 10 and "10곳 미만" in cell["message"]

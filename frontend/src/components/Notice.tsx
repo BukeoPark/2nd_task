@@ -38,3 +38,13 @@ export function Section({ title, children, right }: { title: string; children: R
     </section>
   );
 }
+
+/** 접기/펼치기 — 핵심은 위에 두고 상세는 summary 뒤에 숨긴다. */
+export function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details open={open} style={{ marginTop: 10 }}>
+      <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#374151" }}>{title}</summary>
+      <div style={{ marginTop: 6 }}>{children}</div>
+    </details>
+  );
+}

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Notice, Section, SourceNote } from "../../components/Notice";
-import { apiClient, type SalesBenchmarkResponse } from "../../lib/apiClient";
+import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { apiClient, type GrowthCell, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
-/** '내 매출 벤치마킹' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
+/** '내 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
  * 입력한 매출은 이 화면 안에서만 계산하고 서버로 보내거나 저장하지 않는다. */
 export function SalesBenchmarkSection({
   storeId,
@@ -20,7 +20,7 @@ export function SalesBenchmarkSection({
     staleTime: 10 * 60 * 1000,
   });
   return (
-    <Section title="내 매출 벤치마킹">
+    <Section title="내 매출 비교 — 소속 상권 동일 업종 추정 평균">
       <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. 내 실제 월매출을 입력하면 이 평균과 견줘 봅니다.</Notice>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
@@ -68,19 +68,6 @@ function Body({
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="점포당 월평균 추정매출" value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균`} />
-        <Card label={`${data.unit?.peer_label ?? "파일럿"} 중 순위`} value={`${data.rank} / ${data.peer_count}위`} sub="같은 업종 점포당 평균 기준" />
-        <Card label="전년 동기 대비" value={formatSignedPct(data.per_store_yoy_pct)} sub="점포당 평균" />
-        <Card label="전 분기 대비" value={formatSignedPct(data.per_store_qoq_pct)} sub="계절 영향 있음" />
-      </div>
-
-      {(data.warnings ?? []).map((w) => (
-        <div key={w} style={{ marginTop: 6 }}>
-          <Notice tone="warn">{w}</Notice>
-        </div>
-      ))}
-
       <MyRevenueInput
         manwon={manwon}
         onManwonChange={onManwonChange}
@@ -89,12 +76,63 @@ function Body({
         unitLabel={data.unit?.label ?? "동네"}
         peerLabel={data.unit?.peer_label ?? "파일럿"}
       />
+      <div style={{ marginTop: 10 }}>
+        <Card label="소속 상권 동일 업종 점포당 월평균 추정매출(이 매장의 매출 아님)" value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균 · 서울시 추정`} />
+      </div>
+      <Fold title="상권 평균의 순위·증감 보기">
+        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>
+          {data.unit?.peer_label ?? "파일럿"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
+        </div>
+        {data.growth ? (
+          <>
+            <GrowthRow title="전년 동기 대비" pair={data.growth.yoy} />
+            <GrowthRow title="직전 분기 대비(계절 영향 있음)" pair={data.growth.qoq} />
+            <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+              총매출 증감은 점포 수 변화가 섞인 값이고, 점포당 평균매출 증감은 점포 수로 나눈 값이라 서로 다른 지표입니다. 둘 다 명목값이며, 비교하는 두 분기의 점포 수 중 작은 쪽이 10곳 미만이면 계산하지 않고 10~19곳이면 변동성 주의를 붙입니다.
+            </div>
+          </>
+        ) : (
+          <Notice tone="muted">증감 자료 없음</Notice>
+        )}
+      </Fold>
+
+      {(data.warnings ?? []).map((w) => (
+        <div key={w} style={{ marginTop: 6 }}>
+          <Notice tone="warn">{w}</Notice>
+        </div>
+      ))}
+
 
     </div>
   );
 }
 
 /** 사장님 월 매출 입력 → 동네 평균·다른 동네 평균들과 비교. 값은 이 컴포넌트 상태에만 있고 네트워크로 나가지 않는다. */
+function GrowthRow({ title, pair }: { title: string; pair: { compare_label: string; total_sales: GrowthCell; per_store: GrowthCell } }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 600 }}>
+        {title} <span style={{ fontWeight: 400, color: "#6B7280" }}>· 비교 {pair.compare_label}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+        <GrowthCard label="총매출 증감" cell={pair.total_sales} />
+        <GrowthCard label="점포당 평균매출 증감" cell={pair.per_store} />
+      </div>
+    </div>
+  );
+}
+
+function GrowthCard({ label, cell }: { label: string; cell: GrowthCell }) {
+  const shown = cell.value !== null;
+  return (
+    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: 15, color: shown ? "#111827" : "#9CA3AF" }}>{shown ? formatSignedPct(cell.value) : cell.status === "too_few" ? "표본 작음" : "자료 없음"}</div>
+      {cell.message && <div style={{ fontSize: 10, color: cell.status === "caution" ? "#B45309" : "#6B7280" }}>{cell.message}</div>}
+    </div>
+  );
+}
+
 function MyRevenueInput({
   manwon,
   onManwonChange,

@@ -101,6 +101,7 @@ def test_yoy_is_not_computed_for_a_tiny_sample():
     ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=5)])
     r = um.sales_yoy(now, ago, "_unit", "_unit_raw").loc["U"]
     assert np.isnan(r["value"]) and r["reason"] == um.TOO_FEW_STORES and r["used"] == 1
+    assert r["sample"] == 5
     big = um.sales_yoy(_now([_row("A", "CS1", sales=500.0, stores=12)]), _now([_row("A", "CS1", "20252", sales=100.0, stores=10)]), "_unit", "_unit_raw").loc["U"]
     assert big["value"] == pytest.approx(400.0)    # 기준(10곳)을 넘으면 그대로 계산
 
@@ -136,3 +137,58 @@ def test_empty_input_does_not_crash():
     empty = _now([_row("A", "CS1", sales=1, stores=1)]).iloc[0:0]
     cov, _ = um.latest_metrics(empty, "20262")
     assert all(f.empty for f in cov.values())
+
+
+def test_yoy_reports_the_sample_that_drives_the_caution_label():
+    now = _now([_row("A", "CS1", sales=110.0, stores=14)])
+    ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=30)])
+    r = um.sales_yoy(now, ago, "_unit", "_unit_raw").loc["U"]
+    assert r["sample"] == 14 and um.MIN_STORES_FOR_YOY <= r["sample"] < um.YOY_CAUTION_BELOW   # 적은 쪽(14곳)이 표본
+
+
+# ── 증감률 표시 정책 경계: 비교하는 두 분기 점포 수 중 작은 값 ──
+@pytest.mark.parametrize("prev,now,status", [
+    (8, 12, "too_few"),      # 전년 8곳 · 올해 12곳 → 작은 값 8 → 계산 제외
+    (12, 8, "too_few"),      # 반대로 올해가 적어도 같다
+    (9, 100, "too_few"),
+    (10, 10, "caution"),     # 정확히 10곳부터 계산하되 주의
+    (10, 40, "caution"),
+    (19, 25, "caution"),
+    (20, 20, "ok"),          # 20곳부터 일반 표시
+    (20, 300, "ok"),
+])
+def test_growth_policy_uses_the_smaller_store_count(prev, now, status):
+    sample = min(prev, now)
+    assert um.growth_status(sample) == status
+    # 총매출 증감(지도와 같은 함수)과 점포당 평균매출 증감이 같은 판정을 낸다
+    yoy = um.sales_yoy(_now([_row("A", "CS1", sales=220.0, stores=now)]), _now([_row("A", "CS1", "20252", sales=100.0, stores=prev)]), "_unit", "_unit_raw").loc["U"]
+    per = um.per_store_growth(220.0 / now, now, 100.0 / prev, prev)
+    assert per["status"] == status and per["sample"] == sample
+    if status == "too_few":
+        assert np.isnan(yoy["value"]) and yoy["reason"] == um.TOO_FEW_STORES and per["value"] is None
+    else:
+        assert yoy["value"] == pytest.approx(120.0) and per["value"] == pytest.approx((220.0 / now) / (100.0 / prev) * 100 - 100, abs=0.01)
+
+
+def test_total_sales_and_per_store_growth_are_different_numbers():
+    """점포 수가 늘면 총매출 증감과 점포당 증감이 달라진다 — 억지로 같게 맞추지 않는다."""
+    yoy = um.sales_yoy(_now([_row("A", "CS1", sales=200.0, stores=40)]), _now([_row("A", "CS1", "20252", sales=100.0, stores=20)]), "_unit", "_unit_raw").loc["U"]
+    per = um.per_store_growth(200.0 / 40, 40, 100.0 / 20, 20)
+    assert yoy["value"] == pytest.approx(100.0) and per["value"] == pytest.approx(0.0)
+
+
+def test_growth_without_a_comparison_quarter_is_reported_separately():
+    now = _now([_row("A", "CS1", sales=110.0, stores=30)])
+    none_ago = _now([_row("Z", "CS9", "20252", sales=5.0, stores=30)])           # 같은 업종 행이 비교 분기에 없다
+    r = um.sales_yoy(now, none_ago, "_unit", "_unit_raw").loc["U"]
+    assert np.isnan(r["value"]) and r["reason"] == um.NO_COMPARE                 # 점포가 적어서(too_few)가 아니라 '비교 자료 없음'
+    assert um.growth_status(None) == "no_compare" and um.growth_status(float("nan")) == "no_compare"
+    assert um.per_store_growth(10.0, 30, None, None)["status"] == "no_compare"
+    assert um.per_store_growth(10.0, 30, 0.0, 30)["status"] == "no_compare"       # 0 으로 나누지 않는다
+
+
+def test_yoy_with_missing_store_counts_is_missing_not_too_few():
+    now = _now([_row("A", "CS1", sales=110.0, stores=np.nan)])
+    ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=30)])
+    r = um.sales_yoy(now, ago, "_unit", "_unit_raw").loc["U"]
+    assert np.isnan(r["value"]) and r["reason"] == um.MISSING_INPUTS

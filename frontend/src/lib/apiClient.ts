@@ -168,6 +168,23 @@ export interface FloatingComparison {
   source: { title: string; reference: string };
 }
 
+/** 비교 분기 대비 증감 한 칸 — 점포 10곳 미만은 값 없음(too_few), 10~19곳은 변동성 주의(caution), 비교 분기 자료가 없으면 no_compare */
+export interface GrowthCell {
+  value: number | null;
+  status: "ok" | "caution" | "too_few" | "no_compare" | "missing";
+  sample: number | null;
+  message: string | null;
+}
+
+export interface GrowthPair {
+  compare_quarter: string;
+  compare_label: string;
+  /** 총매출 증감(지도 상권분석과 같은 계산) */
+  total_sales: GrowthCell;
+  /** 점포당 평균매출 증감 — 총매출 증감과 다른 지표 */
+  per_store: GrowthCell;
+}
+
 export interface SalesBenchmarkResponse {
   status: "ok" | "no_match" | "no_sales" | "no_data_in_dong";
   message?: string;
@@ -184,6 +201,7 @@ export interface SalesBenchmarkResponse {
   stores?: number;
   per_store_qoq_pct?: number | null;
   per_store_yoy_pct?: number | null;
+  growth?: { yoy: GrowthPair; qoq: GrowthPair };
   rank?: number;
   peer_count?: number;
   peers?: { name: string; per_store_month: number | null; stores: number }[];
@@ -329,7 +347,7 @@ export interface FoodCompareResponse {
     /** 이 지표가 적용된 업종 범위('커피-음료 전체 기준') — 값 바로 옆에 보인다. 수요·임대 행은 업종과 무관해 null */
     scope: string | null;
     basis?: string | null;
-    cells: { value: number | null; note?: string; partial?: boolean }[];
+    cells: { value: number | null; note?: string; partial?: boolean; caution?: boolean }[];
   }[];
   scope: FoodScope;
   notes: string[];
@@ -410,9 +428,12 @@ export interface FoodCoverage {
   used: number;
   total: number;
   excluded_sales_share: number | null;
+  /** 매출 증감률 계산에 쓴 비교 점포 수, 그리고 10~19곳이라 변동성 주의가 필요한지 */
+  sample?: number;
+  caution?: boolean;
 }
 
-export type FoodReason = "no_rows" | "missing_inputs" | "zero_stores" | "too_few_stores" | "short_period" | "no_stores";
+export type FoodReason = "no_rows" | "missing_inputs" | "zero_stores" | "too_few_stores" | "short_period" | "no_compare" | "no_stores";
 
 export interface FoodBubble {
   code: string;

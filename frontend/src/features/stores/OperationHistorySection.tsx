@@ -14,16 +14,25 @@ const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
 };
 
 /** 매장 상단 요약용 — 인허가 기준 업력·영업 상태. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다. */
-export function LicenseSummary({ history }: { history: OperationHistory }) {
+export function LicenseSummary({ history, part = "core" }: { history: OperationHistory; part?: "core" | "detail" }) {
   const { link, license } = history;
   return (
     <div>
-      {link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
+      {part === "core" && link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
 
-      {license && (
+      {license && part === "core" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Card label={license.age_basis} value={license.age_label ?? "정보 없음"} sub={license.permit_date ? `인허가일 ${license.permit_date}` : undefined} />
-          <Card label="영업 상태" value={license.state_name} sub={license.detail_state ?? undefined} />
+          <Card label={license.age_basis} value={license.age_label ?? "자료 없음"} sub={license.permit_date ? `인허가일 ${license.permit_date}` : undefined} />
+          <Card label="인허가상 영업 상태" value={license.state_name} sub={license.detail_state ?? undefined} />
+        </div>
+      )}
+      {license && part === "core" && (
+        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
+          인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다. {license.age_caveat}
+        </div>
+      )}
+      {license && part === "detail" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Card label="인허가 업종" value={license.license_name} sub={license.uptae ?? undefined} />
           <Card
             label="같은 매장 추정 인허가"
@@ -32,8 +41,7 @@ export function LicenseSummary({ history }: { history: OperationHistory }) {
           />
         </div>
       )}
-      {license && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>{license.age_caveat}</div>}
-      {!license && !link && <Notice tone="muted">영업 상태·업력 자료 없음</Notice>}
+      {part === "core" && !license && !link && <Notice tone="muted">영업 상태·업력 자료 없음</Notice>}
     </div>
   );
 }
@@ -42,8 +50,9 @@ export function LicenseSummary({ history }: { history: OperationHistory }) {
 export function OperationHistorySection({ history }: { history: OperationHistory }) {
   const { certifications, sources } = history;
   return (
-    <Section title="인증·지정 이력">
-      <div>
+    <Section title="운영이력 — 인허가·인증·지정">
+      <LicenseSummary history={history} part="detail" />
+      <div style={{ marginTop: 10 }}>
         {certifications.map((c) => (
           <div key={c.name} style={{ fontSize: 12 }}>
             <strong>{c.name}</strong>{" "}

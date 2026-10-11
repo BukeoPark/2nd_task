@@ -233,12 +233,27 @@ def test_unit_store_list_keeps_the_category_filter_across_pages(client):
     assert client.get("/api/food/units/trdar/3120148/stores", params={"offset": -1}).status_code == 422
 
 
-def test_default_scope_notice_mentions_unmapped_food_stores(client):
-    """업종 필터가 없으면 점포 수(상가정보 음식점 전체)와 매출(서울시 10개 업종)의 범위 차이를 알린다."""
+def test_default_scope_notice_explains_range_without_a_fixed_count(client):
+    """업종 필터가 없으면 점포 수(상가정보 음식점 전체)와 매출(서울시 10개 업종)의 범위 차이만 말한다 — 지역별처럼 보이는 고정 건수는 없다."""
+    import re
     body = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores"}).json()
-    assert body["scope"]["unmapped_stores"] > 0 and "서울시 10개 외식업종" in body["scope"]["notice"]
+    notice = body["scope"]["notice"]
+    assert "서울시 외식 10개 업종" in notice and not re.search(r"\d[\d,]*\s*곳", notice) and "unmapped_stores" not in body["scope"]
     one = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "svc": "CS100001"}).json()
     assert one["scope"]["notice"] is None
+
+
+def test_yoy_caution_only_for_10_to_19_comparison_stores(client):
+    """비교 점포 10~19곳은 '변동성 주의', 20곳 이상은 일반 표시, 10곳 미만은 값 자체가 없다."""
+    body = client.get("/api/food/bubbles", params={"level": "trdar", "metric": "sales_yoy_pct"}).json()
+    seen = {"caution": 0, "plain": 0}
+    for b in body["bubbles"]:
+        c = b["coverage"]
+        if b["value"] is None or c is None or "sample" not in c:
+            continue
+        assert c["sample"] >= 10 and c["caution"] == (c["sample"] < 20)
+        seen["caution" if c["caution"] else "plain"] += 1
+    assert seen["caution"] and seen["plain"]
 
 
 def test_yoy_hidden_for_tiny_trdars(client):
