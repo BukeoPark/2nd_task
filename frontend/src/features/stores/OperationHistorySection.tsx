@@ -13,11 +13,11 @@ const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
   source_missing_gu: "muted",
 };
 
-/** '매장 운영이력' — 인허가 기준 업력·영업 상태·인증/지정. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다. */
-export function OperationHistorySection({ history }: { history: OperationHistory }) {
-  const { link, license, certifications, sources } = history;
+/** 매장 상단 요약용 — 인허가 기준 업력·영업 상태. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다. */
+export function LicenseSummary({ history }: { history: OperationHistory }) {
+  const { link, license } = history;
   return (
-    <Section title="매장 운영이력">
+    <div>
       {link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
 
       {license && (
@@ -33,9 +33,17 @@ export function OperationHistorySection({ history }: { history: OperationHistory
         </div>
       )}
       {license && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>{license.age_caveat}</div>}
+      {!license && !link && <Notice tone="muted">영업 상태·업력 자료 없음</Notice>}
+    </div>
+  );
+}
 
-      <div style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>인증·지정</div>
+/** '인증·지정 이력' — 모범업소 등 지정 여부(매장 고유 정보). */
+export function OperationHistorySection({ history }: { history: OperationHistory }) {
+  const { certifications, sources } = history;
+  return (
+    <Section title="인증·지정 이력">
+      <div>
         {certifications.map((c) => (
           <div key={c.name} style={{ fontSize: 12 }}>
             <strong>{c.name}</strong>{" "}

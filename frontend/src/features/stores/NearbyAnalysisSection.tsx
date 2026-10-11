@@ -10,8 +10,7 @@ const RADIUS_M = 500;
 export function NearbyAnalysisSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, RADIUS_M);
   return (
-    <Section title="주변 상권 분석">
-      <AnchorRow storeId={storeId} />
+    <Section title="반경 500m 동일 업종 경쟁·개폐업 환경">
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}
@@ -20,12 +19,21 @@ export function NearbyAnalysisSection({ storeId }: { storeId: string }) {
   );
 }
 
-/** 앵커 브랜드(스세권·다세권) — 인허가 원천이 없는 업종도 좌표만 있으면 보여준다. */
-function AnchorRow({ storeId }: { storeId: string }) {
-  const { data } = useStoreAnchors(storeId);
-  if (!data) return null;
+/** 앵커 브랜드(스세권·다세권) 최근접 거리 — 매장 기준. 인허가 원천이 없는 업종도 좌표만 있으면 보여준다. */
+export function AnchorSection({ storeId }: { storeId: string }) {
   return (
-    <div style={{ marginBottom: 10 }}>
+    <Section title="스타벅스·다이소 최근접 거리">
+      <AnchorRow storeId={storeId} />
+    </Section>
+  );
+}
+
+function AnchorRow({ storeId }: { storeId: string }) {
+  const { data, isError, error } = useStoreAnchors(storeId);
+  if (isError) return <Notice tone="error">조회 실패: {error.message}</Notice>;
+  if (!data) return <Notice tone="muted">불러오는 중...</Notice>;
+  return (
+    <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {data.brands.map((b) => (
           <div key={b.brand} style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", borderLeft: `3px solid ${ZONE_COLORS[b.brand]}` }}>

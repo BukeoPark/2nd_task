@@ -13,9 +13,10 @@ import { FoodTopBar } from "../features/food/FoodTopBar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
 import { UnitStoreList } from "../features/food/UnitStoreList";
-import { ComparePanel } from "../features/food/ComparePanel";
+import { CompareDashboard } from "../features/food/CompareDashboard";
+import { AreaOverviewPanel } from "../features/area/AreaOverviewPanel";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
-import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, RebZone, SearchResult } from "../lib/apiClient";
+import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, OverviewTrdar, RebZone, SearchResult } from "../lib/apiClient";
 import { coverageText, reasonText } from "../lib/foodText";
 import { canAct, classifyBubbles, viewState } from "../lib/queryState";
 import { searchTarget } from "../lib/searchTarget";
@@ -24,6 +25,7 @@ import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { OVERLAY_Z_INDEX, zoomToUnit } from "../lib/vizConfig";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
+const MAX_COMPARE = 4;
 const ZOOM_IN_TO = { gu: 7, dong: 5, trdar: 3 } as const;
 
 type Selection = {
@@ -38,6 +40,9 @@ type Selection = {
   /** 입지 비교에 담을 수 있는 버블 */
   compare?: { level: FoodLevel; code: string };
   zoomTo?: number;
+  /** 행정동에서 세부 상권으로 들어온 경우의 되돌아갈 요약 */
+  parent?: Selection;
+  type?: string | null;
 };
 
 function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection {
@@ -67,6 +72,7 @@ function bubbleToSelection(b: FoodBubble, data: FoodBubblesResponse): Selection 
     unit: level === "gu" ? undefined : { level, code: b.code },
     compare: { level, code: b.code },
     zoomTo: ZOOM_IN_TO[level],
+    type: b.type,
   };
 }
 
@@ -235,41 +241,104 @@ export function MapPage() {
         />
 
         {storeId ? (
-          <StoreDetailPanel storeId={storeId} onBack={() => setStoreId(null)} onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }} />
+          <StoreDetailPanel
+            storeId={storeId}
+            onBack={() => setStoreId(null)}
+            onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }}
+            onOpenArea={({ level, store }) => {
+              // 행정동 종합분석을 먼저 만들고, 상권이면 그 위에 상권 분석을 올려 '뒤로'가 행정동으로 돌아가게 한다.
+              const center = { lon: store.lon, lat: store.lat };
+              const dongSel: Selection = {
+                title: store.dong, brief: "", rows: [], center, unit: { level: "dong", code: store.adong_cd },
+                compare: { level: "dong", code: store.adong_cd }, zoomTo: ZOOM_IN_TO.dong,
+              };
+              const t = store.trdar;
+              const sel: Selection = level === "trdar" && t
+                ? { title: t.name, brief: "", rows: [], type: t.type, center: { lon: t.lon, lat: t.lat }, unit: { level: "trdar", code: t.code },
+                    compare: { level: "trdar", code: t.code }, zoomTo: ZOOM_IN_TO.trdar, parent: dongSel }
+                : dongSel;
+              setPendingOpen(null);
+              setStoreId(null);
+              setSelection(sel);
+              if (mapKakao && sel.center && sel.zoomTo !== undefined) {
+                mapKakao.map.setLevel(sel.zoomTo);
+                mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, sel.center));
+              }
+            }}
+          />
         ) : (
-          shownSelection && (
-            <InfoPanel title={shownSelection.title} brief={shownSelection.brief} rows={shownSelection.rows} onClose={() => { setSelection(null); setPendingOpen(null); }}>
-              {shownSelection.notice && (
-                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>{shownSelection.notice}</div>
-              )}
-              {shownSelection.center && shownSelection.zoomTo !== undefined && mapKakao && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    mapKakao.map.setLevel(shownSelection.zoomTo);
-                    mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, shownSelection.center!));
+          shownSelection && (() => {
+            const sel = shownSelection;
+            const actions = (
+              <>
+                {sel.center && sel.zoomTo !== undefined && mapKakao && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      mapKakao.map.setLevel(sel.zoomTo);
+                      mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, sel.center!));
+                    }}
+                    style={{ width: "100%", padding: "8px 0", marginBottom: 12, borderRadius: 8, border: "1px solid #3B82F6", background: "white", color: "#3B82F6", cursor: "pointer" }}
+                  >
+                    이 지역 확대해서 보기
+                  </button>
+                )}
+                {sel.compare && (
+                  <CompareButton
+                    basket={basket}
+                    target={sel.compare}
+                    onAdd={() => {
+                      const c = sel.compare!;
+                      setBasket((b) => (b && b.level === c.level ? { level: c.level, codes: [...b.codes, c.code] } : { level: c.level, codes: [c.code] }));
+                      setCompareOpen(true);
+                    }}
+                  />
+                )}
+              </>
+            );
+            const close = () => { setSelection(null); setPendingOpen(null); };
+            // 행정동·상권은 종합분석을 먼저, 매장 목록은 그 패널의 마지막 섹션. 자치구·R-ONE 은 기존 요약 패널.
+            if (sel.unit && sel.unit.level !== "gu") {
+              return (
+                <AreaOverviewPanel
+                  key={`${sel.unit.level}:${sel.unit.code}`}
+                  level={sel.unit.level}
+                  code={sel.unit.code}
+                  title={sel.title}
+                  type={sel.type}
+                  svc={svc}
+                  scls={scls}
+                  filterName={filterName}
+                  parentName={sel.parent?.title}
+                  actions={actions}
+                  onBack={sel.parent ? () => setSelection(sel.parent!) : undefined}
+                  onClose={close}
+                  onSelectTrdar={(t: OverviewTrdar) => {
+                    setSelection({
+                      title: t.name, brief: "", rows: [], type: t.type, center: { lon: t.lon, lat: t.lat }, unit: { level: "trdar", code: t.code },
+                      compare: { level: "trdar", code: t.code }, zoomTo: ZOOM_IN_TO.trdar, parent: sel,
+                    });
+                    if (mapKakao) {
+                      mapKakao.map.setLevel(ZOOM_IN_TO.trdar);
+                      mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, t));
+                    }
                   }}
-                  style={{ width: "100%", padding: "8px 0", marginBottom: 12, borderRadius: 8, border: "1px solid #3B82F6", background: "white", color: "#3B82F6", cursor: "pointer" }}
-                >
-                  이 지역 확대해서 보기
-                </button>
-              )}
-              {shownSelection.compare && (
-                <CompareButton
-                  basket={basket}
-                  target={shownSelection.compare}
-                  onAdd={() => {
-                    const c = shownSelection.compare!;
-                    setBasket((b) => (b && b.level === c.level ? { level: c.level, codes: [...b.codes, c.code] } : { level: c.level, codes: [c.code] }));
-                    setCompareOpen(true);
-                  }}
+                  onSelectStore={setStoreId}
                 />
-              )}
-              {shownSelection.unit && (
-                <UnitStoreList level={shownSelection.unit.level} code={shownSelection.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
-              )}
-            </InfoPanel>
-          )
+              );
+            }
+            return (
+              <InfoPanel title={sel.title} brief={sel.brief} rows={sel.rows} onClose={close}>
+                {sel.notice && (
+                  <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>{sel.notice}</div>
+                )}
+                {actions}
+                {sel.unit && (
+                  <UnitStoreList level={sel.unit.level} code={sel.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
+                )}
+              </InfoPanel>
+            );
+          })()
         )}
 
         {basket && !compareOpen && (
@@ -285,12 +354,13 @@ export function MapPage() {
           </button>
         )}
         {basket && compareOpen && (
-          <ComparePanel
+          <CompareDashboard
             level={basket.level}
             codes={basket.codes}
             svc={svc}
             scls={scls}
             filterName={filterName}
+            onAdd={(code) => setBasket((b) => (b && b.codes.length < MAX_COMPARE && !b.codes.includes(code) ? { ...b, codes: [...b.codes, code] } : b))}
             onRemove={(code) => setBasket((b) => (b && b.codes.length > 1 ? { ...b, codes: b.codes.filter((c) => c !== code) } : null))}
             onClose={() => setCompareOpen(false)}
           />
@@ -315,8 +385,6 @@ export function MapPage() {
     </div>
   );
 }
-
-const MAX_COMPARE = 4;
 
 function CompareButton({ basket, target, onAdd }: {
   basket: { level: FoodLevel; codes: string[] } | null;

@@ -78,3 +78,4 @@ export function zoomToUnit(level: number): "gu" | "dong" | "trdar" | "stores" {
   if (level >= 4) return "trdar";
   return "stores";
 }
+export const SERIES_COLORS = ["#1D4ED8", "#DC2626", "#059669", "#D97706"];

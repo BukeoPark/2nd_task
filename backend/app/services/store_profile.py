@@ -59,6 +59,20 @@ def _license(license_id: str) -> dict | None:
     return _clean(row.iloc[0].to_dict()) if not row.empty else None
 
 
+def _trdar_of(bizes_id: str) -> dict | None:
+    """매장이 경계 안에 드는 서울시 상권(없으면 None) — 상권 상세 화면으로 이동하는 링크용."""
+    st = data_store.load_parquet("store_trdar.parquet")
+    hit = st.loc[st["bizesId"] == bizes_id]
+    if hit.empty:
+        return None
+    ta = data_store.load_parquet("trdar_areas.parquet").set_index("trdar_cd")
+    cd = hit.iloc[0]["trdar_cd"]
+    if cd not in ta.index:
+        return None
+    t = ta.loc[cd]
+    return {"code": cd, "name": t["trdar_nm"], "type": t["trdar_type"], "lon": float(t["lon"]), "lat": float(t["lat"])}
+
+
 def basic_info(store: dict) -> dict:
     ref = taxonomy.sources()["sbiz_store"]["reference"]
     return {
@@ -66,7 +80,7 @@ def basic_info(store: dict) -> dict:
         "category": {"lcls": store["indsLclsNm"], "mcls": store["indsMclsNm"], "scls": store["indsSclsNm"],
                      "scls_code": store["indsSclsCd"]},
         "address": store["rdnmAdr"] or store["lnoAdr"], "building": store["bldNm"],
-        "dong": store["adongNm"], "sigungu": store["signguNm"], "lon": store["lon"], "lat": store["lat"],
+        "dong": store["adongNm"], "adong_cd": store["adongCd"], "trdar": _trdar_of(store["bizesId"]), "sigungu": store["signguNm"], "lon": store["lon"], "lat": store["lat"],
         "source": {"title": "소상공인시장진흥공단 상가(상권)정보", "reference": f"{ref.get('stdrYm', '')[:4]}-{ref.get('stdrYm', '')[4:]} 기준"},
     }
 

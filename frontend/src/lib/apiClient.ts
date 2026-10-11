@@ -72,6 +72,9 @@ export interface StoreBasic {
   address: string | null;
   building: string | null;
   dong: string;
+  /** 소속 행정동 코드와, 경계 안에 드는 서울시 상권(없으면 null) — 상권 상세로 이동하는 링크용 */
+  adong_cd: string;
+  trdar: { code: string; name: string; type: string; lon: number; lat: number } | null;
   sigungu: string;
   lon: number;
   lat: number;
@@ -332,6 +335,49 @@ export interface FoodCompareResponse {
   notes: string[];
 }
 
+export interface HourSlot {
+  label: string;
+  pct: number | null;
+}
+
+export interface OverviewTrdar {
+  code: string;
+  name: string;
+  type: string;
+  area_m2: number | null;
+  lon: number;
+  lat: number;
+  overlap_pct: number;
+}
+
+/** 행정동·상권 종합분석 보조 자료 — 시계열·시간대·유동인구·겹치는 상권. 지표 값은 FoodCompareResponse 가 준다. */
+export interface UnitOverviewResponse {
+  level: "dong" | "trdar";
+  code: string;
+  name: string;
+  type: string | null;
+  scope: FoodScope;
+  latest_quarter: string;
+  trend: { quarter: string; label: string; sales_q: number | null; stores: number | null; per_store_month: number | null; used: number; total: number }[];
+  trend_source: string;
+  trend_scope: string;
+  hours: { quarter: string; label: string; used: number; total: number; slots: HourSlot[] };
+  floating: {
+    quarter: string;
+    label: string;
+    flpop: number | null;
+    yoy_pct: number | null;
+    weekend_pct: number | null;
+    slots: HourSlot[];
+    trend: { quarter: string; label: string; flpop: number | null }[];
+  } | null;
+  trdars?: OverviewTrdar[];
+  trdars_excluded?: number;
+  trdars_basis?: string;
+  area_m2?: number | null;
+  adong_cd?: string;
+}
+
 export interface FoodAnchorsResponse {
   walk_m: number;
   brands: Record<AnchorBrand, string>;
@@ -510,6 +556,12 @@ export const apiClient = {
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<FoodCompareResponse>(`/api/food/compare?${q}`);
+  },
+  getUnitOverview: (level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams();
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<UnitOverviewResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/overview?${q}`);
   },
   getFoodAnchors: () => request<FoodAnchorsResponse>("/api/food/anchors"),
   getStoreAnchors: (storeId: string) => request<StoreAnchorsResponse>(`/api/stores/${encodeURIComponent(storeId)}/anchors`),

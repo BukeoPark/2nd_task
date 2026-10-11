@@ -12,7 +12,8 @@
   - `features/map`: 카카오맵 바탕(`KakaoMap`)·행정동 경계·R-ONE 임대료 마커
   - `features/food`: 요식업·카페 지도 — 확대 단계별 버블(구·행정동·상권·매장 점), 업종·지표 필터, 범례, 스타벅스·다이소 표시,
     위치 검색(`SearchBox`)과 이용 순서 안내(`FlowGuide`: 검색 → 위치 선택 → 업종 선택 → 후보 지역 비교), 입지 비교(`ComparePanel`), 매장 목록 '더 보기'(`UnitStoreList`)
-  - `features/stores`: 매장 상세 서랍 — 동네 매출 비교·프랜차이즈·상권 운영 점검·Google 고객평가·매장 운영이력·주변 상권 분석
+  - `features/stores`: 매장 상세 서랍 — 기본·영업 상태·업력 → Google 고객평가 → 인증·지정 이력 → 스타벅스·다이소 최근접 거리 → 반경 500m 경쟁·개폐업 → 내 매출 벤치마킹 → 소속 행정동·상권 분석 링크.
+    상권 통계(매출 추이·인구·시간대)는 `features/area` 에만 둔다(매장 상세에 반복하지 않는다).
 - `src/components/`는 기능 독립적인 공용 UI 만.
 - `src/lib/`는 apiClient(백엔드 `/api` 베이스), 지도 헬퍼, 포맷터.
 - 페이지 조립은 `src/pages/`.

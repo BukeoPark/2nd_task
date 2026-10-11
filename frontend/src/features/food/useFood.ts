@@ -62,6 +62,15 @@ export function useFoodCompare(level: FoodLevel | null, codes: string[], svc: st
   });
 }
 
+/** 행정동·상권 종합분석의 시계열·시간대·겹치는 상권. */
+export function useUnitOverview(level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) {
+  return useQuery({
+    queryKey: ["unit-overview", level, code, svc, scls],
+    queryFn: () => apiClient.getUnitOverview(level, code, svc, scls),
+    staleTime: LONG,
+  });
+}
+
 export function useFoodAnchors(enabled: boolean) {
   return useQuery({ queryKey: ["food-anchors"], queryFn: () => apiClient.getFoodAnchors(), enabled, staleTime: Infinity });
 }

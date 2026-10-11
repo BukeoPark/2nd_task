@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Notice, Section, SourceNote } from "../../components/Notice";
-import { apiClient, type ChurnSummary, type FloatingComparison, type HinterlandPopulation, type HinterlandSummary, type SalesBenchmarkResponse } from "../../lib/apiClient";
+import { apiClient, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
-/** '동네 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
+/** '내 매출 벤치마킹' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
  * 입력한 매출은 이 화면 안에서만 계산하고 서버로 보내거나 저장하지 않는다. */
 export function SalesBenchmarkSection({
   storeId,
@@ -20,7 +20,8 @@ export function SalesBenchmarkSection({
     staleTime: 10 * 60 * 1000,
   });
   return (
-    <Section title="동네 매출 비교">
+    <Section title="내 매출 벤치마킹">
+      <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. 내 실제 월매출을 입력하면 이 평균과 견줘 봅니다.</Notice>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
@@ -50,8 +51,6 @@ function Body({
   onManwonChange: (value: string) => void;
 }) {
   const avg = data.per_store_month ?? null;
-  const trend = data.trend ?? [];
-  const maxTrend = Math.max(1, ...trend.map((t) => t.per_store_month ?? 0));
   return (
     <div>
       <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
@@ -76,9 +75,6 @@ function Body({
         <Card label="전 분기 대비" value={formatSignedPct(data.per_store_qoq_pct)} sub="계절 영향 있음" />
       </div>
 
-      {data.churn && <ChurnRow churn={data.churn} unitLabel={data.unit?.label ?? "동네"} />}
-      {data.hinterland && <HinterlandBlock hl={data.hinterland} unitLabel={data.unit?.label ?? "동네"} />}
-
       {(data.warnings ?? []).map((w) => (
         <div key={w} style={{ marginTop: 6 }}>
           <Notice tone="warn">{w}</Notice>
@@ -94,118 +90,6 @@ function Body({
         peerLabel={data.unit?.peer_label ?? "파일럿"}
       />
 
-      <div style={{ fontSize: 11, color: "#6b7280", margin: "12px 0 4px" }}>점포당 월평균 추정매출 추이</div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 56 }}>
-        {trend.map((t) => (
-          <div key={t.quarter} style={{ flex: 1, textAlign: "center" }} title={`${t.label} ${formatKrw(t.per_store_month)}`}>
-            <div
-              style={{
-                height: Math.max(((t.per_store_month ?? 0) / maxTrend) * 44, 1),
-                background: "#3B82F6",
-                opacity: 0.75,
-                borderRadius: 2,
-              }}
-            />
-            <div style={{ fontSize: 9, color: "#6B7280" }}>{t.quarter.slice(2, 4)}.{t.quarter[4]}Q</div>
-          </div>
-        ))}
-      </div>
-
-      {(data.insights ?? []).length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
-            이 {data.unit?.label ?? "동네"} 같은 업종 매출의 특징 ({data.unit?.peer_label ?? "파일럿"} 평균과 비교)
-          </div>
-          {data.insights!.map((i) => (
-            <div key={i.label} style={{ fontSize: 12 }}>
-              · {i.text}
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
-            평균과의 차이일 뿐 원인이나 개선 방향을 뜻하지 않습니다. 내 가게의 주력 시간대·손님층과 견주어 보는 참고로만 쓰세요.
-          </div>
-        </div>
-      )}
-
-      {data.floating ? (
-        <FloatingBlock fl={data.floating} />
-      ) : (
-        <div style={{ marginTop: 10 }}>
-          <Notice tone="muted">이 동네·업종은 유동인구 대비 매출을 계산할 자료가 없습니다.</Notice>
-        </div>
-      )}
-
-      {(data.composition ?? []).map((g) => (
-        <div key={g.group} style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
-            {g.group} 매출 비중 <Swatch color="#3B82F6" /> 이 {data.unit?.label ?? "동네"} <Swatch color="#D1D5DB" /> {data.unit?.peer_label ?? "파일럿"} 평균
-          </div>
-          {g.items.map((it) => (
-            <div key={it.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <span style={{ width: 52, color: "#374151" }}>{it.label}</span>
-              <div style={{ flex: 1 }}>
-                <ShareBar value={it.dong} color="#3B82F6" />
-                <ShareBar value={it.pilot} color="#D1D5DB" />
-              </div>
-              <span style={{ width: 70, textAlign: "right", color: "#374151" }}>
-                {pct(it.dong)} / {pct(it.pilot)}
-              </span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FloatingBlock({ fl }: { fl: FloatingComparison }) {
-  const times = fl.mix.find((g) => g.group === "시간대별")?.items ?? [];
-  return (
-    <div style={{ marginTop: 12, borderTop: "1px dashed #E5E7EB", paddingTop: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>유동인구 대비 매출</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="분기 유동인구(상대 지수)" value={fl.flpop === null ? "정보 없음" : `${Math.round(fl.flpop / 1e4).toLocaleString()}만`} sub={`전년 동기 대비 ${formatSignedPct(fl.flpop_yoy_pct)}`} />
-        <Card
-          label="유동인구 1만 명당 분기 매출"
-          value={formatKrw(fl.sales_per_10k)}
-          sub={`${fl.rank} / ${fl.peer_count}위 · 비교군 중앙값 ${formatKrw(fl.pilot_median_per_10k)}`}
-        />
-      </div>
-
-      <div style={{ fontSize: 11, color: "#6b7280", margin: "10px 0 2px" }}>
-        시간대별 비중 <Swatch color="#10B981" /> 유동인구 <Swatch color="#3B82F6" /> 이 업종 매출
-      </div>
-      {times.map((it) => (
-        <div key={it.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-          <span style={{ width: 52, color: "#374151" }}>{it.label}</span>
-          <div style={{ flex: 1 }}>
-            <ShareBar value={it.flpop} color="#10B981" />
-            <ShareBar value={it.sales} color="#3B82F6" />
-          </div>
-          <span style={{ width: 70, textAlign: "right", color: "#374151" }}>
-            {pct(it.flpop)} / {pct(it.sales)}
-          </span>
-        </div>
-      ))}
-
-      {fl.gaps.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          {fl.gaps.map((g) => (
-            <div key={g.label} style={{ fontSize: 12 }}>
-              · {g.text}
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
-            유동인구 비중과 매출 비중의 차이는 구매 전환율이 아니라 단순한 비중 차이입니다(유동인구는 길 위 상대 지수). 현장 확인의 참고로만 쓰세요.
-          </div>
-        </div>
-      )}
-      <SourceNote title={fl.source.title} reference={fl.source.reference} />
-      {fl.caveats.map((c) => (
-        <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
-          · {c}
-        </div>
-      ))}
     </div>
   );
 }
@@ -265,79 +149,6 @@ function MyRevenueInput({
   );
 }
 
-function ChurnRow({ churn, unitLabel }: { churn: ChurnSummary; unitLabel: string }) {
-  const pct = (v: number | null | undefined) => (v === null || v === undefined ? "자료 없음" : `${Math.round(v * 100)}%`);
-  const heading = `최근 1년 이 ${unitLabel} 같은 업종 개업·폐업 (${churn.period})`;
-  // 계산하지 못한 경우: 0건으로 보이지 않게 이유(자료 없음·관찰기간 부족·점포 적음)를 그대로 말한다.
-  if (churn.status !== "ok" && churn.status !== "partial") {
-    return (
-      <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{heading}</div>
-        <Notice tone="muted">{churn.message}</Notice>
-      </div>
-    );
-  }
-  const real0 = (n: number | undefined) => (n === 0 ? " (실제 0건)" : "");
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{heading}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card label="개업" value={`${churn.opened}곳 · 연 ${pct(churn.open_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_open)}${real0(churn.opened)}`} />
-        <Card label="폐업" value={`${churn.closed}곳 · 연 ${pct(churn.close_rate)}`} sub={`비교 단위 중앙값 ${pct(churn.peer_median_close)}${real0(churn.closed)}`} />
-      </div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
-        4개 분기 값이 모두 확인된 경우만 계산 · 평균 점포 {churn.avg_stores}곳 기준 · 비교 단위 {churn.peer_count}곳. {churn.caveat}
-      </div>
-    </div>
-  );
-}
-
-const AGE_LABEL = { age10: "10대", age20: "20대", age30: "30대", age40: "40대", age50: "50대", age60: "60대+" } as const;
-
-/** 인구에서 비중이 가장 큰 연령대 두 개 — "30대 31% · 40대 27%". */
-function topAges(p: HinterlandPopulation): string {
-  return (Object.entries(p.age_share) as [keyof typeof AGE_LABEL, number | null][])
-    .filter(([, v]) => v !== null)
-    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-    .slice(0, 2)
-    .map(([k, v]) => `${AGE_LABEL[k]} ${Math.round((v ?? 0) * 100)}%`)
-    .join(" · ");
-}
-
-function HinterlandBlock({ hl, unitLabel }: { hl: HinterlandSummary; unitLabel: string }) {
-  const med = (v: number | null, unit: string) => (v === null ? "" : ` · ${hl.peer_label} 중앙값 ${Math.round(v).toLocaleString()}${unit}`);
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>이 {unitLabel} 수요 기반 (직장·상주인구·집객시설)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Card
-          label="직장인구"
-          value={hl.workplace ? `${hl.workplace.total.toLocaleString()}명` : "자료 없음"}
-          sub={hl.workplace ? `${topAges(hl.workplace)}${med(hl.peer_median.workplace, "명")}` : undefined}
-        />
-        <Card
-          label="상주인구"
-          value={hl.resident ? `${hl.resident.total.toLocaleString()}명` : "자료 없음"}
-          sub={
-            hl.resident
-              ? `${hl.resident.households ? `${hl.resident.households.toLocaleString()}세대 · ` : ""}${topAges(hl.resident)}${med(hl.peer_median.resident, "명")}`
-              : undefined
-          }
-        />
-      </div>
-      <div style={{ fontSize: 12, color: "#374151", marginTop: 6 }}>
-        집객시설{" "}
-        {hl.facility
-          ? `${hl.facility.total.toLocaleString()}곳${med(hl.peer_median.facility, "곳")}` +
-            (hl.facility.items.length ? ` — ${hl.facility.items.map((it) => `${it.label} ${it.count}`).join(", ")}` : "")
-          : "자료 없음"}
-      </div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{hl.caveat}</div>
-      <SourceNote title={hl.source.title} reference={hl.source.reference} />
-    </div>
-  );
-}
-
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
@@ -346,16 +157,4 @@ function Card({ label, value, sub }: { label: string; value: string; sub?: strin
       {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
-}
-
-function ShareBar({ value, color }: { value: number | null; color: string }) {
-  return <div style={{ height: 4, width: `${Math.round((value ?? 0) * 100)}%`, background: color, borderRadius: 2, marginBottom: 1 }} />;
-}
-
-function Swatch({ color }: { color: string }) {
-  return <span style={{ display: "inline-block", width: 8, height: 8, background: color, margin: "0 2px 0 6px" }} />;
-}
-
-function pct(v: number | null): string {
-  return v === null ? "-" : `${(v * 100).toFixed(0)}%`;
 }

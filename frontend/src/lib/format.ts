@@ -44,3 +44,8 @@ export function formatMetric(kind: string, value: number | null): string {
   if (kind === "growth") return formatSignedPct(value);
   return `${value.toFixed(1)}%`;
 }
+
+/** '20262' → '26.2Q' (차트 눈금용). */
+export function shortQuarter(q: string): string {
+  return `${q.slice(2, 4)}.${q.slice(4)}Q`;
+}

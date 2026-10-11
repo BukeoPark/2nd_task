@@ -66,7 +66,7 @@ export function ComparePanel({ level, codes, svc, scls, filterName, onRemove, on
 
 const retryStyle: React.CSSProperties = { marginLeft: 4, border: "1px solid #DC2626", background: "white", color: "#DC2626", borderRadius: 4, padding: "1px 8px", cursor: "pointer" };
 
-function CompareTable({ data, onRemove }: { data: FoodCompareResponse; onRemove: (code: string) => void }) {
+export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; onRemove: (code: string) => void }) {
   return (
     <>
       {data.scope.notice && (

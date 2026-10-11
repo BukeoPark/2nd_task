@@ -38,7 +38,8 @@ def test_sources_have_reference_dates(client):
     body = client.get("/api/sources").json()
     assert body["seoul_localdata"]["reference"]["collected_at"]
     assert body["sbiz_store"]["reference"]["stdrYm"]
-    assert body["neis_academy"]["status"] == "pending"
+    assert body["neis_academy"]["status"] == "connected"
+    assert body["neis_academy"]["reference"]["collected_at"]
     assert body["google_places_ui_kit"]["verification"] == "docs_only"
 
 
@@ -85,10 +86,11 @@ def test_uncertain_links_never_show_age(client, stores_links, status):
     assert oh["license"] is None  # 업력·영업상태를 추정해서 채우지 않는다
 
 
-def test_education_pending_and_retail_not_applicable(client, stores_links):
-    edu = client.get(f"/api/stores/{_pick(stores_links, 'P10501')}").json()
-    assert edu["operation_history"]["link"]["status"] == "pending"
-    assert "연동 준비 중" in edu["operation_history"]["link"]["message"]
+def test_education_connected_and_retail_not_applicable(client, stores_links):
+    # 학원·교습소는 NEIS 연동 후 매장 연결이 된다(키 없던 때의 '연동 준비 중'이 아니다)
+    edu = client.get(f"/api/stores/{_pick(stores_links, 'P10501', 'matched')}").json()
+    assert edu["operation_history"]["coverage"]["status"] == "connected"
+    assert edu["operation_history"]["link"]["status"] == "matched"
     retail = client.get(f"/api/stores/{_pick(stores_links, 'G20405')}").json()
     assert retail["operation_history"]["coverage"]["status"] == "not_applicable"
     assert retail["store"]["name"]  # 정보가 부족해도 기본정보는 제공
@@ -119,3 +121,9 @@ def test_lodging_without_close_dates_is_insufficient(client, stores_links):
 def test_unknown_store_404(client):
     for path in ("", "/nearby-analysis", "/google-place"):
         assert client.get(f"/api/stores/NOPE0000{path}").status_code == 404
+
+
+def test_store_detail_links_to_dong_and_trdar(client, stores_links):
+    store = client.get(f"/api/stores/{_pick(stores_links, 'I20101', 'matched')}").json()["store"]
+    assert store["adong_cd"]
+    assert store["trdar"] is None or {"code", "name", "type", "lon", "lat"} <= store["trdar"].keys()
