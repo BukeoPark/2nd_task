@@ -106,11 +106,16 @@ def _certifications(store: dict, license: dict | None, is_food: bool) -> list[di
              "label": "지정 현황 목록에 있음", "source": source}]
 
 
-BUSINESS_STATUS_LABEL = {"licensed_open": "인허가상 영업", "licensed_closed": "인허가상 폐업", "unconfirmed": "영업 여부 미확인"}
+BUSINESS_STATUS_LABEL = {"licensed_open": "인허가상 영업", "licensed_closed": "인허가상 폐업 기록 확인", "unconfirmed": "영업 여부 미확인"}
+CLOSURE_CAVEAT = "인허가 자료상 폐업 기록이며 실제 현장 폐업이 확정된 것은 아닙니다. 재입점·상호 변경으로 현재 영업 중일 수 있습니다."
+CLOSURE_EVIDENCE_LABEL = {
+    "closed_after_snapshot": "폐업일이 상가정보 기준월 이후라 상가정보에 아직 반영되지 않았을 수 있음",
+    "replaced_by_new_license": "폐업 이후 같은 건물에 다른 상호의 새 인허가가 생기고 상가정보에도 등재됨",
+}
 BUSINESS_CAVEAT = "인허가 자료상의 상태일 뿐 실제 현장 영업이 확인된 것은 아닙니다. 네이버 등 지도 검색 결과 유무로는 판정하지 않습니다."
 
 
-def business_status(coverage_status: str, link: dict | None, lic: dict | None, close_date) -> dict:
+def business_status(coverage_status: str, link: dict | None, lic: dict | None, close_date, closure: dict | None = None) -> dict:
     """인허가 기록만으로 구분한 영업 상태 — 인허가상 영업 / 인허가상 폐업 / 영업 여부 미확인.
 
     · 인허가상 영업: 매칭이 확인된 인허가(강한 일치)가 영업 상태
@@ -132,9 +137,30 @@ def business_status(coverage_status: str, link: dict | None, lic: dict | None, c
         return {"status": "unconfirmed", "label": BUSINESS_STATUS_LABEL["unconfirmed"],
                 "basis": f"연결된 인허가의 상태가 '{lic['state_name']}'이라 영업 여부를 판정하지 않음", "caveat": BUSINESS_CAVEAT}
     status = (link or {}).get("status", "no_match")
+    if status == "closed_only" and closure is not None:
+        # 영업 인허가가 연결되지 않은 매장 중, 보수적 근거(closed_after_snapshot·replaced_by_new_license)가 확인된 매장만
+        return {"status": "licensed_closed", "label": BUSINESS_STATUS_LABEL["licensed_closed"],
+                "basis": f"폐업 인허가('{closure['license_name']}') · 폐업일 {closure['close_date'] or '자료 없음'} · 근거: {closure['evidence_label']}",
+                "caveat": CLOSURE_CAVEAT, "closure": closure}
     return {"status": "unconfirmed", "label": BUSINESS_STATUS_LABEL["unconfirmed"],
             "basis": LINK_MESSAGE.get(status, LINK_MESSAGE["no_match"]) + ("" if status != "closed_only" else " — 폐업으로 판정하지 않음"),
             "caveat": BUSINESS_CAVEAT}
+
+
+def closure_evidence(bizes_id: str) -> dict | None:
+    """폐업 기록 확인(confirmed)으로 판정된 매장의 근거. 판정 자료가 없거나 확인되지 않았으면 None."""
+    try:
+        ev = data_store.load_parquet("store_closure_evidence.parquet")
+    except data_store.DataNotReady:
+        return None
+    row = ev.loc[(ev["bizesId"] == bizes_id) & (ev["closure_status"] == "confirmed")]
+    if row.empty:
+        return None
+    r = _clean(row.iloc[0].to_dict())
+    return {"license_id": r["closed_license_id"], "license_ids": [str(x) for x in r["closed_license_ids"]], "license_name": r["closed_license_name"],
+            "close_date": None if r["close_date"] is None else r["close_date"].date().isoformat(),
+            "evidence": r["evidence"], "evidence_label": CLOSURE_EVIDENCE_LABEL[r["evidence"]],
+            "replaced_by_license_id": r.get("replaced_by_license_id")}
 
 
 def _data_dates(license_codes) -> dict:
@@ -192,5 +218,6 @@ def operation_history(store: dict) -> dict:
     result["sources"].append({"title": local["title"],
                               "reference": f"{lic_ref.get('collected_at')} 수집 (원천 최종 갱신 {lic_ref.get('source_updated_max')})"})
     result["certifications"] = _certifications(store, lic, is_food)
-    result["business_status"] = business_status("connected", result["link"], lic, None if lic is None else lic.get("close_date"))
+    closure = closure_evidence(store["bizesId"]) if status == "closed_only" else None
+    result["business_status"] = business_status("connected", result["link"], lic, None if lic is None else lic.get("close_date"), closure)
     return result

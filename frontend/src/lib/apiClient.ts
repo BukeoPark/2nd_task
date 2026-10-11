@@ -101,7 +101,14 @@ export interface OperationHistory {
     duplicate_license_count: number;
   } | null;
   /** 인허가 기록만으로 구분한 영업 상태 — 현장 영업 확인이 아니며 지도 검색 결과 유무로 판정하지 않는다 */
-  business_status: { status: "licensed_open" | "licensed_closed" | "unconfirmed"; label: string; basis: string; caveat: string } | null;
+  business_status: {
+    status: "licensed_open" | "licensed_closed" | "unconfirmed";
+    label: string;
+    basis: string;
+    caveat: string;
+    /** 인허가상 폐업 기록 확인일 때의 근거(폐업 인허가 ID·폐업일·근거 유형) */
+    closure?: { license_id: string; license_ids: string[]; license_name: string; close_date: string | null; evidence: string; evidence_label: string };
+  } | null;
   /** 자료 기준일 — 상가정보 기준월과 인허가 수집·갱신일(없으면 null) */
   data_dates: {
     store_info: { title: string; base: string | null; collected_at: string | null };
@@ -130,6 +137,19 @@ export interface ClosureCohort {
   excluded?: Record<string, number>;
 }
 
+/** 반경 안 동일 소분류 점포(상가정보 기준) — 원본 수, 폐업 기록 확인 점포 제외 수, 참고 보정 수. 판정 자료가 없으면 제외·보정은 null */
+export interface CompetitorSummary {
+  basis: string;
+  radius_m: number;
+  raw_count: number;
+  excluded_closed_count: number | null;
+  adjusted_count: number | null;
+  open_confirmed_count: number;
+  unconfirmed_count: number;
+  as_of: { store_info: string | null; license: string | null };
+  caveat: string;
+}
+
 export interface NearbyAnalysisResponse {
   status: "ok" | "unavailable";
   reason?: string;
@@ -141,6 +161,7 @@ export interface NearbyAnalysisResponse {
   total_records?: number;
   trend?: { year: number; opened: number; closed: number | null; partial_year: boolean }[];
   closure_cohort?: ClosureCohort;
+  competitors?: CompetitorSummary;
   warnings?: string[];
   source?: SourceRef;
 }

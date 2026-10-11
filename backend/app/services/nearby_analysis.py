@@ -26,6 +26,7 @@ from shapely.geometry import Point, shape
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
+from app.services import competitors as competitors_service
 from app.services import data_store, place_matching, store_profile, taxonomy
 
 HORIZON_YEARS = 3
@@ -93,6 +94,40 @@ def yearly_trend(df: pd.DataFrame, as_of: date, years: int = TREND_YEARS, closur
     return out
 
 
+def competitor_summary(store: dict, radius_m: float) -> dict:
+    """반경 안 동일 소분류 점포(상가정보 기준)의 원본 수·폐업 기록 확인 점포 제외 수·참고 보정 수.
+
+    원본 수는 `competitors.find_competitors` 와 같은 기준(같은 소분류, 같은 상호·주소·업종 중복은 1곳)에서 선택 매장 자신을 뺀 값이다.
+    제외 대상은 '인허가상 폐업 기록 확인'(store_closure_evidence 의 confirmed)으로 판정된 점포뿐이며, 판정이 불확실한 점포와 인허가 미매칭
+    점포는 빼지 않는다. 제외 수는 원본 점포의 부분집합이라 보정 수가 음수가 되지 않는다. 판정 자료가 없으면 보정 수를 만들지 않는다.
+    """
+    res = competitors_service.find_competitors(store["lon"], store["lat"], radius_m, "scls", store["indsSclsCd"], limit=100_000)
+    me = (store["bizesNm"], store["rdnmAdr"] or store["lnoAdr"])
+    recs = [r for r in res["records"] if r["store_id"] != store["bizesId"] and (r["name"], r["address"]) != me]
+    ids = {r["store_id"] for r in recs}
+    links = data_store.load_parquet("store_license_links.parquet")
+    status = links.loc[links["bizesId"].isin(ids)].set_index("bizesId")["link_status"]
+    open_confirmed = int(sum(status.get(i) == "matched" for i in ids))
+    try:
+        ev = data_store.load_parquet("store_closure_evidence.parquet")
+        confirmed = set(ev.loc[ev["closure_status"] == "confirmed", "bizesId"]) & ids
+    except data_store.DataNotReady:
+        confirmed = None
+    local = taxonomy.sources()["seoul_localdata"]["reference"]
+    base = taxonomy.sources()["sbiz_store"]["reference"].get("stdrYm", "")
+    excluded = None if confirmed is None else len(confirmed)
+    return {
+        "basis": "소상공인 상가정보 기준 같은 소분류 점포(선택 매장 제외)", "radius_m": radius_m,
+        "raw_count": len(recs),
+        "excluded_closed_count": excluded,
+        "adjusted_count": None if excluded is None else len(recs) - excluded,
+        "open_confirmed_count": open_confirmed,
+        "unconfirmed_count": len(recs) - open_confirmed - (excluded or 0),
+        "as_of": {"store_info": f"{base[:4]}-{base[4:]}" if len(base) == 6 else None, "license": local.get("collected_at")},
+        "caveat": "폐업 기록 확인 점포만 뺀 참고 수치입니다. 인허가 자료 기준이며 실제 현장 영업 여부는 확인되지 않았고, 영업 여부 미확인 점포는 빼지 않았습니다.",
+    }
+
+
 def analyze(bizes_id: str, radius_m: float = 500.0) -> dict:
     store = store_profile.get_store(bizes_id)
     tax = taxonomy.scls_row(store["indsSclsCd"])
@@ -144,6 +179,7 @@ def analyze(bizes_id: str, radius_m: float = 500.0) -> dict:
         "total_records": len(within),
         "trend": yearly_trend(within, as_of, closures_available=closures_available),
         "closure_cohort": cohort,
+        "competitors": competitor_summary(store, radius_m),
         "warnings": warnings,
         "source": {"title": taxonomy.sources()["seoul_localdata"]["title"], "reference": f"{as_of.isoformat()} 수집"},
     }

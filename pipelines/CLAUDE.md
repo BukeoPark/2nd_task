@@ -27,7 +27,8 @@
 
 ## 인허가·업종 파이프라인 실행 순서
 `collect_sbiz_upjong` → `collect_seoul_localdata` (→ `collect_neis_academy`, 키 있을 때) → `transform.build_licenses`
-→ `transform.build_industry_crosswalk` → `transform.compute_store_density` → `transform.link_store_licenses` → `transform.export_source_registry`
+→ `transform.build_industry_crosswalk` → `transform.compute_store_density` → `transform.link_store_licenses` → `transform.build_closure_evidence` → `transform.export_source_registry`
+- `build_closure_evidence`: `closed_only` 매장 중 보수적 근거(상가정보 기준월 이후 폐업 / 폐업 이후 같은 건물에 다른 상호의 새 인허가가 생기고 상가정보에도 등재)가 있고 결격(상호 불일치·폐업 인허가 여러 건·폐업일 결측·취소·말소·같은 상호 영업 인허가 병존·중복 등록)이 없는 매장만 '인허가상 폐업 기록 확인'으로 저장한다(`store_closure_evidence.parquet`). 현장 폐업 확정이 아니다.
 
 ## 추정매출 시계열 실행 순서
 `collect_seoul_trdar --datasets sales stores --quarter <분기>` 를 분기마다(2021Q1~최신) → `transform.build_sales_timeseries`

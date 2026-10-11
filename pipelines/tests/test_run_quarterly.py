@@ -42,7 +42,7 @@ MUST_PRECEDE = [
     ("clean_stores", "compute_store_density"), ("clean_stores", "compute_anchor_features"),
     ("clean_stores", "build_trdar_areas"), ("clean_stores", "link_store_licenses"), ("clean_stores", "filter_seoul_trdar"),
     ("build_licenses", "build_industry_crosswalk"), ("build_licenses", "link_store_licenses"),
-    ("build_industry_crosswalk", "link_store_licenses"),
+    ("build_industry_crosswalk", "link_store_licenses"), ("link_store_licenses", "build_closure_evidence"),
     ("build_dong_crosswalk", "build_sales_timeseries"), ("build_dong_crosswalk", "build_hinterland"),
     ("filter_seoul_trdar", "build_sales_timeseries"), ("filter_seoul_trdar", "build_dong_metrics"),
     ("build_trdar_areas", "build_sales_timeseries_trdar"), ("build_trdar_areas", "build_hinterland"),

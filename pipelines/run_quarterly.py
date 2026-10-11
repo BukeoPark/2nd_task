@@ -86,6 +86,7 @@ STEPS: list[Step] = [
     Step("build_licenses", "pipelines.transform.build_licenses"),
     Step("build_industry_crosswalk", "pipelines.transform.build_industry_crosswalk"),
     Step("link_store_licenses", "pipelines.transform.link_store_licenses"),
+    Step("build_closure_evidence", "pipelines.transform.build_closure_evidence"),
     # ── 서울시 상권분석서비스 ───────────────────────────────
     Step("filter_seoul_trdar", "pipelines.transform.filter_seoul_trdar"),
     Step("build_sales_timeseries", "pipelines.transform.build_sales_timeseries", ("--level", "dong")),

@@ -1,5 +1,5 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
-import type { NearbyAnalysisResponse } from "../../lib/apiClient";
+import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useNearbyAnalysis, useStoreAnchors } from "./useStores";
@@ -63,6 +63,8 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
         {data.scope?.uptae ? `(${data.scope.uptae.join("·")})` : ""} · 현재 영업 중 인허가 {data.active_count?.toLocaleString()}건
       </div>
 
+      {data.competitors && <CompetitorBlock c={data.competitors} />}
+
       <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
         <div style={{ fontSize: 11, color: "#6b7280" }}>{c.status === "ok" && c.rate !== null && c.horizon_years !== undefined ? `주변 동일 업종의 과거 ${c.horizon_years}년 이내 폐업 비율` : (c.name ?? "영업 지속 지표")}</div>
         {c.status === "ok" && c.rate !== null ? (
@@ -113,6 +115,36 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
         ))}
       </Fold>
       {data.source && <SourceNote title={data.source.title} reference={data.source.reference} />}
+    </div>
+  );
+}
+
+/** 동종 점포 수 — 원본(상가정보)과 폐업 기록 확인 점포를 뺀 참고 수치를 구분해 보여준다. 영업 여부 미확인 점포는 빼지 않는다. */
+function CompetitorBlock({ c }: { c: CompetitorSummary }) {
+  const hasAdjust = c.adjusted_count !== null && c.excluded_closed_count !== null;
+  return (
+    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: "#6b7280" }}>반경 {c.radius_m}m 같은 소분류 점포(선택 매장 제외 · 상가정보 기준)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
+        <Stat label="원본" value={`${c.raw_count}곳`} />
+        <Stat label="폐업 기록 확인 제외" value={c.excluded_closed_count === null ? "자료 없음" : `${c.excluded_closed_count}곳`} />
+        <Stat label="참고 보정" value={hasAdjust ? `${c.adjusted_count}곳` : "자료 없음"} />
+      </div>
+      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+        인허가상 영업 확인 {c.open_confirmed_count}곳 · 영업 여부 미확인 {c.unconfirmed_count}곳(제외하지 않음)
+      </div>
+      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
+        {c.caveat} 기준일: 상가정보 {c.as_of.store_info ?? "자료 없음"} · 인허가 {c.as_of.license ?? "자료 없음"} 수집.
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: "#6B7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
     </div>
   );
 }
