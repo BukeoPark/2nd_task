@@ -24,14 +24,14 @@ LEVELS = ("gu", "dong", "trdar")
 METRICS = {
     "stores": {"label": "점포 수", "kind": "count", "unit": "곳"},
     "per_store_month": {"label": "점포당 월평균 매출", "kind": "money", "unit": "원"},
-    "sales_yoy_pct": {"label": "매출 증감률(전년 동기)", "kind": "growth", "unit": "%"},
+    "sales_yoy_pct": {"label": "총매출 증감률(전년 동기·명목)", "kind": "growth", "unit": "%"},
     "sales_per_10k_flpop": {"label": "유동인구 1만 명당 분기 매출", "kind": "money", "unit": "원"},
     "open_rate": {"label": "개업률(분기)", "kind": "rate", "unit": "%"},
     "close_rate": {"label": "폐업률(분기)", "kind": "rate", "unit": "%"},
     "frc_share": {"label": "프랜차이즈 비율", "kind": "rate", "unit": "%"},
     "starbucks_zone_share": {"label": "스세권 매장 비율(스타벅스 250m)", "kind": "rate", "unit": "%"},
     "daiso_zone_share": {"label": "다세권 매장 비율(다이소 250m)", "kind": "rate", "unit": "%"},
-    "stores_change_2y": {"label": "점포 수 증감률(2년)", "kind": "growth", "unit": "%"},
+    "stores_change_2y": {"label": "점포 수 증감률(약 2년·7분기)", "kind": "growth", "unit": "%"},
     "stores_volatility": {"label": "점포수 변동성(분기 평균 변동폭)", "kind": "rate", "unit": "%"},
 }
 DYNAMICS_METRICS = {"stores_change_2y", "stores_volatility"}
@@ -130,14 +130,14 @@ def _with_unit(s: pd.DataFrame, level: str) -> pd.DataFrame:
 METRIC_BASIS = {  # 지표별 계산 기준 — 범례·요약 패널·비교표에 그대로 보인다
     "stores": "소상공인 상가정보에서 단위 경계 안 매장을 센 값",
     "per_store_month": "Σ분기 매출 ÷ Σ점포 수 ÷ 3 — 매출과 점포 수가 모두 확인된 업종 행만 합산",
-    "sales_yoy_pct": "이번 분기와 전년 동기 매출이 모두 있는 업종 행만 양쪽에서 합산해 비교",
+    "sales_yoy_pct": "이번 분기와 전년 동기 매출이 모두 있는 업종 행만 양쪽에서 합산해 비교 — 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않음, 비교 점포가 10곳 미만이면 계산 안 함",
     "sales_per_10k_flpop": "Σ분기 매출 ÷ 유동인구 × 1만 — 매출과 유동인구가 모두 있는 단위·업종만",
     "open_rate": "Σ개업 점포 ÷ Σ점포 수 — 필요한 값이 모두 있는 업종 행만, 점포 3곳 미만은 계산 안 함",
     "close_rate": "Σ폐업 점포 ÷ Σ점포 수 — 필요한 값이 모두 있는 업종 행만, 점포 3곳 미만은 계산 안 함",
     "frc_share": "Σ프랜차이즈 점포 ÷ Σ점포 수 — 필요한 값이 모두 있는 업종 행만, 점포 3곳 미만은 계산 안 함",
     "starbucks_zone_share": "선택한 업종 매장 중 스타벅스 250m 안 매장의 비율(상가정보 좌표)",
     "daiso_zone_share": "선택한 업종 매장 중 다이소 250m 안 매장의 비율(상가정보 좌표)",
-    "stores_change_2y": "8개 분기 모두 점포 수가 있는 업종 행만 합산해 처음·마지막 분기를 비교",
+    "stores_change_2y": "8개 분기(간격 7분기≈1.75년) 모두 점포 수가 있는 업종 행만 합산해 처음·마지막 분기를 비교 — 서울시 점포 수 기준",
     "stores_volatility": "8개 분기 모두 점포 수가 있는 업종 행의 분기별 변화율 평균(평균 10곳 미만은 계산 안 함)",
     "open_rate_y": "최근 4개 분기 개업 합 ÷ 평균 점포 수 — 4개 분기 값이 모두 있는 업종 행만(빠진 분기를 0 으로 더하지 않음)",
     "close_rate_y": "최근 4개 분기 폐업 합 ÷ 평균 점포 수 — 4개 분기 값이 모두 있는 업종 행만(빠진 분기를 0 으로 더하지 않음)",
@@ -158,6 +158,12 @@ def scope_of(svc: str | None, scls: str | None) -> dict:
     sales_label = f"{svc_nm} 전체" if svc_nm else "외식 전체"
     stores_label = str(cw.loc[cw["indsSclsCd"] == scls, "indsSclsNm"].iloc[0]) if scls else sales_label
     differs = stores_label != sales_label
+    unmapped = int(cw.loc[cw["indsSclsCd"].str.startswith("I2") & cw["svc_cd"].isna(), "store_count"].sum())
+    if not svc and not scls and unmapped:
+        # 업종 필터가 없으면 점포 수는 상가정보 음식점 전부인데, 매출·개폐업은 서울시 10개 외식업종만 대상이다.
+        return {"sales_label": sales_label, "stores_label": stores_label, "differs": False, "unmapped_stores": unmapped,
+                "notice": (f"점포 수는 상가정보 음식점 전체라 서울시 10개 외식업종에 속하지 않는 {unmapped:,}곳(유흥주점·구내식당·동남아식·떡/한과 등)이 포함됩니다. "
+                           f"매출·개폐업·변동성은 그 10개 업종만 대상입니다.")}
     return {"sales_label": sales_label, "stores_label": stores_label, "differs": differs,
             "notice": (f"점포 수·스세권 비율은 '{stores_label}' 기준이지만, 매출·개폐업·변동성은 원천(서울시)에 세부 업종 값이 없어 "
                        f"'{sales_label}' 기준입니다.") if differs else None}
@@ -332,10 +338,10 @@ HINTERLAND_QUARTER = {"wrc_total": "wrc_quarter", "repop_total": "repop_quarter"
 REB_NEAR_M = 1000  # R-ONE 조사 상권 중심에서 이 거리 안이면 그 상권 임대료를 참고값으로 붙인다
 COMPARE_ROWS = [  # (그룹, key, 라벨, kind, 출처 구분)
     ("매출", "per_store_month", "점포당 월평균 매출", "money", "seoul"),
-    ("매출", "sales_yoy_pct", "매출 증감률(전년 동기)", "growth", "seoul"),
+    ("매출", "sales_yoy_pct", "총매출 증감률(전년 동기·명목)", "growth", "seoul"),
     ("매출", "sales_per_10k_flpop", "유동인구 1만 명당 분기 매출", "money", "seoul"),
     ("점포", "stores_sbiz", "점포 수(현재)", "count", "sbiz"),
-    ("점포", "stores_change_2y", "점포 수 증감률(2년)", "growth", "dynamics"),
+    ("점포", "stores_change_2y", "점포 수 증감률(약 2년·7분기)", "growth", "dynamics"),
     ("점포", "stores_volatility", "점포수 변동성(분기 평균 변동폭)", "rate", "dynamics"),
     ("점포", "open_rate_y", "연 개업률(최근 1년)", "rate", "churn"),
     ("점포", "close_rate_y", "연 폐업률(최근 1년)", "rate", "churn"),
@@ -462,6 +468,7 @@ def compare(level: str, codes: list[str], svc: str | None, scls: str | None) -> 
              "R-ONE 임대료는 5개 조사 상권 값만 있어, 가까운 조사 상권 값을 참고로 붙였습니다(해당 상권 실제 임대료 아님)."]
     if skipped:
         notes = [notes[0], "자치구 단위에서는 직장·상주인구·집객시설과 임대료를 비교하지 않습니다(행정동·상권 단위에서 비교하세요)."]
+    notes.insert(1, "점포 수(소상공인 상가정보)와 점포당 매출·증감·개폐업의 점포 수(서울시)는 집계 기준이 달라 같지 않습니다(작은 단위일수록 차이가 큼).")
     if scope["notice"]:
         notes.insert(1, scope["notice"])
     return {"level": level, "svc": svc, "scls": scls, "scope": scope,

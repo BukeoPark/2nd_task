@@ -231,3 +231,18 @@ def test_unit_store_list_keeps_the_category_filter_across_pages(client):
     assert client.get("/api/food/units/trdar/3120148/stores", params={"offset": 99999}).json()["records"] == []
     assert client.get("/api/food/units/trdar/3120148/stores", params={"sort": "x"}).status_code == 400
     assert client.get("/api/food/units/trdar/3120148/stores", params={"offset": -1}).status_code == 422
+
+
+def test_default_scope_notice_mentions_unmapped_food_stores(client):
+    """업종 필터가 없으면 점포 수(상가정보 음식점 전체)와 매출(서울시 10개 업종)의 범위 차이를 알린다."""
+    body = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores"}).json()
+    assert body["scope"]["unmapped_stores"] > 0 and "서울시 10개 외식업종" in body["scope"]["notice"]
+    one = client.get("/api/food/bubbles", params={"level": "dong", "metric": "stores", "svc": "CS100001"}).json()
+    assert one["scope"]["notice"] is None
+
+
+def test_yoy_hidden_for_tiny_trdars(client):
+    body = client.get("/api/food/bubbles", params={"level": "trdar", "metric": "sales_yoy_pct"}).json()
+    vals = [b["value"] for b in body["bubbles"] if b["value"] is not None]
+    assert vals and max(abs(v) for v in vals) < 300        # 표본이 작아 +390% 가 나오던 상권이 빠졌다
+    assert any(b["reason"] == "too_few_stores" for b in body["bubbles"])

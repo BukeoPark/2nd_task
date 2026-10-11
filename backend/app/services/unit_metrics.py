@@ -16,6 +16,7 @@ from app.services import store_churn
 
 MIN_STORES_FOR_RATE = 3          # 점포 3곳 미만이면 분기 개업률·폐업률·프랜차이즈 비율은 1~2곳 차이로 튀어 계산하지 않는다
 DYNAMICS_QUARTERS = 8            # 상권 시계열이 8개 분기라 두 단위 모두 같은 창(최근 2년)을 쓴다
+MIN_STORES_FOR_YOY = 10          # 매출 증감률은 비교에 쓴 업종의 점포가 (이번·전년 동기 중 적은 쪽) 10곳 미만이면 몇 곳의 변화만으로 수백 %가 튀어 계산하지 않는다
 MIN_STORES_FOR_VOLATILITY = 10   # 평균 10곳 미만은 1~2곳 증감만으로 변동폭이 크게 튀어 '자료 없음'으로 둔다
 
 NO_ROWS = "no_rows"
@@ -27,7 +28,7 @@ REASON_TEXT = {
     NO_ROWS: "이 조건의 매출 행이 원천에 없음",
     MISSING_INPUTS: "필요한 값(매출·점포 수 등)이 원천에서 비어 있어 계산하지 않음(0 이 아니라 자료 없음)",
     ZERO_STORES: "점포 수가 0 이라 점포당·비율 값을 계산할 수 없음",
-    TOO_FEW_STORES: "점포가 너무 적어 비율을 계산하지 않음",
+    TOO_FEW_STORES: "점포가 너무 적어(표본 작음) 비율·증감률을 계산하지 않음",
     SHORT_PERIOD: "관찰 기간이 부족해 계산하지 않음",
 }
 COLUMNS = ["value", "used", "total", "excluded_sales_share", "reason"]
@@ -89,23 +90,31 @@ def sales_per_flpop(now: pd.DataFrame, key: str, raw: str) -> pd.DataFrame:
 
 
 def sales_yoy(now: pd.DataFrame, ago: pd.DataFrame, key: str, raw: str) -> pd.DataFrame:
-    """전년 동기 대비 매출 증감률 — 이번·전년 동기 매출이 모두 값인 (원 단위·업종)만 양쪽에서 합산한다."""
+    """전년 동기 대비 총매출 증감률(명목) — 이번·전년 동기 매출이 모두 값인 (원 단위·업종)만 양쪽에서 합산한다.
+
+    점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않는다. 비교에 쓴 업종의 점포가 두 분기 중 적은 쪽이 10곳 미만이면
+    표본이 너무 작아 값을 계산하지 않는다(사유 too_few_stores).
+    """
     out = _frame(pd.Index(now[key].unique()))
     cols = [raw, "svc_cd"]
-    a = now.loc[now["sales_q"].notna(), [key, *cols, "sales_q"]]
-    b = ago.loc[ago["sales_q"].notna(), [*cols, "sales_q"]]
+    a = now.loc[now["sales_q"].notna(), [key, *cols, "sales_q", "stores"]]
+    b = ago.loc[ago["sales_q"].notna(), [*cols, "sales_q", "stores"]]
     both = a.merge(b, on=cols, suffixes=("", "_ago"))
     g = both.groupby(key)
     out["total"] = now.groupby(key).size()
     out["used"] = g.size().reindex(out.index).fillna(0).astype(int)
     base = g["sales_q_ago"].sum()
-    out["value"] = ((g["sales_q"].sum() / base.where(base > 0) - 1) * 100).reindex(out.index)
+    # 점포 수는 값이 있는 칸만 더한다(결측을 0 으로 세지 않음). 둘 중 적은 쪽을 표본 크기로 본다.
+    sample = pd.concat([g["stores"].sum(), g["stores_ago"].sum()], axis=1).min(axis=1).reindex(out.index)
+    small = (out["used"] > 0) & (sample < MIN_STORES_FOR_YOY)
+    out["value"] = ((g["sales_q"].sum() / base.where(base > 0) - 1) * 100).reindex(out.index).where(~small)
     sales_all = now.groupby(key)["sales_q"].sum()
     used_sales = g["sales_q"].sum().reindex(out.index).fillna(0.0)
     out["excluded_sales_share"] = ((sales_all.reindex(out.index) - used_sales) / sales_all.reindex(out.index).where(sales_all.reindex(out.index) > 0)).clip(lower=0).where(sales_all.reindex(out.index) > 0)
-    no_prev = out["value"].isna() & (out["total"] > 0)
+    no_prev = out["value"].isna() & (out["total"] > 0) & ~small
     out["reason"] = pd.Series(None, index=out.index, dtype=object)
     out.loc[no_prev, "reason"] = np.where(now["sales_q"].isna().groupby(now[key]).any().reindex(out.index)[no_prev], MISSING_INPUTS, SHORT_PERIOD)
+    out.loc[small, "reason"] = TOO_FEW_STORES
     out.loc[out["total"] == 0, "reason"] = NO_ROWS
     return out
 

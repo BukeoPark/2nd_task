@@ -5,14 +5,14 @@ import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 const METRIC_OPTIONS: { value: FoodMetric; label: string }[] = [
   { value: "stores", label: "점포 수" },
   { value: "per_store_month", label: "점포당 월평균 매출" },
-  { value: "sales_yoy_pct", label: "매출 증감률(전년 동기)" },
+  { value: "sales_yoy_pct", label: "총매출 증감률(전년 동기·명목)" },
   { value: "sales_per_10k_flpop", label: "유동인구 대비 매출" },
   { value: "open_rate", label: "개업률" },
   { value: "close_rate", label: "폐업률" },
   { value: "frc_share", label: "프랜차이즈 비율" },
   { value: "starbucks_zone_share", label: "스세권 매장 비율" },
   { value: "daiso_zone_share", label: "다세권 매장 비율" },
-  { value: "stores_change_2y", label: "점포 수 증감률(2년)" },
+  { value: "stores_change_2y", label: "점포 수 증감률(약 2년·7분기)" },
   { value: "stores_volatility", label: "점포수 변동성" },
 ];
 

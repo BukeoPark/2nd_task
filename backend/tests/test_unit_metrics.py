@@ -88,11 +88,21 @@ def test_sales_per_flpop_only_uses_units_with_both_values():
 
 
 def test_yoy_needs_sales_in_both_quarters_for_the_same_group():
-    now = _now([_row("A", "CS1", sales=110.0, stores=1), _row("B", "CS2", sales=500.0, stores=1)])
-    ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=1), _row("B", "CS2", "20252", sales=np.nan, stores=1)])
+    now = _now([_row("A", "CS1", sales=110.0, stores=20), _row("B", "CS2", sales=500.0, stores=20)])
+    ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=20), _row("B", "CS2", "20252", sales=np.nan, stores=20)])
     r = um.sales_yoy(now, ago, "_unit", "_unit_raw").loc["U"]
     assert r["value"] == pytest.approx(10.0)       # B 는 전년 값이 없어 이번 분기 매출도 비교에서 뺀다(500 이 섞이면 +450%)
     assert (r["used"], r["total"]) == (1, 2)
+
+
+def test_yoy_is_not_computed_for_a_tiny_sample():
+    """점포 5곳→7곳, 매출 5배가 된 작은 상권은 +400% 같은 값을 만들지 않고 '점포 적음' 사유를 남긴다."""
+    now = _now([_row("A", "CS1", sales=500.0, stores=7)])
+    ago = _now([_row("A", "CS1", "20252", sales=100.0, stores=5)])
+    r = um.sales_yoy(now, ago, "_unit", "_unit_raw").loc["U"]
+    assert np.isnan(r["value"]) and r["reason"] == um.TOO_FEW_STORES and r["used"] == 1
+    big = um.sales_yoy(_now([_row("A", "CS1", sales=500.0, stores=12)]), _now([_row("A", "CS1", "20252", sales=100.0, stores=10)]), "_unit", "_unit_raw").loc["U"]
+    assert big["value"] == pytest.approx(400.0)    # 기준(10곳)을 넘으면 그대로 계산
 
 
 def _series(unit: str, svc: str, stores: list[float]) -> list[dict]:

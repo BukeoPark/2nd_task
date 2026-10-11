@@ -133,8 +133,8 @@ function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?
         <Card row={stores} label="점포 수" hint={`소상공인 상가정보 ${stores?.as_of ?? ""}`} />
         <Card row={perStore} label="점포당 추정 월매출" hint={`서울시 추정 · ${perStore?.as_of ?? ""}`} />
       </div>
-      <div style={{ marginTop: 8 }}><Card row={yoy} label="매출 증감률(전년 동기)" /></div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>점포당 매출은 서울시 추정치의 상권 평균이며 개별 매장의 실제 매출이 아닙니다. 점포 수(상가정보)와 매출(서울시)은 출처·업종 범위가 다릅니다.</div>
+      <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>
+      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</div>
     </div>
   );
 }
@@ -171,6 +171,7 @@ function GrowthBlock({ ov, change, yoy }: { ov: NonNullable<ReturnType<typeof us
       <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포 수 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
       <LineChart labels={labels} series={[{ name: "점포 수", color: "#059669", values: ov.trend.map((t) => t.stores) }]} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} />
       <SourceNote title={ov.trend_source} reference={`${ov.trend[0]?.label ?? ""}~${ov.trend.at(-1)?.label ?? ""}`} />
+      <div style={{ fontSize: 10, color: "#9CA3AF" }}>이 추이의 점포 수는 서울시 집계라 위 요약의 점포 수(상가정보)와 다릅니다.</div>
       {partial > 0 && <div style={{ fontSize: 10, color: "#B45309" }}>{partial}개 분기는 일부 업종의 매출·점포 수가 비어 그 업종을 뺀 값입니다(0 으로 채우지 않음).</div>}
     </div>
   );
