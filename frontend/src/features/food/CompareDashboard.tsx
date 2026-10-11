@@ -63,7 +63,7 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto", alignItems: "center" }}>
           {codes.map((c, i) => (
             <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, border: `1px solid ${color(c)}`, color: color(c), fontWeight: 600 }}>
-              {data?.units.find((u) => u.code === c)?.name ?? trends[i]?.data?.name ?? c}
+              {data?.units.find((u) => u.code === c)?.name ?? trends[i]?.data?.name ?? list.data?.bubbles.find((b) => b.code === c)?.name ?? c}
               <button type="button" onClick={() => onRemove(c)} aria-label="비교에서 삭제" style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 14 }}>×</button>
             </span>
           ))}

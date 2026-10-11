@@ -53,7 +53,7 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
                 입력한 월 매출 {formatKrw(mine)}은 이 {data.unit?.label} 같은 업종 점포당 추정 평균의 <strong>{((mine / avg) * 100).toFixed(0)}%</strong>입니다.
               </div>
             ) : (
-              <div style={{ color: "#6B7280" }}>위 '동네 매출 비교'에 월 매출을 입력하면 평균과의 비율이 여기에 표시됩니다.</div>
+              <div style={{ color: "#6B7280" }}>위 '내 매출 벤치마킹'에 월 매출을 입력하면 평균과의 비율이 여기에 표시됩니다.</div>
             )}
             <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
               입력값은 이 화면(브라우저)에서만 계산하며 서버로 보내거나 저장하지 않습니다. 이 비교는 아래 ② 점검 항목에 <strong>반영되지 않습니다</strong>.

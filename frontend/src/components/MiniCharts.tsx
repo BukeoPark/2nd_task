@@ -36,7 +36,7 @@ export function LineChart({ labels, series, fmt, height = 150 }: { labels: strin
             </Fragment>
           );
         })}
-        {labels.map((l, i) => i % tick === 0 && <text key={i} x={x(i)} y={height - 4} fontSize={9} textAnchor="middle" fill="#6B7280">{l}</text>)}
+        {labels.map((l, i) => i % tick === 0 && <text key={i} x={x(i)} y={height - 4} fontSize={9} textAnchor={i === 0 ? "start" : i === labels.length - 1 ? "end" : "middle"} fill="#6B7280">{l}</text>)}
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#6B7280" }}>
         <span>최저 {fmt(min)}</span><span>최고 {fmt(max)}</span>
