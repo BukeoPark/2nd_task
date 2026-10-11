@@ -100,6 +100,13 @@ export interface OperationHistory {
     other_license_count: number;
     duplicate_license_count: number;
   } | null;
+  /** 인허가 기록만으로 구분한 영업 상태 — 현장 영업 확인이 아니며 지도 검색 결과 유무로 판정하지 않는다 */
+  business_status: { status: "licensed_open" | "licensed_closed" | "unconfirmed"; label: string; basis: string; caveat: string } | null;
+  /** 자료 기준일 — 상가정보 기준월과 인허가 수집·갱신일(없으면 null) */
+  data_dates: {
+    store_info: { title: string; base: string | null; collected_at: string | null };
+    license: { title: string; collected_at: string | null; source_updated: string | null } | null;
+  } | null;
   certifications: { name: string; status: "designated" | "unverified" | "not_applicable"; label: string; designated_date?: string | null; source: SourceRef }[];
   sources: SourceRef[];
 }

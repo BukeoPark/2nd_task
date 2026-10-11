@@ -54,6 +54,8 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
   const c = data.closure_cohort!;
   const trend = data.trend ?? [];
   const maxVal = Math.max(1, ...trend.flatMap((t) => [t.opened, t.closed ?? 0]));
+  const coordWarnings = (data.warnings ?? []).filter((w) => w.includes("좌표가 없"));
+  const otherWarnings = (data.warnings ?? []).filter((w) => !w.includes("좌표가 없"));
   return (
     <div>
       <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
@@ -62,13 +64,12 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
       </div>
 
       <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-        <div style={{ fontSize: 11, color: "#6b7280" }}>{c.name ?? "영업 지속 지표"}</div>
+        <div style={{ fontSize: 11, color: "#6b7280" }}>{c.status === "ok" && c.rate !== null && c.horizon_years !== undefined ? `주변 동일 업종의 과거 ${c.horizon_years}년 이내 폐업 비율` : (c.name ?? "영업 지속 지표")}</div>
         {c.status === "ok" && c.rate !== null ? (
           <>
             <div style={{ fontWeight: 700, fontSize: 18 }}>{(c.rate * 100).toFixed(1)}%</div>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>
-              분자 {c.numerator} / 분모 {c.denominator} · {c.definition}
-            </div>
+            <div style={{ fontSize: 11, color: "#6B7280" }}>분자 {c.numerator} / 분모 {c.denominator}</div>
+            <div style={{ fontSize: 11, color: "#6B7280" }}>선택 매장의 미래 폐업 확률이 아니라, 주변 동일 업종 인허가의 과거 통계입니다.</div>
           </>
         ) : (
           <Notice tone="warn">{c.message ?? "분석 자료 부족"}</Notice>
@@ -93,11 +94,24 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
 
       </Fold>
 
-      {(data.warnings ?? []).map((w) => (
+      {coordWarnings.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <Notice tone="warn">일부 위치정보 누락으로 주변 분석에서 제외된 인허가가 있습니다.</Notice>
+        </div>
+      )}
+      {otherWarnings.map((w) => (
         <div key={w} style={{ marginTop: 6 }}>
           <Notice tone="warn">{w}</Notice>
         </div>
       ))}
+      <Fold title="분석 기준 보기">
+        {c.definition && <div style={{ fontSize: 11, color: "#6B7280" }}>{c.definition}</div>}
+        {coordWarnings.map((w) => (
+          <div key={w} style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+            · {w}
+          </div>
+        ))}
+      </Fold>
       {data.source && <SourceNote title={data.source.title} reference={data.source.reference} />}
     </div>
   );

@@ -18,17 +18,31 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
   const { link, license } = history;
   return (
     <div>
-      {part === "core" && link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
+      {part === "core" && !history.business_status && link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
 
-      {license && part === "core" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Card label={license.age_basis} value={license.age_label ?? "자료 없음"} sub={license.permit_date ? `인허가일 ${license.permit_date}` : undefined} />
-          <Card label="인허가상 영업 상태" value={license.state_name} sub={license.detail_state ?? undefined} />
+      {part === "core" && (
+        <div style={{ display: "grid", gridTemplateColumns: license ? "1fr 1fr" : "1fr", gap: 8 }}>
+          {license && <Card label={license.age_basis} value={license.age_label ?? "자료 없음"} sub={license.permit_date ? `인허가일 ${license.permit_date}` : undefined} />}
+          <Card
+            label="영업 상태(인허가 기준)"
+            value={history.business_status?.label ?? "영업 여부 미확인"}
+            sub={history.business_status?.basis ?? "인허가 자료로 확인할 수 없음"}
+          />
         </div>
       )}
-      {license && part === "core" && (
+      {part === "core" && (
         <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
-          인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다. {license.age_caveat}
+          {history.business_status?.caveat ?? "인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다."} {license?.age_caveat}
+        </div>
+      )}
+      {part === "core" && history.data_dates && (
+        <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+          자료 기준일 — 상가정보 {history.data_dates.store_info.base ?? "자료 없음"} 기준
+          {" · "}
+          {history.data_dates.license
+            ? `인허가 ${history.data_dates.license.source_updated ?? "원천 갱신일 자료 없음"} 갱신(${history.data_dates.license.collected_at ?? "수집일 자료 없음"} 수집)`
+            : "인허가 자료 연결 없음"}
+          . 실시간 정보가 아닙니다.
         </div>
       )}
       {license && part === "detail" && (
@@ -41,7 +55,6 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
           />
         </div>
       )}
-      {part === "core" && !license && !link && <Notice tone="muted">영업 상태·업력 자료 없음</Notice>}
     </div>
   );
 }

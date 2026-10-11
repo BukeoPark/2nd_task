@@ -26,17 +26,7 @@ export function SalesBenchmarkSection({
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
       {data && data.status === "ok" && <Body data={data} manwon={manwon} onManwonChange={onManwonChange} />}
-      {data && (
-        <>
-          <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />
-          {data.status === "ok" &&
-            data.caveats.map((c) => (
-              <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
-                · {c}
-              </div>
-            ))}
-        </>
-      )}
+      {data && data.status !== "ok" && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
     </Section>
   );
 }
@@ -51,22 +41,27 @@ function Body({
   onManwonChange: (value: string) => void;
 }) {
   const avg = data.per_store_month ?? null;
+  const mismatch = data.scls_nm && data.scls_nm !== data.svc_nm;
   return (
     <div>
-      <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
-        비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' 전체 기준 · {data.quarter_label}
-        {data.crosswalk_note && <span style={{ color: "#6B7280" }}> ({data.crosswalk_note})</span>}
+      <div style={{ marginTop: 10 }}>
+        <Card
+          label="소속 상권 동일 업종 점포당 월평균 추정매출(이 매장의 매출 아님)"
+          value={formatKrw(avg)}
+          sub={`${data.unit?.name} · '${data.svc_nm}' 전체 · 점포 ${data.stores}곳 평균 · ${data.quarter_label}`}
+        />
       </div>
-      {data.scls_nm && data.scls_nm !== data.svc_nm && (
-        <div style={{ fontSize: 11, color: "#92400E", background: "#FFFBEB", borderRadius: 6, padding: "4px 8px", marginBottom: 8 }}>
-          이 매장의 세부 업종은 '{data.scls_nm}'이지만 서울시는 '{data.svc_nm}' 단위로만 매출을 제공해, 아래 매출 숫자는 '{data.svc_nm}' 전체 평균입니다('{data.scls_nm}'만의 값이 아님).
-        </div>
-      )}
+      {mismatch && <div style={{ fontSize: 11, color: "#92400E", marginTop: 4 }}>세부 업종('{data.scls_nm}')이 아니라 '{data.svc_nm}' 전체 평균입니다.</div>}
       {data.unit?.fallback_reason && (
-        <div style={{ marginBottom: 8 }}>
+        <div style={{ marginTop: 6 }}>
           <Notice tone="muted">{data.unit.fallback_reason}</Notice>
         </div>
       )}
+      {(data.warnings ?? []).map((w) => (
+        <div key={w} style={{ marginTop: 6 }}>
+          <Notice tone="warn">{w}</Notice>
+        </div>
+      ))}
 
       <MyRevenueInput
         manwon={manwon}
@@ -76,9 +71,7 @@ function Body({
         unitLabel={data.unit?.label ?? "동네"}
         peerLabel={data.unit?.peer_label ?? "파일럿"}
       />
-      <div style={{ marginTop: 10 }}>
-        <Card label="소속 상권 동일 업종 점포당 월평균 추정매출(이 매장의 매출 아님)" value={formatKrw(avg)} sub={`점포 ${data.stores}곳 평균 · 서울시 추정`} />
-      </div>
+
       <Fold title="상권 평균의 순위·증감 보기">
         <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>
           {data.unit?.peer_label ?? "파일럿"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
@@ -96,13 +89,23 @@ function Body({
         )}
       </Fold>
 
-      {(data.warnings ?? []).map((w) => (
-        <div key={w} style={{ marginTop: 6 }}>
-          <Notice tone="warn">{w}</Notice>
+      <Fold title="계산 기준 보기">
+        <div style={{ fontSize: 12, color: "#374151" }}>
+          비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' 전체 기준 · {data.quarter_label}
+          {data.crosswalk_note && <span style={{ color: "#6B7280" }}> ({data.crosswalk_note})</span>}
         </div>
-      ))}
-
-
+        {mismatch && (
+          <div style={{ fontSize: 11, color: "#92400E", marginTop: 4 }}>
+            이 매장의 세부 업종은 '{data.scls_nm}'이지만 서울시는 '{data.svc_nm}' 단위로만 매출을 제공해, 위 매출 숫자는 '{data.svc_nm}' 전체 평균입니다('{data.scls_nm}'만의 값이 아님).
+          </div>
+        )}
+        <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />
+        {data.caveats.map((c) => (
+          <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
+            · {c}
+          </div>
+        ))}
+      </Fold>
     </div>
   );
 }

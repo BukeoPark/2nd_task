@@ -127,3 +127,44 @@ def test_store_detail_links_to_dong_and_trdar(client, stores_links):
     store = client.get(f"/api/stores/{_pick(stores_links, 'I20101', 'matched')}").json()["store"]
     assert store["adong_cd"]
     assert store["trdar"] is None or {"code", "name", "type", "lon", "lat"} <= store["trdar"].keys()
+
+
+# ── 영업 상태 구분: 인허가 기록만 근거로 쓰고, 불확실하면 '미확인' ──
+def _first(links: pd.DataFrame, status: str) -> str:
+    return links.loc[links["link_status"] == status].sort_values("bizesId").iloc[0]["bizesId"]
+
+
+def test_business_status_open_only_for_confirmed_matches(client, stores_links):
+    oh = client.get(f"/api/stores/{_first(stores_links, 'matched')}").json()["operation_history"]
+    b = oh["business_status"]
+    assert b["status"] == "licensed_open" and b["label"] == "인허가상 영업" and "실제 현장 영업이 확인된 것은 아닙니다" in b["caveat"]
+    assert "네이버" in b["caveat"]            # 지도 검색 결과 유무로는 판정하지 않는다는 점을 밝힌다
+
+
+@pytest.mark.parametrize("link_status", ["closed_only", "no_match", "ambiguous", "needs_check"])
+def test_business_status_is_unconfirmed_when_matching_is_missing_or_uncertain(client, stores_links, link_status):
+    b = client.get(f"/api/stores/{_first(stores_links, link_status)}").json()["operation_history"]["business_status"]
+    assert b["status"] == "unconfirmed" and b["label"] == "영업 여부 미확인"
+    if link_status == "closed_only":
+        assert "폐업으로 판정하지 않음" in b["basis"]        # 폐업 인허가'만' 있는 매장도 폐업으로 단정하지 않는다
+
+
+def test_business_status_closed_requires_a_matched_license_with_closure():
+    from app.services import store_profile as sp
+    lic = {"license_name": "일반음식점", "state_name": "폐업", "status_norm": "closed"}
+    closed = sp.business_status("connected", {"status": "matched"}, lic, pd.Timestamp("2025-03-02"))
+    assert closed["status"] == "licensed_closed" and "2025-03-02" in closed["basis"]
+    no_date = sp.business_status("connected", {"status": "matched"}, lic, None)
+    assert no_date["status"] == "licensed_closed" and "폐업일 자료 없음" in no_date["basis"]    # 결측일을 채우지 않는다
+    assert sp.business_status("connected", {"status": "closed_only"}, None, None)["status"] == "unconfirmed"
+    assert sp.business_status("not_connected", None, None, None)["status"] == "unconfirmed"
+
+
+def test_data_dates_show_store_and_license_dates_separately(client, stores_links):
+    d = client.get(f"/api/stores/{_first(stores_links, 'matched')}").json()["operation_history"]["data_dates"]
+    assert d["store_info"]["base"] and d["license"]["collected_at"]
+    tax = data_store.load_parquet("industry_taxonomy.parquet")
+    st = data_store.load_parquet("stores.parquet")
+    bid = st.loc[st["indsSclsCd"].isin(tax.loc[tax["status"] != "connected", "indsSclsCd"])].iloc[0]["bizesId"]
+    none = client.get(f"/api/stores/{bid}").json()["operation_history"]["data_dates"]
+    assert none["license"] is None and none["store_info"]["base"]      # 인허가 자료가 없으면 기준일을 만들지 않는다
