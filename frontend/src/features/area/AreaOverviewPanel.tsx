@@ -35,8 +35,7 @@ export function AreaOverviewPanel(p: Props) {
   const row = (key: string): Row | undefined => cmp.data?.rows.find((r) => r.key === key);
   const unitKind = LEVEL_NOUN[p.level];
   return (
-    <Drawer title={p.title} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} onClose={p.onClose}>
-      {p.onBack && <div style={{ fontSize: 11, color: "#6B7280", marginTop: -6, marginBottom: 8 }}>← {p.parentName ?? "행정동"} 종합분석으로</div>}
+    <Drawer title={p.title} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={`← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose}>
       <Notice tone="info">
         {p.level === "trdar"
           ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."

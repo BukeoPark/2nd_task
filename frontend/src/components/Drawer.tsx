@@ -6,11 +6,13 @@ interface DrawerProps {
   subtitle?: string;
   onClose: () => void;
   onBack?: () => void;
+  /** 뒤로 가기 버튼 문구(기본 '← 목록으로') */
+  backLabel?: string;
   children: ReactNode;
 }
 
 /** 지도 왼쪽에서 열리는 상세 서랍의 공용 틀(GNB 아래 전체 높이). */
-export function Drawer({ title, subtitle, onClose, onBack, children }: DrawerProps) {
+export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", children }: DrawerProps) {
   return (
     <div
       style={{
@@ -32,7 +34,7 @@ export function Drawer({ title, subtitle, onClose, onBack, children }: DrawerPro
         <div>
           {onBack && (
             <button type="button" onClick={onBack} style={{ border: "none", background: "none", color: "#3B82F6", cursor: "pointer", padding: 0, fontSize: 12 }}>
-              ← 목록으로
+              {backLabel}
             </button>
           )}
           <strong style={{ fontSize: 16, display: "block" }}>{title}</strong>
