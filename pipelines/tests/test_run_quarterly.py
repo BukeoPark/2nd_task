@@ -49,6 +49,8 @@ MUST_PRECEDE = [
     ("build_sales_timeseries", "build_sales_crosswalk"), ("build_sales_timeseries", "build_dong_metrics"),
     ("build_sales_crosswalk", "build_dong_metrics"),
     ("build_trdar_areas", "build_franchise"), ("clean_stores", "build_franchise"),
+    ("build_hinterland", "build_location_model"), ("build_sales_timeseries_trdar", "build_location_model"),
+    ("compute_anchor_features", "build_location_model"), ("build_sales_crosswalk", "build_location_model"),
     ("export_source_registry", "pipeline_tests"), ("pipeline_tests", "backend_tests"),
 ]
 

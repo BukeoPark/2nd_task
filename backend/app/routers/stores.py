@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import data_store, food_map, franchise, google_places, improvement_report, nearby_analysis, sales_benchmark, store_profile, taxonomy
+from app.services import data_store, food_map, franchise, google_places, improvement_report, location_influence, nearby_analysis, sales_benchmark, store_profile, taxonomy
 
 router = APIRouter(prefix="/api", tags=["stores"])
 
@@ -38,6 +38,19 @@ def store_nearby(bizes_id: str, radius_m: float = Query(500, ge=100, le=1000, de
     """주변 상권 분석 — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율."""
     try:
         return nearby_analysis.analyze(bizes_id, radius_m)
+    except store_profile.StoreNotFound:
+        raise _not_found(bizes_id)
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/stores/{bizes_id}/location-influence")
+def store_location_influence(bizes_id: str, radius_m: int = Query(500, description="분석 반경(m) — 250·500·1000 중 하나")) -> dict:
+    """입지 영향력 — 반경 지표(앵커·경쟁), 상권 수요 유형(업무·혼합·주거형), 입지 요인과 점포당 추정매출의 관계(상관, 인과 아님)."""
+    if radius_m not in location_influence.RADII_M:
+        raise HTTPException(status_code=422, detail=f"radius_m 은 {list(location_influence.RADII_M)} 중 하나여야 합니다. 반경을 다시 선택하세요.")
+    try:
+        return location_influence.analyze(bizes_id, radius_m)
     except store_profile.StoreNotFound:
         raise _not_found(bizes_id)
     except data_store.DataNotReady as e:

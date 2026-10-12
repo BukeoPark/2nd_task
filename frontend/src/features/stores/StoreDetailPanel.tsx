@@ -5,6 +5,7 @@ import type { StoreBasic } from "../../lib/apiClient";
 import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { ImprovementReportSection } from "./ImprovementReportSection";
+import { LocationInfluenceSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { AnchorSection, NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
@@ -19,7 +20,7 @@ interface StoreDetailPanelProps {
   onOpenArea: (target: { level: "dong" | "trdar"; store: StoreBasic }) => void;
 }
 
-/** 매장 상세 — 매장 고유정보 중심(기본·영업 상태·업력 → Google 고객평가 → 인증·지정 → 앵커 거리 → 반경 500m 경쟁 환경 → 내 매출 벤치마킹 → 상권 이동 링크).
+/** 매장 상세 — 매장 고유정보 중심(기본·영업 상태·업력 → Google 고객평가 → 인증·지정 → 앵커 거리 → 반경 500m 경쟁 환경 → 입지 영향력(반경 지표·수요 유형·입지 요인) → 내 매출 벤치마킹 → 상권 이동 링크).
  * 상권 매출 추이·인구·시간대 그래프는 행정동·상권 상세에만 둔다. 영역을 합친 점수(매장 신뢰도 등)는 만들지 않는다. */
 export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
@@ -69,6 +70,7 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
           <OperationHistorySection history={data.operation_history} />
           <AnchorSection storeId={storeId} />
           <NearbyAnalysisSection storeId={storeId} />
+          <LocationInfluenceSection key={storeId} storeId={storeId} />
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
           <MyStoreCheckupSection key={storeId} storeId={storeId} />
           <Section title="소속 상권 — 행정동·발달/골목상권">

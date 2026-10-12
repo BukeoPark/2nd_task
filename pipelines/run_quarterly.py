@@ -94,6 +94,7 @@ STEPS: list[Step] = [
     Step("build_sales_crosswalk", "pipelines.transform.build_sales_crosswalk"),
     Step("build_dong_metrics", "pipelines.transform.build_dong_metrics"),
     Step("build_hinterland", "pipelines.transform.build_hinterland"),
+    Step("build_location_model", "pipelines.transform.build_location_model"),
     # ── 프랜차이즈·임대 ────────────────────────────────────
     Step("build_franchise", "pipelines.transform.build_franchise"),
     Step("build_reb_zone_metrics", "pipelines.transform.build_reb_zone_metrics"),

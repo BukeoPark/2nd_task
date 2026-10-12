@@ -451,6 +451,85 @@ export interface StoreAnchorsResponse {
   note: string;
 }
 
+export type DemandType = "업무형" | "혼합형" | "주거형";
+
+export interface LocationFactor {
+  key: string;
+  label: string;
+  unit: string;
+  definition: string;
+  source: string;
+  /** 표준편차 1 증가당 점포당 추정매출 차이(%) — 0/1 요인은 아래 pct 가 '없음→있음' 차이 */
+  pct_per_sd: number;
+  pct: number;
+  pct_lo: number;
+  pct_hi: number;
+  p: number;
+  significant: boolean;
+  direction: "positive" | "negative";
+  tendency: "높은 경향" | "낮은 경향" | "뚜렷한 관계 없음";
+  binary: boolean;
+  effect_unit: string;
+  vif: number | null;
+  store_value: number | null;
+  store_percentile: number | null;
+}
+
+export interface LocationInfluenceResponse {
+  store: { store_id: string; name: string; category: string; lon: number; lat: number };
+  radius_m: number;
+  radius_options: number[];
+  radius_metrics: {
+    anchors: {
+      status: "ok" | "no_data";
+      message?: string;
+      brands: { brand: AnchorBrand; label: string; nearest_m: number | null; count: number; counts_by_radius: Record<string, number> }[];
+      note?: string;
+    };
+    competitors: {
+      same_category: { label: string; level: string; count: number; nearest_m: number | null };
+      same_large_category: { label: string; level: string; count: number };
+      all_stores: { label: string; count: number };
+      basis: string;
+    };
+  };
+  area: {
+    level: "trdar" | "dong";
+    level_label: string;
+    code: string;
+    name: string;
+    trdar_type: string | null;
+    fallback_reason: string | null;
+    type_counts: Record<string, number>;
+    demand_type: DemandType | null;
+    message?: string;
+    basis?: string;
+    worker_share?: number | null;
+    workers?: number | null;
+    residents?: number | null;
+    has_subway?: boolean | null;
+    rule?: string;
+    time_pattern?: { quarter: string; items: { key: string; label: string; share: number | null; median: number | null }[]; note: string } | null;
+  };
+  model: {
+    status: "ok" | "insufficient";
+    message?: string;
+    useful?: boolean;
+    reliability_note?: string | null;
+    rows?: number;
+    clusters?: number;
+    services?: number;
+    cv?: { r2_full: number; r2_base: number; delta: number; folds: number; groups: number; text: string };
+    high_vif?: string[];
+    factors?: LocationFactor[];
+    store_in_sample?: boolean;
+    not_in_sample_reason?: string | null;
+    service?: { svc_cd: string | null; peers: number };
+  };
+  caveats: string[];
+  source: { title: string; reference: string };
+}
+
 export interface FoodCategoriesResponse {
   groups: { svc_cd: string; svc_nm: string; has_sales: boolean; store_count: number; details: { code: string; name: string; store_count: number }[] }[];
   other: { code: string; name: string; store_count: number }[];
@@ -632,6 +711,8 @@ export const apiClient = {
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),
+  getLocationInfluence: (storeId: string, radiusM = 500) =>
+    request<LocationInfluenceResponse>(`/api/stores/${encodeURIComponent(storeId)}/location-influence?radius_m=${radiusM}`),
   getGooglePlaceLink: (storeId: string) =>
     request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place`),
   reserveGoogleView: (storeId: string) =>
