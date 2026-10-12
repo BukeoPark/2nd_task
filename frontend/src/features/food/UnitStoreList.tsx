@@ -14,11 +14,13 @@ interface UnitStoreListProps {
   scls: string | null;
   filterName: string;
   onSelect: (storeId: string) => void;
+  /** 목록 항목에 마우스·키보드 초점이 올라가면 그 매장 id, 벗어나면 null — 지도의 같은 점을 강조하는 데 쓴다 */
+  onHover?: (storeId: string | null) => void;
 }
 
 /** 버블에 속한 매장(경계 안) — 버블 점포 수와 같은 기준이라 총수가 일치한다. 50곳씩 '더 보기'로 끝까지 볼 수 있고,
  * 업종·정렬을 바꾸면 처음부터 다시 받아 이전 조건의 목록이 섞이지 않는다. */
-export function UnitStoreList({ level, code, svc, scls, filterName, onSelect }: UnitStoreListProps) {
+export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, onHover }: UnitStoreListProps) {
   const [sort, setSort] = useState<UnitStoreSort>("distance");
   const q = useFoodUnitStores(level, code, svc, scls, sort);
 
@@ -61,6 +63,10 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect }: 
             key={s.store_id}
             type="button"
             onClick={() => onSelect(s.store_id)}
+            onMouseEnter={() => onHover?.(s.store_id)}
+            onMouseLeave={() => onHover?.(null)}
+            onFocus={() => onHover?.(s.store_id)}
+            onBlur={() => onHover?.(null)}
             style={{ textAlign: "left", border: "1px solid #E5E7EB", borderRadius: 6, padding: "6px 8px", background: "white", cursor: "pointer" }}
           >
             <div style={{ fontWeight: 600, fontSize: 13 }}>

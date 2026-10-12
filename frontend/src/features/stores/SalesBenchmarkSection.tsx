@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Term } from "../../components/Term";
+import { compareBasis } from "../../lib/compareBasis";
+import { CompareBasisBox } from "./CompareBasisBox";
+import { usePeerStores } from "./useStores";
 import { apiClient, type GrowthCell, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
@@ -21,13 +24,15 @@ export function SalesBenchmarkSection({
     queryFn: () => apiClient.getSalesBenchmark(storeId),
     staleTime: 10 * 60 * 1000,
   });
+  const peers = usePeerStores(storeId);
+  const peerCount = peers.data?.status === "ok" ? peers.data.count : null;
   return (
     <Section title="내 매출 비교 — 소속 상권 동일 업종 추정 평균">
       <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. 내 실제 월매출을 입력하면 이 평균과 견줘 봅니다.</Notice>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
-      {data && data.status === "ok" && <Body data={data} manwon={manwon} onManwonChange={onManwonChange} />}
+      {data && data.status === "ok" && <Body data={data} peerCount={peerCount} manwon={manwon} onManwonChange={onManwonChange} />}
       {data && data.status !== "ok" && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
     </Section>
   );
@@ -35,10 +40,12 @@ export function SalesBenchmarkSection({
 
 function Body({
   data,
+  peerCount,
   manwon,
   onManwonChange,
 }: {
   data: SalesBenchmarkResponse;
+  peerCount: number | null;
   manwon: string;
   onManwonChange: (value: string) => void;
 }) {
@@ -53,11 +60,15 @@ function Body({
           sub={`${data.unit?.name} · '${data.svc_nm}' 전체 · 점포 ${data.stores}곳 평균 · ${data.quarter_label}`}
         />
       </div>
-      {mismatch && <div style={{ fontSize: 11, color: "#92400E", marginTop: 4 }}>세부 업종('{data.scls_nm}')이 아니라 '{data.svc_nm}' 전체 평균입니다.</div>}
-      {data.unit?.fallback_reason && (
-        <div style={{ marginTop: 6 }}>
-          <Notice tone="muted">{data.unit.fallback_reason}</Notice>
-        </div>
+      {data.unit && data.svc_nm && (
+        <CompareBasisBox
+          basis={compareBasis({
+            level: data.unit.level, unitName: data.unit.name, unitType: data.unit.type, fallbackReason: data.unit.fallback_reason,
+            svcNm: data.svc_nm, sclsNm: data.scls_nm ?? null, peerCount,
+          })}
+          quarter={data.quarter_label}
+          showLegend={peerCount !== null}
+        />
       )}
       {(data.warnings ?? []).map((w) => (
         <div key={w} style={{ marginTop: 6 }}>

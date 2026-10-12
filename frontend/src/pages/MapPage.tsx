@@ -18,13 +18,17 @@ import { UnitStoreList } from "../features/food/UnitStoreList";
 import { CompareDashboard } from "../features/food/CompareDashboard";
 import { AreaOverviewPanel } from "../features/area/AreaOverviewPanel";
 import { StoreDetailPanel } from "../features/stores/StoreDetailPanel";
+import { usePeerStores, useStoreDetail } from "../features/stores/useStores";
+import { SelectedStoreMarker } from "../features/food/SelectedStoreMarker";
+import { UnitBoundaryLayer } from "../features/food/UnitBoundaryLayer";
 import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, OverviewTrdar, RebZone, SearchResult } from "../lib/apiClient";
 import { cautionText, coverageText, reasonText } from "../lib/foodText";
 import { canAct, classifyBubbles, viewState } from "../lib/queryState";
 import { searchTarget } from "../lib/searchTarget";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
 import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
-import { OVERLAY_Z_INDEX, zoomToUnit } from "../lib/vizConfig";
+import { revealDelta } from "../lib/reveal";
+import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
 const MAX_COMPARE = 4;
@@ -118,6 +122,8 @@ export function MapPage() {
   // 검색으로 고른 위치와, 도착 뒤 요약을 열 버블(검색 → 위치 선택 → 업종 선택 → 후보 지역 비교 흐름)
   const [place, setPlace] = useState<{ name: string; lon: number; lat: number } | null>(null);
   const [pendingOpen, setPendingOpen] = useState<{ unit: FoodLevel; code: string } | null>(null);
+  // 패널 목록에서 마우스를 올린 매장 — 지도의 같은 점을 강조한다
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mapKakao) return;
@@ -142,6 +148,31 @@ export function MapPage() {
   const anchorsForced = metric === "starbucks_zone_share" || metric === "daiso_zone_share";
   const showAnchors = anchorsVisible || anchorsForced;
   const anchors = useFoodAnchors(showAnchors);
+
+  // 상세를 보고 있는 매장: 어디 있는지(좌표)와, 어느 매장들·어느 영역과 비교한 숫자인지(비교 단위 매장·경계)
+  const selectedDetail = useStoreDetail(storeId ?? "", storeId !== null);
+  const selectedStore = storeId !== null ? selectedDetail.data?.store : undefined;
+  const selLon = selectedStore?.lon ?? null;
+  const selLat = selectedStore?.lat ?? null;
+  const peers = usePeerStores(storeId);
+  const peerData = storeId !== null && peers.data?.status === "ok" ? peers.data : null;
+  const peerIds = useMemo(() => (peerData ? new Set(peerData.store_ids) : null), [peerData]);
+
+  // 선택한 매장이 왼쪽 패널·상단 바에 가려지거나 화면 밖이면 보이는 영역 가운데로 지도를 옮긴다(잘 보이면 그대로).
+  // 검색·확대의 지도 이동 애니메이션이 끝난 뒤에 위치를 재도록 잠깐 기다린다.
+  useEffect(() => {
+    if (!mapKakao || selLon === null || selLat === null) return;
+    const { map, kakao } = mapKakao;
+    const timer = window.setTimeout(() => {
+      const node: HTMLElement = map.getNode();
+      const pt = map.getProjection().containerPointFromCoords(toKakaoLatLng(kakao, { lon: selLon, lat: selLat }));
+      const delta = revealDelta({ x: pt.x, y: pt.y }, { w: node.clientWidth, h: node.clientHeight }, {
+        left: SIDE_PANEL_WIDTH_PX + 48, top: TOP_BAR_HEIGHT_PX + 48, right: 48, bottom: 48,
+      });
+      if (delta) map.panBy(delta.dx, delta.dy);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [mapKakao, selLon, selLat]);
 
   // ── 화면 상태: 최초 로딩 / 조건 변경 후 재조회(이전 결과) / 정상 0곳 / 자료 없음 / 조회 실패 ──
   // '이전 조건의 결과'는 조건(단위·지표·업종)이 실제로 다른 데이터가 대신 보이는 경우다 — 지도를 움직여 범위만 바뀐 것은 새 조건이 아니다.
@@ -211,8 +242,13 @@ export function MapPage() {
           <AreaBubbleLayer map={mapKakao.map} kakao={mapKakao.kakao} data={bubbles.data} onSelect={onBubble} stale={bubblesStale} />
         )}
         {mapKakao && points.data && unit === "stores" && (
-          <StorePointLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} stale={pointsStale} />
+          <StorePointLayer
+            map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} stale={pointsStale}
+            selectedId={storeId} hoveredId={hoveredId} peerIds={peerIds}
+          />
         )}
+        {mapKakao && peerData?.boundary && <UnitBoundaryLayer map={mapKakao.map} kakao={mapKakao.kakao} geometry={peerData.boundary} />}
+        {mapKakao && selectedStore && <SelectedStoreMarker map={mapKakao.map} kakao={mapKakao.kakao} store={selectedStore} />}
         {mapKakao && showAnchors && anchors.data && (
           <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
         )}
@@ -291,6 +327,11 @@ export function MapPage() {
             const sel = shownSelection;
             const actions = (
               <>
+                {sel.compare && sel.compare.level !== unit && (
+                  <div role="status" style={{ background: "#EFF6FF", color: "#1E3A8A", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>
+                    지도는 지금 {UNIT_LABEL[unit]} 단위로 보여요. 아래 요약은 {UNIT_LABEL[sel.compare.level]} 기준 숫자예요.
+                  </div>
+                )}
                 {sel.center && sel.zoomTo !== undefined && mapKakao && (
                   <button
                     type="button"
@@ -343,7 +384,8 @@ export function MapPage() {
                       mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, t));
                     }
                   }}
-                  onSelectStore={setStoreId}
+                  onSelectStore={(id) => { setHoveredId(null); setStoreId(id); }}
+                  onHoverStore={setHoveredId}
                 />
               );
             }
@@ -354,7 +396,7 @@ export function MapPage() {
                 )}
                 {actions}
                 {sel.unit && (
-                  <UnitStoreList level={sel.unit.level} code={sel.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={setStoreId} />
+                  <UnitStoreList level={sel.unit.level} code={sel.unit.code} svc={svc} scls={scls} filterName={filterName} onSelect={(id) => { setHoveredId(null); setStoreId(id); }} onHover={setHoveredId} />
                 )}
               </InfoPanel>
             );

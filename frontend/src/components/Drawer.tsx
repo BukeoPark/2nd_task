@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { OVERLAY_Z_INDEX } from "../lib/vizConfig";
+import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX } from "../lib/vizConfig";
 
 interface DrawerProps {
   title: string;
@@ -21,7 +21,7 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
         top: 56,
         bottom: 0,
         left: 0,
-        width: 360,
+        width: SIDE_PANEL_WIDTH_PX,
         background: "white",
         boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
         padding: 20,

@@ -26,6 +26,8 @@ interface Props {
   onClose: () => void;
   onSelectTrdar: (t: OverviewTrdar) => void;
   onSelectStore: (id: string) => void;
+  /** 매장 목록 항목에 마우스·초점이 올라가면 그 id, 벗어나면 null — 지도의 같은 점 강조용 */
+  onHoverStore?: (id: string | null) => void;
 }
 
 /** 행정동·상권 종합분석 — 핵심 요약을 먼저 보이고 상세 지표는 접어 두며, 매장 목록은 맨 마지막이다. 값은 단위 자신의 경계·표로 계산한 것이다. */
@@ -94,7 +96,7 @@ export function AreaOverviewPanel(p: Props) {
 
       <Fold title={`매장 목록 — 이 ${unitKind} 경계 안 매장`} open>
         <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>아래는 개별 매장 목록입니다. 매장을 누르면 그 매장 고유 정보(고객평가·운영이력)로 넘어가며, 위의 상권 통계와는 별개입니다.</div>
-        <UnitStoreList level={level} code={p.code} svc={p.svc} scls={p.scls} filterName={p.filterName} onSelect={p.onSelectStore} />
+        <UnitStoreList level={level} code={p.code} svc={p.svc} scls={p.scls} filterName={p.filterName} onSelect={p.onSelectStore} onHover={p.onHoverStore} />
       </Fold>
     </Drawer>
   );
