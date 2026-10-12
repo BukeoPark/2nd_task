@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
+import { Term } from "../../components/Term";
 import type { FoodCompareResponse, FoodLevel, OverviewTrdar } from "../../lib/apiClient";
 import { formatKrw, formatMetric, shortQuarter } from "../../lib/format";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
@@ -184,7 +185,7 @@ function DemandBlock({ ov }: { ov: NonNullable<ReturnType<typeof useUnitOverview
     <div>
       {f ? (
         <>
-          <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 4px" }}>유동인구 {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}{f.yoy_pct !== null && ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%`}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 4px" }}><Term id="floatingIndex" label="유동인구" /> {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}{f.yoy_pct !== null && ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%`}</div>
           <BarList items={f.slots.map((s) => ({ label: s.label, value: s.pct, color: "#6366F1" }))} fmt={(v) => `${v}%`} />
           <SourceNote title="서울시 상권분석서비스(유동인구) · 시간대별 비중" reference={f.label} />
         </>

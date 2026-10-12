@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
 import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
 import { assess, buildRows, checkupText, GAP_PP, quarterLabel } from "../../lib/checkup";
@@ -204,7 +205,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
         {bep.status === "ok" && bep.bep !== null && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <Card label="월 고정비 합" value={manwon(bep.fixed)} />
-            <Card label="손익분기 월 매출" value={manwon(bep.bep)} sub={bep.vsBenchPct === null ? undefined : `${unitLabel} 같은 업종 점포당 평균의 ${bep.vsBenchPct.toFixed(0)}%`} />
+            <Card label={<Term id="breakeven" />} value={manwon(bep.bep)} sub={bep.vsBenchPct === null ? undefined : `${unitLabel} 같은 업종 점포당 평균의 ${bep.vsBenchPct.toFixed(0)}%`} />
             {bep.profit !== null && latestMonth && (
               <Card
                 label={`예상 월 이익 (${latestMonth} 매출 ${manwon(latestRevenue ?? 0)} 기준)`}
@@ -212,7 +213,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
                 sub={bep.profit < 0 ? "손익분기보다 매출이 낮은 달" : undefined}
               />
             )}
-            {bep.safetyPct !== null && <Card label="안전마진" value={`${bep.safetyPct.toFixed(0)}%`} sub="매출이 이만큼 줄어도 적자가 아닌 정도(음수면 이미 적자)" />}
+            {bep.safetyPct !== null && <Card label={<Term id="safetyMargin" />} value={`${bep.safetyPct.toFixed(0)}%`} sub="매출이 이만큼 줄어도 적자가 아닌 정도(음수면 이미 적자)" />}
           </div>
         )}
       </div>
@@ -229,7 +230,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
   );
 }
 
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
       <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>

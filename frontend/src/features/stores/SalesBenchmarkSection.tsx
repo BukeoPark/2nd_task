@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Term } from "../../components/Term";
 import { apiClient, type GrowthCell, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 
@@ -46,7 +48,7 @@ function Body({
     <div>
       <div style={{ marginTop: 10 }}>
         <Card
-          label="소속 상권 동일 업종 점포당 월평균 추정매출(이 매장의 매출 아님)"
+          label={<Term id="perStoreMonth" label="소속 상권 동일 업종 점포당 월평균 추정매출(이 매장의 매출 아님)" />}
           value={formatKrw(avg)}
           sub={`${data.unit?.name} · '${data.svc_nm}' 전체 · 점포 ${data.stores}곳 평균 · ${data.quarter_label}`}
         />
@@ -190,7 +192,7 @@ function MyRevenueInput({
   );
 }
 
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
       <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
