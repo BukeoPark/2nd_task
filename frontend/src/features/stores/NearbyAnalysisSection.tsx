@@ -1,8 +1,7 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
-import { formatDistance } from "../../lib/format";
-import { ZONE_COLORS } from "../../lib/vizConfig";
-import { useNearbyAnalysis, useStoreAnchors } from "./useStores";
+import { useNearbyAnalysis } from "./useStores";
 
 const RADIUS_M = 500;
 
@@ -10,43 +9,12 @@ const RADIUS_M = 500;
 export function NearbyAnalysisSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, RADIUS_M);
   return (
-    <Section title="반경 500m 동일 업종 경쟁·개폐업 환경">
+    <Section title="반경 500m 동일 업종 경쟁·개폐업 환경" scope={<ScopeTag kind="radius" label="반경 500m" />}>
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}
       {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 8 }}>{data.disclaimer}</div>}
     </Section>
-  );
-}
-
-/** 앵커 브랜드(스세권·다세권) 최근접 거리 — 매장 기준. 인허가 원천이 없는 업종도 좌표만 있으면 보여준다. */
-export function AnchorSection({ storeId }: { storeId: string }) {
-  return (
-    <Section title="스타벅스·다이소 최근접 거리">
-      <AnchorRow storeId={storeId} />
-    </Section>
-  );
-}
-
-function AnchorRow({ storeId }: { storeId: string }) {
-  const { data, isError, error } = useStoreAnchors(storeId);
-  if (isError) return <Notice tone="error">조회 실패: {error.message}</Notice>;
-  if (!data) return <Notice tone="muted">불러오는 중...</Notice>;
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        {data.brands.map((b) => (
-          <div key={b.brand} style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", borderLeft: `3px solid ${ZONE_COLORS[b.brand]}` }}>
-            <div style={{ fontSize: 11, color: "#6b7280" }}>가장 가까운 {b.label}</div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{b.nearest_m === null ? "자료 없음" : formatDistance(b.nearest_m)}</div>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>
-              {b.in_zone ? `${b.brand === "starbucks" ? "스세권" : "다세권"}(도보 ${data.walk_m}m 이내)` : `도보권(${data.walk_m}m) 밖`} · 반경 500m {b.count_500m}곳
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{data.note}</div>
-    </div>
   );
 }
 

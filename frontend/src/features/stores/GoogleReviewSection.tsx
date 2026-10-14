@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Notice, Section } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import { apiClient, type GoogleViewReservation } from "../../lib/apiClient";
 import { googleBrowserKeyConfigured, GoogleNotConfigured, loadGooglePlacesUiKit } from "../../lib/googleMapsLoader";
 import { useGooglePlaceLink } from "./useStores";
@@ -13,6 +14,7 @@ export function GoogleReviewSection({ storeId }: { storeId: string }) {
   return (
     <Section
       title="Google 고객평가"
+      scope={<ScopeTag kind="store" label="이 매장" />}
       right={
         !open && (
           <button type="button" onClick={() => setOpen(true)} style={buttonStyle}>

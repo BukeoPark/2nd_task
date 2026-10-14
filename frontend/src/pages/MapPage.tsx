@@ -10,6 +10,7 @@ import { SearchMarker } from "../features/food/SearchMarker";
 import { FlowGuide } from "../features/food/FlowGuide";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
+import { MapLayerToolbar } from "../features/food/MapLayerToolbar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { MapDock } from "../features/food/MapDock";
 import { RankingTable } from "../features/food/RankingTable";
@@ -266,14 +267,16 @@ export function MapPage() {
           metric={metric}
           onMetricChange={withReset(setMetric)}
           unitLabel={UNIT_LABEL[unit]}
-          rebZonesVisible={rebZonesVisible}
-          onRebZonesVisibleChange={setRebZonesVisible}
           onPickPlace={onPickPlace}
           pickedPlaceName={place?.name ?? null}
           onClearPlace={onClearPlace}
-          anchorsVisible={showAnchors}
+        />
+        <MapLayerToolbar
+          anchorsOn={showAnchors}
           anchorsForced={anchorsForced}
-          onAnchorsVisibleChange={setAnchorsVisible}
+          onAnchorsChange={setAnchorsVisible}
+          rebOn={rebZonesVisible}
+          onRebChange={setRebZonesVisible}
         />
         <FlowGuide placeChosen={place !== null} svcChosen={svc !== null} basketCount={basket?.codes.length ?? 0} />
         <MapDock

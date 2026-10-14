@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { compareBasis } from "../../lib/compareBasis";
 import { CompareBasisBox } from "./CompareBasisBox";
@@ -27,7 +28,7 @@ export function SalesBenchmarkSection({
   const peers = usePeerStores(storeId);
   const peerCount = peers.data?.status === "ok" ? peers.data.count : null;
   return (
-    <Section title="내 매출 비교 — 소속 상권 동일 업종 추정 평균">
+    <Section title="내 매출 비교 — 소속 상권 동일 업종 추정 평균" scope={<ScopeTag kind="area" label="소속 상권" />}>
       <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. 내 실제 월매출을 입력하면 이 평균과 견줘 봅니다.</Notice>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}

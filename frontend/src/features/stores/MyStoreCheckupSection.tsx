@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
 import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
@@ -93,7 +94,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
   const bep = breakeven(cost, latestRevenue, benchWon === null ? null : benchWon / 1e4);
 
   return (
-    <Section title="내 가게 점검" right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
+    <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
       <div style={{ fontSize: 12, color: "#374151" }}>월 매출을 달마다 기록해 소속 상권 같은 업종의 흐름과 견주고, 비용을 넣어 손익분기 매출을 계산합니다.</div>
       <Fold title="월 매출 기록·간이 손익분기 펼치기">
       {saveFailed && (

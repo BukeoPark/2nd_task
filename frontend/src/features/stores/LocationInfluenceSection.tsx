@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { DemandType, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
-import { useLocationInfluence } from "./useStores";
+import { useLocationInfluence, useStoreAnchors } from "./useStores";
 
 const DEFAULT_RADIUS_M = 500;
 const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
@@ -43,20 +44,20 @@ export function LocationInfluenceSection({ storeId }: { storeId: string }) {
       {data && (
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
-          <Body data={data} />
+          <Body data={data} storeId={storeId} />
         </div>
       )}
     </Section>
   );
 }
 
-function Body({ data }: { data: LocationInfluenceResponse }) {
+function Body({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
         매장 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
       </div>
-      <RadiusBlock data={data} />
+      <RadiusBlock data={data} storeId={storeId} />
       <AreaBlock data={data} />
       <ModelBlock data={data} />
       <Fold title="해석 한계 보기">
@@ -69,16 +70,26 @@ function Body({ data }: { data: LocationInfluenceResponse }) {
   );
 }
 
-function RadiusBlock({ data }: { data: LocationInfluenceResponse }) {
+function RadiusBlock({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
   const { anchors, competitors } = data.radius_metrics;
   const r = radiusLabel(data.radius_m);
+  // 스세권·다세권(도보권) 판정은 반경과 무관한 매장 기준 값이라 같은 칸에 덧붙인다. 조회 전·실패면 덧붙이지 않는다.
+  const walk = useStoreAnchors(storeId).data;
+  const zoneText = (brand: string) => {
+    const z = walk?.brands.find((x) => x.brand === brand);
+    if (!walk || !z) return "";
+    return ` · ${z.in_zone ? `${brand === "starbucks" ? "스세권" : "다세권"}(도보 ${walk.walk_m}m 이내)` : `도보권(${walk.walk_m}m) 밖`}`;
+  };
   return (
     <div style={card}>
-      <div style={cardTitle}>① 반경 {r} 안 주변 환경(직선거리)</div>
+      <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span>① 반경 {r} 안 주변 환경(직선거리)</span>
+        <ScopeTag kind="radius" label={`반경 ${r}`} />
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
         {anchors.status === "ok" ? (
           anchors.brands.map((b) => (
-            <Stat key={b.brand} accent={ZONE_COLORS[b.brand]} label={b.label} value={`${b.count}곳`} sub={`가장 가까운 곳 ${b.nearest_m === null ? "자료 없음" : formatDistance(b.nearest_m)}`} />
+            <Stat key={b.brand} accent={ZONE_COLORS[b.brand]} label={b.label} value={`${b.count}곳`} sub={`가장 가까운 곳 ${b.nearest_m === null ? "자료 없음" : formatDistance(b.nearest_m)}${zoneText(b.brand)}`} />
           ))
         ) : (
           <div style={{ gridColumn: "1 / -1" }}><Notice tone="muted">{anchors.message}</Notice></div>
@@ -96,7 +107,10 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
   return (
     <div style={card}>
-      <div style={cardTitle}>② {a.level_label} 수요 유형 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</div>
+      <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span>② {a.level_label} 수요 유형 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</span>
+        <ScopeTag kind="area" label={`소속 ${a.level_label}`} />
+      </div>
       {a.fallback_reason && <div style={{ marginTop: 6 }}><Notice tone="muted">{a.fallback_reason}</Notice></div>}
       {a.demand_type === null ? (
         <div style={{ marginTop: 6 }}><Notice tone="warn">{a.message}</Notice></div>
@@ -145,7 +159,10 @@ function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
   const m = data.model;
   return (
     <div style={card}>
-      <div style={cardTitle}>③ 입지 요인과 점포당 추정매출의 관계(상권 평균)</div>
+      <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span>③ 입지 요인과 점포당 추정매출의 관계(상권 평균)</span>
+        <ScopeTag kind="area" label="상권 단위 통계" />
+      </div>
       {m.status !== "ok" || !m.factors ? (
         <div style={{ marginTop: 6 }}><Notice tone="warn">{m.message ?? "분석 자료 부족"}</Notice></div>
       ) : (

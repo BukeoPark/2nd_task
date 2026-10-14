@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
 import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { ImprovementReportSection } from "./ImprovementReportSection";
 import { LocationInfluenceSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
-import { AnchorSection, NearbyAnalysisSection } from "./NearbyAnalysisSection";
+import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
+import { SummaryChips } from "./SummaryChips";
 import { useStoreDetail } from "./useStores";
 
 interface StoreDetailPanelProps {
@@ -20,7 +22,8 @@ interface StoreDetailPanelProps {
   onOpenArea: (target: { level: "dong" | "trdar"; store: StoreBasic }) => void;
 }
 
-/** 매장 상세 — 매장 고유정보 중심(기본·영업 상태·업력 → Google 고객평가 → 인증·지정 → 앵커 거리 → 반경 500m 경쟁 환경 → 입지 영향력(반경 지표·수요 유형·입지 요인) → 내 매출 벤치마킹 → 상권 이동 링크).
+/** 매장 상세 — 매장 고유정보 중심(기본·영업 상태·업력 → 주변·상권 요약 칩 → Google 고객평가 → 인증·지정 → 반경 500m 경쟁 환경 → 입지 영향력(반경 지표·스세권·수요 유형·입지 요인) → 내 매출 비교 → 내 가게 점검 → 상권 이동 링크).
+ * 모든 블록 제목 옆 범위 라벨(이 매장·주변·상권·내 입력)은 lib/scope 의 네 묶음과 같다.
  * 상권 매출 추이·인구·시간대 그래프는 행정동·상권 상세에만 둔다. 영역을 합친 점수(매장 신뢰도 등)는 만들지 않는다. */
 export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
@@ -45,6 +48,11 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
             {store.address ?? "주소 정보 없음"}
             {store.building ? ` (${store.building})` : ""}
           </div>
+          <SourceNote title={store.source.title} reference={store.source.reference} />
+          <div style={{ marginTop: 10 }}>
+            <LicenseSummary history={data.operation_history} />
+          </div>
+          <SummaryChips storeId={storeId} store={store} />
           {naver && naver.primary && (
             <div style={{ marginTop: 6 }}>
               <a href={naver.primary} target="_blank" rel="noopener noreferrer" style={naverLinkStyle}>
@@ -61,19 +69,14 @@ export function StoreDetailPanel({ storeId, onBack, onClose, onOpenArea }: Store
               <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>검색 결과로 이동합니다. 네이버 지도 검색 결과가 실제 매장과 일치하는지 확인하세요.</div>
             </div>
           )}
-          <SourceNote title={store.source.title} reference={store.source.reference} />
-          <div style={{ marginTop: 10 }}>
-            <LicenseSummary history={data.operation_history} />
-          </div>
 
           <GoogleReviewSection storeId={storeId} />
           <OperationHistorySection history={data.operation_history} />
-          <AnchorSection storeId={storeId} />
           <NearbyAnalysisSection storeId={storeId} />
           <LocationInfluenceSection key={storeId} storeId={storeId} />
           <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />
           <MyStoreCheckupSection key={storeId} storeId={storeId} />
-          <Section title="소속 상권 — 행정동·발달/골목상권">
+          <Section title="소속 상권 — 행정동·발달/골목상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
             <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균).</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>

@@ -27,11 +27,15 @@ export function SourceNote({ title, reference }: { title: string; reference: str
   );
 }
 
-export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+/** scope: 제목 옆에 붙는 범위 라벨(ScopeTag) — 이 블록이 이 매장·주변 반경·소속 상권·내 입력 중 어느 범위의 정보인지. */
+export function Section({ title, children, right, scope }: { title: string; children: ReactNode; right?: ReactNode; scope?: ReactNode }) {
   return (
     <section style={{ borderTop: "1px solid #E5E7EB", paddingTop: 12, marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong style={{ fontSize: 14 }}>{title}</strong>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <strong style={{ fontSize: 14 }}>{title}</strong>
+          {scope}
+        </span>
         {right}
       </div>
       {children}
