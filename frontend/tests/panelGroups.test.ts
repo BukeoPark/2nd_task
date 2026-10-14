@@ -18,5 +18,5 @@ test("묶음별 블록 순서", () => {
   assert.deepEqual(blocksOf("store"), ["basic", "google", "history"]);
   assert.deepEqual(blocksOf("radius"), ["competition", "radius"]);
   assert.deepEqual(blocksOf("area"), ["area-links", "area-model", "area-extra"]);
-  assert.deepEqual(blocksOf("mine"), ["benchmark", "checkup"]);
+  assert.deepEqual(blocksOf("mine"), ["checkup", "benchmark"]);
 });

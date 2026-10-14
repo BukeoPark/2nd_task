@@ -14,8 +14,8 @@ export type BlockId =
   | "area-links" // 소속 행정동·상권 분석으로 이동
   | "area-model" // 상권 수요 유형·입지 요인
   | "area-extra" // 프랜차이즈·상권 운영 점검
-  | "benchmark" // 내 매출 비교(입력)
-  | "checkup"; // 내 가게 점검(기록·손익분기)
+  | "checkup" // 내 가게 점검(월 매출 기록·손익분기) — 내 매출 입력은 여기서만 받는다
+  | "benchmark"; // 내 매출 비교 — 기록한 가장 최근 달의 값을 읽는다
 
 export const GROUP_IDS: GroupId[] = ["store", "radius", "area", "mine"];
 
@@ -28,8 +28,8 @@ export const BLOCKS: { id: BlockId; group: GroupId }[] = [
   { id: "area-links", group: "area" },
   { id: "area-model", group: "area" },
   { id: "area-extra", group: "area" },
-  { id: "benchmark", group: "mine" },
   { id: "checkup", group: "mine" },
+  { id: "benchmark", group: "mine" },
 ];
 
 export function blocksOf(group: GroupId): BlockId[] {

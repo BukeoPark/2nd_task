@@ -14,11 +14,12 @@ import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
 export function SalesBenchmarkSection({
   storeId,
   manwon,
-  onManwonChange,
+  latestMonth,
 }: {
   storeId: string;
+  /** 기록한 가장 최근 달의 월 매출(만원). 기록이 없으면 빈 문자열 */
   manwon: string;
-  onManwonChange: (value: string) => void;
+  latestMonth: string | null;
 }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["sales-benchmark", storeId],
@@ -29,11 +30,11 @@ export function SalesBenchmarkSection({
   const peerCount = peers.data?.status === "ok" ? peers.data.count : null;
   return (
     <Section title="내 매출 비교 — 소속 상권 동일 업종 추정 평균" scope={<ScopeTag kind="area" label="소속 상권" />}>
-      <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. 내 실제 월매출을 입력하면 이 평균과 견줘 봅니다.</Notice>
+      <Notice tone="info">아래 숫자는 이 매장의 실제 매출이 아니라 <strong>소속 상권(없으면 행정동)의 같은 업종 점포당 추정 평균</strong>입니다. '내 가게 점검'에 기록한 월 매출(가장 최근 달)을 이 평균과 견줘 봅니다.</Notice>
       {isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
-      {data && data.status === "ok" && <Body data={data} peerCount={peerCount} manwon={manwon} onManwonChange={onManwonChange} />}
+      {data && data.status === "ok" && <Body data={data} peerCount={peerCount} manwon={manwon} latestMonth={latestMonth} />}
       {data && data.status !== "ok" && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
     </Section>
   );
@@ -43,12 +44,12 @@ function Body({
   data,
   peerCount,
   manwon,
-  onManwonChange,
+  latestMonth,
 }: {
   data: SalesBenchmarkResponse;
   peerCount: number | null;
   manwon: string;
-  onManwonChange: (value: string) => void;
+  latestMonth: string | null;
 }) {
   const avg = data.per_store_month ?? null;
   const mismatch = data.scls_nm && data.scls_nm !== data.svc_nm;
@@ -77,9 +78,9 @@ function Body({
         </div>
       ))}
 
-      <MyRevenueInput
+      <RevenueComparison
         manwon={manwon}
-        onManwonChange={onManwonChange}
+        latestMonth={latestMonth}
         dongAvg={avg}
         peers={data.peers ?? []}
         unitLabel={data.unit?.label ?? "동네"}
@@ -150,41 +151,34 @@ function GrowthCard({ label, cell }: { label: string; cell: GrowthCell }) {
   );
 }
 
-function MyRevenueInput({
+/** 내 월 매출(기록한 가장 최근 달)을 동네 평균·다른 동네 평균들과 견준다. 입력은 '내 가게 점검'에서만 받고 여기서는 읽기만 한다. */
+function RevenueComparison({
   manwon,
-  onManwonChange,
+  latestMonth,
   dongAvg,
   peers,
   unitLabel,
   peerLabel,
 }: {
   manwon: string;
-  onManwonChange: (value: string) => void;
+  latestMonth: string | null;
   dongAvg: number | null;
   peers: { name: string; per_store_month: number | null }[];
   unitLabel: string;
   peerLabel: string;
 }) {
   const value = parseManwon(manwon);
-  const valid = value !== null;
   const peerValues = peers.map((p) => p.per_store_month).filter((v): v is number => v !== null);
-  const above = valid ? peerValues.filter((v) => value >= v).length : 0;
+  const above = value !== null ? peerValues.filter((v) => value >= v).length : 0;
 
   return (
     <div style={{ marginTop: 12, background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>
-        내 가게 월 매출 입력 (만원)
-      </label>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={manwon}
-        onChange={(e) => onManwonChange(e.target.value)}
-        placeholder="예: 3500"
-        style={{ width: "100%", padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
-      />
-      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>입력한 값은 서버로 보내거나 저장하지 않고 이 화면에서만 계산합니다.</div>
-      {manwon.trim() !== "" && !valid && <Notice tone="warn">숫자만 입력해 주세요.</Notice>}
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>내 월 매출과 견주기</div>
+      {value === null ? (
+        <div style={{ fontSize: 12, color: "#6B7280" }}>위 '내 가게 점검'에 월 매출을 기록하면 이 평균과 견줘 드려요. 입력은 한 곳에서만 받고, 가장 최근 달의 값을 씁니다.</div>
+      ) : (
+        <div style={{ fontSize: 11, color: "#6B7280" }}>기록한 가장 최근 달{latestMonth ? ` ${latestMonth}` : ""} · {formatKrw(value)} 기준</div>
+      )}
       {value !== null && dongAvg !== null && dongAvg > 0 && (
         <div style={{ marginTop: 6, fontSize: 12 }}>
           <div>

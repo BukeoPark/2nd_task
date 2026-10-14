@@ -5,9 +5,9 @@ import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
 import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
-import { assess, buildRows, checkupText, GAP_PP, quarterLabel } from "../../lib/checkup";
+import { assess, buildRows, checkupText, GAP_PP, latestMonth as latestRecordMonth, quarterLabel } from "../../lib/checkup";
 import { formatKrw } from "../../lib/format";
-import { clearRecord, loadRecord, saveRecord, type CostKey, type StoreRecord } from "../../lib/myStoreStorage";
+import type { CostKey, StoreRecord } from "../../lib/myStoreStorage";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -32,23 +32,29 @@ function manwon(v: number): string {
 }
 
 /** '내 가게 점검' — 월 매출을 기록해 동네 같은 업종의 변화와 견주고, 비용을 넣어 손익분기 매출을 본다.
- * 입력한 값은 이 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다. 가게마다 따로 저장한다. */
-export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
+ * 내 매출 입력은 여기서만 받고, '내 매출 비교'·상권 점검은 기록한 가장 최근 달의 값을 읽는다.
+ * 기록은 이 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다. 가게마다 따로 저장한다(상태는 useMyStoreRecord). */
+export function MyStoreCheckupSection({
+  storeId,
+  record,
+  onChange,
+  onReset,
+  saveFailed,
+}: {
+  storeId: string;
+  record: StoreRecord;
+  onChange: (next: StoreRecord) => void;
+  onReset: () => void;
+  saveFailed: boolean;
+}) {
   const { data } = useQuery({
     queryKey: ["sales-benchmark", storeId],
     queryFn: () => apiClient.getSalesBenchmark(storeId),
     staleTime: 10 * 60 * 1000,
   });
-  const [record, setRecord] = useState<StoreRecord>(() => loadRecord(storeId));
-  const [saveFailed, setSaveFailed] = useState(false);
   const [month, setMonth] = useState(thisMonth);
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-
-  const update = (next: StoreRecord) => {
-    setRecord(next);
-    setSaveFailed(!saveRecord(storeId, next));
-  };
 
   const bench = data?.status === "ok" ? data : null;
   const unitLabel = bench?.unit?.label ?? "동네";
@@ -60,22 +66,20 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
     if (!MONTH_RE.test(month)) return setFormError("월은 2026-06 형식으로 골라 주세요.");
     if (v === null || !Number.isFinite(v) || v < 0) return setFormError("매출은 0 이상의 숫자(만원)로 입력해 주세요.");
     setFormError(null);
-    update({ ...record, months: { ...record.months, [month]: v } });
+    onChange({ ...record, months: { ...record.months, [month]: v } });
     setAmount("");
   };
 
   const removeMonth = (m: string) => {
     const { [m]: _removed, ...rest } = record.months;
-    update({ ...record, months: rest });
+    onChange({ ...record, months: rest });
   };
 
-  const setCost = (key: CostKey, value: string) => update({ ...record, costs: { ...record.costs, [key]: value } });
+  const setCost = (key: CostKey, value: string) => onChange({ ...record, costs: { ...record.costs, [key]: value } });
 
   const resetAll = () => {
     if (!window.confirm("이 가게의 매출 기록과 비용 입력을 모두 지울까요? 되돌릴 수 없습니다.")) return;
-    clearRecord(storeId);
-    setRecord(loadRecord(storeId));
-    setSaveFailed(false);
+    onReset();
   };
 
   const monthKeys = Object.keys(record.months).sort().reverse();
@@ -89,21 +93,22 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
     cogsPct: parseNum(record.costs.cogsPct),
     feePct: parseNum(record.costs.feePct),
   };
-  const latestMonth = monthKeys[0] ?? null;
+  const latestMonth = latestRecordMonth(record.months);
   const latestRevenue = latestMonth ? record.months[latestMonth] : null;
   const bep = breakeven(cost, latestRevenue, benchWon === null ? null : benchWon / 1e4);
 
   return (
     <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
-      <div style={{ fontSize: 12, color: "#374151" }}>월 매출을 달마다 기록해 소속 상권 같은 업종의 흐름과 견주고, 비용을 넣어 손익분기 매출을 계산합니다.</div>
-      <Fold title="월 매출 기록·간이 손익분기 펼치기">
+      <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+        월 매출을 달마다 기록하면 소속 상권 같은 업종의 흐름과 견주고, 가장 최근 달은 '내 매출 비교'에도 쓰입니다. 비용을 넣으면 손익분기 매출을 계산합니다.
+      </div>
       {saveFailed && (
         <div style={{ marginBottom: 8 }}>
           <Notice tone="warn">이 브라우저에서 저장이 막혀 있어(시크릿 창·저장 차단 등) 지금 화면에서만 계산됩니다. 새로고침하면 사라져요.</Notice>
         </div>
       )}
 
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>1. 월 매출 기록 — 동네 흐름과 비교</div>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 동네 흐름과 비교</div>
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
         <label style={{ fontSize: 11, color: "#6B7280" }}>
           월
@@ -178,7 +183,7 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
       </div>
       {bench && <SourceNote title={bench.source.title} reference={bench.source.reference ?? "-"} />}
 
-      <div style={{ fontSize: 12, fontWeight: 600, margin: "16px 0 4px" }}>2. 간이 손익분기 계산</div>
+      <Fold title="간이 손익분기 계산 펼치기">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
         {COST_FIELDS.map((f) => (
           <label key={f.key} style={{ fontSize: 11, color: "#6B7280" }}>
@@ -219,6 +224,8 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
         )}
       </div>
 
+      </Fold>
+
       {(monthKeys.length > 0 || Object.values(record.costs).some((v) => v !== "")) && (
         <div style={{ marginTop: 12 }}>
           <button type="button" onClick={resetAll} style={{ ...buttonStyle, color: "#991B1B" }}>
@@ -226,7 +233,6 @@ export function MyStoreCheckupSection({ storeId }: { storeId: string }) {
           </button>
         </div>
       )}
-      </Fold>
     </Section>
   );
 }

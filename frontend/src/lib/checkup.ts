@@ -111,3 +111,14 @@ export function checkupText(c: Checkup, unitLabel: string): string {
   if (c.verdict === "leading") return `${span}: ${mine}, ${bench} — 동네보다 ${gap}%p 더 높아졌어요.`;
   return `${span}: ${mine}, ${bench} — 동네와 비슷한 흐름이에요(차이 ${gap}%p).`;
 }
+
+/** 기록한 달 중 가장 최근 달('YYYY-MM'). 형식이 틀린 달·음수·숫자가 아닌 값은 건너뛴다. 없으면 null.
+ * '내 매출 비교'처럼 한 달 매출이 필요한 곳은 이 달의 값을 읽는다(입력은 월 매출 기록 한 곳에서만 받는다). */
+export function latestMonth(months: Record<string, number>): string | null {
+  let best: string | null = null;
+  for (const [m, v] of Object.entries(months)) {
+    if (quarterOf(m) === null || !Number.isFinite(v) || v < 0) continue;
+    if (best === null || m > best) best = m;
+  }
+  return best;
+}

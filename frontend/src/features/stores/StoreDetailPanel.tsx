@@ -3,6 +3,7 @@ import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
+import { latestMonth } from "../../lib/checkup";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
 import { railPanelId, railTabId } from "../../lib/railIds";
 import { SCOPE_GROUP, SCOPE_HINT, SCOPE_STYLE } from "../../lib/scope";
@@ -18,6 +19,7 @@ import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
 import { SummaryChips } from "./SummaryChips";
+import { useMyStoreRecord } from "./useMyStoreRecord";
 import { useStoreDetail } from "./useStores";
 
 interface StoreDetailPanelProps {
@@ -41,8 +43,11 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroup] = useState<GroupId>("store");
-  // 사장님 월 매출(만원) — 매출 비교와 개선 리포트가 함께 쓰며, 이 화면 상태로만 존재한다(서버 전송·저장 없음).
-  const [manwon, setManwon] = useState("");
+  // 내 가게 기록(월 매출·비용)은 여기서 한 번만 들고, 입력은 '내 가게 점검'에서만 받는다. 매출 비교·상권 점검·프랜차이즈는
+  // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
+  const mine = useMyStoreRecord(storeId);
+  const lastMonth = latestMonth(mine.record.months);
+  const manwon = lastMonth ? String(mine.record.months[lastMonth]) : "";
   const store = data?.store;
   // 네이버 장소 ID 가 없어 장소 상세가 아니라 검색 결과로만 보낸다. 긴 전체 주소는 '업체 없음'이 나오기 쉬워 기본 검색어는 짧게 쓴다.
   const naver = store ? naverSearches(store) : null;
@@ -105,8 +110,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
               </Fold>
             </Section>
           ),
-          benchmark: <SalesBenchmarkSection storeId={storeId} manwon={manwon} onManwonChange={setManwon} />,
-          checkup: <MyStoreCheckupSection storeId={storeId} />,
+          benchmark: <SalesBenchmarkSection storeId={storeId} manwon={manwon} latestMonth={lastMonth} />,
+          checkup: <MyStoreCheckupSection storeId={storeId} record={mine.record} onChange={mine.update} onReset={mine.reset} saveFailed={mine.saveFailed} />,
         }
       : null;
 

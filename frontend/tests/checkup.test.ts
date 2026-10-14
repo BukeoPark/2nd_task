@@ -66,3 +66,10 @@ test("기준 분기 매출이 0이면 변화율을 계산하지 않는다", () =
   const c = assess(buildRows({ "2025-05": 0, "2026-05": 2200 }, trend));
   assert.equal(c.verdict, "insufficient");
 });
+
+test("가장 최근 기록 달: 잘못된 값은 건너뛰고, 없으면 null", async () => {
+  const { latestMonth } = await import("../src/lib/checkup.ts");
+  assert.equal(latestMonth({}), null);
+  assert.equal(latestMonth({ "2025-12": 3000, "2026-02": 2500, "2026-01": 2800 }), "2026-02");
+  assert.equal(latestMonth({ "2026-05": -1, "2026-04": Number.NaN, bad: 1, "2026-03": 2000 }), "2026-03");
+});
