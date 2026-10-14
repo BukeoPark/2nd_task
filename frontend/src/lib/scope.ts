@@ -14,8 +14,8 @@ export const SCOPE_GROUP: Record<ScopeKind, string> = {
 
 /** 라벨 색 — 배경(bg)은 옅게, 글자(fg)는 같은 계열의 진한 색(흰 배경·옅은 배경 모두 대비 4.5:1 이상). */
 export const SCOPE_STYLE: Record<ScopeKind, { bg: string; fg: string }> = {
-  store: { bg: "#F3F4F6", fg: "#374151" },
-  radius: { bg: "#DBEAFE", fg: "#1E3A8A" },
+  store: { bg: "#DCFCE7", fg: "#166534" },
+  radius: { bg: "#DBEAFE", fg: "#1D4ED8" },
   area: { bg: "#F3E8FF", fg: "#6B21A8" },
   mine: { bg: "#FEF3C7", fg: "#92400E" },
 };

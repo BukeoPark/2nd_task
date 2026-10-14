@@ -2,13 +2,13 @@ import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
+import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { Term } from "../../components/Term";
 import type { FoodCompareResponse, FoodLevel, OverviewTrdar } from "../../lib/apiClient";
-import { AREA_TAB_LABEL, areaTabsFor, type AreaTabId } from "../../lib/areaTabs";
+import { AREA_TAB_LABEL, AREA_TAB_STYLE, areaTabsFor, type AreaTabId } from "../../lib/areaTabs";
 import { formatKrw, formatMetric, shortQuarter } from "../../lib/format";
 import { railPanelId, railTabId } from "../../lib/railIds";
-import { SCOPE_STYLE } from "../../lib/scope";
 import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
@@ -64,13 +64,13 @@ export function AreaOverviewPanel(p: Props) {
   const narrow = useNarrow();
   const [tab, setTab] = useState<AreaTabId>("summary");
   const tabIds = areaTabsFor(p.level);
-  const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...SCOPE_STYLE.area }));
+  const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...AREA_TAB_STYLE[id] }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
   /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
   const pane = (id: AreaTabId, title: string, children: ReactNode) => (
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
       <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>{p.title}{p.type ? ` · ${p.type}` : ""}</div>
-      <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 4, paddingTop: 10, fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{title}</div>
+      <div style={{ marginBottom: 8 }}><RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={title} /></div>
       {children}
     </div>
   );

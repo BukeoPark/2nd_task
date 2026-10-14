@@ -1,6 +1,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
 import { latestMonth } from "../../lib/checkup";
@@ -133,8 +134,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
             <SummaryChips storeId={storeId} store={store} onJump={setGroup} />
             {GROUP_IDS.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
-                <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>
-                  <strong style={{ color: SCOPE_STYLE[g].fg }}>{SCOPE_GROUP[g]}</strong> · {SCOPE_HINT[g]}
+                <div style={{ marginTop: 12 }}>
+                  <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />
                 </div>
                 {blocksOf(g).map((id) => (
                   <Fragment key={id}>{blocks[id]}</Fragment>

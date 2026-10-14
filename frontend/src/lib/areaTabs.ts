@@ -14,6 +14,17 @@ export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   stores: "매장 목록",
 };
 
+/** 항목별 색 — 레일에서 고른 항목과 내용 맨 위 제목이 같은 색이다(배경은 옅게, 글자는 같은 계열의 진한 색). */
+export const AREA_TAB_STYLE: Record<AreaTabId, { bg: string; fg: string }> = {
+  summary: { bg: "#E0E7FF", fg: "#3730A3" },
+  growth: { bg: "#DCFCE7", fg: "#166534" },
+  stability: { bg: "#DBEAFE", fg: "#1D4ED8" },
+  demand: { bg: "#FEF3C7", fg: "#92400E" },
+  location: { bg: "#FFE4E6", fg: "#BE123C" },
+  trdars: { bg: "#F3E8FF", fg: "#6B21A8" },
+  stores: { bg: "#CCFBF1", fg: "#0F766E" },
+};
+
 /** 레일 항목. 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). */
 export function areaTabsFor(level: "dong" | "trdar"): AreaTabId[] {
   const base: AreaTabId[] = ["summary", "growth", "stability", "demand", "location"];
