@@ -1,10 +1,16 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
+import { TabRail, type RailItem } from "../../components/TabRail";
 import { Term } from "../../components/Term";
 import type { FoodCompareResponse, FoodLevel, OverviewTrdar } from "../../lib/apiClient";
+import { AREA_TAB_LABEL, areaTabsFor, type AreaTabId } from "../../lib/areaTabs";
 import { formatKrw, formatMetric, shortQuarter } from "../../lib/format";
+import { railPanelId, railTabId } from "../../lib/railIds";
+import { SCOPE_STYLE } from "../../lib/scope";
+import { useNarrow } from "../../lib/useNarrow";
+import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
 import { UnitStoreList } from "../food/UnitStoreList";
 
@@ -30,15 +36,46 @@ interface Props {
   onHoverStore?: (id: string | null) => void;
 }
 
-/** 행정동·상권 종합분석 — 핵심 요약을 먼저 보이고 상세 지표는 접어 두며, 매장 목록은 맨 마지막이다. 값은 단위 자신의 경계·표로 계산한 것이다. */
+const RAIL_PREFIX = "area-";
+const ICON: Record<AreaTabId, ReactNode> = {
+  growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
+  stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
+  demand: (
+    <>
+      <circle cx="7" cy="7" r="2.5" />
+      <circle cx="14" cy="8" r="2" />
+      <path d="M2 16c0-3 2-5 5-5s5 2 5 5M12 16c0-2 1-3 3-3s3 1 3 3" />
+    </>
+  ),
+  location: <path d="M10 18s6-5 6-9a6 6 0 10-12 0c0 4 6 9 6 9zM10 11a2 2 0 100-4 2 2 0 000 4z" />,
+  trdars: <path d="M3 4h6v6H3zM11 4h6v6h-6zM3 12h6v4H3zM11 12h6v4h-6z" />,
+  stores: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
+};
+
+/** 행정동·상권 종합분석 — 핵심 요약은 항상 위에 두고, 상세 지표는 왼쪽 레일(성장성·안정·경쟁·소비 수요·입지·세부 상권·매장 목록)로 한 번에 하나씩 본다.
+ * 항목 구성은 lib/areaTabs, 모양은 매장 상세와 같은 TabRail. 값은 단위 자신의 경계·표로 계산한 것이다. */
 export function AreaOverviewPanel(p: Props) {
   const level: FoodLevel = p.level;
   const cmp = useFoodCompare(level, [p.code], p.svc, p.scls);
   const ov = useUnitOverview(p.level, p.code, p.svc, p.scls);
   const row = (key: string): Row | undefined => cmp.data?.rows.find((r) => r.key === key);
   const unitKind = LEVEL_NOUN[p.level];
+  const narrow = useNarrow();
+  const [tab, setTab] = useState<AreaTabId>("growth");
+  const tabIds = areaTabsFor(p.level);
+  const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...SCOPE_STYLE.area }));
+  const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
+  /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
+  const pane = (id: AreaTabId, title: string, children: ReactNode) => (
+    <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
+      <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 12, paddingTop: 10, fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{title}</div>
+      {children}
+    </div>
+  );
   return (
-    <Drawer title={p.title} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={`← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose}>
+    <>
+    {!narrow && <TabRail {...railProps} orientation="vertical" />}
+    <Drawer title={p.title} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={`← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
       <Notice tone="info">
         {p.level === "trdar"
           ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
@@ -54,60 +91,48 @@ export function AreaOverviewPanel(p: Props) {
         </div>
       )}
 
-      {cmp.data && (
+      {narrow && <div style={{ marginTop: 10 }}><TabRail {...railProps} orientation="horizontal" /></div>}
+
+      {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+
+      {cmp.data && pane("growth", "성장성 — 매출 추이·점포 수 증감",
+        ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />)}
+      {cmp.data && pane("stability", "안정성·경쟁 — 개폐업·변동성·프랜차이즈",
+        <Rows rows={["open_rate_y", "close_rate_y", "stores_volatility", "frc_share"].map(row)} />)}
+      {cmp.data && pane("demand", "소비 수요 — 유동·상주·직장인구, 시간대별 소비",
         <>
-          <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />
+          <Rows rows={["wrc_total", "repop_total", "fac_total", "sales_per_10k_flpop"].map(row)} />
+          {ov.data ? <DemandBlock ov={ov.data} /> : <OvState q={ov} />}
+        </>)}
+      {cmp.data && pane("location", "입지 — 앵커 브랜드·임대료·공실률",
+        <>
+          <Rows rows={["starbucks_zone_share", "daiso_zone_share"].map(row)} />
+          <div style={{ marginTop: 8 }}><Notice tone="warn">임대료·공실률은 이 {unitKind}의 실제 값이 아니라, 가까운(1km 이내) R-ONE 조사상권의 <strong>참고값</strong>입니다.</Notice></div>
+          <Rows rows={["rent_small_shop", "vacancy_small_shop_pct"].map(row)} />
+        </>)}
 
-          <Fold title="성장성 — 매출 추이·점포 수 증감">
-            {ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />}
-          </Fold>
-          <Fold title="안정성·경쟁 — 개폐업·변동성·프랜차이즈">
-            <Rows rows={["open_rate_y", "close_rate_y", "stores_volatility", "frc_share"].map(row)} />
-          </Fold>
-          <Fold title="소비 수요 — 유동·상주·직장인구, 시간대별 소비">
-            <Rows rows={["wrc_total", "repop_total", "fac_total", "sales_per_10k_flpop"].map(row)} />
-            {ov.data ? <DemandBlock ov={ov.data} /> : <OvState q={ov} />}
-          </Fold>
-          <Fold title="입지 — 앵커 브랜드·임대료·공실률">
-            <Rows rows={["starbucks_zone_share", "daiso_zone_share"].map(row)} />
-            <div style={{ marginTop: 8 }}><Notice tone="warn">임대료·공실률은 이 {unitKind}의 실제 값이 아니라, 가까운(1km 이내) R-ONE 조사상권의 <strong>참고값</strong>입니다.</Notice></div>
-            <Rows rows={["rent_small_shop", "vacancy_small_shop_pct"].map(row)} />
-          </Fold>
-        </>
-      )}
+      {p.level === "dong" && pane("trdars", `세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`,
+        ov.data?.trdars ? (
+          <>
+            {ov.data.trdars.length === 0 && <Notice tone="muted">겹치는 상권이 없습니다(조회는 정상).</Notice>}
+            {ov.data.trdars.map((t) => (
+              <button key={t.code} type="button" onClick={() => p.onSelectTrdar(t)}
+                style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", marginBottom: 4, border: "1px solid #E5E7EB", borderRadius: 8, background: "white", cursor: "pointer", textAlign: "left" }}>
+                <span><strong>{t.name}</strong> <span style={{ fontSize: 11, color: "#6B7280" }}>{t.type}</span></span>
+                <span style={{ fontSize: 11, color: "#6B7280" }}>경계 {t.overlap_pct}% 겹침 ›</span>
+              </button>
+            ))}
+            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{ov.data.trdars_basis}{ov.data.trdars_excluded ? ` · 그 미만 ${ov.data.trdars_excluded}곳 제외` : ""}. 겹침 % = 상권 면적 중 이 행정동 안에 든 비율.</div>
+          </>
+        ) : <OvState q={ov} />)}
 
-      {p.level === "dong" && (
-        <Fold title={`세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`} open>
-          {ov.data?.trdars ? (
-            <>
-              {ov.data.trdars.length === 0 && <Notice tone="muted">겹치는 상권이 없습니다(조회는 정상).</Notice>}
-              {ov.data.trdars.map((t) => (
-                <button key={t.code} type="button" onClick={() => p.onSelectTrdar(t)}
-                  style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", marginBottom: 4, border: "1px solid #E5E7EB", borderRadius: 8, background: "white", cursor: "pointer", textAlign: "left" }}>
-                  <span><strong>{t.name}</strong> <span style={{ fontSize: 11, color: "#6B7280" }}>{t.type}</span></span>
-                  <span style={{ fontSize: 11, color: "#6B7280" }}>경계 {t.overlap_pct}% 겹침 ›</span>
-                </button>
-              ))}
-              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{ov.data.trdars_basis}{ov.data.trdars_excluded ? ` · 그 미만 ${ov.data.trdars_excluded}곳 제외` : ""}. 겹침 % = 상권 면적 중 이 행정동 안에 든 비율.</div>
-            </>
-          ) : <OvState q={ov} />}
-        </Fold>
-      )}
-
-      <Fold title={`매장 목록 — 이 ${unitKind} 경계 안 매장`} open>
-        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>아래는 개별 매장 목록입니다. 매장을 누르면 그 매장 고유 정보(고객평가·운영이력)로 넘어가며, 위의 상권 통계와는 별개입니다.</div>
-        <UnitStoreList level={level} code={p.code} svc={p.svc} scls={p.scls} filterName={p.filterName} onSelect={p.onSelectStore} onHover={p.onHoverStore} />
-      </Fold>
+      {pane("stores", `매장 목록 — 이 ${unitKind} 경계 안 매장`,
+        <>
+          <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>아래는 개별 매장 목록입니다. 매장을 누르면 그 매장 고유 정보(고객평가·운영이력)로 넘어가며, 위의 상권 통계와는 별개입니다.</div>
+          <UnitStoreList level={level} code={p.code} svc={p.svc} scls={p.scls} filterName={p.filterName} onSelect={p.onSelectStore} onHover={p.onHoverStore} />
+        </>)}
     </Drawer>
-  );
-}
-
-function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
-  return (
-    <details open={open} style={{ borderTop: "1px solid #E5E7EB", marginTop: 12, paddingTop: 10 }}>
-      <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{title}</summary>
-      {children}
-    </details>
+    </>
   );
 }
 
