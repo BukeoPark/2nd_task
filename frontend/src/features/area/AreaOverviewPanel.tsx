@@ -38,6 +38,7 @@ interface Props {
 
 const RAIL_PREFIX = "area-";
 const ICON: Record<AreaTabId, ReactNode> = {
+  summary: <path d="M4 4h12v12H4zM7 8h6M7 12h4" />,
   growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
   stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
   demand: (
@@ -52,7 +53,7 @@ const ICON: Record<AreaTabId, ReactNode> = {
   stores: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
 };
 
-/** 행정동·상권 종합분석 — 핵심 요약은 항상 위에 두고, 상세 지표는 왼쪽 레일(성장성·안정·경쟁·소비 수요·입지·세부 상권·매장 목록)로 한 번에 하나씩 본다.
+/** 행정동·상권 종합분석 — 요약(핵심 카드·기준 안내·지도 버튼)이 레일 첫 항목이고, 상세 지표는 같은 레일(성장성·안정·경쟁·소비 수요·입지·세부 상권·매장 목록)로 한 번에 하나씩 본다.
  * 항목 구성은 lib/areaTabs, 모양은 매장 상세와 같은 TabRail. 값은 단위 자신의 경계·표로 계산한 것이다. */
 export function AreaOverviewPanel(p: Props) {
   const level: FoodLevel = p.level;
@@ -61,14 +62,15 @@ export function AreaOverviewPanel(p: Props) {
   const row = (key: string): Row | undefined => cmp.data?.rows.find((r) => r.key === key);
   const unitKind = LEVEL_NOUN[p.level];
   const narrow = useNarrow();
-  const [tab, setTab] = useState<AreaTabId>("growth");
+  const [tab, setTab] = useState<AreaTabId>("summary");
   const tabIds = areaTabsFor(p.level);
   const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...SCOPE_STYLE.area }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
   /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
   const pane = (id: AreaTabId, title: string, children: ReactNode) => (
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
-      <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 12, paddingTop: 10, fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{title}</div>
+      <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>{p.title}{p.type ? ` · ${p.type}` : ""}</div>
+      <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 4, paddingTop: 10, fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{title}</div>
       {children}
     </div>
   );
@@ -76,14 +78,6 @@ export function AreaOverviewPanel(p: Props) {
     <>
     {!narrow && <TabRail {...railProps} orientation="vertical" />}
     <Drawer title={p.title} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={`← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
-      <Notice tone="info">
-        {p.level === "trdar"
-          ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
-          : "행정동 전체 기준 값입니다. 아래 '세부 상권'을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
-        선택 업종: <strong>{p.filterName}</strong>
-      </Notice>
-      {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
-      {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
       {cmp.isPending && <div style={{ marginTop: 10 }}><Notice tone="muted">종합분석을 불러오는 중...</Notice></div>}
       {cmp.isError && (
         <div style={{ marginTop: 10 }}>
@@ -93,7 +87,19 @@ export function AreaOverviewPanel(p: Props) {
 
       {narrow && <div style={{ marginTop: 10 }}><TabRail {...railProps} orientation="horizontal" /></div>}
 
-      {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+      {pane("summary", "요약", (
+        <>
+          <Notice tone="info">
+            {p.level === "trdar"
+              ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
+              : "행정동 전체 기준 값입니다. '세부 상권' 항목에서 상권을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
+            선택 업종: <strong>{p.filterName}</strong>
+          </Notice>
+          {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
+          {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
+          {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+        </>
+      ))}
 
       {cmp.data && pane("growth", "성장성 — 매출 추이·점포 수 증감",
         ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />)}
