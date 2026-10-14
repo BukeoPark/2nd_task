@@ -29,7 +29,7 @@ import { searchTarget } from "../lib/searchTarget";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
 import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { revealDelta } from "../lib/reveal";
-import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
+import { NARROW_MAX_PX, OVERLAY_Z_INDEX, RAIL_WIDTH_PX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
 const MAX_COMPARE = 4;
@@ -168,7 +168,7 @@ export function MapPage() {
       const node: HTMLElement = map.getNode();
       const pt = map.getProjection().containerPointFromCoords(toKakaoLatLng(kakao, { lon: selLon, lat: selLat }));
       const delta = revealDelta({ x: pt.x, y: pt.y }, { w: node.clientWidth, h: node.clientHeight }, {
-        left: SIDE_PANEL_WIDTH_PX + 48, top: TOP_BAR_HEIGHT_PX + 48, right: 48, bottom: 48,
+        left: SIDE_PANEL_WIDTH_PX + (window.matchMedia(`(max-width: ${NARROW_MAX_PX}px)`).matches ? 0 : RAIL_WIDTH_PX) + 48, top: TOP_BAR_HEIGHT_PX + 48, right: 48, bottom: 48,
       });
       if (delta) map.panBy(delta.dx, delta.dy);
     }, 700);

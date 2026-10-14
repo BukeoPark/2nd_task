@@ -15,15 +15,15 @@ const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
   주거형: { bg: "#DCFCE7", fg: "#166534" },
 };
 
-/** '입지 영향력 분석' — ① 반경 안 앵커·경쟁 점포(공간분석) ② 상권 수요 유형 ③ 입지 요인과 점포당 추정매출의 관계(상관, 인과 아님).
- * 매장 개별 매출 예측이나 점수는 만들지 않는다. */
-export function LocationInfluenceSection({ storeId }: { storeId: string }) {
+/** '반경 주변 환경' — 반경 안 앵커·같은 소분류·같은 대분류 점포(공간분석, 직선거리). 반경은 이 블록에서만 고르며 요약 칩은 500m 고정이다. */
+export function LocationRadiusSection({ storeId }: { storeId: string }) {
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useLocationInfluence(storeId, radius);
   const options = data?.radius_options ?? [250, 500, 1000];
   return (
     <Section
-      title="입지 영향력 분석"
+      title="반경 주변 환경 — 앵커·같은 업종 점포"
+      scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(radius)}`} />}
       right={
         <div role="group" aria-label="분석 반경" style={{ display: "flex", gap: 4 }}>
           {options.map((m) => (
@@ -34,7 +34,7 @@ export function LocationInfluenceSection({ storeId }: { storeId: string }) {
         </div>
       }
     >
-      {isLoading && <Notice tone="muted">입지를 분석하는 중...</Notice>}
+      {isLoading && <Notice tone="muted">주변을 분석하는 중...</Notice>}
       {isError && (
         <Notice tone="error">
           조회 실패: {error.message}{" "}
@@ -44,29 +44,43 @@ export function LocationInfluenceSection({ storeId }: { storeId: string }) {
       {data && (
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
-          <Body data={data} storeId={storeId} />
+          <RadiusBlock data={data} storeId={storeId} />
+          <SourceNote title={data.source.title} reference={data.source.reference} />
         </div>
       )}
     </Section>
   );
 }
 
-function Body({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
+/** '입지 영향력 — 상권 수요 유형·입지 요인' — ① 소속 상권 수요 유형 ② 입지 요인과 점포당 추정매출의 관계(상관, 인과 아님).
+ * 매장 개별 매출 예측이나 점수는 만들지 않는다. 상권 단위 값이라 반경과 무관하다. */
+export function LocationAreaSection({ storeId }: { storeId: string }) {
+  const { data, isLoading, isError, error, refetch } = useLocationInfluence(storeId, DEFAULT_RADIUS_M);
   return (
-    <div>
-      <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
-        매장 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
-      </div>
-      <RadiusBlock data={data} storeId={storeId} />
-      <AreaBlock data={data} />
-      <ModelBlock data={data} />
-      <Fold title="해석 한계 보기">
-        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
-          {data.caveats.map((c) => <li key={c}>{c}</li>)}
-        </ul>
-      </Fold>
-      <SourceNote title={data.source.title} reference={data.source.reference} />
-    </div>
+    <Section title="입지 영향력 — 상권 수요 유형·입지 요인" scope={<ScopeTag kind="area" label="소속 상권" />}>
+      {isLoading && <Notice tone="muted">상권을 분석하는 중...</Notice>}
+      {isError && (
+        <Notice tone="error">
+          조회 실패: {error.message}{" "}
+          <button type="button" onClick={() => refetch()} style={{ marginLeft: 4, cursor: "pointer" }}>다시 시도</button>
+        </Notice>
+      )}
+      {data && (
+        <div>
+          <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
+            상권 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
+          </div>
+          <AreaBlock data={data} />
+          <ModelBlock data={data} />
+          <Fold title="해석 한계 보기">
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+              {data.caveats.map((c) => <li key={c}>{c}</li>)}
+            </ul>
+          </Fold>
+          <SourceNote title={data.source.title} reference={data.source.reference} />
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -82,10 +96,7 @@ function RadiusBlock({ data, storeId }: { data: LocationInfluenceResponse; store
   };
   return (
     <div style={card}>
-      <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span>① 반경 {r} 안 주변 환경(직선거리)</span>
-        <ScopeTag kind="radius" label={`반경 ${r}`} />
-      </div>
+      <div style={cardTitle}>반경 {r} 안 주변 환경(직선거리)</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
         {anchors.status === "ok" ? (
           anchors.brands.map((b) => (
@@ -107,10 +118,7 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
   return (
     <div style={card}>
-      <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span>② {a.level_label} 수요 유형 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</span>
-        <ScopeTag kind="area" label={`소속 ${a.level_label}`} />
-      </div>
+      <div style={cardTitle}>{a.level_label} 수요 유형 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</div>
       {a.fallback_reason && <div style={{ marginTop: 6 }}><Notice tone="muted">{a.fallback_reason}</Notice></div>}
       {a.demand_type === null ? (
         <div style={{ marginTop: 6 }}><Notice tone="warn">{a.message}</Notice></div>
@@ -160,7 +168,7 @@ function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
   return (
     <div style={card}>
       <div style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span>③ 입지 요인과 점포당 추정매출의 관계(상권 평균)</span>
+        <span>입지 요인과 점포당 추정매출의 관계(상권 평균)</span>
         <ScopeTag kind="area" label="상권 단위 통계" />
       </div>
       {m.status !== "ok" || !m.factors ? (

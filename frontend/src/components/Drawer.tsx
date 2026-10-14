@@ -8,11 +8,13 @@ interface DrawerProps {
   onBack?: () => void;
   /** 뒤로 가기 버튼 문구(기본 '← 목록으로') */
   backLabel?: string;
+  /** 왼쪽 가장자리에서 띄울 거리(px) — 왼쪽에 레일 등을 둘 때. 기본 0 */
+  left?: number;
   children: ReactNode;
 }
 
 /** 지도 왼쪽에서 열리는 상세 서랍의 공용 틀(GNB 아래 전체 높이). */
-export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", children }: DrawerProps) {
+export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
   return (
     <div
       style={{
@@ -20,7 +22,7 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
         zIndex: OVERLAY_Z_INDEX,
         top: 56,
         bottom: 0,
-        left: 0,
+        left,
         width: SIDE_PANEL_WIDTH_PX,
         background: "white",
         boxShadow: "2px 0 10px rgba(0,0,0,0.15)",

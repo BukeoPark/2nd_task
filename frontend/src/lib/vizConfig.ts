@@ -95,3 +95,8 @@ export const UNIT_BOUNDARY = {
 export const SIDE_PANEL_WIDTH_PX = 360;
 /** 지도 위 상단 바 높이. */
 export const TOP_BAR_HEIGHT_PX = 56;
+
+/** 매장 상세 왼쪽의 묶음 레일(이 매장·주변·상권·내 가게) 너비. 레일이 있으면 패널은 이만큼 오른쪽으로 밀린다. */
+export const RAIL_WIDTH_PX = 56;
+/** 이 너비 이하에서는 레일 대신 패널 위 가로 탭을 쓴다. */
+export const NARROW_MAX_PX = 720;
