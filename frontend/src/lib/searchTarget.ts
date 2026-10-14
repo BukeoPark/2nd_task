@@ -27,3 +27,8 @@ export function searchTarget(r: { kind: SearchTargetKind; level?: "gu" | "dong" 
       return { level: 4, open: null, storeId: null }; // 역 주변 상권 버블이 보이는 범위
   }
 }
+
+/** 검색 결과 중 처음 열어 둘 행정동 — 이름이 정확히 같은(시군구 접두사는 무시) 행정동만 고른다. 없으면 null. */
+export function pickDefaultDong<T extends { kind: string; name: string }>(results: T[], dongName: string): T | null {
+  return results.find((r) => r.kind === "dong" && (r.name === dongName || r.name.endsWith(` ${dongName}`))) ?? null;
+}

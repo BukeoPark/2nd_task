@@ -25,3 +25,6 @@ export function ringsFromGeometry(geometry: { type: string; coordinates: unknown
   }
   return [];
 }
+
+/** 처음 접속하면 지도가 이 행정동을 열어 둔다(검색에서 같은 이름의 행정동을 찾아 연다). */
+export const DEFAULT_PLACE_NAME = "영등포동";

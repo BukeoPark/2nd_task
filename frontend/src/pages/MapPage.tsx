@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InfoPanel, type InfoRow } from "../components/InfoPanel";
 import { KakaoMap } from "../features/map/KakaoMap";
 import { RegionOutlineLayer } from "../features/map/RegionOutlineLayer";
@@ -25,9 +25,10 @@ import { UnitBoundaryLayer } from "../features/food/UnitBoundaryLayer";
 import type { FoodBubble, FoodBubblesResponse, FoodLevel, FoodMetric, OverviewTrdar, RebZone, SearchResult } from "../lib/apiClient";
 import { cautionText, coverageText, reasonText } from "../lib/foodText";
 import { canAct, classifyBubbles, viewState } from "../lib/queryState";
-import { searchTarget } from "../lib/searchTarget";
+import { pickDefaultDong, searchTarget } from "../lib/searchTarget";
 import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
-import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
+import { apiClient } from "../lib/apiClient";
+import { DEFAULT_LEVEL, DEFAULT_PLACE_NAME, toKakaoLatLng } from "../lib/geo";
 import { revealDelta } from "../lib/reveal";
 import { NARROW_MAX_PX, OVERLAY_Z_INDEX, RAIL_WIDTH_PX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
 
@@ -219,6 +220,19 @@ export function MapPage() {
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, r));
   }, [mapKakao]);
   const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
+
+  // 처음 접속하면 기본 행정동(영등포동)을 열어 둔다. 사용자가 먼저 무언가를 고르면 건드리지 않고, 찾지 못하면 조용히 넘어간다.
+  const touched = useRef(false);
+  useEffect(() => { if (place !== null || selection !== null || storeId !== null) touched.current = true; }, [place, selection, storeId]);
+  const defaultTried = useRef(false);
+  useEffect(() => {
+    if (!mapKakao || defaultTried.current) return;
+    defaultTried.current = true;
+    apiClient.searchPlaces(DEFAULT_PLACE_NAME).then((res) => {
+      const hit = pickDefaultDong(res.results, DEFAULT_PLACE_NAME);
+      if (hit && !touched.current) onPickPlace(hit);
+    }).catch(() => undefined);
+  }, [mapKakao, onPickPlace]);
 
   // 검색한 상권·행정동의 버블이 현재 조건으로 도착하면 그 요약을 연다(이전 조건의 결과가 아닐 때만).
   const searchSelection = useMemo(() => {

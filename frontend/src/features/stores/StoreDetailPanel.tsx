@@ -14,6 +14,7 @@ import { FranchiseSection } from "./FranchiseSection";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { GroupRail } from "./GroupRail";
 import { ImprovementReportSection } from "./ImprovementReportSection";
+import { InsightReportModal } from "./report/InsightReportModal";
 import { LocationAreaSection, LocationRadiusSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
@@ -44,6 +45,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroup] = useState<GroupId>("store");
+  const [reportOpen, setReportOpen] = useState(false);
   // 내 가게 기록(월 매출·비용)은 여기서 한 번만 들고, 입력은 '내 가게 점검'에서만 받는다. 매출 비교·상권 점검·프랜차이즈는
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
@@ -132,6 +134,11 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
           <>
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" />}
             <SummaryChips storeId={storeId} store={store} onJump={setGroup} />
+            <button type="button" onClick={() => setReportOpen(true)} style={reportButtonStyle}>
+              상권 인사이트 리포트 뽑기
+              <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>공개 통계로 만든 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+            </button>
+            {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
             {GROUP_IDS.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
                 <div style={{ marginTop: 12 }}>
@@ -164,5 +171,6 @@ function naverSearches(store: StoreBasic): { primary: string | null; nameOnly: s
 
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
+const reportButtonStyle: React.CSSProperties = { width: "100%", marginTop: 10, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" };
 const naverLinkStyle: React.CSSProperties = { display: "inline-block", marginTop: 6, padding: "4px 10px", border: "1px solid #03C75A", borderRadius: 6, color: "#02A94C", fontSize: 12, fontWeight: 600, textDecoration: "none" };
 const subLinkStyle: React.CSSProperties = { color: "#02A94C", textDecoration: "underline" };
