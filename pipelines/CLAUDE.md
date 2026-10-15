@@ -65,6 +65,12 @@
 - R-ONE 임대료·공실률(`build_reb_zone_metrics`)은 분기를 코드에 박지 않고 통계표마다 원천의 실제 최신 분기를 쓴다. 지표별 `<지표>_quarter` 칸에 분기를 기록하고,
   그 분기에 값이 없는 상권은 NaN(이전 분기로 채우지 않음).
 
+## 버스 교통(정류장 위치·이용량) 실행 순서 — 1차 검증 단계
+`collect_bus_transit`(위치정보·이용량·TAGO 격자) → `transform.build_bus_stops` (키: `.env` 의 `DATA_GO_KR_KEY`, 키·원천·파생 데이터는 git 에 올리지 않는다)
+- 위치정보와 이용량은 모바일 번호(ARS)+정류장명이 맞는 유일한 쌍만 연결하고(좌표 근접만으로는 연결하지 않음), 같은 정류장의 BIS 별 중복은 `is_primary` 로 한 곳만 남긴다.
+  연결 안 된 이용량은 비워 둔다(임의로 채우지 않음). 이용량은 정류장별 일일 평균 승하차 인원이며 유동인구·방문객 수가 아니다.
+- 연결 건수·매칭률·중복·누락률은 `outputs/tables/bus_transit_report.csv`. 갱신 순서(`run_quarterly`)에는 아직 넣지 않았다(`NOT_IN_QUARTERLY`).
+
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 

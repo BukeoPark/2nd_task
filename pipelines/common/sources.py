@@ -228,6 +228,54 @@ SOURCES: dict[str, DataSource] = {
                   "2026-05-13 삭제, 소비-상권 갱신 중단이라 연결하지 않는다.",
         ),
         DataSource(
+            key="molit_bus_stop_location",
+            title="국토교통부 전국 버스정류장 위치정보(15067528)",
+            provider="국토교통부 (공공데이터포털, odcloud)",
+            endpoint="https://api.odcloud.kr/api/15067528/v1/uddi:<버전별>",
+            docs_url="https://infuser.odcloud.kr/oas/docs?namespace=15067528/v1",
+            fields=["정류장번호", "모바일단축번호", "정류장명", "위도", "경도", "도시코드", "도시명", "관리도시명", "정보수집일"],
+            update_cycle="연 1회(기준일별 버전: 2023-10-16·2024-10-28·2025-10-31)",
+            crs="EPSG:4326(WGS84 위경도, 원천이 문자열로 제공)",
+            terms="이용허락범위 제한 없음(공공데이터포털)",
+            verification="api_call_ok",
+            status="connected",
+            notes="2026-10-14 실호출. 서울특별시 16,980행(관리도시명 서울BIS 12,956·경기BIS 4,024). 도시명이 서울이어도 좌표는 서울 밖인 행이 11%(예: 성남 판교). "
+                  "같은 정류장이 서울BIS(SEB)·경기BIS(GGB)·인천BIS(ICB)에 접두만 다르게 중복 실려 있어 번호·이름·50m 로 중복을 묶는다. "
+                  "모바일단축번호는 BIS 별로 매겨져 서울 안에서도 다른 정류장과 겹칠 수 있다.",
+        ),
+        DataSource(
+            key="molit_bus_stop_usage",
+            title="국토교통부 시군구별 정류장평균이용량(15162142)",
+            provider="국토교통부 (공공데이터포털, odcloud)",
+            endpoint="https://api.odcloud.kr/api/15162142/v1/uddi:<버전>",
+            docs_url="https://infuser.odcloud.kr/oas/docs?namespace=15162142/v1",
+            fields=["년도", "시도코드(법정동)", "시군구코드(법정동)", "시군구명", "정류장ID", "정류장명", "모바일ID", "평균승차이용량", "평균하차이용량", "평균환승이용량"],
+            update_cycle="연 1회(2025년 자료, 2026-08-27 등록, 차기 2027-07-31 예정)",
+            crs="-(좌표 없음 — 위치정보와 모바일 번호로만 연결)",
+            terms="이용허락범위 제한 없음(공공데이터포털)",
+            verification="api_call_ok",
+            status="connected",
+            notes="2026-10-14 실호출, 서울(시도코드 11) 15,046행. 행 단위는 정류장이고 시군구는 소속 구(원천 설명: 정류장별 일일 평균 승하차 인원). "
+                  "승차·하차·환승의 정의는 원천에 없다 — 환승은 파일럿에서 승차를 넘는 행이 0건이라 승차에 포함된 값일 가능성이 있어 더하지 않는다. "
+                  "모바일ID 가 비어 있는 행은 모바일ID 미확인 정류장이며 같은 모바일ID·정류장ID 에 이름이 다른 별칭 행이 여럿 나온다. "
+                  "실시간 유동인구·방문객 수가 아니라 정류장 이용 인원(연 평균)이다.",
+        ),
+        DataSource(
+            key="tago_bus_stop",
+            title="국토교통부 TAGO 버스정류소정보(BusSttnInfoInqireService)",
+            provider="국토교통부 (공공데이터포털)",
+            endpoint="https://apis.data.go.kr/1613000/BusSttnInfoInqireService",
+            docs_url="https://www.data.go.kr/data/15098534/openapi.do",
+            fields=["nodeid", "nodenm", "nodeno", "gpslati", "gpslong", "citycode"],
+            update_cycle="수시",
+            crs="EPSG:4326",
+            terms="이용허락범위 제한 없음(공공데이터포털)",
+            verification="api_call_ok",
+            status="connected",
+            notes="2026-10-14 실호출. 도시 목록(138곳)에 서울이 없어 cityCode 11 로는 0건 — 서울 안 정류소는 좌표 근접 조회(getCrdntPrxmtSttnList)를 파일럿 격자로 훑어 받는다. "
+                  "위치정보(15067528)와의 대조(코드·좌표·이름) 용도이며 서울BIS 정류소는 담겨 있지 않다.",
+        ),
+        DataSource(
             key="neis_academy",
             title="NEIS 학원교습소정보",
             provider="교육부 나이스 교육정보 개방 포털",

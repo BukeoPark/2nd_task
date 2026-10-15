@@ -475,6 +475,35 @@ export interface LocationFactor {
   store_percentile: number | null;
 }
 
+export interface BusSlice {
+  radius_m: number;
+  count: number;
+  count_state: "zero" | "incomplete_zero" | "lower_bound" | "ok";
+  scope_complete: boolean;
+  linked: number;
+  unlinked: number;
+  linked_ratio: number | null;
+  usage_state: "no_stops" | "none_linked" | "all_linked" | "partial";
+  boardings_observed: number | null;
+  alightings_observed: number | null;
+  unlinked_breakdown: { reason: string; label: string; count: number }[];
+}
+
+/** 버스 접근성(직선거리 반경). 'unavailable' 이면 자료 파일이 없어 확인 불가. */
+export type BusAccess =
+  | { status: "unavailable"; message: string; caveats?: string[] }
+  | {
+      status: "ok";
+      radius_m: number;
+      selected: BusSlice;
+      by_radius: Record<string, BusSlice>;
+      nearest: { distance_m: number; name: string; reliable: boolean } | null;
+      scope: { complete: boolean; covered_radius_m: number; distance_to_pilot_m: number | null; extent: string; reason: string | null };
+      usage_basis: { year: number; text: string };
+      caveats: string[];
+      source: { title: string; reference: string };
+    };
+
 export interface LocationInfluenceResponse {
   store: { store_id: string; name: string; category: string; lon: number; lat: number };
   radius_m: number;
@@ -492,6 +521,7 @@ export interface LocationInfluenceResponse {
       all_stores: { label: string; count: number };
       basis: string;
     };
+    bus: BusAccess;
   };
   area: {
     level: "trdar" | "dong";

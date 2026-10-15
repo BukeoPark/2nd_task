@@ -61,6 +61,8 @@ NOT_IN_QUARTERLY: dict[str, str] = {
     "pipelines.transform.build_reb_zone_coords": "R-ONE 상권 좌표 — collect_kakao_geocode 와 함께 수동",
     "pipelines.collect.collect_naver_local": "앵커(다이소) 보강 수집 — 호출량이 커 수동(원본이 있으면 merge_naver_anchors 가 합침)",
     "pipelines.transform.anchor_metrics": "거리·밀집도 계산 라이브러리(compute_anchor_features 가 부름)",
+    "pipelines.collect.collect_bus_transit": "버스 교통 1차 검증 단계 — 정류장 위치(연 1회)·이용량(연 1회) 갱신 시 수동 수집(기준일별 버전이 따로 공개됨)",
+    "pipelines.transform.build_bus_stops": "버스 교통 1차 검증 단계 — 서비스가 아직 소비하지 않는 산출물이라 갱신 순서에 넣지 않음",
 }
 
 STEPS: list[Step] = [

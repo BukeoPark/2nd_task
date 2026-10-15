@@ -19,3 +19,14 @@ def require_env(name: str) -> str:
             f"프로젝트 루트 .env 에 값을 채우세요 (.env.example 참고)."
         )
     return value
+
+
+def redact(text: str, *secrets: str) -> str:
+    """문장 속 비밀값(과 URL 인코딩된 형태)을 '***' 로 바꾼다. 오류 메시지·로그에 요청 URL(serviceKey 쿼리 포함)이 섞여 나가지 않게 한다."""
+    from urllib.parse import quote
+
+    for s in secrets:
+        if s:
+            for form in (s, quote(s, safe=""), quote(s)):
+                text = text.replace(form, "***")
+    return text
