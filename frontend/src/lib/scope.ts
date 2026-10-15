@@ -23,9 +23,9 @@ export const SCOPE_STYLE: Record<ScopeKind, { bg: string; fg: string }> = {
 /** 묶음 한 줄 설명 — 어떤 범위의 정보인지. */
 export const SCOPE_HINT: Record<ScopeKind, string> = {
   store: "이 매장 자체의 정보",
-  radius: "이 매장을 둘러싼 반경 안의 정보",
+  radius: "이 매장 중심 반경 안의 입지·교통·경쟁·개폐업",
   area: "소속 상권(행정동) 단위의 정보",
-  mine: "내가 입력한 값으로 계산하는 정보",
+  mine: "내가 입력한 매출과 운영 점검",
 };
 
 export const SCOPE_ORDER: ScopeKind[] = ["store", "radius", "area", "mine"];

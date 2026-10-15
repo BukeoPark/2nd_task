@@ -3,13 +3,12 @@ import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { useNearbyAnalysis } from "./useStores";
 
-const RADIUS_M = 500;
-
 /** '주변 상권 분석' — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율. 매장 개별 평가가 아니다. */
-export function NearbyAnalysisSection({ storeId }: { storeId: string }) {
-  const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, RADIUS_M);
+export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; radius: number }) {
+  const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, radius);
+  const r = radius >= 1000 ? `${radius / 1000}km` : `${radius}m`;
   return (
-    <Section title="반경 500m 동일 업종 경쟁·개폐업 환경" scope={<ScopeTag kind="radius" label="반경 500m" />}>
+    <Section title={`반경 ${r} 동일 업종 인허가 개폐업`} scope={<ScopeTag kind="radius" label={`반경 ${r}`} />}>
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}

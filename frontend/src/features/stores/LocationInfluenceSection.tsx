@@ -1,34 +1,33 @@
-import { useState } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { BusAccess, DemandType, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
-import { busCountNote, busCountText, busLinkedText, busUsageLines } from "../../lib/busText";
+import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
 import { formatDistance } from "../../lib/format";
-import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
+import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence, useStoreAnchors } from "./useStores";
 
-const DEFAULT_RADIUS_M = 500;
+export const DEFAULT_RADIUS_M = 500;
 const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
   업무형: { bg: "#DBEAFE", fg: "#1E3A8A" },
   혼합형: { bg: "#F3E8FF", fg: "#6B21A8" },
   주거형: { bg: "#DCFCE7", fg: "#166534" },
 };
 
-/** '반경 주변 환경' — 반경 안 앵커·같은 소분류·같은 대분류 점포(공간분석, 직선거리). 반경은 이 블록에서만 고르며 요약 칩은 500m 고정이다. */
-export function LocationRadiusSection({ storeId }: { storeId: string }) {
-  const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
+/** '반경 주변 입지' — ① 상업·경쟁 환경 ② 대중교통 접근성 ③ 대중교통 이용 수요 (모두 직선거리, 같은 반경).
+ * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·④ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
+export function LocationRadiusSection({ storeId, radius, onRadiusChange }: { storeId: string; radius: number; onRadiusChange: (m: number) => void }) {
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useLocationInfluence(storeId, radius);
   const options = data?.radius_options ?? [250, 500, 1000];
   return (
     <Section
-      title="반경 주변 환경 — 앵커·같은 업종 점포"
+      title="반경 주변 입지 — 상업·교통"
       scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(radius)}`} />}
       right={
         <div role="group" aria-label="분석 반경" style={{ display: "flex", gap: 4 }}>
           {options.map((m) => (
-            <button key={m} type="button" aria-pressed={m === radius} onClick={() => setRadius(m)} style={m === radius ? radiusOn : radiusOff}>
+            <button key={m} type="button" aria-pressed={m === radius} onClick={() => onRadiusChange(m)} style={m === radius ? radiusOn : radiusOff}>
               {radiusLabel(m)}
             </button>
           ))}
@@ -45,10 +44,44 @@ export function LocationRadiusSection({ storeId }: { storeId: string }) {
       {data && (
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
-          <RadiusBlock data={data} storeId={storeId} />
-          <SourceNote title={data.source.title} reference={data.source.reference} />
+          <CommerceBlock data={data} storeId={storeId} />
+          <TransitAccessBlock bus={data.radius_metrics.bus} radiusText={radiusLabel(data.radius_m)} />
+          <TransitDemandBlock bus={data.radius_metrics.bus} radiusText={radiusLabel(data.radius_m)} />
         </div>
       )}
+    </Section>
+  );
+}
+
+/** ④ 분석 기준 자세히 보기 — ①~③ 과 같은 반경의 응답(같은 쿼리 키라 추가 요청 없음)에서 원천·기준일·한계를 접어 보여준다. */
+export function RadiusBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
+  const { data } = useLocationInfluence(storeId, radius);
+  if (!data) return null;
+  const { anchors, competitors, bus } = data.radius_metrics;
+  return (
+    <Section title="분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
+      <Fold title="원천자료·기준일·한계 펼치기">
+        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
+          <li>거리는 모두 직선거리입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.</li>
+          <li>{competitors.basis}. 선택 매장은 제외했습니다. 밀도는 점포 수 ÷ 원의 넓이(π·반경²) 단순 환산입니다.</li>
+          <li>상가정보 기반 점포 수는 위 ① 입니다. 인허가 기반 영업·폐업 현황은 아래 '개폐업' 블록에서 따로 봅니다(서로 다른 자료라 수가 다를 수 있음).</li>
+          {anchors.note && <li>{anchors.note}</li>}
+          {bus.status === "ok" ? (
+            <>
+              <li>버스: {bus.source.title} ({bus.source.reference}). {bus.usage_basis.text}.</li>
+              <li>분석 범위: {bus.scope.extent}. {bus.scope.complete ? "이 반경은 수집 범위 안에 있습니다." : bus.scope.reason}</li>
+              {bus.caveats.map((c) => <li key={c}>{c}</li>)}
+              <li>
+                이용량 미연결 사유({bus.selected.unlinked}곳):{" "}
+                {bus.selected.unlinked_breakdown.length === 0 ? "없음" : bus.selected.unlinked_breakdown.map((b) => `${b.label} ${b.count}곳`).join(" · ")}
+              </li>
+            </>
+          ) : (
+            <li>{bus.message}</li>
+          )}
+        </ul>
+        <SourceNote title={data.source.title} reference={data.source.reference} />
+      </Fold>
     </Section>
   );
 }
@@ -85,9 +118,9 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
   );
 }
 
-function RadiusBlock({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
-  const { anchors, competitors, bus } = data.radius_metrics;
-  const r = radiusLabel(data.radius_m);
+/** ① 상업·경쟁 환경 */
+function CommerceBlock({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
+  const { anchors, competitors } = data.radius_metrics;
   // 스세권·다세권(도보권) 판정은 반경과 무관한 매장 기준 값이라 같은 칸에 덧붙인다. 조회 전·실패면 덧붙이지 않는다.
   const walk = useStoreAnchors(storeId).data;
   const zoneText = (brand: string) => {
@@ -95,9 +128,10 @@ function RadiusBlock({ data, storeId }: { data: LocationInfluenceResponse; store
     if (!walk || !z) return "";
     return ` · ${z.in_zone ? `${brand === "starbucks" ? "스세권" : "다세권"}(도보 ${walk.walk_m}m 이내)` : `도보권(${walk.walk_m}m) 밖`}`;
   };
+  const same = competitors.same_category;
   return (
     <div style={card}>
-      <div style={cardTitle}>반경 {r} 안 주변 환경(직선거리)</div>
+      <div style={cardTitle}>① 상업·경쟁 환경 (상가정보 기준)</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
         {anchors.status === "ok" ? (
           anchors.brands.map((b) => (
@@ -106,43 +140,58 @@ function RadiusBlock({ data, storeId }: { data: LocationInfluenceResponse; store
         ) : (
           <div style={{ gridColumn: "1 / -1" }}><Notice tone="muted">{anchors.message}</Notice></div>
         )}
-        <Stat label={`같은 ${competitors.same_category.level}(${competitors.same_category.label})`} value={`${competitors.same_category.count}곳`}
-          sub={competitors.same_category.nearest_m === null ? "가장 가까운 곳 없음" : competitors.same_category.nearest_m === 0 ? "가장 가까운 곳 같은 건물(0m)" : `가장 가까운 곳 ${formatDistance(competitors.same_category.nearest_m)}`} />
-        <Stat label={`같은 ${competitors.same_large_category.level}(${competitors.same_large_category.label})`} value={`${competitors.same_large_category.count}곳`} sub={`반경 안 전체 업소 ${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} />
+        <Stat label={`같은 ${same.level}(${same.label})`} value={`${same.count}곳`}
+          sub={`${densityText(same.count, data.radius_m)} · ${same.nearest_m === null ? "가장 가까운 곳 없음" : same.nearest_m === 0 ? "가장 가까운 곳 같은 건물(0m)" : `가장 가까운 곳 ${formatDistance(same.nearest_m)}`}`} />
+        <Stat label={`전체 ${competitors.same_large_category.label}`} value={`${competitors.same_large_category.count}곳`} sub={`같은 ${competitors.same_large_category.level} 전체`} />
+        <Stat label="전체 업소" value={`${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} sub="업종 구분 없이 반경 안 모두" />
       </div>
-      <div style={fine}>{competitors.basis}. 선택 매장은 제외했어요.{anchors.note ? ` ${anchors.note}` : ""}</div>
-      <BusBlock bus={bus} radiusLabelText={r} />
     </div>
   );
 }
 
-/** 버스 접근성 — 위 반경 토글과 같은 반경(서버가 돌려준 radius_m)의 정류장 수·최근접·이용량. 승차와 하차는 따로, 합산하지 않는다. */
-function BusBlock({ bus, radiusLabelText }: { bus: BusAccess; radiusLabelText: string }) {
+/** ② 대중교통 접근성 — 정류장 수·최근접·이용량 연결(연결률). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
+function TransitAccessBlock({ bus, radiusText }: { bus: BusAccess; radiusText: string }) {
   if (bus.status !== "ok") {
     return (
-      <div style={{ marginTop: 10 }}>
-        <div style={cardTitle}>버스 접근성</div>
+      <div style={card}>
+        <div style={cardTitle}>② 대중교통 접근성</div>
         <div style={{ marginTop: 4 }}><Notice tone="muted">{bus.message}</Notice></div>
       </div>
     );
   }
   const s = bus.selected;
-  const usage = busUsageLines(s);
-  const linked = busLinkedText(s);
+  const nearest = bus.nearest;
   return (
-    <div style={{ marginTop: 10, borderTop: "1px solid #E5E7EB", paddingTop: 8 }}>
-      <div style={cardTitle}>반경 {radiusLabelText} 안 버스 접근성(직선거리)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
-        <Stat label="버스정류장" value={busCountText(s)} sub={busCountNote(s, bus.nearest?.distance_m ?? null)} accent="#0891B2" />
-        <Stat label="일 평균 승차" value={usage.boardings} sub={linked || undefined} />
-        <Stat label="일 평균 하차" value={usage.alightings} sub={s.usage_state === "partial" ? "연결된 정류장만 더한 값" : undefined} />
+    <div style={card}>
+      <div style={cardTitle}>② 대중교통 접근성 — 반경 {radiusText} 버스정류장</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 6 }}>
+        <Stat big label="버스정류장" value={busCountText(s)} sub={busCountNote(s, null)} accent="#0891B2" />
+        <Stat big label="가장 가까운 정류장" value={nearest ? formatDistance(nearest.distance_m) : "자료 없음"} sub={nearest ? (nearest.reliable ? "직선거리" : "직선거리 · 수집 범위 밖일 수 있음") : undefined} />
+        <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}곳`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
-      {s.unlinked > 0 && s.count > 0 && (
-        <div style={fine}>이용량 미연결 {s.unlinked}곳: {s.unlinked_breakdown.map((b) => `${b.label} ${b.count}곳`).join(" · ")}</div>
-      )}
-      {bus.scope.reason && <div style={{ marginTop: 4 }}><Notice tone="warn">{bus.scope.reason}</Notice></div>}
-      <div style={fine}>{bus.usage_basis.text}. 환승은 겹침 여부를 확인하지 못해 합산하지 않았고, 실시간 유동인구·매장 방문객 수가 아닙니다.</div>
-      <SourceNote title={bus.source.title} reference={bus.source.reference} />
+      {bus.scope.reason && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.scope.reason}</Notice></div>}
+    </div>
+  );
+}
+
+/** ③ 대중교통 이용 수요 — 승차·하차를 따로, 연결된 정류장만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. */
+function TransitDemandBlock({ bus, radiusText }: { bus: BusAccess; radiusText: string }) {
+  if (bus.status !== "ok") return null;
+  const s = bus.selected;
+  const usage = busUsageLines(s);
+  return (
+    <div style={card}>
+      <div style={cardTitle}>③ 대중교통 이용 수요 — 반경 {radiusText} ({bus.usage_basis.year}년 일 평균)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+        <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
+        <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
+      </div>
+      <div style={fine}>
+        {usage.partial
+          ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. `
+          : ""}
+        정류장 승·하차 기록이며 실시간 유동인구나 매장 방문객 수가 아닙니다. 승차와 하차는 합치지 않았습니다.
+      </div>
     </div>
   );
 }
@@ -250,11 +299,11 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
   );
 }
 
-function Stat({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+function Stat({ label, value, sub, accent, big }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
   return (
     <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", borderLeft: accent ? `3px solid ${accent}` : "3px solid #E5E7EB" }}>
       <div style={{ fontSize: 11, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
+      <div style={{ fontWeight: 700, fontSize: big ? 18 : 15 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
     </div>
   );

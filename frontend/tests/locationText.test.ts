@@ -47,3 +47,13 @@ test("요인 값: 작은 값은 소수 한 자리, 큰 값은 천 단위, 0/1 �
   assert.equal(factorValueText(0, "", true), "없음");
   assert.equal(factorValueText(null, "명", false), null);
 });
+
+test("반경 점포 밀도: 수 ÷ π·r² 를 km² 당으로 환산하고, 잘못된 반경은 자료 없음", async () => {
+  const { densityPerKm2, densityText } = await import("../src/lib/locationText.ts");
+  assert.ok(Math.abs((densityPerKm2(10, 500) ?? 0) - 10 / (Math.PI * 0.25)) < 1e-9);
+  assert.equal(densityText(0, 500), "1km²당 0.0곳");
+  assert.equal(densityText(120, 500), "1km²당 153곳");
+  assert.equal(densityText(3, 0), "자료 없음");
+  // 같은 점포 수라도 반경이 넓으면 밀도는 낮다
+  assert.ok((densityPerKm2(10, 1000) ?? 0) < (densityPerKm2(10, 250) ?? 0));
+});

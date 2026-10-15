@@ -42,3 +42,15 @@ export function factorValueText(value: number | null, unit: string, binary: bool
   const n = Math.abs(value) < 10 ? value.toFixed(1) : Math.round(value).toLocaleString("ko-KR");
   return unit ? `${n}${unit}` : n;
 }
+
+/** 반경 안 점포 수의 단순 밀도 — 수 ÷ 원의 넓이(π·r²)를 km² 당으로 환산한다. 반경 안이 전부 상업지라는 가정이 없는 단순 나눗셈이며 새 통계가 아니다. */
+export function densityPerKm2(count: number, radiusM: number): number | null {
+  if (!Number.isFinite(count) || !Number.isFinite(radiusM) || radiusM <= 0) return null;
+  return count / ((Math.PI * radiusM * radiusM) / 1_000_000);
+}
+
+export function densityText(count: number, radiusM: number): string {
+  const d = densityPerKm2(count, radiusM);
+  if (d === null) return "자료 없음";
+  return `1km²당 ${d >= 100 ? Math.round(d).toLocaleString("ko-KR") : d.toFixed(1)}곳`;
+}

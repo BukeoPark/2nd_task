@@ -15,7 +15,7 @@ import { GoogleReviewSection } from "./GoogleReviewSection";
 import { GroupRail } from "./GroupRail";
 import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
-import { LocationAreaSection, LocationRadiusSection } from "./LocationInfluenceSection";
+import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
@@ -46,6 +46,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
   const narrow = useNarrow();
   const [group, setGroup] = useState<GroupId>("store");
   const [reportOpen, setReportOpen] = useState(false);
+  // 주변 묶음의 반경(250·500·1km)은 여기서 한 번만 들고 입지 지표·개폐업·분석 기준이 같은 값을 쓴다.
+  const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   // 내 가게 기록(월 매출·비용)은 여기서 한 번만 들고, 입력은 '내 가게 점검'에서만 받는다. 매출 비교·상권 점검·프랜차이즈는
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
@@ -89,8 +91,9 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
           ),
           google: <GoogleReviewSection storeId={storeId} />,
           history: <OperationHistorySection history={data.operation_history} />,
-          competition: <NearbyAnalysisSection storeId={storeId} />,
-          radius: <LocationRadiusSection storeId={storeId} />,
+          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} />,
+          competition: <NearbyAnalysisSection storeId={storeId} radius={radius} />,
+          "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
             <Section title="소속 상권 — 행정동·발달/골목상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
               <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균).</div>
@@ -107,12 +110,12 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
           "area-model": <LocationAreaSection storeId={storeId} />,
           "area-extra": (
             <Section title="추가 참고 — 상권 평균 기준">
-              <Fold title="프랜차이즈 참고·상권 운영 점검 펼치기">
+              <Fold title="프랜차이즈 참고 펼치기">
                 <FranchiseSection storeId={storeId} manwon={manwon} />
-                <ImprovementReportSection storeId={storeId} manwon={manwon} />
               </Fold>
             </Section>
           ),
+          improvement: <ImprovementReportSection storeId={storeId} manwon={manwon} />,
           benchmark: <SalesBenchmarkSection storeId={storeId} manwon={manwon} latestMonth={lastMonth} />,
           checkup: <MyStoreCheckupSection storeId={storeId} record={mine.record} onChange={mine.update} onReset={mine.reset} saveFailed={mine.saveFailed} />,
         }

@@ -16,7 +16,7 @@ test("모든 블록은 정확히 한 묶음에 있고, 묶음마다 블록이 �
 
 test("묶음별 블록 순서", () => {
   assert.deepEqual(blocksOf("store"), ["basic", "google", "history"]);
-  assert.deepEqual(blocksOf("radius"), ["competition", "radius"]);
+  assert.deepEqual(blocksOf("radius"), ["radius", "competition", "radius-basis"]);
   assert.deepEqual(blocksOf("area"), ["area-links", "area-model", "area-extra"]);
-  assert.deepEqual(blocksOf("mine"), ["checkup", "benchmark"]);
+  assert.deepEqual(blocksOf("mine"), ["checkup", "benchmark", "improvement"]);
 });
