@@ -2,7 +2,8 @@
 
 네 부분으로 나뉜다.
   1. 반경 지표(공간분석): 매장 좌표 기준 250m·500m·1km 안의 앵커 브랜드(스타벅스·다이소)와 같은 업종 점포 수·최근접 거리,
-     버스정류장 수·최근접 거리·이용량 연결 정류장(bus_access — 같은 반경의 값만 응답한다).
+     버스정류장 수·최근접 거리·이용량 연결 정류장(bus_access — 같은 반경의 값만 응답한다),
+     철도 역사 수·출입구·최근접·2025 일평균 승하차(rail_access — 같은 반경의 값만 응답한다).
      거리는 직선거리다(보행 네트워크 거리는 아님).
   2. 수요 유형: 상권(없으면 행정동)의 직장인구 비중으로 업무형·혼합형·주거형. 기준은 pipelines 의 build_location_model 이
      location_features.parquet 에 기록해 둔 값을 읽는다(기준값은 location_model.json 의 thresholds).
@@ -19,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from app.services import competitors as competitors_service
-from app.services import bus_access, data_store, food_map, store_churn, store_profile
+from app.services import bus_access, data_store, food_map, rail_access, store_churn, store_profile
 
 RADII_M = (250, 500, 1000)
 DEFAULT_RADIUS_M = 500
@@ -236,7 +237,7 @@ def analyze(bizes_id: str, radius_m: int = DEFAULT_RADIUS_M) -> dict:
         "store": {"store_id": bizes_id, "name": store["bizesNm"], "category": store["indsSclsNm"], "lon": store["lon"], "lat": store["lat"]},
         "radius_m": radius_m, "radius_options": list(RADII_M),
         "radius_metrics": {"anchors": _anchor_metrics(bizes_id, radius_m), "competitors": _competitor_metrics(store, radius_m),
-                           "bus": bus_access.metrics(store, radius_m)},
+                           "bus": bus_access.metrics(store, radius_m), "rail": rail_access.metrics(store, radius_m)},
         "area": area,
         "model": _model_block(store, area, model),
         "caveats": CAVEATS,

@@ -316,6 +316,7 @@ export function MapPage() {
         {storeId ? (
           <StoreDetailPanel
             storeId={storeId}
+            mapView={mapKakao}
             onBack={() => setStoreId(null)}
             onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }}
             onOpenArea={({ level, store }) => {

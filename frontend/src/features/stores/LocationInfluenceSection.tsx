@@ -1,9 +1,10 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
-import type { BusAccess, DemandType, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
+import type { BusAccess, DemandType, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
 import { formatDistance } from "../../lib/format";
+import { railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence, useStoreAnchors } from "./useStores";
@@ -17,7 +18,14 @@ const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
 
 /** '반경 주변 입지' — ① 상업·경쟁 환경 ② 대중교통 접근성 ③ 대중교통 이용 수요 (모두 직선거리, 같은 반경).
  * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·④ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
-export function LocationRadiusSection({ storeId, radius, onRadiusChange }: { storeId: string; radius: number; onRadiusChange: (m: number) => void }) {
+export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExits, onShowExitsChange }: {
+  storeId: string;
+  radius: number;
+  onRadiusChange: (m: number) => void;
+  /** 지하철 출입구를 지도에 표시할지(기본 꺼짐) — 상태는 매장 상세 패널이 들고 있다 */
+  showExits: boolean;
+  onShowExitsChange: (v: boolean) => void;
+}) {
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useLocationInfluence(storeId, radius);
   const options = data?.radius_options ?? [250, 500, 1000];
   return (
@@ -45,8 +53,8 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange }: { sto
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
           <CommerceBlock data={data} storeId={storeId} />
-          <TransitAccessBlock bus={data.radius_metrics.bus} radiusText={radiusLabel(data.radius_m)} />
-          <TransitDemandBlock bus={data.radius_metrics.bus} radiusText={radiusLabel(data.radius_m)} />
+          <TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
+          <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} />
         </div>
       )}
     </Section>
@@ -57,7 +65,7 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange }: { sto
 export function RadiusBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
   const { data } = useLocationInfluence(storeId, radius);
   if (!data) return null;
-  const { anchors, competitors, bus } = data.radius_metrics;
+  const { anchors, competitors, bus, rail } = data.radius_metrics;
   return (
     <Section title="분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
       <Fold title="원천자료·기준일·한계 펼치기">
@@ -79,6 +87,20 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
           ) : (
             <li>{bus.message}</li>
           )}
+          {rail && rail.status === "ok" && (
+            <>
+              <li>지하철: {rail.source.title} ({rail.source.reference}). {rail.usage_basis.text}.</li>
+              <li>포함 기준: {rail.inclusion_rule} 출입구가 있다는 이유로 역 중심점과 출입구를 둘 다 세지 않고, 출입구 수는 반경 안에 좌표가 확인된 출입구만 셉니다.</li>
+              <li>
+                위치 자료 범위: {rail.scope.location_extent}. 출입구 자료 범위: {rail.scope.entrance_extent}
+                {rail.scope.entrance_scope_complete ? " — 이 반경은 그 범위 안입니다." : " — 이 반경의 일부가 그 범위 밖이라 출입구는 일부만 확인된 값이고, 출입구가 없는 역은 중심점 기준입니다."}
+              </li>
+              <li>이용량이 있는 지역: {rail.scope.usage_regions.join("·")}. 그 밖 지역의 역은 이용량 자료를 아직 받지 않아 '자료 없음'이며 0명이 아닙니다.</li>
+              <li>이용량 기간(원천별, 서로 다른 기간을 같은 기간처럼 비교하지 않음): {Object.entries(rail.usage_basis.periods).map(([k, v]) => `${k} ${v[0]}~${v[1]}`).join(" · ")}. 역사 합계는 2025년 달력 연도만 씁니다.</li>
+              {rail.caveats.map((c) => <li key={c}>{c}</li>)}
+            </>
+          )}
+          {rail && rail.status !== "ok" && <li>{rail.message}</li>}
         </ul>
         <SourceNote title={data.source.title} reference={data.source.reference} />
       </Fold>
@@ -149,50 +171,134 @@ function CommerceBlock({ data, storeId }: { data: LocationInfluenceResponse; sto
   );
 }
 
-/** ② 대중교통 접근성 — 정류장 수·최근접·이용량 연결(연결률). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
-function TransitAccessBlock({ bus, radiusText }: { bus: BusAccess; radiusText: string }) {
-  if (bus.status !== "ok") {
-    return (
-      <div style={card}>
-        <div style={cardTitle}>② 대중교통 접근성</div>
-        <div style={{ marginTop: 4 }}><Notice tone="muted">{bus.message}</Notice></div>
+/** ② 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
+function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChange }: { bus: BusAccess; rail?: RailAccess; radiusText: string; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
+  return (
+    <div style={card}>
+      <div style={cardTitle}>② 대중교통 접근성 — 지하철과 버스 (반경 {radiusText})</div>
+      <RailAccessPart rail={rail} showExits={showExits} onShowExitsChange={onShowExitsChange} />
+      <BusAccessPart bus={bus} />
+    </div>
+  );
+}
+
+const subTitle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#6D28D9", margin: "8px 0 2px" };
+
+function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAccess; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
+  if (!rail) return null;      // 구버전 응답(철도 필드 없음)
+  if (rail.status !== "ok") {
+    return (<><div style={subTitle}>지하철</div><Notice tone="muted">{rail.message}</Notice></>);
+  }
+  const s = rail.selected;
+  const nearest = railNearestText(rail.nearest_station);
+  const mixed = s.mixed_basis;
+  return (
+    <>
+      <div style={subTitle}>지하철 — 환승 노선은 한 역사로 한 번만 셉니다</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
+        <Stat big label="지하철 역" value={railCountText(s)} sub={railCountNote(s)} accent="#6D28D9" />
+        <Stat big label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
+        <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
-    );
+      <div style={fine}>
+        {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
+      </div>
+      {railExcludedNote(s) && <div style={{ marginTop: 4 }}><Notice tone="warn">{railExcludedNote(s)}</Notice></div>}
+      {mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
+      {!mixed && s.count > 0 && s.stations_by_basis.center === s.count && <div style={fine}>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</div>}
+      {s.count > 0 && (
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={showExits} onChange={(e) => onShowExitsChange(e.target.checked)} />
+          지도에 출입구 위치 표시(기본 꺼짐)
+        </label>
+      )}
+      {s.count > 0 && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</div>}
+      {rail.stations.length > 0 && (
+        <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+            {rail.stations.map((st) => (
+              <li key={st.complex_id}>
+                <strong>{st.name}</strong>({st.lines}) {st.distance_m.toLocaleString("ko-KR")}m · {st.basis === "entrance" ? `출입구 ${st.entrances.length}곳 확인(최근접 출구 기준)` : "공식 중심점 기준"}
+                {st.usage.boardings === null
+                  ? ` · 이용량 자료 없음(${railNoUsageReasonText(st.usage.reason)})`
+                  : ` · 일평균 승차 ${Math.round(st.usage.boardings).toLocaleString("ko-KR")}명 · 하차 ${Math.round(st.usage.alightings ?? 0).toLocaleString("ko-KR")}명${st.usage.lines_total !== null && st.usage.lines_with_usage < st.usage.lines_total ? ` (노선 ${st.usage.lines_with_usage}/${st.usage.lines_total}만 연결)` : ""}`}
+              </li>
+            ))}
+          </ul>
+        </Fold>
+      )}
+    </>
+  );
+}
+
+function BusAccessPart({ bus }: { bus: BusAccess }) {
+  if (bus.status !== "ok") {
+    return (<><div style={{ ...subTitle, color: "#0E7490" }}>버스</div><Notice tone="muted">{bus.message}</Notice></>);
   }
   const s = bus.selected;
   const nearest = bus.nearest;
   return (
-    <div style={card}>
-      <div style={cardTitle}>② 대중교통 접근성 — 반경 {radiusText} 버스정류장</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 6 }}>
+    <>
+      <div style={{ ...subTitle, color: "#0E7490" }}>버스 정류장</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
         <Stat big label="버스정류장" value={busCountText(s)} sub={busCountNote(s, null)} accent="#0891B2" />
         <Stat big label="가장 가까운 정류장" value={nearest ? formatDistance(nearest.distance_m) : "자료 없음"} sub={nearest ? (nearest.reliable ? "직선거리" : "직선거리 · 수집 범위 밖일 수 있음") : undefined} />
         <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}곳`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
       {bus.scope.reason && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.scope.reason}</Notice></div>}
+    </>
+  );
+}
+
+/** ③ 교통 이용 수요 — 지하철·버스 모두 승차·하차를 따로, 연결된 곳만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. 지하철과 버스는 서로 더하지 않는다. */
+function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: RailAccess; radiusText: string }) {
+  const railOk = rail && rail.status === "ok" ? rail : null;
+  if (!railOk && bus.status !== "ok") return null;
+  return (
+    <div style={card}>
+      <div style={cardTitle}>③ 교통 이용 수요 — 지하철과 버스 (반경 {radiusText}, 2025년 일 평균)</div>
+      {railOk && <RailDemandPart rail={railOk} />}
+      {bus.status === "ok" && <BusDemandPart bus={bus} />}
+      <div style={fine}>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</div>
     </div>
   );
 }
 
-/** ③ 대중교통 이용 수요 — 승차·하차를 따로, 연결된 정류장만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. */
-function TransitDemandBlock({ bus, radiusText }: { bus: BusAccess; radiusText: string }) {
-  if (bus.status !== "ok") return null;
+function RailDemandPart({ rail }: { rail: Extract<RailAccess, { status: "ok" }> }) {
+  const s = rail.selected;
+  const usage = railUsageLines(s);
+  const linkedText = railLinkedText(s);
+  return (
+    <>
+      <div style={subTitle}>지하철 역 승·하차 (연결된 역만)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+        <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} accent="#6D28D9" />
+        <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} accent="#6D28D9" />
+      </div>
+      <div style={fine}>
+        {[linkedText, railCompleteText(s)].filter(Boolean).join(" · ")}
+        {s.usage_state === "none_linked" && s.count > 0 && `${linkedText ? " · " : ""}이 반경 역의 이용량 자료가 없습니다(0명이 아니라 자료 없음${s.no_source_region_stations > 0 ? " — 이용량 자료를 아직 받지 않은 지역 포함" : ""}).`}
+        {usage.partial && ` 이용량이 없거나 일부 노선만 연결된 역은 빠져 있어 이 반경 전체의 값이 아닙니다. 반경 밖 역의 이용량은 더하지 않았습니다.`}
+      </div>
+    </>
+  );
+}
+
+function BusDemandPart({ bus }: { bus: Extract<BusAccess, { status: "ok" }> }) {
   const s = bus.selected;
   const usage = busUsageLines(s);
   return (
-    <div style={card}>
-      <div style={cardTitle}>③ 대중교통 이용 수요 — 반경 {radiusText} ({bus.usage_basis.year}년 일 평균)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+    <>
+      <div style={{ ...subTitle, color: "#0E7490" }}>버스 정류장 승·하차 (연결된 정류장만)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
         <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
         <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
       </div>
       <div style={fine}>
-        {usage.partial
-          ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. `
-          : ""}
-        정류장 승·하차 기록이며 실시간 유동인구나 매장 방문객 수가 아닙니다. 승차와 하차는 합치지 않았습니다.
+        {usage.partial ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. ` : ""}
+        정류장 승·하차 기록이며 승차와 하차는 합치지 않았습니다.
       </div>
-    </div>
+    </>
   );
 }
 

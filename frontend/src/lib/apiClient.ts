@@ -504,6 +504,87 @@ export type BusAccess =
       source: { title: string; reference: string };
     };
 
+export interface RailUsage {
+  state: "all_linked" | "partial" | "none_linked";
+  boardings: number | null;
+  alightings: number | null;
+  lines_with_usage: number;
+  lines_total: number | null;
+  months_observed: number | null;
+  complete_2025: boolean;
+  sources: string[];
+  reason: "no_source_for_region" | "no_usage_row" | null;
+}
+
+export interface RailEntrance {
+  exit_label: string;
+  exit_no: string | null;
+  lon: number;
+  lat: number;
+  distance_m: number;
+}
+
+export interface RailStation {
+  complex_id: string;
+  name: string;
+  lines: string;
+  operators: string;
+  region: string;
+  lon: number;
+  lat: number;
+  distance_m: number;
+  basis: "entrance" | "center";
+  center_distance_m: number;
+  has_entrances: boolean;
+  entrances: RailEntrance[];
+  usage: RailUsage;
+}
+
+export interface RailSlice {
+  radius_m: number;
+  count: number;
+  count_state: "zero" | "ok";
+  stations_by_basis: { entrance: number; center: number };
+  mixed_basis: boolean;
+  entrances: number;
+  entrance_scope_complete: boolean;
+  center_inside_but_entrance_outside: number;
+  linked: number;
+  unlinked: number;
+  linked_ratio: number | null;
+  usage_state: "no_stations" | "none_linked" | "partial" | "all_linked";
+  boardings_observed: number | null;
+  alightings_observed: number | null;
+  complete_2025_stations: number;
+  partial_line_stations: number;
+  no_source_region_stations: number;
+}
+
+/** 철도(지하철·도시철도) 접근성(직선거리 반경). 'unavailable' 이면 자료 파일이 없어 확인 불가. */
+export type RailAccess =
+  | { status: "unavailable"; message: string; caveats?: string[] }
+  | {
+      status: "ok";
+      radius_m: number;
+      selected: RailSlice;
+      by_radius: Record<string, RailSlice>;
+      stations: RailStation[];
+      nearest_station: { name: string; lines: string; distance_m: number; basis: "entrance" | "center"; center_distance_m: number; in_radius: boolean } | null;
+      nearest_entrance: { station_name: string | null; exit_label: string; exit_no: string | null; distance_m: number; source: string; in_radius: boolean } | null;
+      inclusion_rule: string;
+      scope: {
+        entrance_scope_complete: boolean;
+        distance_to_pilot_m: number | null;
+        entrance_extent: string;
+        location_extent: string;
+        location_regions: { region: string; stations: number }[];
+        usage_regions: string[];
+      };
+      usage_basis: { year: number | null; text: string; sources: string[]; periods: Record<string, [string | null, string | null]> };
+      caveats: string[];
+      source: { title: string; reference: string };
+    };
+
 export interface LocationInfluenceResponse {
   store: { store_id: string; name: string; category: string; lon: number; lat: number };
   radius_m: number;
@@ -522,6 +603,8 @@ export interface LocationInfluenceResponse {
       basis: string;
     };
     bus: BusAccess;
+    /** 새 필드 — 없을 수 있다(구버전 응답과 호환) */
+    rail?: RailAccess;
   };
   area: {
     level: "trdar" | "dong";

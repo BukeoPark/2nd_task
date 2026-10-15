@@ -1,10 +1,12 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
 import { latestMonth } from "../../lib/checkup";
+import { overlayRadius, validCenter } from "../../lib/radiusOverlay";
+import { railMapPlan } from "../../lib/railText";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
 import { railPanelId, railTabId } from "../../lib/railIds";
 import { SCOPE_GROUP, SCOPE_HINT, SCOPE_STYLE } from "../../lib/scope";
@@ -17,12 +19,14 @@ import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
+import { RadiusCircleLayer } from "./RadiusCircleLayer";
+import { RailStationLayer } from "./RailStationLayer";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
 import { SummaryChips } from "./SummaryChips";
 import { useMyStoreRecord } from "./useMyStoreRecord";
-import { useStoreDetail } from "./useStores";
+import { useLocationInfluence, useStoreDetail } from "./useStores";
 
 interface StoreDetailPanelProps {
   storeId: string;
@@ -30,6 +34,8 @@ interface StoreDetailPanelProps {
   onClose: () => void;
   /** 소속 행정동·세부 상권 분석 화면으로 이동 */
   onOpenArea: (target: { level: "dong" | "trdar"; store: StoreBasic }) => void;
+  /** 카카오 지도 핸들 — 있으면 '주변' 묶음에서 선택 반경을 지도에 원으로 그린다(없으면 원 없음). */
+  mapView?: { map: any; kakao: typeof window.kakao } | null;
 }
 
 /** 매장 상세 — 왼쪽 레일의 네 묶음(이 매장 / 주변 / 상권 / 내 가게)으로 나눠 한 번에 한 묶음만 보인다.
@@ -41,19 +47,27 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroup] = useState<GroupId>("store");
   const [reportOpen, setReportOpen] = useState(false);
   // 주변 묶음의 반경(250·500·1km)은 여기서 한 번만 들고 입지 지표·개폐업·분석 기준이 같은 값을 쓴다.
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
+  // 지하철 출입구를 지도에 그릴지(기본 꺼짐) — 역 마커는 항상, 출입구는 켰을 때만(지도 혼잡 방지). 매장이 바뀌면 처음 상태로.
+  const [showExits, setShowExits] = useState(false);
   // 내 가게 기록(월 매출·비용)은 여기서 한 번만 들고, 입력은 '내 가게 점검'에서만 받는다. 매출 비교·상권 점검·프랜차이즈는
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
   const lastMonth = latestMonth(mine.record.months);
   const manwon = lastMonth ? String(mine.record.months[lastMonth]) : "";
   const store = data?.store;
+  // 지도 원은 위 radius(API 조회와 같은 상태값)로만 그린다. '주변' 묶음을 벗어나거나 매장이 바뀌어(key) 이 컴포넌트가 사라지면 원도 사라진다.
+  const circleRadius = overlayRadius(group, radius);
+  // 지도의 역·출입구 표시는 아래 반경 블록과 같은 쿼리(같은 키)의 같은 반경 결과만 쓴다 — 이전 반경 결과가 남아 있는 동안은 그리지 않는다.
+  const loc = useLocationInfluence(storeId, radius);
+  const railResp = loc.data?.radius_metrics.rail;
+  const railPlan = useMemo(() => railMapPlan(loc.isPlaceholderData ? null : railResp, radius, showExits), [railResp, loc.isPlaceholderData, radius, showExits]);
   // 네이버 장소 ID 가 없어 장소 상세가 아니라 검색 결과로만 보낸다. 긴 전체 주소는 '업체 없음'이 나오기 쉬워 기본 검색어는 짧게 쓴다.
   const naver = store ? naverSearches(store) : null;
 
@@ -91,7 +105,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
           ),
           google: <GoogleReviewSection storeId={storeId} />,
           history: <OperationHistorySection history={data.operation_history} />,
-          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} />,
+          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} />,
           competition: <NearbyAnalysisSection storeId={storeId} radius={radius} />,
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
@@ -135,6 +149,12 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea }: StoreDetailPanelP
         {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
         {store && blocks && (
           <>
+            {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && (
+              <RadiusCircleLayer map={mapView.map} kakao={mapView.kakao} center={{ lon: store.lon, lat: store.lat }} radiusM={circleRadius} />
+            )}
+            {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && railPlan.stations.length > 0 && (
+              <RailStationLayer map={mapView.map} kakao={mapView.kakao} stations={railPlan.stations} exits={railPlan.exits} />
+            )}
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" />}
             <SummaryChips storeId={storeId} store={store} onJump={setGroup} />
             <button type="button" onClick={() => setReportOpen(true)} style={reportButtonStyle}>

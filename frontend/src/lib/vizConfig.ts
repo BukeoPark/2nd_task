@@ -81,6 +81,8 @@ export function zoomToUnit(level: number): "gu" | "dong" | "trdar" | "stores" {
 export const SERIES_COLORS = ["#1D4ED8", "#DC2626", "#059669", "#D97706"];
 
 // 선택한 매장·같은 비교 단위/업종 매장·비교 단위 경계 강조 — 지도 점과 매출 비교의 안내가 같은 값을 쓴다.
+/** 주변 분석 반경 원 — 기존 파란 UI(#1D4ED8 계열)와 맞추고 채움을 아주 옅게 해 지도·마커를 가리지 않는다. */
+export const RADIUS_CIRCLE = { color: "#2563EB", strokeWeight: 2, strokeOpacity: 0.55, fillOpacity: 0.07 } as const;
 export const SELECTED_RING_COLOR = "#111827";
 export const PEER_RING_COLOR = "#1D4ED8";
 export const UNIT_BOUNDARY = {
