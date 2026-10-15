@@ -77,6 +77,27 @@
   3. `.venv/bin/python -m pytest backend/tests pipelines/tests` — 백엔드가 이 파일을 읽으므로(`bus_access`) 파일이 없으면 버스 블록은 '확인 불가'로 나온다.
   (이용량 기준연도와 위치정보 기준일은 `bus_meta.json` 에 기록되고 화면의 출처 줄에 그대로 나온다.)
 
+## 지하철·도시철도(역 좌표·출구·이용량) 실행 순서 — 1차 검증 단계
+`collect_rail_transit`(서울 역사 마스터·월별 승하차·카카오 역/출구·광역/고속철도·대구 메타) → `transform.build_rail_stations` (키: `.env` 의 `SEOUL_OPENAPI_KEY`·`KAKAO_REST_API_KEY`·`DATA_GO_KR_KEY`, 키·원천·파생 데이터는 git 에 올리지 않는다)
+- **자동 갱신(`run_quarterly`) 대상이 아니다**(`NOT_IN_QUARTERLY`). 서울 이용량은 월별이라 새 달이 올라오면, 카카오 출구 검색(수백 회 호출)은 필요할 때 직접 다시 돈다.
+  수동 재실행(프로젝트 루트에서, 순서대로): `.venv/bin/python -m pipelines.collect.collect_rail_transit` (기존 파일은 덮어쓰지 않음, 같은 날 다시 받으려면 `--force`) → `.venv/bin/python -m pipelines.transform.build_rail_stations` → `.venv/bin/python -m pytest pipelines/tests`.
+- 역 좌표의 기준은 서울 열린데이터광장 마스터(공식)이고 카카오 역은 대조용이다. 출구 좌표는 카카오 '지하철출구'뿐이라 공식 자료가 아니고 누락될 수 있다 — 출구가 없는 역사는 `has_entrance_data=False`(역 중심점 기준만).
+  '<역> 출구' 한 번 검색은 결과가 2~3건이라 번호별 검색('<역> N번출구')을 쓴다. 역 좌표(`rail_complexes`)와 출구 좌표(`rail_entrances`)는 다른 표에 둔다.
+- 환승: 같은 정규화 역명이 400m 안이면 한 역사(`complex_id`)로 묶고 노선별 행(`rail_stations`)은 그대로 둔다. 역 수는 역사 단위로 센다.
+- 이용량은 서울 교통카드 월별 승·하차(환승 칸 없음). 승차와 하차를 더하지 않고, 역명+노선이 맞는 유일한 쌍만 연결하며, 완전히 같은 중복 행(원천이 월을 두 번 담음)은 하나로 줄이고 건수를 남긴다.
+  연결 안 된 값은 비워 둔다. 고속철도(KTX·SRT)는 `rail_hs_usage` 로 따로 두고 합치지 않는다. 버스(`bus_*`)와는 합치거나 중복 제거하지 않는다(교통수단이 다른 측정치).
+- 수집 범위는 버스와 같은 파일럿 구역 + 1.1km 이고, 반경 N m 계산은 5179 좌표(`x_5179`·`y_5179`)의 직선거리다. 연결률·중복·출구 현황은 `outputs/tables/rail_transit_report.csv`, 공식 제공처 조사는 `outputs/tables/rail_source_survey.csv`.
+
+### 전국 철도 위치(공식 XLSX)·운영기관별 승하차 통합
+`data/raw/전체_도시철도역사정보_20260630.xlsx`(국가철도공단 표준데이터 15013205 — 사람이 data.go.kr 에서 내려받아 둔다, API 가 아님. 읽기 전용) + `collect_rail_transit --datasets seoul_daily busan incheon` → `transform.build_rail_national`
+- 새 XLSX 로 바꾸면 `build_rail_national.XLSX` 상수의 파일 이름을 고치고 다시 실행한다. 기존 `rail_*.parquet`(파일럿)는 건드리지 않고 `rail_official_stations`·`rail_station_crosswalk`·`rail_entrance_links`·`rail_usage_operator_monthly`·`rail_usage_overlap`·`rail_usage_complex_2025`·`rail_national_meta.json` 을 새로 만든다.
+- 좌표 우선순위: 공식 XLSX > 서울 열린데이터광장 마스터 > 카카오(차이는 crosswalk 에만 남김). 공식 표에는 출구 좌표가 없어 출구는 기존 카카오 보조 자료로만 두고 `rail_entrance_links` 로 연결한다.
+- 역 식별은 (운영기관, 역번호, 노선번호, 표준 노선)이고 같은 이름이라도 400m 밖이면 다른 역사다. 같은 키·50m 안 중복 행은 최신 기준일 하나만 남긴다(건수·행 번호는 meta). 행별 데이터기준일자는 형식이 섞여 있어 `base_date_flag` 로 구분한다.
+- 이용량은 승차·하차를 따로, 원천별 관측 기간이 달라(서울 카드 2025-01~, 서울 일별 2024, 부산 2025-01~2026-08, 인천 2024-07~2026-06) 같은 기간처럼 비교하지 않는다. 역사 요약은 2025 달력 연도만 쓴다.
+  연결은 원천이 가진 식별자만 쓴다(부산=역번호+이름 검증, 서울·인천=노선+역명, 좌표 금지). 같은 역·월을 여러 원천이 담으면 운영기관 자체 자료를 대표로 하고 나머지는 `is_primary=False`(`rail_usage_overlap`)로 두어 합산하지 않는다.
+  대구·대전·광주 등 이용량 자료를 아직 받지 않은 지역은 `no_source_for_operator` 로 '자료 없음'이다(0 이 아니다). 대구교통공사 월별 자료(15002503)는 승인돼 있어 필요하면 `USAGE_VERSIONS` 에 더해 받는다.
+- 자동 갱신 대상이 아니다(`NOT_IN_QUARTERLY`). 수동 재실행은 위 순서(수집 → 변환 → `.venv/bin/python -m pytest pipelines/tests`)이며 `requirements.txt` 의 `openpyxl` 이 필요하다.
+
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 
