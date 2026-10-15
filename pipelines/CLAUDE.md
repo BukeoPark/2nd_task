@@ -69,7 +69,13 @@
 `collect_bus_transit`(위치정보·이용량·TAGO 격자) → `transform.build_bus_stops` (키: `.env` 의 `DATA_GO_KR_KEY`, 키·원천·파생 데이터는 git 에 올리지 않는다)
 - 위치정보와 이용량은 모바일 번호(ARS)+정류장명이 맞는 유일한 쌍만 연결하고(좌표 근접만으로는 연결하지 않음), 같은 정류장의 BIS 별 중복은 `is_primary` 로 한 곳만 남긴다.
   연결 안 된 이용량은 비워 둔다(임의로 채우지 않음). 이용량은 정류장별 일일 평균 승하차 인원이며 유동인구·방문객 수가 아니다.
-- 연결 건수·매칭률·중복·누락률은 `outputs/tables/bus_transit_report.csv`. 갱신 순서(`run_quarterly`)에는 아직 넣지 않았다(`NOT_IN_QUARTERLY`).
+- 연결 건수·매칭률·중복·누락률은 `outputs/tables/bus_transit_report.csv`.
+- **자동 갱신(`run_quarterly`) 대상이 아니다**(`NOT_IN_QUARTERLY`). 위치정보는 연 단위, 이용량은 연간 갱신 자료라 분기마다 돌릴 필요가 없고, 새 버전이 공개됐을 때 직접 다시 돌린다.
+  수동 재실행(프로젝트 루트에서, 순서대로):
+  1. `.venv/bin/python -m pipelines.collect.collect_bus_transit` — `data/raw/bus_transit/` 에 수집일 이름으로 새 파일을 쌓는다(기존 파일은 덮어쓰지 않음).
+  2. `.venv/bin/python -m pipelines.transform.build_bus_stops` — `bus_stops.parquet`·`bus_usage_match.parquet`·`bus_meta.json` 과 보고서를 다시 만든다. 가장 최근 원본을 쓰므로 연결률·중복 수를 보고서에서 확인한다.
+  3. `.venv/bin/python -m pytest backend/tests pipelines/tests` — 백엔드가 이 파일을 읽으므로(`bus_access`) 파일이 없으면 버스 블록은 '확인 불가'로 나온다.
+  (이용량 기준연도와 위치정보 기준일은 `bus_meta.json` 에 기록되고 화면의 출처 줄에 그대로 나온다.)
 
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
