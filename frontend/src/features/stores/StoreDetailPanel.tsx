@@ -5,6 +5,7 @@ import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
 import { latestMonth } from "../../lib/checkup";
+import { facilityMapPlan } from "../../lib/facilityText";
 import { overlayRadius, validCenter } from "../../lib/radiusOverlay";
 import { railMapPlan } from "../../lib/railText";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
@@ -13,6 +14,7 @@ import { SCOPE_GROUP, SCOPE_HINT, SCOPE_STYLE } from "../../lib/scope";
 import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { FranchiseSection } from "./FranchiseSection";
+import { FacilityLayer } from "./FacilityLayer";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { GroupRail } from "./GroupRail";
 import { ImprovementReportSection } from "./ImprovementReportSection";
@@ -57,6 +59,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   // 지하철 출입구를 지도에 그릴지(기본 꺼짐) — 역 마커는 항상, 출입구는 켰을 때만(지도 혼잡 방지). 매장이 바뀌면 처음 상태로.
   const [showExits, setShowExits] = useState(false);
+  // 주요 집객시설을 지도에 그릴지(기본 꺼짐) — 공식 자료·이용 권한 확인 시설만. 매장이 바뀌면 처음 상태로.
+  const [showFacilities, setShowFacilities] = useState(false);
   // 내 가게 기록(월 매출·비용)은 여기서 한 번만 들고, 입력은 '내 가게 점검'에서만 받는다. 매출 비교·상권 점검·프랜차이즈는
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
@@ -69,6 +73,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
   const loc = useLocationInfluence(storeId, radius);
   const railResp = loc.data?.radius_metrics.rail;
   const railPlan = useMemo(() => railMapPlan(loc.isPlaceholderData ? null : railResp, radius, showExits), [railResp, loc.isPlaceholderData, radius, showExits]);
+  const facResp = loc.data?.radius_metrics.facilities;
+  const facilityPlan = useMemo(() => facilityMapPlan(loc.isPlaceholderData ? null : facResp, radius, showFacilities), [facResp, loc.isPlaceholderData, radius, showFacilities]);
   // 네이버 장소 ID 가 없어 장소 상세가 아니라 검색 결과로만 보낸다. 긴 전체 주소는 '업체 없음'이 나오기 쉬워 기본 검색어는 짧게 쓴다.
   const naver = store ? naverSearches(store) : null;
 
@@ -106,7 +112,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
           ),
           google: <GoogleReviewSection storeId={storeId} />,
           history: <OperationHistorySection history={data.operation_history} />,
-          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} />,
+          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
           competition: <NearbyAnalysisSection storeId={storeId} radius={radius} />,
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
@@ -159,6 +165,9 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
             )}
             {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && railPlan.stations.length > 0 && (
               <RailStationLayer map={mapView.map} kakao={mapView.kakao} stations={railPlan.stations} exits={railPlan.exits} />
+            )}
+            {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && facilityPlan.length > 0 && (
+              <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />
             )}
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" />}
             <SummaryChips storeId={storeId} store={store} onJump={setGroup} />

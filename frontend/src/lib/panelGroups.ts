@@ -9,9 +9,9 @@ export type BlockId =
   | "basic" // 주소·영업 상태·업력·외부 링크
   | "google"
   | "history"
-  | "competition" // 반경 500m 동일 업종 경쟁·개폐업
-  | "radius" // 반경 입지 지표 — ① 상업·경쟁 ② 교통 접근성 ③ 교통 이용 수요(반경 토글은 여기)
-  | "radius-basis" // ④ 분석 기준 자세히 보기(접힘)
+  | "competition" // ⑤ 반경 동일 업종 인허가 개폐업
+  | "radius" // 반경 입지 지표 — ① 상업·경쟁 ② 주요 집객시설 ③ 교통 접근성 ④ 교통 이용 수요(반경 토글은 여기)
+  | "radius-basis" // ⑥ 분석 기준 자세히 보기(접힘)
   | "area-links" // 소속 행정동·상권 분석으로 이동
   | "area-model" // 상권 수요 유형·입지 요인
   | "area-extra" // 프랜차이즈 참고

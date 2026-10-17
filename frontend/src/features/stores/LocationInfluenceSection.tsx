@@ -1,8 +1,9 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
-import type { BusAccess, DemandType, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
+import type { BusAccess, DemandType, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
+import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityReferenceText, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 import { railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
@@ -16,15 +17,18 @@ const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
   주거형: { bg: "#DCFCE7", fg: "#166534" },
 };
 
-/** '반경 주변 입지' — ① 상업·경쟁 환경 ② 대중교통 접근성 ③ 대중교통 이용 수요 (모두 직선거리, 같은 반경).
- * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·④ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
-export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExits, onShowExitsChange }: {
+/** '반경 주변 입지' — ① 상업·경쟁 환경 ② 주요 집객시설 ③ 대중교통 접근성 ④ 교통 이용 수요 (모두 직선거리, 같은 반경). 이어서 ⑤ 인허가 개폐업 ⑥ 분석 기준.
+ * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·⑥ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
+export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExits, onShowExitsChange, showFacilities, onShowFacilitiesChange }: {
   storeId: string;
   radius: number;
   onRadiusChange: (m: number) => void;
   /** 지하철 출입구를 지도에 표시할지(기본 꺼짐) — 상태는 매장 상세 패널이 들고 있다 */
   showExits: boolean;
   onShowExitsChange: (v: boolean) => void;
+  /** 주요 집객시설을 지도에 표시할지(기본 꺼짐) — 상태는 매장 상세 패널이 들고 있다 */
+  showFacilities: boolean;
+  onShowFacilitiesChange: (v: boolean) => void;
 }) {
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useLocationInfluence(storeId, radius);
   const options = data?.radius_options ?? [250, 500, 1000];
@@ -53,6 +57,7 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
           <CommerceBlock data={data} storeId={storeId} />
+          <FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} />
           <TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
           <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} />
         </div>
@@ -61,13 +66,13 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
   );
 }
 
-/** ④ 분석 기준 자세히 보기 — ①~③ 과 같은 반경의 응답(같은 쿼리 키라 추가 요청 없음)에서 원천·기준일·한계를 접어 보여준다. */
+/** ⑥ 분석 기준 자세히 보기 — ①~④ 와 같은 반경의 응답(같은 쿼리 키라 추가 요청 없음)에서 원천·기준일·한계를 접어 보여준다. */
 export function RadiusBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
   const { data } = useLocationInfluence(storeId, radius);
   if (!data) return null;
-  const { anchors, competitors, bus, rail } = data.radius_metrics;
+  const { anchors, competitors, bus, rail, facilities } = data.radius_metrics;
   return (
-    <Section title="분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
+    <Section title="⑥ 분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
       <Fold title="원천자료·기준일·한계 펼치기">
         <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
           <li>거리는 모두 직선거리입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.</li>
@@ -101,6 +106,17 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
             </>
           )}
           {rail && rail.status !== "ok" && <li>{rail.message}</li>}
+          {facilities && facilities.status === "ok" && (
+            <>
+              <li>주요 집객시설: 공식 자료(건강보험심사평가원 병원정보 · 행정안전부 대규모점포·영화상영관 인허가 · 서울시 LOCALDATA·문화공간 · 소상공인 상가정보)와 이용 권한이 확인된 시설만 셉니다. 권한이 확인되지 않은 지도 업체 검색 결과는 쓰지 않았습니다.</li>
+              <li>자료 기준일: {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.reference_date).map((v) => `${v.label} ${facilityReferenceText(v).replace("기준일 ", "")}`).join(" · ")}. 출처: {facilities.attributions.join(" / ") || "해당 반경 시설 없음"}.</li>
+              {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.count_state !== "no_official_source" && v.coord_coverage?.pilot_coord_rate != null).map((v) => (
+                <li key={v.type}>{v.label}: 파일럿 지역 공식 목록의 좌표 보유율 {Math.round((v.coord_coverage?.pilot_coord_rate ?? 0) * 100)}% (좌표 없는 {v.coord_coverage?.pilot_unlocated}곳은 위치를 추정하지 않아 빠져 있음).</li>
+              ))}
+              {facilities.caveats.map((c) => <li key={c}>{c}</li>)}
+            </>
+          )}
+          {facilities && facilities.status !== "ok" && <li>{facilities.message}</li>}
         </ul>
         <SourceNote title={data.source.title} reference={data.source.reference} />
       </Fold>
@@ -171,13 +187,84 @@ function CommerceBlock({ data, storeId }: { data: LocationInfluenceResponse; sto
   );
 }
 
-/** ② 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
+/** ③ 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
 function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChange }: { bus: BusAccess; rail?: RailAccess; radiusText: string; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   return (
     <div style={card}>
-      <div style={cardTitle}>② 대중교통 접근성 — 지하철과 버스 (반경 {radiusText})</div>
+      <div style={cardTitle}>③ 대중교통 접근성 — 지하철과 버스 (반경 {radiusText})</div>
       <RailAccessPart rail={rail} showExits={showExits} onShowExitsChange={onShowExitsChange} />
       <BusAccessPart bus={bus} />
+    </div>
+  );
+}
+
+/** ② 주요 집객시설 — 의료 / 상업 / 문화·여가 / 교육을 종류별 개수·가장 가까운 시설·직선거리로 보인다. 공식 자료가 없는 종류는 0곳이 아니라 '자료 없음'.
+ * 방문객·매출·점수로 바꾸지 않는다. 지도 표시는 기본 꺼짐. 긴 설명은 접어 두고 ⑥ 분석 기준에 모은다. */
+function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
+  if (!facilities) return null;      // 구버전 응답(집객시설 필드 없음)
+  if (facilities.status !== "ok") {
+    return (<div style={card}><div style={cardTitle}>② 주요 집객시설</div><Notice tone="muted">{facilities.message}</Notice></div>);
+  }
+  const byType = facilities.selected.by_type;
+  const { shown, hidden } = limitList(facilities.facilities, 8);
+  return (
+    <div style={card}>
+      <div style={cardTitle}>② 주요 집객시설 — 공식 자료 기준 (반경 {radiusLabel(radius)}, 직선거리)</div>
+      {FACILITY_GROUPS.map((g) => (
+        <div key={g.id}>
+          <div style={{ ...subTitle, color: "#374151" }}>{g.label}</div>
+          {g.types.map((t) => {
+            const v = byType[t];
+            if (!v) return null;
+            const sub = SUBTYPE_SHOWN.includes(t) ? facilitySubtypeText(v) : "";
+            const statusNote = facilityStatusNote(v);
+            const neighborNote = facilityNeighborNote(v);
+            const staleNote = facilityStaleNote(v);
+            return (
+              <div key={t} style={facilityRow}>
+                <div style={{ fontWeight: 600, fontSize: 12 }}>
+                  <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: FACILITY_MARK[t].color, marginRight: 5 }} />
+                  {v.label}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: v.count_state === "no_official_source" || v.count_state === "incomplete_zero" ? "#6B7280" : "#111827" }}>{facilityCountText(v)}</div>
+                <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#6B7280" }}>
+                  가장 가까운 곳: {facilityNearestText(v, radius)}
+                  {sub && ` · ${sub}`}
+                  {statusNote && ` · ${statusNote}`}
+                </div>
+                {neighborNote && <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#92400E" }}>{neighborNote}</div>}
+                {staleNote && <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#6B7280" }}>{staleNote}</div>}
+                {(v.count_state === "no_official_source" || v.count_state === "incomplete_zero" || v.count_state === "lower_bound") && (
+                  <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#92400E" }}>{facilityCountNote(v)}</div>
+                )}
+              </div>
+            );
+          })}
+          {g.id === "commerce" && facilityUnclassifiedNote(facilities.unclassified_retail) && (
+            <div style={{ fontSize: 11, color: "#92400E", paddingTop: 4 }}>{facilityUnclassifiedNote(facilities.unclassified_retail)}</div>
+          )}
+        </div>
+      ))}
+      <div style={fine}>개수는 공식 목록에 있는 시설 기준이며 이용객·방문객 수가 아닙니다. 점포 유형은 인허가 등록 구분, '영업'은 인허가상 상태입니다. 자세한 기준·출처는 ⑥에서 봅니다.</div>
+      {facilities.facilities.length > 0 && (
+        <>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
+            <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />
+            지도에 집객시설 위치 표시(기본 꺼짐)
+          </label>
+          <Fold title={`반경 안 시설 ${facilities.facilities.length}곳 보기`}>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+              {shown.map((f) => (
+                <li key={f.facility_id}>
+                  <strong title={f.display_name && f.display_name !== f.name ? `공식 명칭: ${f.name}` : undefined}>{f.display_name ?? f.name}</strong>({FACILITY_GROUPS.flatMap((g) => g.types).includes(f.type) ? byType[f.type]?.label : f.type}{f.subtype && f.subtype !== byType[f.type]?.label ? ` · ${f.subtype}` : ""}) {f.distance_m.toLocaleString("ko-KR")}m · {f.status_label}{f.reference_stale ? " · 기록 5년 넘게 갱신 안 됨" : ""}
+                </li>
+              ))}
+            </ul>
+            {hidden > 0 && <div style={fine}>가까운 {shown.length}곳만 보여 줍니다(나머지 {hidden}곳은 지도 표시를 켜서 확인).</div>}
+          </Fold>
+        </>
+      )}
+      <SourceNote title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 ⑥ 분석 기준에서 확인" />
     </div>
   );
 }
@@ -250,13 +337,13 @@ function BusAccessPart({ bus }: { bus: BusAccess }) {
   );
 }
 
-/** ③ 교통 이용 수요 — 지하철·버스 모두 승차·하차를 따로, 연결된 곳만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. 지하철과 버스는 서로 더하지 않는다. */
+/** ④ 교통 이용 수요 — 지하철·버스 모두 승차·하차를 따로, 연결된 곳만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. 지하철과 버스는 서로 더하지 않는다. */
 function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: RailAccess; radiusText: string }) {
   const railOk = rail && rail.status === "ok" ? rail : null;
   if (!railOk && bus.status !== "ok") return null;
   return (
     <div style={card}>
-      <div style={cardTitle}>③ 교통 이용 수요 — 지하철과 버스 (반경 {radiusText}, 2025년 일 평균)</div>
+      <div style={cardTitle}>④ 교통 이용 수요 — 지하철과 버스 (반경 {radiusText}, 2025년 일 평균)</div>
       {railOk && <RailDemandPart rail={railOk} />}
       {bus.status === "ok" && <BusDemandPart bus={bus} />}
       <div style={fine}>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</div>
@@ -417,7 +504,8 @@ function Stat({ label, value, sub, accent, big }: { label: string; value: string
 
 const card: React.CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 };
 const cardTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#374151" };
+const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: "1px solid #F3F4F6", alignItems: "baseline" };
 const fine: React.CSSProperties = { fontSize: 11, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
 const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: 11, cursor: "pointer", border: "1px solid #D1D5DB" };
-const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", borderColor: "#1D4ED8", fontWeight: 700 };
+const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8", fontWeight: 700 };
 const radiusOff: React.CSSProperties = { ...radiusBase, background: "#fff", color: "#374151" };

@@ -190,7 +190,7 @@ def test_real_official_counts_match_an_independent_brute_force_for_every_radius(
 def test_real_provenance_attribution_and_no_unconfirmed_data_in_the_default_response(real):
     st = _store(321)
     res = fa.metrics(st, 1000)
-    assert res["attributions"] and all(("공공누리" in a or "소상공인" in a or "행정안전부" in a) for a in res["attributions"])
+    assert res["attributions"] and all(("공공누리" in a or "소상공인" in a or "행정안전부" in a or "건강보험심사평가원" in a) for a in res["attributions"])
     assert "카카오" not in json.dumps(res, ensure_ascii=False).replace("카카오 검색 한도", "").replace("카카오 보조", "") or all(f["coordinate_source"] != "kakao" for f in res["facilities"])
     assert not any(f["coordinate_source"] == "kakao" for f in res["facilities"])
 
@@ -215,9 +215,76 @@ def test_real_boundary_distance_is_none_outside_the_pilot_and_matches_polygon_in
     assert fa.pilot_boundary_distance_m(127.5, 36.5) is None
 
 
-def test_public_api_responses_are_unchanged_and_do_not_expose_facility_data(client, real):
+def test_public_api_adds_a_facilities_block_without_changing_the_existing_fields(client, real):
     sid = _store(321)["bizesId"]
     body = client.get(f"/api/stores/{sid}/location-influence", params={"radius_m": 500}).json()
-    assert set(body["radius_metrics"]) == {"anchors", "competitors", "bus", "rail"}                    # 집객시설 블록을 아직 붙이지 않았다
-    assert "facilit" not in json.dumps(body, ensure_ascii=False).lower()
+    assert {"anchors", "competitors", "bus", "rail"} <= set(body["radius_metrics"]) and set(body["radius_metrics"]) == {"anchors", "competitors", "bus", "rail", "facilities"}      # 신규 필드만 추가
+    fb = body["radius_metrics"]["facilities"]
+    assert fb["status"] == "ok" and fb["official_only"] is True and fb["includes_unconfirmed"] is False
+    assert all(f["usage_permission_status"] == "confirmed" and f["source_type"] == "official" and f["coordinate_source"] != "kakao" for f in fb["facilities"])
+    assert "kakao" not in json.dumps(fb, ensure_ascii=False).lower().replace("카카오 검색 한도", "")                    # 권한 미확인 자료·출처 이름이 응답에 없다
+    assert "visitors" not in json.dumps(fb).lower() and "score" not in json.dumps(fb).lower()                          # 방문객·점수 환산 없음
+    same = client.get(f"/api/stores/{sid}/location-influence", params={"radius_m": 500}).json()
+    assert same["radius_metrics"]["bus"] == body["radius_metrics"]["bus"] and same["area"] == body["area"]
     assert client.get(f"/api/stores/{sid}/location-influence", params={"radius_m": 300}).status_code == 422
+
+
+def test_real_every_type_reports_count_state_sources_reference_dates_and_status_wording(real):
+    st = _store(321)
+    res = fa.metrics(st, 500)
+    for t in fa.TYPES:
+        v = _t(res, t)
+        if v["count_state"] == "no_official_source":
+            assert v["count"] is None and v["nearest"] is None
+            continue
+        assert v["source_names"] and v["reference_date"] and v["reference_date"]["from"] <= v["reference_date"]["to"]
+        assert sum(v["by_subtype"].values()) == v["count"] and v["status_unknown"] <= v["count"]
+    assert all(f["status_label"] in ("영업(인허가 기준)", "상태 확인 필요") for f in res["facilities"])
+    assert any("인허가" in c for c in res["caveats"])
+
+
+def test_real_hospital_subtypes_split_tertiary_from_general_and_cinemas_are_theater_sites(real):
+    fac, meta = real
+    pool = fa.eligible(fac)
+    ho = pool[pool["facility_type"] == "general_hospital"]
+    assert set(ho["subtype"]) <= {"상급종합", "종합병원"} and (ho["subtype"] == "상급종합").sum() >= 2
+    ci = pool[pool["facility_type"] == "cinema"]
+    assert len(ci) >= 8 and ci["name"].is_unique or ci["facility_id"].is_unique                                           # 상영관이 아니라 영화관 단위
+    assert (meta["coord_coverage"]["cinema"]["pilot_coord_rate"] or 0) > 0 and meta["unlocated_official"]["cinema"]["pilot"]["count"] >= 0
+
+
+def test_coordinate_less_official_facilities_only_make_the_stores_own_district_uncertain():
+    meta = {**META, "unlocated_official": {"cinema": {"pilot": {"count": 1, "names": ["시네마그래픽"], "by_gu": {"양천구": 1}}, "neighbor": {"count": 0, "names": []}}}}
+    fac = _fac({"facility_type": "cinema", "subtype": "영화상영관", "north_m": 100})
+    other = _t(_run(fac, 500, meta=meta, gu="영등포구"), "cinema")
+    same = _t(_run(fac, 500, meta=meta, gu="양천구"), "cinema")
+    assert other["count_state"] == "ok" and not other["incomplete"]
+    assert same["count_state"] == "lower_bound" and "양천구" in same["reason"] and "좌표가 없어" in same["reason"]
+    assert fa.store_gu("서울특별시 영등포구 국제금융로 20") == "영등포구" and fa.store_gu("부산광역시 강서구") is None
+    far = _t(_run(_fac({"facility_type": "cinema", "subtype": "영화상영관", "north_m": 900}), 250, meta=meta, gu="양천구"), "cinema")
+    assert far["count"] == 0 and far["count_state"] == "incomplete_zero"             # 0곳으로 단정하지 않는다
+
+
+def test_stale_unlocated_records_do_not_make_the_area_uncertain_but_are_reported():
+    meta = {**META, "stale_before": "2021-10-17", "unlocated_official": {"cinema": {"pilot": {"count": 0, "names": [], "by_gu": {}}, "neighbor": {"count": 0, "names": []},
+                                                                                  "stale": {"pilot": {"count": 1, "names": ["시네마그래픽"], "by_gu": {"양천구": 1}}, "neighbor": {"count": 0, "names": []}}}}}
+    fac = _fac({"facility_type": "cinema", "subtype": "영화상영관", "north_m": 100, "reference_date": "2003-04-18"})
+    v = _t(_run(fac, 500, meta=meta, gu="양천구"), "cinema")
+    assert v["count_state"] == "ok" and v["stale_unlocated"] == 1 and v["stale_in_radius"] == 1
+    assert _t(_run(fac, 500, meta=meta, gu="영등포구"), "cinema")["stale_unlocated"] == 0
+    res = _run(fac, 500, meta=meta, gu="양천구")
+    assert res["facilities"][0]["reference_stale"] is True
+
+
+def test_display_name_status_wording_and_unclassified_retail_are_reported_separately():
+    fac = _fac({"facility_type": "cinema", "subtype": "영화상영관", "north_m": 100, "name": "롯데컬처웍스(주)롯데시네마", "display_name": "롯데시네마 (신도림동)"},
+               {"facility_type": "general_hospital", "north_m": 150, "status": "unknown", "coordinate_source": "hira", "name": "가나다병원"},
+               {"facility_type": "cultural_facility", "subtype": "공연장", "north_m": 160, "status": "unknown", "coordinate_source": "seoul_cultural", "name": "나다홀"},
+               {"facility_type": fa.UNCLASSIFIED, "subtype": "구분없음", "north_m": 200, "name": "롯데마트맥스 영등포점", "coordinate_source": "mois_retail"})
+    res = _run(fac, 500)
+    cin = _t(res, "cinema")
+    assert cin["nearest"]["name"] == "롯데컬처웍스(주)롯데시네마" and cin["nearest"]["display_name"] == "롯데시네마 (신도림동)"              # 공식 명칭 유지 + 표시명
+    labels = {f["name"]: f["status_label"] for f in res["facilities"]}
+    assert labels["가나다병원"] == "심평원 등재 · 영업상태 미제공" and labels["나다홀"] == "서울시 등재 목록 · 영업상태 미제공"
+    assert [u["name"] for u in res["unclassified_retail"]] == ["롯데마트맥스 영등포점"] and res["unclassified_retail"][0]["registered_class"] == "구분없음"
+    assert all(f["type"] in fa.TYPES for f in res["facilities"]) and _t(res, "hypermarket")["count"] in (None, 0)          # 종류 불명은 대형마트로 세지 않는다

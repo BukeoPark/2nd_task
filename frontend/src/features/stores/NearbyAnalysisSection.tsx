@@ -8,7 +8,7 @@ export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; ra
   const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, radius);
   const r = radius >= 1000 ? `${radius / 1000}km` : `${radius}m`;
   return (
-    <Section title={`반경 ${r} 동일 업종 인허가 개폐업`} scope={<ScopeTag kind="radius" label={`반경 ${r}`} />}>
+    <Section title={`⑤ 반경 ${r} 동일 업종 인허가 개폐업`} scope={<ScopeTag kind="radius" label={`반경 ${r}`} />}>
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}

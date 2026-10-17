@@ -29,7 +29,18 @@ CAVEATS = [
     "직선거리 기준입니다. 시설 이용객·방문객 수 자료는 없어 규모나 수요를 추정하지 않았습니다.",
     "공식 자료(건강보험심사평가원 병원정보·서울시 LOCALDATA 병원 인허가·행정안전부 대규모점포·영화상영관·소상공인 상가정보·서울시 문화공간)와 이용 권한이 확인된 시설만 셉니다. 공식 원천이 없는 종류는 '자료 없음'이며 0곳이 아닙니다.",
     "공식 목록은 일부 시설만 담을 수 있습니다(문화시설은 서울시 등재 목록, 영화관은 좌표가 등록된 상영관만). 개수는 공식 목록 기준입니다.",
+    "'영업'은 인허가 자료상의 영업 상태이며 실제 영업 여부와 다를 수 있습니다. 병원정보는 영업 상태를 말하지 않아 '상태 확인 필요'로 표시합니다. 점포 유형은 인허가에 등록된 구분을 그대로 따릅니다.",
 ]
+STATUS_LABEL = {"open": "영업(인허가 기준)", "unknown": "상태 확인 필요"}
+UNCLASSIFIED = "retail_unclassified"          # 등록 구분이 '구분없음'인 공식 대규모점포 — 종류를 알 수 없어 개수에 넣지 않고 따로 알린다
+# 영업상태를 말하지 않는 공식 등재 목록은 '확인 필요'가 아니라 어떤 자료라서 모르는지를 밝힌다
+STATUS_UNKNOWN_LABEL = {"hira": "심평원 등재 · 영업상태 미제공", "seoul_cultural": "서울시 등재 목록 · 영업상태 미제공", "sbiz": "상가정보 등재 · 영업상태 미제공"}
+
+
+def status_label(status, coordinate_source) -> str:
+    if status == "open":
+        return STATUS_LABEL["open"]
+    return STATUS_UNKNOWN_LABEL.get(coordinate_source if isinstance(coordinate_source, str) else "", STATUS_LABEL["unknown"])
 
 
 def _lv_independent(df: pd.DataFrame) -> pd.Series:
@@ -63,7 +74,16 @@ def _intersects_zone(lon: float, lat: float, radius_m: float, zone: dict) -> boo
     return not (lon + dlon < x1 or lon - dlon > x2 or lat + dlat < y1 or lat - dlat > y2)
 
 
-def compute(lon: float, lat: float, fac: pd.DataFrame, meta: dict, radius_m: int, pilot_m: float | None, boundary_m: float | None, include_unconfirmed: bool = False) -> dict:
+PILOT_GU_NAMES = ("양천구", "영등포구")
+
+
+def store_gu(address) -> str | None:
+    """매장 주소 글자에서 파일럿 구 이름(양천구·영등포구). 못 찾으면 None."""
+    t = str(address or "")
+    return next((g for g in PILOT_GU_NAMES if g in t), None)
+
+
+def compute(lon: float, lat: float, fac: pd.DataFrame, meta: dict, radius_m: int, pilot_m: float | None, boundary_m: float | None, include_unconfirmed: bool = False, gu: str | None = None) -> dict:
     """한 지점의 반경별 시설 접근성. fac = facilities.parquet 전체(이 함수가 분석 대상을 거른다)."""
     if radius_m not in RADII_M:
         raise ValueError(f"radius_m 은 {list(RADII_M)} 중 하나여야 합니다")
@@ -74,6 +94,15 @@ def compute(lon: float, lat: float, fac: pd.DataFrame, meta: dict, radius_m: int
     by_radius, listing = {}, []
     d_all = bus_access._haversine_m(lon, lat, pool["lon"].to_numpy(), pool["lat"].to_numpy()) if len(pool) else np.array([])
     pool = pool.assign(d_store_m=d_all)
+    for col, default in (("status", "unknown"), ("reference_date", None), ("source_name", None), ("subtype", None), ("coordinate_source", None)):     # 오래된 산출물에도 깨지지 않게
+        if col not in pool.columns:
+            pool[col] = default
+    if "display_name" not in pool.columns:
+        pool["display_name"] = pool["name"]
+    stale_before = meta.get("stale_before")
+    pool = pool.assign(reference_stale=pool["reference_date"].map(lambda v: bool(stale_before) and isinstance(v, str) and v < stale_before))
+    unclassified = pool[pool["facility_type"] == UNCLASSIFIED]
+    pool = pool[pool["facility_type"].isin(TYPES)]
     for r in RADII_M:
         extent_ok = pilot_m is not None and pilot_m + r <= buffer_m
         per_type = {}
@@ -90,6 +119,15 @@ def compute(lon: float, lat: float, fac: pd.DataFrame, meta: dict, radius_m: int
             sub = pool[pool["facility_type"] == t]
             within = sub[sub["d_store_m"] <= r]
             reasons = []
+            unloc = (meta.get("unlocated_official") or {}).get(t) or {}
+            by_gu = (unloc.get("pilot") or {}).get("by_gu") or {}
+            n_p = int(by_gu.get(gu, 0)) if gu else int((unloc.get("pilot") or {}).get("count", 0))      # 매장과 같은 구 주소의 시설만 — 구를 모르면 두 구 전체
+            n_n = int((unloc.get("neighbor") or {}).get("count", 0))
+            stale_gu = ((unloc.get("stale") or {}).get("pilot") or {}).get("by_gu") or {}
+            n_stale = int(stale_gu.get(gu, 0)) if gu else int(((unloc.get("stale") or {}).get("pilot") or {}).get("count", 0))
+            if n_p:
+                reasons.append(f"이 매장과 같은 구({gu or '양천·영등포'}) 주소인데 좌표가 없어 분석에서 빠진 공식 시설 {n_p}곳")
+            # 인접 구·시 주소의 좌표 없는 시설은 위치를 알 수 없어(구 전체가 후보) 개수 상태를 바꾸지 않고 알림으로만 준다
             if not extent_ok:
                 reasons.append("반경 일부가 수집 범위(파일럿 구역+1.1km) 밖")
             if partial:
@@ -102,17 +140,29 @@ def compute(lon: float, lat: float, fac: pd.DataFrame, meta: dict, radius_m: int
             nearest = None
             if len(sub):
                 row = sub.loc[sub["d_store_m"].idxmin()]
-                nearest = {"distance_m": int(round(float(row["d_store_m"]))), "name": row["name"]}
+                nearest = {"distance_m": int(round(float(row["d_store_m"]))), "name": row["name"], "display_name": row["display_name"]}
+            ref = sorted({x for x in pool.loc[pool["facility_type"] == t, "reference_date"] if isinstance(x, str)})
             per_type[t] = {"type": t, "label": TYPE_LABEL[t], "count": int(n), "count_state": state, "nearest": nearest, "reliable": not incomplete, "incomplete": incomplete,
-                           "reason": " · ".join(reasons) if reasons else None}
+                           "reason": " · ".join(reasons) if reasons else None,
+                           "by_subtype": {k: int(v) for k, v in within["subtype"].map(lambda x: x if isinstance(x, str) else "기타").value_counts().sort_index().items()},
+                           "status_unknown": int((within["status"] != "open").sum()) if len(within) else 0,
+                           "source_names": sorted({x for x in pool.loc[pool["facility_type"] == t, "source_name"] if isinstance(x, str)}),
+                           "reference_date": {"from": ref[0], "to": ref[-1]} if ref else None,
+                           "coord_coverage": (meta.get("coord_coverage") or {}).get(t),
+                           "neighbor_unlocated": n_n if (boundary_m is None or boundary_m < r) else 0,
+                           "stale_unlocated": n_stale, "stale_in_radius": int(within["reference_stale"].sum()) if len(within) else 0}
         by_radius[str(r)] = {"radius_m": r, "extent_complete": extent_ok, "by_type": per_type}
     sel = pool[pool["d_store_m"] <= radius_m].sort_values(["d_store_m", "facility_id"])
     for row in sel.itertuples():
-        listing.append({"facility_id": row.facility_id, "name": row.name, "type": row.facility_type, "subtype": _s(row.subtype), "lon": round(float(row.lon), 6), "lat": round(float(row.lat), 6),
-                        "distance_m": int(round(float(row.d_store_m))), "source_name": _s(row.source_name), "source_type": row.source_type, "coordinate_source": _s(row.coordinate_source),
+        listing.append({"facility_id": row.facility_id, "name": row.name, "display_name": row.display_name, "reference_stale": bool(row.reference_stale), "type": row.facility_type, "subtype": _s(row.subtype), "lon": round(float(row.lon), 6), "lat": round(float(row.lat), 6),
+                        "distance_m": int(round(float(row.d_store_m))), "status": row.status, "status_label": status_label(row.status, row.coordinate_source), "source_name": _s(row.source_name), "source_type": row.source_type, "coordinate_source": _s(row.coordinate_source),
                         "reference_date": _s(row.reference_date), "usage_permission_status": row.usage_permission_status, "coverage_status": row.coverage_status, "attribution": _s(row.attribution)})
-    attributions = sorted({x["attribution"] for x in listing if x["attribution"]})
-    return {"status": "ok", "radius_m": radius_m, "selected": by_radius[str(radius_m)], "by_radius": by_radius, "facilities": listing, "includes_unconfirmed": include_unconfirmed,
+    attributions = sorted({a for a in pool["attribution"] if isinstance(a, str)})        # 화면에 이름이 나올 수 있는 모든 공식 시설(반경 밖 최근접 포함)의 출처
+    unc = unclassified[unclassified["d_store_m"] <= radius_m].sort_values(["d_store_m", "facility_id"])
+    unclassified_retail = [{"facility_id": row.facility_id, "name": row.name, "distance_m": int(round(float(row.d_store_m))), "lon": round(float(row.lon), 6), "lat": round(float(row.lat), 6),
+                            "status_label": status_label(row.status, row.coordinate_source), "reference_date": _s(row.reference_date), "registered_class": "구분없음", "attribution": _s(row.attribution)} for row in unc.itertuples()]
+    attributions = sorted(set(attributions) | {x["attribution"] for x in unclassified_retail if x["attribution"]})
+    return {"status": "ok", "radius_m": radius_m, "selected": by_radius[str(radius_m)], "by_radius": by_radius, "facilities": listing, "unclassified_retail": unclassified_retail, "includes_unconfirmed": include_unconfirmed,
             "official_only": not include_unconfirmed, "attributions": attributions, "caveats": CAVEATS,
             "scope": {"distance_to_pilot_m": None if pilot_m is None else round(float(pilot_m), 1), "boundary_distance_m": None if boundary_m is None else round(float(boundary_m), 1), "buffer_m": buffer_m}}
 
@@ -129,7 +179,7 @@ def metrics(store: dict, radius_m: int, *, include_unconfirmed: bool = False) ->
     except data_store.DataNotReady:
         return unavailable("집객시설 자료가 아직 준비되지 않았습니다(파이프라인 실행 필요). 0곳이 아니라 확인 불가입니다.")
     lon, lat = float(store["lon"]), float(store["lat"])
-    return compute(lon, lat, fac, meta, radius_m, bus_access.distance_to_pilot_m(lon, lat), pilot_boundary_distance_m(lon, lat), include_unconfirmed)
+    return compute(lon, lat, fac, meta, radius_m, bus_access.distance_to_pilot_m(lon, lat), pilot_boundary_distance_m(lon, lat), include_unconfirmed, gu=store_gu(store.get("rdnmAdr") if hasattr(store, "get") else None))
 
 
 def source_difference(store: dict, radius_m: int) -> dict:

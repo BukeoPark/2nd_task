@@ -195,6 +195,7 @@ def rows_localdata() -> list[dict]:
                  {"permit_date": None if pd.isna(r.permit_date) else str(r.permit_date)[:10], "close_date": None if pd.isna(r.close_date) else str(r.close_date)[:10]}) for r in h.itertuples()]
 
 
+UNCLASSIFIED_RETAIL = "retail_unclassified"          # 등록 구분이 '구분없음'인 대규모점포 — 종류를 알 수 없어 대형마트 등으로 임의 분류하지 않고 따로 둔다(TYPES 에 없음)
 RETAIL_TYPE = {"백화점": ("department_store", "백화점"), "대형마트": ("hypermarket", "대형마트"), "쇼핑센터": ("shopping_mall", "쇼핑센터"), "복합쇼핑몰": ("shopping_mall", "복합쇼핑몰")}
 
 
@@ -206,6 +207,20 @@ def classify_retail(biz_class: str | None, store_class: str | None) -> tuple[str
     return RETAIL_TYPE.get(str(biz_class or "").strip())
 
 
+PILOT_ADDR = ("양천구", "영등포구")
+NEIGHBOR_ADDR = ("강서구", "구로구", "금천구", "관악구", "동작구", "마포구", "용산구", "광명시", "부천시")          # 파일럿 두 구와 맞닿았거나 1.1km 수집 구역에 걸치는 시군구
+
+
+def address_area(addr) -> str | None:
+    """주소 글자로 본 위치: pilot(양천·영등포) / neighbor(맞닿은 구·시) / None(그 밖이거나 주소 없음). 좌표가 없는 공식 시설이 어디쯤 있는지 가늠하는 데만 쓴다(좌표를 만들지 않는다)."""
+    t = str(addr or "")
+    if any(g in t for g in PILOT_ADDR):
+        return "pilot"
+    if any(g in t for g in NEIGHBOR_ADDR) and ("서울" in t or "경기" in t):          # 부산 강서구 같은 같은 이름의 다른 지역을 걸러낸다
+        return "neighbor"
+    return None
+
+
 def rows_retail(env: dict) -> tuple[list[dict], dict]:
     """전국 대규모점포 원본 → 우리 종류의 시설 행. 좌표는 TM(EPSG:5174)을 WGS84 로 바꾼다(없으면 좌표 없음으로 남김). 건수·제외 사유를 돌려준다."""
     import pyproj
@@ -213,6 +228,9 @@ def rows_retail(env: dict) -> tuple[list[dict], dict]:
     out, info = [], {"input": len(env["rows"]), "ssm_excluded": 0, "other_category_excluded": {}, "no_coordinates": 0}
     for d in env["rows"]:
         cls = classify_retail(d.get("BZSTAT_SE_NM"), d.get("STOR_SE_NM"))
+        if cls is None and str(d.get("STOR_SE_NM") or "").strip() == "대규모점포" and str(d.get("BZSTAT_SE_NM") or "").strip() == "구분없음":
+            cls = (UNCLASSIFIED_RETAIL, "구분없음")
+            info["unclassified_kept"] = info.get("unclassified_kept", 0) + 1
         if cls is None:
             if str(d.get("STOR_SE_NM") or "").strip() == "준대규모점포":
                 info["ssm_excluded"] += 1
@@ -260,6 +278,27 @@ def _movie_id(d: dict) -> str:
     return f"{d.get('OPN_ATMY_GRP_CD')}-{d['MNG_NO']}"
 
 
+_CORP = re.compile(r"\(주\)|㈜|주식회사|\(유\)")
+_OPERATOR_PREFIX = (("메가박스중앙", "메가박스 "), ("롯데컬처웍스", ""), ("씨제이씨지브이", "CGV "))
+_BRANDS = ("롯데시네마", "메가박스", "CGV", "씨네Q", "CINE Q")
+
+
+def display_name(ftype: str, name: str, address) -> str:
+    """화면에 보일 이름 — 공식 명칭(`name`)은 그대로 두고, 영화관만 운영사 법인명을 떼어 읽기 쉽게 한다.
+    법인명을 떼고 나면 브랜드만 남는 경우(예: '롯데컬처웍스(주)롯데시네마')는 공식 도로명주소 괄호 속 법정동을 붙여 지점을 구분한다. 알 수 없는 건 지어내지 않는다."""
+    if ftype != "cinema":
+        return name
+    n = _CORP.sub("", str(name or "")).strip()
+    for pre, rep_ in _OPERATOR_PREFIX:
+        if n.startswith(pre):
+            n = (rep_ + n[len(pre):]).strip()
+    n = re.sub(r"\s+", " ", n)
+    if n in _BRANDS:
+        m = re.search(r"\(([^,)]+?동[0-9가]*)\s*[,)]", str(address or ""))
+        n = f"{n} ({m.group(1)})" if m else n
+    return n or name
+
+
 def rows_movie(env: dict) -> tuple[list[dict], dict]:
     """행안부 영화상영관(상영관 단위) → 영화관 단위 행. 같은 좌표(1m)이면서 이름 앞 3글자가 같은 상영관을 한 곳으로 묶고, 좌표가 없는 상영관은 좌표를 만들지 않고 이름만 남긴다.
     한 곳의 상태: 영업 중인 상영관이 하나라도 있으면 영업, 아니면 휴업 → 폐업 → 취소 순."""
@@ -267,7 +306,11 @@ def rows_movie(env: dict) -> tuple[list[dict], dict]:
     to_wgs = pyproj.Transformer.from_crs("EPSG:5174", config.CRS_WGS84, always_xy=True)
     groups: dict[tuple, list[dict]] = {}
     no_coord = 0
+    mobile = 0
     for d in env["rows"]:
+        if "이동상영" in str(d.get("BPLC_NM") or ""):                      # 이동상영관은 고정된 영화관이 아니다
+            mobile += 1
+            continue
         x, y = _f(d.get("CRD_INFO_X")), _f(d.get("CRD_INFO_Y"))
         if np.isnan(x) or np.isnan(y):
             no_coord += 1
@@ -286,7 +329,7 @@ def rows_movie(env: dict) -> tuple[list[dict], dict]:
         out.append(_row("mois_movie", _movie_id(g[0]), "cinema", "영화상영관", None, theater_name([d.get("BPLC_NM") for d in g]), g[0].get("ROAD_NM_ADDR") or g[0].get("LOTNO_ADDR"), lon, lat,
                         head_status, max(dates) or str(env.get("collected_at", ""))[:10], "영화상영관",
                         {"screen_count": len(g), "open_screens": sum(1 for v in stat if v.startswith("영업")), "close_date": None}))
-    return out, {"input_screens": len(env["rows"]), "theater_sites": len(out), "screens_without_coordinates": no_coord}
+    return out, {"input_screens": len(env["rows"]), "theater_sites": len(out), "screens_without_coordinates": no_coord, "mobile_screening_excluded": mobile}
 
 
 def rows_hira(env: dict) -> list[dict]:
@@ -550,6 +593,54 @@ def dup_review_pairs(fac: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out, columns=["facility_type", "facility_id_a", "name_a", "sources_a", "facility_id_b", "name_b", "sources_b", "distance_m", "same_address", "shared_name_text", "meaningful_shared_text", "review_status", "merged"])
 
 
+STALE_YEARS = 5                  # 인허가 기록이 이 햇수 넘게 갱신되지 않았으면 '현존 여부 미확인'으로 본다(좌표가 없으면 개수 판단에서 뺀다)
+
+
+def stale_before(collected_at: str) -> str:
+    """수집일 기준 STALE_YEARS 년 전 날짜(YYYY-MM-DD) — 이보다 이른 기준일의 기록은 오래된 것."""
+    y, m, d = (int(v) for v in str(collected_at)[:10].split("-"))
+    return f"{y - STALE_YEARS:04d}-{m:02d}-{d:02d}"
+
+
+def unlocated_official(fac: pd.DataFrame, stale_cut: str) -> tuple[dict, dict]:
+    """공식 목록에는 있으나 좌표가 없어 반경 분석에서 빠지는 영업(또는 상태 불명) 시설을 종류·위치(파일럿/인접)별로 센다.
+    기준일이 stale_cut 보다 이른 좌표 없는 기록은 현존 여부를 알 수 없어(갱신 없는 인허가 기록) 'stale' 로 따로 두고 개수 판단(불완전 여부)에 쓰지 않는다. 좌표가 있는 공식 시설과 합쳐 좌표 보유율을 구한다."""
+    live = ~fac["status"].isin(["closed", "cancelled", "suspended"])
+    unloc, cover = {}, {}
+    old = fac["reference_date"].map(lambda v: isinstance(v, str) and v < stale_cut)
+    for t in TYPES:
+        f = fac[(fac["facility_type"] == t) & fac["official_listed"] & live]
+        no_all = f[~f["coord_ok"]]
+        no = no_all[~old.reindex(no_all.index)]
+        stale = no_all[old.reindex(no_all.index)]
+        unloc[t] = {a: {"count": int((no["address_area"] == a).sum()), "names": sorted(no.loc[no["address_area"] == a, "name"].tolist())[:20],
+                        "by_gu": {g: int(no.loc[no["address_area"] == a, "address"].map(lambda v: g in str(v or "")).sum()) for g in (PILOT_ADDR if a == "pilot" else NEIGHBOR_ADDR) if no.loc[no["address_area"] == a, "address"].map(lambda v: g in str(v or "")).any()}}
+                    for a in ("pilot", "neighbor")}
+        unloc[t]["stale"] = {a: {"count": int((stale["address_area"] == a).sum()), "names": sorted(stale.loc[stale["address_area"] == a, "name"].tolist())[:20],
+                                 "by_gu": {g: int(stale.loc[stale["address_area"] == a, "address"].map(lambda v: g in str(v or "")).sum()) for g in PILOT_ADDR if stale.loc[stale["address_area"] == a, "address"].map(lambda v: g in str(v or "")).any()}}
+                             for a in ("pilot", "neighbor")}
+        located = int((f["coord_ok"] & f["gu_code"].isin(PILOT_GU)).sum())
+        miss = int((no["address_area"] == "pilot").sum())
+        miss_stale = int((stale["address_area"] == "pilot").sum())
+        cover[t] = {"pilot_located": located, "pilot_unlocated": miss, "pilot_unlocated_stale": miss_stale, "pilot_coord_rate": None if located + miss == 0 else round(located / (located + miss), 3),
+                    "pilot_coord_rate_incl_stale": None if located + miss + miss_stale == 0 else round(located / (located + miss + miss_stale), 3)}
+    return unloc, cover
+
+
+def kakao_only_review(fac: pd.DataFrame, radius_m: float = 150.0) -> pd.DataFrame:
+    """공식 목록에 없고 카카오에만 있는 시설(사용 가능·구역 안)이 공식 시설 가까이에 있는지 — 공식 대규모점포·복합몰 안의 입점 매장이라 따로 등록되지 않았을 가능성의 근거(분석에는 쓰지 않는다)."""
+    use = fac[fac["coord_ok"] & fac["usable"] & fac["in_scope"]]
+    off = use[use["official_listed"]]
+    out = []
+    for _, k in use[~use["official_listed"]].iterrows():
+        d = np.hypot(off["x_5179"] - k["x_5179"], off["y_5179"] - k["y_5179"])
+        j = d.idxmin() if len(d) else None
+        near = None if j is None or d[j] > radius_m else off.loc[j]
+        out.append({"facility_type": k["facility_type"], "name": k["name"], "nearest_official": None if near is None else near["name"], "nearest_official_type": None if near is None else near["facility_type"],
+                    "distance_m": None if near is None else round(float(d[j]), 1), "reading": (None if near is None else "같은 종류의 공식 시설이 가까이 있음 — 같은 시설의 다른 표기일 가능성" if near["facility_type"] == k["facility_type"] else "다른 종류의 공식 시설 가까이 있음 — 그 안의 입점 매장일 수 있음(공식 목록에 따로 없음)") if near is not None else "공식 목록에서 찾지 못함(공식 목록 누락 또는 등록 구분 차이)"})
+    return pd.DataFrame(out, columns=["facility_type", "name", "nearest_official", "nearest_official_type", "distance_m", "reading"])
+
+
 def source_diagnostic(fac: pd.DataFrame, stores: pd.DataFrame, radii=(250, 500, 1000)) -> pd.DataFrame:
     """권한 미확인(카카오 보조) 시설을 뺐을 때 반경 분석이 얼마나 달라지는지 — 파일럿 매장 전체에서 종류·반경별로 비교한다.
     공식 원천이 없는 종류는 '공식만'의 0 이 아니라 '해당 자료 없음'이라서 count 가 아니라 official_available=False 로 보고한다."""
@@ -631,10 +722,18 @@ def build() -> dict:
         drop = nc & rows["gu_name"].notna() & ~rows["gu_name"].isin(pilot_gu)
         outside += int(drop.sum())
         rows = rows[~drop].reset_index(drop=True)
+    # 좌표 없는 공식 행(행안부 대규모점포·영화상영관 등)은 주소가 파일럿 또는 맞닿은 구·시일 때만 남긴다 — 전국의 좌표 없는 행은 이 구역과 무관하다
+    nc = ~rows["coord_ok"] & ~rows["source"].eq("seoul_college")
+    far = nc & rows["address"].map(address_area).isna()
+    outside += int(far.sum())
+    unlocated_dropped = int(far.sum())
+    rows = rows[~far].reset_index(drop=True)
     rows = cluster(rows)
     fac = consolidate(rows)
     fac = bus.add_geography(fac.assign(coord_ok=fac["coord_ok"]).reset_index(drop=True))
     fac = flag_dup_suspects(fac)
+    fac["address_area"] = fac["address"].map(address_area)
+    fac["display_name"] = [display_name(t, n, a) for t, n, a in zip(fac["facility_type"], fac["name"], fac["address"])]
     fac["in_scope"] = fac["coord_ok"] & (fac["dist_to_pilot_m"] <= BUFFER_M)
     fac["usable"] = fac["coord_ok"] & ~fac["status"].isin(["closed", "cancelled", "suspended"])
     capped_rects = k_env.get("capped_rects", [])
@@ -647,6 +746,9 @@ def build() -> dict:
         official = srcs.map(lambda x: bool(x & OFFICIAL))
         kakao = srcs.map(lambda x: "kakao" in x)
         recon[t] = {"usable": int(len(ft)), "official_listed": int(official.sum()), "official_and_kakao": int((official & kakao).sum()), "official_only": int((official & ~kakao).sum()), "kakao_only": int((~official).sum())}
+    stale_cut = stale_before(str(r_env.get("collected_at"))[:10])
+    unloc, cover = unlocated_official(fac, stale_cut)
+    kreview = kakao_only_review(fac)
     review = dup_review_pairs(fac)
     stores = pd.read_parquet(proc / "stores.parquet")[["lon", "lat"]].dropna()
     diag = source_diagnostic(fac, stores)
@@ -691,6 +793,7 @@ def build() -> dict:
                 f"깊이 {k_env.get('max_depth')} 로 쪼개도 45건을 넘은 약 250m 구역 — 키워드 검색 잡음 때문이며 그 구역의 시설은 일부 빠졌을 수 있음"))
     pd.DataFrame(rep, columns=["항목", "값", "비고"]).to_csv(config.TABLES_DIR / "facility_report.csv", index=False, encoding="utf-8-sig")
     review.to_csv(config.TABLES_DIR / "facility_dup_review.csv", index=False, encoding="utf-8-sig")
+    kreview.to_csv(config.TABLES_DIR / "facility_kakao_only_review.csv", index=False, encoding="utf-8-sig")
     diag.to_csv(config.TABLES_DIR / "facility_source_diagnostic.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(SURVEY, columns=["종류", "후보 공식 제공처·데이터", "제공 방식", "범위", "좌표", "기준일·갱신", "이용 조건", "이번 상태"]).to_csv(config.TABLES_DIR / "facility_source_survey.csv", index=False, encoding="utf-8-sig")
     meta = {"buffer_m": BUFFER_M, "dup_max_m": DUP_MAX_M, "extent": f"파일럿 두 구(양천·영등포) 경계 밖 {BUFFER_M / 1000:g}km 이내", "counts": {t: int(((fac_out["facility_type"] == t) & fac_out["in_scope"]).sum()) for t in TYPES},
@@ -701,7 +804,7 @@ def build() -> dict:
             "permission": {k: {"status": v["status"], "basis": v["basis"], "attribution": v["attribution"]} for k, v in PERMISSION.items()},
             "analysis_eligible": {t: int(((fac_out["facility_type"] == t) & fac_out["analysis_eligible"] & fac_out["in_scope"]).sum()) for t in TYPES},
             "official_coverage": OFFICIAL_COVERAGE, "dup_review": review["review_status"].value_counts().to_dict(), "university_levels": fac_out[fac_out["facility_type"] == "university"]["facility_level"].value_counts().to_dict(),
-            "movie": movie_info, "retail": {**retail_info, "total_in_scope_rows": int((rows_out["source"] == "mois_retail").sum())}, "reconciliation": recon,
+            "stale_before": stale_cut, "stale_years": STALE_YEARS, "unlocated_official": unloc, "coord_coverage": cover, "unlocated_rows_dropped_outside_area": unlocated_dropped, "movie": movie_info, "retail": {**retail_info, "total_in_scope_rows": int((rows_out["source"] == "mois_retail").sum())}, "reconciliation": recon,
             "notes": {"attendance": "시설 이용객 수 자료는 없다 — 방문객·수요를 추정하지 않는다.", "official": "백화점·쇼핑몰·아울렛·대형마트·영화관·대학교는 승인된 공식 좌표 자료가 없어 카카오 보조 출처만 있다.",
                                                   "status": "폐업·취소는 공식 인허가(LOCALDATA 종합병원)만 반영한다. 나머지는 상태 unknown.", "tier": "상급종합병원 지정 정보는 공식 자료 미승인으로 구분하지 않는다."}}
     (proc / "facilities_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1, default=str), encoding="utf-8")

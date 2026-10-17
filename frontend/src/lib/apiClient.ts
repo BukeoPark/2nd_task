@@ -1,4 +1,5 @@
 /** 백엔드 `/api` 호출은 이 모듈을 통해서만 한다 — 컴포넌트에서 fetch 직접 호출 금지. */
+import type { FacilityCountState, FacilityType } from "./facilityText";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
 
@@ -698,6 +699,66 @@ export type RailAccess =
       source: { title: string; reference: string };
     };
 
+/** 주요 집객시설 반경 분석(직선거리, 공식 자료·이용 권한 확인 시설만). 'unavailable' 이면 자료 파일이 없어 확인 불가. */
+export interface FacilityTypeStat {
+  type: FacilityType;
+  label: string;
+  count: number | null;
+  count_state: FacilityCountState;
+  nearest: { distance_m: number; name: string; display_name?: string } | null;
+  reliable: boolean;
+  incomplete: boolean;
+  reason: string | null;
+  by_subtype?: Record<string, number>;
+  status_unknown?: number;
+  source_names?: string[];
+  reference_date?: { from: string; to: string } | null;
+  coord_coverage?: { pilot_located: number; pilot_unlocated: number; pilot_coord_rate: number | null } | null;
+  /** 경계 인접 구·시 주소인데 좌표가 없어 빠진 공식 시설 수(반경이 경계에 걸칠 때만) — 개수 상태를 바꾸지 않는 알림 */
+  neighbor_unlocated?: number;
+  /** 좌표 없는 오래된 인허가(5년 넘게 갱신 없음) 수와 반경 안 오래된 기록 수 — 개수 판단에서 빼고 알리기만 한다 */
+  stale_unlocated?: number;
+  stale_in_radius?: number;
+}
+
+export interface FacilityItem {
+  facility_id: string;
+  name: string;
+  /** 화면 표시명(영화관은 운영사 법인명을 뗀 이름) — 공식 명칭은 name */
+  display_name?: string;
+  reference_stale?: boolean;
+  type: FacilityType;
+  subtype: string | null;
+  lon: number;
+  lat: number;
+  distance_m: number;
+  status: string;
+  status_label: string;
+  source_name: string | null;
+  source_type: string;
+  coordinate_source: string | null;
+  reference_date: string | null;
+  usage_permission_status: string;
+  coverage_status: string;
+  attribution: string | null;
+}
+
+export type FacilityAccess =
+  | { status: "unavailable"; message: string; caveats?: string[] }
+  | {
+      status: "ok";
+      radius_m: number;
+      selected: { radius_m: number; extent_complete: boolean; by_type: Record<FacilityType, FacilityTypeStat> };
+      facilities: FacilityItem[];
+      /** 등록 구분이 '구분없음'이라 종류를 알 수 없는 공식 대규모점포(반경 안) — 개수에 넣지 않는다 */
+      unclassified_retail?: { facility_id: string; name: string; distance_m: number; lon: number; lat: number; status_label: string; reference_date: string | null; registered_class: string; attribution: string | null }[];
+      official_only: boolean;
+      includes_unconfirmed: boolean;
+      attributions: string[];
+      caveats: string[];
+      scope: { distance_to_pilot_m: number | null; boundary_distance_m: number | null; buffer_m: number };
+    };
+
 export interface LocationInfluenceResponse {
   store: { store_id: string; name: string; category: string; lon: number; lat: number };
   radius_m: number;
@@ -718,6 +779,8 @@ export interface LocationInfluenceResponse {
     bus: BusAccess;
     /** 새 필드 — 없을 수 있다(구버전 응답과 호환) */
     rail?: RailAccess;
+    /** 새 필드 — 없을 수 있다(구버전 응답과 호환). 공식 자료·이용 권한 확인 시설만 담는다. */
+    facilities?: FacilityAccess;
   };
   area: {
     level: "trdar" | "dong";

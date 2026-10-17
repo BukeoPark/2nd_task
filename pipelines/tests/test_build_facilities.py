@@ -156,7 +156,7 @@ def _meta():
 
 def test_real_every_type_is_present_and_scoped_to_the_collected_extent():
     fac, meta = _p("facilities.parquet"), _meta()
-    assert set(fac["facility_type"]) == set(b.TYPES) and meta["buffer_m"] == b.BUFFER_M
+    assert set(fac["facility_type"]) == set(b.TYPES) | {b.UNCLASSIFIED_RETAIL} and meta["buffer_m"] == b.BUFFER_M       # 종류 불명 대규모점포는 TYPES 밖에 따로
     assert all(meta["counts"][t] > 0 for t in b.TYPES)
     scoped = fac[fac["coord_ok"]]
     assert scoped["dist_to_pilot_m"].max() <= b.BUFFER_M and scoped["lon"].between(124, 132).all() and scoped["lat"].between(33, 39).all()
@@ -462,3 +462,61 @@ def test_real_cinema_and_hospital_official_data_have_confirmed_permission_and_sa
     assert {"hira"} <= set(ho["coordinate_source"]) and (ho["usage_permission_status"] == "confirmed").all()
     assert (ho["subtype"] == "상급종합").sum() >= 2                                                           # 상급종합 구분이 심평원 자료에서 온다
     assert not fac.loc[fac["facility_type"] == "cinema", "coord_spread_m"].gt(300).any()                      # 서로 다른 영화관이 한 시설로 섞이지 않는다
+
+
+# ───────── 정확도 개선: 구분없음·이동상영관·표시명·오래된 기록 ─────────
+def test_unclassified_large_stores_are_kept_apart_not_guessed_as_hypermarkets():
+    env = {"collected_at": "2026-10-17", "rows": [_retail(MNG_NO="U1", BPLC_NM="롯데쇼핑(주) 롯데마트맥스 영등포점", BZSTAT_SE_NM="구분없음", STOR_SE_NM="대규모점포"),
+                                                   _retail(MNG_NO="U2", BPLC_NM="GS THE FRESH 어딘가점", BZSTAT_SE_NM="구분없음", STOR_SE_NM="준대규모점포"),
+                                                   _retail(MNG_NO="U3", BPLC_NM="시장", BZSTAT_SE_NM="시장", STOR_SE_NM="대규모점포")]}
+    rows, info = b.rows_retail(env)
+    assert [(r["source_id"], r["facility_type"]) for r in rows] == [("U1", b.UNCLASSIFIED_RETAIL)] and b.UNCLASSIFIED_RETAIL not in b.TYPES
+    assert info["unclassified_kept"] == 1 and info["ssm_excluded"] == 1 and info["other_category_excluded"] == {"시장": 1}
+
+
+def test_mobile_screening_units_are_not_counted_as_cinemas():
+    env = {"collected_at": "2026-10-17", "rows": [_screen("1", "서울동화(이동상영관)"), _screen("2", "CGV 영등포 제1관", x="191741.34", y="446000.0")]}
+    rows, info = b.rows_movie(env)
+    assert [r["name"] for r in rows] == ["CGV 영등포"] and info["mobile_screening_excluded"] == 1
+
+
+def test_display_names_drop_operator_corporate_names_but_the_official_name_is_kept():
+    addr = "서울특별시 구로구 경인로 662 (신도림동, 디큐브시티 제타워동 7~8층 일부)"
+    assert b.display_name("cinema", "롯데컬처웍스(주)롯데시네마", addr) == "롯데시네마 (신도림동)"
+    assert b.display_name("cinema", "메가박스중앙(주) 목동지점", None) == "메가박스 목동지점"
+    assert b.display_name("cinema", "메가박스중앙(주)더부티크목동현대백화점", None) == "메가박스 더부티크목동현대백화점"
+    assert b.display_name("cinema", "롯데컬처웍스(주)롯데시네마", None) == "롯데시네마"                                  # 주소에서 지점을 알 수 없으면 지어내지 않는다
+    assert b.display_name("hypermarket", "(주)이마트 신도림점", addr) == "(주)이마트 신도림점"                          # 영화관만 손댄다
+
+
+def test_old_coordinate_less_registrations_are_set_apart_and_do_not_count_as_missing():
+    assert b.stale_before("2026-10-17") == "2021-10-17"
+    fac = _fac({"facility_type": "cinema", "name": "시네마그래픽", "coord_ok": False, "official_listed": True, "reference_date": "2003-04-18", "address": "408-196 양천구 목1동", "address_area": "pilot", "status": "open", "gu_code": None},
+               {"facility_type": "cinema", "name": "새극장", "coord_ok": False, "official_listed": True, "reference_date": "2026-05-01", "address": "서울특별시 영등포구 어딘가 1", "address_area": "pilot", "status": "open", "gu_code": None},
+               {"facility_type": "cinema", "name": "CGV 영등포", "official_listed": True, "reference_date": "2026-06-01", "gu_code": 11560, "status": "open"})
+    unloc, cover = b.unlocated_official(fac, "2021-10-17")
+    assert unloc["cinema"]["pilot"]["count"] == 1 and unloc["cinema"]["pilot"]["names"] == ["새극장"]
+    assert unloc["cinema"]["stale"]["pilot"]["names"] == ["시네마그래픽"] and unloc["cinema"]["stale"]["pilot"]["by_gu"] == {"양천구": 1}
+    assert cover["cinema"]["pilot_unlocated"] == 1 and cover["cinema"]["pilot_unlocated_stale"] == 1
+    assert cover["cinema"]["pilot_coord_rate"] == 0.5 and cover["cinema"]["pilot_coord_rate_incl_stale"] == round(1 / 3, 3)
+
+
+def test_kakao_only_review_says_whether_an_official_facility_is_close_and_of_which_kind():
+    fac = _fac({"facility_type": "shopping_mall", "name": "타임스퀘어", "official_listed": True, "x_5179": 0.0, "y_5179": 0.0},
+               {"facility_type": "hypermarket", "name": "이마트 영등포점", "official_listed": False, "x_5179": 40.0, "y_5179": 0.0},
+               {"facility_type": "shopping_mall", "name": "타임스퀘어몰", "official_listed": False, "x_5179": 5.0, "y_5179": 0.0},
+               {"facility_type": "hypermarket", "name": "먼마트", "official_listed": False, "x_5179": 9000.0, "y_5179": 0.0})
+    r = b.kakao_only_review(fac).set_index("name")
+    assert "입점 매장" in r.loc["이마트 영등포점", "reading"] and r.loc["이마트 영등포점", "nearest_official"] == "타임스퀘어"
+    assert "같은 시설의 다른 표기" in r.loc["타임스퀘어몰", "reading"] and pd.isna(r.loc["먼마트", "nearest_official"]) and "찾지 못함" in r.loc["먼마트", "reading"]
+
+
+def test_real_unclassified_and_display_names_in_the_outputs():
+    fac = _p("facilities.parquet")
+    u = fac[(fac["facility_type"] == b.UNCLASSIFIED_RETAIL) & fac["in_scope"]]
+    assert u["name"].str.contains("롯데마트맥스 영등포점").any() and (u["subtype"] == "구분없음").all()
+    ci = fac[(fac["facility_type"] == "cinema") & fac["analysis_eligible"] & fac["in_scope"]]
+    assert "롯데컬처웍스(주)롯데시네마" in set(ci["name"]) and "롯데시네마 (신도림동)" in set(ci["display_name"])             # 공식 명칭 유지 + 표시명
+    assert not ci["name"].str.contains("이동상영").any()
+    meta = _meta()
+    assert meta["stale_before"] and meta["unlocated_official"]["cinema"]["stale"]["pilot"]["count"] >= 1 and meta["unlocated_official"]["cinema"]["pilot"]["count"] == 0
