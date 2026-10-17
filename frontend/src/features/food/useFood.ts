@@ -71,6 +71,16 @@ export function useUnitOverview(level: "dong" | "trdar", code: string, svc: stri
   });
 }
 
+/** 상권 유형 및 입지 특성(경계 기준) — 행정동·상권 종합분석의 '유형·특성' 항목과 매장 상세의 요약이 같은 키를 쓴다. */
+export function useAreaCharacter(level: "dong" | "trdar", code: string, svc: string | null, scls: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["area-character", level, code, svc, scls],
+    queryFn: () => apiClient.getAreaCharacter(level, code, svc, scls),
+    staleTime: LONG,
+    enabled,
+  });
+}
+
 export function useFoodAnchors(enabled: boolean) {
   return useQuery({ queryKey: ["food-anchors"], queryFn: () => apiClient.getFoodAnchors(), enabled, staleTime: Infinity });
 }

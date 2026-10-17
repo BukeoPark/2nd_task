@@ -17,6 +17,7 @@ import { GoogleReviewSection } from "./GoogleReviewSection";
 import { GroupRail } from "./GroupRail";
 import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
+import { AreaCharacterLine } from "../area/AreaCharacterSection";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { RadiusCircleLayer } from "./RadiusCircleLayer";
@@ -110,11 +111,15 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
             <Section title="소속 상권 — 행정동·발달/골목상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
-              <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균).</div>
+              <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 유형·매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균). 유형은 상권 경계 기준의 참고용 규칙 분류이고, 매장 반경 값(주변)과 다릅니다.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <AreaCharacterLine level="dong" code={store.adong_cd} label={`${store.dong} 행정동`} />
                 <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>
                 {store.trdar ? (
-                  <button type="button" onClick={() => onOpenArea({ level: "trdar", store })} style={linkStyle}>{store.trdar.name}({store.trdar.type}) 상권 분석 ›</button>
+                  <>
+                    <AreaCharacterLine level="trdar" code={store.trdar.code} label={`${store.trdar.name} 상권`} />
+                    <button type="button" onClick={() => onOpenArea({ level: "trdar", store })} style={linkStyle}>{store.trdar.name}({store.trdar.type}) 상권 분석 ›</button>
+                  </>
                 ) : (
                   <Notice tone="muted">이 매장은 서울시 지정 상권 경계 밖에 있어 세부 상권 분석이 없습니다.</Notice>
                 )}

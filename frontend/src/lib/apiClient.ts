@@ -504,6 +504,119 @@ export type BusAccess =
       source: { title: string; reference: string };
     };
 
+/** 상권 유형 및 입지 특성(경계 기준) — 서버 area_character.py. 종합점수는 없다. */
+export interface CharacterCell {
+  value: number | null;
+  note?: string;
+  as_of?: string;
+  source?: string;
+  caution?: boolean;
+  partial?: boolean;
+}
+
+export interface CharacterStation {
+  name: string;
+  lines: string;
+  where: "inside" | "within_250m";
+  distance_m: number;
+  boardings: number | null;
+  alightings: number | null;
+  usage_state: "all_linked" | "partial" | "none_linked";
+  lines_with_usage: number;
+  lines_total: number;
+  complete_2025: boolean;
+  region: string;
+  /** 같은 역이 함께 잡히는 같은 단위 수(2 이상이면 단위끼리 더하면 중복) */
+  shared_units?: number;
+}
+
+export interface AreaCharacter {
+  status: "ok";
+  level: "dong" | "trdar";
+  code: string;
+  name: string;
+  trdar_type: string | null;
+  type: {
+    kind: "traits" | "mixed" | "hold";
+    headline: string;
+    traits: { key: "business" | "residential" | "transit" | "commercial"; label: string; evidence: string[] }[];
+    held: { key: string; reason: string }[];
+    worker_share: number | null;
+    demand_label?: "업무형" | "혼합형" | "주거형" | null;
+    mixed_evidence?: string[];
+    hold_reason?: string;
+  };
+  sections: {
+    transit: {
+      rail: {
+        inside: CharacterStation[];
+        within_250m: CharacterStation[];
+        nearest_m: number | null;
+        count: number;
+        linked: number;
+        usage_state: "no_stations" | "none_linked" | "partial" | "all_linked";
+        boardings_observed: number | null;
+        alightings_observed: number | null;
+        year: number;
+        basis: string;
+      };
+      bus: {
+        count: number;
+        per_km2: number | null;
+        linked: number;
+        linked_ratio: number | null;
+        usage_state: "no_stops" | "none_linked" | "partial" | "all_linked";
+        boardings_observed: number | null;
+        alightings_observed: number | null;
+        year: number;
+        basis: string;
+        caution?: string | null;
+      };
+      note: string;
+    };
+    demand: {
+      workers: CharacterCell;
+      residents: CharacterCell;
+      worker_share_pct: number | null;
+      demand_type: "업무형" | "혼합형" | "주거형" | null;
+      base_ok: boolean;
+      floating: { quarter: string; label: string; flpop: number | null; weekend_pct: number | null; slots: { label: string; pct: number | null }[]; lunch_pct: number | null; late_pct: number | null; lunch_rank: number | null; late_rank: number | null; yoy_pct: number | null } | null;
+      note: string;
+    };
+    anchor: {
+      starbucks: { inside: number; nearest_m: number | null; zone_share: CharacterCell };
+      daiso: { inside: number; nearest_m: number | null; zone_share: CharacterCell };
+      facilities: { total: CharacterCell; per_km2: number | null; reference_median: number | null };
+      note: string;
+    };
+    competition: {
+      scope: { sales_label: string; stores_label: string; differs: boolean; notice: string | null };
+      stores: CharacterCell;
+      density_per_km2: number | null;
+      area_km2: number | null;
+      small_area: boolean;
+      change_2y: CharacterCell;
+      open_rate_y: CharacterCell;
+      close_rate_y: CharacterCell;
+      reference_applies?: boolean;
+      reference_density_p75: number | null;
+      note: string;
+    };
+  };
+  strengths: string[];
+  cautions: string[];
+  basis: {
+    label: string;
+    success_note?: string;
+    relative_note?: string;
+    data_notes?: string[];
+    unit: string;
+    rules: string[];
+    reference: { units: number; store_density_p75: number | null; fac_density_median: number | null; transit_boardings_p75?: number | null; note: string };
+    sources: { title: string; reference: string }[];
+  };
+}
+
 export interface RailUsage {
   state: "all_linked" | "partial" | "none_linked";
   boardings: number | null;
@@ -812,6 +925,12 @@ export const apiClient = {
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<FoodCompareResponse>(`/api/food/compare?${q}`);
+  },
+  getAreaCharacter: (level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams();
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<AreaCharacter>(`/api/food/units/${level}/${encodeURIComponent(code)}/character?${q}`);
   },
   getUnitOverview: (level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) => {
     const q = new URLSearchParams();

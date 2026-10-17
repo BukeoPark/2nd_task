@@ -13,6 +13,7 @@ import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
 import { UnitStoreList } from "../food/UnitStoreList";
+import { AreaCharacterSection } from "./AreaCharacterSection";
 
 type Row = FoodCompareResponse["rows"][number];
 const LEVEL_NOUN = { dong: "행정동", trdar: "상권" } as const;
@@ -39,6 +40,7 @@ interface Props {
 const RAIL_PREFIX = "area-";
 const ICON: Record<AreaTabId, ReactNode> = {
   summary: <path d="M4 4h12v12H4zM7 8h6M7 12h4" />,
+  character: <path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v4l3 2" />,
   growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
   stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
   demand: (
@@ -100,6 +102,8 @@ export function AreaOverviewPanel(p: Props) {
           {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
         </>
       ))}
+
+      {pane("character", "유형·특성 — 교통·배후 수요·앵커·경쟁", <AreaCharacterSection level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />)}
 
       {cmp.data && pane("growth", "성장성 — 매출 추이·점포 수 증감",
         ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />)}
