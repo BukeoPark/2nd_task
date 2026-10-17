@@ -98,6 +98,19 @@
   대구·대전·광주 등 이용량 자료를 아직 받지 않은 지역은 `no_source_for_operator` 로 '자료 없음'이다(0 이 아니다). 대구교통공사 월별 자료(15002503)는 승인돼 있어 필요하면 `USAGE_VERSIONS` 에 더해 받는다.
 - 자동 갱신 대상이 아니다(`NOT_IN_QUARTERLY`). 수동 재실행은 위 순서(수집 → 변환 → `.venv/bin/python -m pytest pipelines/tests`)이며 `requirements.txt` 의 `openpyxl` 이 필요하다.
 
+## 주요 집객시설(개별 시설 좌표) 실행 순서 — 1차 구축
+`collect_facilities`(서울시 문화공간·대학 목록·행안부 대규모점포·행안부 영화상영관·건강보험심사평가원 병원정보·카카오 시설 검색) → `transform.build_facilities` (키: `.env` 의 `SEOUL_OPENAPI_KEY`·`DATA_GO_KR_KEY`·`KAKAO_REST_API_KEY`, 키·원천·파생 데이터는 git 에 올리지 않는다)
+- 서울시 행정동·상권 단위 시설 **수**(`*_hinterland.fac_*`)와 개별 시설 **좌표**는 집계 기준이 달라 섞지 않는다(변환이 행정동별 차이만 보고서에 남긴다).
+- 종류: 종합병원·대학교 캠퍼스·백화점·복합쇼핑몰·아울렛·대형마트(슈퍼마켓/SSM 제외)·영화관·문화시설. 승인된 공식 좌표 자료는 종합병원(건강보험심사평가원 전국·LOCALDATA·상가정보)·서울시 문화공간·행안부 대규모점포(백화점·쇼핑센터/복합쇼핑몰·대형마트, 전국, 준대규모점포 제외)·행안부 영화상영관(전국)이고, 대학교·아울렛은 카카오 보조 출처뿐이다(`facility_source_survey.csv` 에 조사 결과).
+  시설 이용객 수는 없고 추정하지 않는다. 상급종합 구분은 건강보험심사평가원 자료(종별코드)에서만 온다(영업상태는 없어 LOCALDATA 가 있을 때만 상태를 정함). 행안부 대규모점포는 등록 구분(`BZSTAT_SE_NM`)을 그대로 따르고(상호와 어긋나 보여도 바꾸지 않음), 준대규모점포(SSM)는 제외하며, 좌표 없는 행은 좌표를 만들지 않고 분석에서 뺀다. 영화상영관은 상영관 단위 행이라 같은 좌표·같은 이름 앞부분을 영화관 한 곳으로 묶고(관리번호 MNG_NO 는 전국 유일하지 않아 개방자치단체코드와 합친 키를 쓴다), 상가정보에만 있는 병원 등재가 100m 안의 심평원·인허가 병원과 이름이 겹치면 독립 시설로 세지 않고 연결만 한다. 공식 목록에 없는 시설이 카카오에만 보일 수 있어 `facility_source_diagnostic.csv`·meta 의 `reconciliation` 으로 차이를 본다.
+- 같은 시설 묶기: 종류·수준이 같고 이름이 일치/포함이며 150m 이내일 때만. 이름이 같아도 150m 밖이면 다른 지점·캠퍼스, 대학 캠퍼스와 단과대학은 따로. 좌표가 없는 행은 만들지 않고 누락으로 둔다. 다른 이름 30m 이내·다른 원천은 합치지 않고 `dup_suspect` 로 표시한다.
+- 서울시 문화공간은 X_COORD 가 위도·Y_COORD 가 경도로 뒤바뀌어 온다(범위로 확인해 바로잡음). 수집 범위는 파일럿 구역 + 1.1km(버스·철도와 같음)이고, 카카오 검색은 45건 초과 구역을 4등분하며 그래도 넘는 구역은 원본 meta 의 `capped_rects` 에 남는다.
+- **출처·이용 권한은 시설마다 남긴다**(`source_name`·`source_type`(official/supplementary)·`reference_date`·`coordinate_source`·`coverage_status`·`usage_permission_status`·`attribution`).
+  서비스 분석 대상(`analysis_eligible`)은 공식 좌표 + 공개 이용 권한 확인 + 폐업·취소 아님 + 독립 시설뿐이다. **카카오 로컬 데이터는 이용 권한 미확인**(운영정책 제5조 제20·30호, 플랫폼 서비스 약관 제11조 제3항, 카카오 개발자 포럼 공식 계정 답변: 저장 불가·실시간 호출만)이라 서비스용 확정 DB·공개 API 에 쓰지 않는다(진단용으로만).
+  카카오 검색 한도에 닿은 구역은 `incomplete_zones` 와 시설별 `coverage_status` 로 기록하고, 대학 단과대학 건물은 `counts_as_independent=False`·`parent_facility_id` 로 캠퍼스에 연결만 한다. 중복 의심은 `facility_dup_review.csv` 에 근거만 남기고 자동 병합하지 않는다.
+  권한 미확인 자료를 뺀 영향은 `facility_source_diagnostic.csv`. 반경 계산 준비 함수는 `backend/app/services/facility_access.py`(아직 공개 API 에 연결하지 않음).
+- 자동 갱신 대상이 아니다(`NOT_IN_QUARTERLY`). 수동 재실행: `.venv/bin/python -m pipelines.collect.collect_facilities` → `.venv/bin/python -m pipelines.transform.build_facilities` → `.venv/bin/python -m pytest pipelines/tests`.
+
 ## 프랜차이즈(공정위) 실행 순서
 `collect_ftc_franchise` → `transform.build_franchise` (매장↔브랜드는 상호+업종으로 추정 연결, 규칙은 모듈 docstring)
 

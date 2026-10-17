@@ -65,6 +65,8 @@ NOT_IN_QUARTERLY: dict[str, str] = {
     "pipelines.transform.build_bus_stops": "버스 교통 1차 검증 단계 — 서비스가 아직 소비하지 않는 산출물이라 갱신 순서에 넣지 않음",
     "pipelines.collect.collect_rail_transit": "지하철·도시철도 1차 검증 단계 — 역 좌표·이용량(월별, 대개 다음 달 초 갱신)을 필요할 때 수동 수집(카카오 출구 검색은 호출량이 커 수동)",
     "pipelines.transform.build_rail_stations": "지하철·도시철도 1차 검증 단계 — 서비스가 아직 소비하지 않는 산출물이라 갱신 순서에 넣지 않음",
+    "pipelines.collect.collect_facilities": "주요 집객시설(병원·대학·백화점·마트·영화관·문화시설) 1차 구축 — 카카오 검색 수백 회 호출이라 필요할 때만 수동 수집",
+    "pipelines.transform.build_facilities": "주요 집객시설 1차 구축 — 서비스가 아직 소비하지 않는 산출물이라 갱신 순서에 넣지 않음",
     "pipelines.transform.build_rail_national": "전국 철도 위치(공식 XLSX는 사람이 내려받아 data/raw/ 에 둔다)·부산·인천 승하차 통합 — 자료 갱신 때만 수동 실행, 서비스가 아직 소비하지 않음",
 }
 
