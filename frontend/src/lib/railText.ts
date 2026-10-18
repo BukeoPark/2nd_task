@@ -44,7 +44,17 @@ export function railCountNote(s: Pick<RailSliceInput, "count_state" | "stations_
   if (s.count_state === "zero") return (s.center_inside_but_entrance_outside ?? 0) > 0 ? "출입구 기준으로는 반경 안에 역이 없음(아래 안내 참고)" : "공식 역사 정보 기준 반경 안에 역이 없음(자료 누락 아님)";
   const { entrance, center } = s.stations_by_basis;
   if (entrance > 0 && center > 0) return `출입구 기준 ${entrance}곳 + 중심점 기준 ${center}곳(두 기준 혼합)`;
-  return entrance > 0 ? "모두 출입구 기준(보조 자료)" : "모두 공식 역 중심점 기준(출입구 자료 없음)";
+  return entrance > 0 ? "모두 출입구 기준(보조 자료)" : "모두 공식 역 중심점 기준";
+}
+
+/** 출입구 좌표를 쓰는지. 서버가 enabled=false 로 알리면(공식 출입구 자료 없음) 출입구 문구·체크박스를 보이지 않는다. 필드가 없는 구버전 응답은 쓰는 것으로 본다. */
+export function railExitsEnabled(rail: { entrance_data?: { enabled: boolean } } | null | undefined): boolean {
+  return rail?.entrance_data?.enabled !== false;
+}
+
+/** 출입구를 쓰지 않을 때의 한 줄 — 거리가 역 중심점까지임을 밝히고 출입구 거리라고 하지 않는다. */
+export function railCenterOnlyNote(reason?: string | null): string {
+  return `거리는 공식 역 중심점까지의 직선거리이며 출입구까지의 거리가 아닙니다${reason ? ` — ${reason}` : ""}`;
 }
 
 export function railEntranceText(s: Pick<RailSliceInput, "entrances" | "entrance_scope_complete">): string {

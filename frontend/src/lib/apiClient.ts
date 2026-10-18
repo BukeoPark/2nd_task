@@ -686,6 +686,8 @@ export type RailAccess =
       nearest_station: { name: string; lines: string; distance_m: number; basis: "entrance" | "center"; center_distance_m: number; in_radius: boolean } | null;
       nearest_entrance: { station_name: string | null; exit_label: string; exit_no: string | null; distance_m: number; source: string; in_radius: boolean } | null;
       inclusion_rule: string;
+      /** 출입구 좌표 사용 여부 — enabled=false 면 모든 역사를 공식 역 중심점 거리로 판단한다(없으면 구버전 응답) */
+      entrance_data?: { enabled: boolean; reason: string | null };
       scope: {
         entrance_scope_complete: boolean;
         distance_to_pilot_m: number | null;

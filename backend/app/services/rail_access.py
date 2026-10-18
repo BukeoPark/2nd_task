@@ -11,6 +11,12 @@ pipelines/transform/build_rail_national 의 산출물(rail_official_stations·ra
   - 이용량은 역사별 2025 달력 연도 하루 평균 승차·하차 인원(연결된 노선만의 관측된 부분 합계 — lines_with_usage/lines_total)이다. 연결된 역사만 값이 있고,
     없는 역사는 0명이 아니라 '자료 없음'이다. 승차와 하차는 따로 두고, 반경 밖 역의 이용량은 더하지 않는다. 실시간 유동인구나 매장 방문객 수가 아니다.
   - 거리는 직선거리다(보행 네트워크 거리가 아님).
+
+출입구 좌표 사용 중단(EXIT_COORDINATES_ENABLED = False)
+  - 지금까지의 출입구 좌표는 카카오 로컬 API 결과였고, 카카오 공식 계정은 로컬 API 결과를 '어떠한 형태로든 저장하여 사용할 수 없다'고 답했다(2026-08-20).
+    서울교통빅데이터플랫폼 tnSubwayEntrc.csv(공식)는 좌표가 출입구가 아니라 연결된 버스정류장의 위치라 대체할 수 없었다.
+  - 그래서 출입구 좌표를 읽지도(rail_entrance_links.parquet 를 열지 않는다) 응답에 싣지도 않으며, 모든 역사는 공식 역사 중심점까지의 거리로 판단한다.
+    이 거리는 '역 중심점까지의 직선거리'이고 출입구까지의 거리가 아니다. 공식 출입구 좌표 자료가 생기면 이 값을 켜고 출처를 바꾼다.
 """
 from __future__ import annotations
 
@@ -23,15 +29,31 @@ import pandas as pd
 from app.services import bus_access, data_store
 
 log = logging.getLogger(__name__)
+EXIT_COORDINATES_ENABLED = False         # 카카오 로컬 출입구 좌표는 저장 이용 조건이 확인되지 않아 쓰지 않는다(위 docstring)
 RADII_M = (250, 500, 1000)
 DEFAULT_BUFFER_M = 1_100
 SOURCE_LABEL = {"seoul_card": "서울 교통카드(월별)", "seoul_daily": "서울교통공사(일별)", "busan": "부산교통공사", "incheon": "인천교통공사"}
-CAVEATS = [
+CAVEATS_WITH_EXITS = [
     "직선거리 기준입니다. 환승 노선은 한 역사로 묶어 한 번만 셉니다.",
-    "출입구 좌표가 있는 역사는 가장 가까운 출입구까지의 거리로, 없는 역사는 공식 역사 중심점까지의 거리로 판단합니다(두 기준이 섞일 수 있음). 출입구는 카카오 로컬 보조 자료로 공식 좌표가 아니며 누락될 수 있습니다.",
+    "출입구 좌표가 있는 역사는 가장 가까운 출입구까지의 거리로, 없는 역사는 공식 역사 중심점까지의 거리로 판단합니다(두 기준이 섞일 수 있음).",
     "이용량은 연결된 역사의 2025년 하루 평균 승차·하차 인원(관측된 부분 합계)이며 실시간 유동인구나 매장 방문객 수가 아닙니다. 승차와 하차는 합치지 않았고, 이용량이 없는 역은 0명이 아니라 '자료 없음'입니다.",
     "반경 안에 중심점·출입구가 들어온 역사의 이용량만 더했고, 반경 밖 역의 이용량은 포함하지 않았습니다.",
 ]
+CAVEATS_CENTER_ONLY = [
+    "직선거리 기준입니다. 환승 노선은 한 역사로 묶어 한 번만 셉니다.",
+    "거리는 공식 역사 중심점까지의 직선거리이며 출입구까지의 거리가 아닙니다. 이용 조건이 확인된 공식 출입구 좌표 자료가 없어 출입구 위치는 쓰지 않습니다.",
+    CAVEATS_WITH_EXITS[2],
+    "반경 안에 중심점이 들어온 역사의 이용량만 더했고, 반경 밖 역의 이용량은 포함하지 않았습니다.",
+]
+CAVEATS = CAVEATS_WITH_EXITS if EXIT_COORDINATES_ENABLED else CAVEATS_CENTER_ONLY
+ENTRANCE_COLUMNS = ["exit_id", "station_line_id", "exit_label", "lon", "lat", "x_5179", "y_5179", "official_station_id", "national_complex_id", "dist_to_official_m"]
+
+
+def entrance_links() -> pd.DataFrame:
+    """출입구 좌표 표. 사용 중단 상태에서는 파일을 열지 않고 빈 표를 돌려준다 — 권한 미확인 좌표가 서버 계산에 들어오지 않는다."""
+    if not EXIT_COORDINATES_ENABLED:
+        return pd.DataFrame(columns=ENTRANCE_COLUMNS)
+    return data_store.load_parquet("rail_entrance_links.parquet")
 
 
 def _exit_no(label: str) -> str | None:
@@ -160,14 +182,16 @@ def compute(lon: float, lat: float, cx: pd.DataFrame, ent: pd.DataFrame, meta: d
     return {
         "status": "ok", "radius_m": radius_m, "selected": selected, "by_radius": by_radius, "stations": stations,
         "nearest_station": nearest, "nearest_entrance": near_exit,
-        "inclusion_rule": "역사마다 접근 거리 하나를 씁니다: 확인된 출입구가 있으면 가장 가까운 출입구까지, 없으면 공식 역사 중심점까지. 접근 거리가 반경 이내인 역사만 셉니다.",
+        "inclusion_rule": ("역사마다 접근 거리 하나를 씁니다: 확인된 출입구가 있으면 가장 가까운 출입구까지, 없으면 공식 역사 중심점까지. 접근 거리가 반경 이내인 역사만 셉니다." if EXIT_COORDINATES_ENABLED
+                           else "역사마다 공식 역사 중심점까지의 직선거리를 씁니다(출입구까지의 거리가 아님). 중심점이 반경 이내인 역사만 셉니다."),
+        "entrance_data": {"enabled": EXIT_COORDINATES_ENABLED, "reason": None if EXIT_COORDINATES_ENABLED else "이용 조건이 확인된 공식 출입구 좌표 자료가 없어 출입구 위치를 쓰지 않습니다."},
         "scope": {"entrance_scope_complete": selected["entrance_scope_complete"], "distance_to_pilot_m": None if pilot_m is None else round(float(pilot_m), 1),
-                  "entrance_extent": "파일럿 구역(양천·영등포) 경계 밖 약 1.1km 안(카카오 로컬 보조 자료)", "location_extent": "전국 도시철도 역사(공식 표준데이터)",
+                  "entrance_extent": "파일럿 구역(양천·영등포) 경계 밖 약 1.1km 안(카카오 로컬 보조 자료)" if EXIT_COORDINATES_ENABLED else "사용하지 않음(공식 출입구 좌표 자료 없음)", "location_extent": "전국 도시철도 역사(공식 표준데이터)",
                   "location_regions": regions_loc, "usage_regions": sorted(usage_regions)},
         "usage_basis": {"year": meta.get("usage_year"), "text": f"역사별 {meta.get('usage_year')}년 하루 평균 승차·하차 인원, 연결된 노선만의 관측된 부분 합계",
                         "sources": sorted({SOURCE_LABEL.get(k, k) for k in srcs}), "periods": {SOURCE_LABEL.get(k, k): [v["versions"][0].get("period_first"), v["versions"][-1].get("period_last")] for k, v in srcs.items() if v.get("versions")}},
         "caveats": CAVEATS,
-        "source": {"title": "국가철도공단 도시철도 역사정보(공식 좌표) · 카카오 로컬(출입구, 보조) · 서울·부산·인천 승하차",
+        "source": {"title": "국가철도공단 도시철도 역사정보(공식 좌표) · 서울·부산·인천 승하차" if not EXIT_COORDINATES_ENABLED else "국가철도공단 도시철도 역사정보(공식 좌표) · 카카오 로컬(출입구, 보조) · 서울·부산·인천 승하차",
                    "reference": f"역사 {om.get('file', '')} (행별 기준일 {bd.get('min')}~{bd.get('max')}) · 이용량 {meta.get('usage_year')}년"},
     }
 
@@ -182,7 +206,7 @@ def metrics(store: dict, radius_m: int) -> dict:
     try:
         official = data_store.load_parquet("rail_official_stations.parquet")
         usage = data_store.load_parquet("rail_usage_complex_2025.parquet")
-        links = data_store.load_parquet("rail_entrance_links.parquet")
+        links = entrance_links()
         meta = data_store.load_json("rail_national_meta.json")
     except data_store.DataNotReady:
         return unavailable("철도 역사 자료가 아직 준비되지 않았습니다(파이프라인 실행 필요). 0개가 아니라 확인 불가입니다.")

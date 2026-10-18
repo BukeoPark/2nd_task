@@ -98,7 +98,21 @@ def _candidates_for(brand: str, sigungu_cd: str, sigungu_nm: str) -> pd.DataFram
     )
 
 
+import sys
+
+BLOCK_MESSAGE = ("[사용 중단] 네이버 지역 검색 결과는 저장·재가공 이용 조건을 확인하지 못해 앵커 분석에 쓰지 않습니다(공식 인허가 교차 검증 pipelines.transform.merge_official_anchors 로 대체). "
+                 "이용 조건을 확인한 뒤에만 --allow-unconfirmed-terms 로 실행하고, 결과를 공개 분석에 쓰지 마세요.")
+
+
+def _guard() -> None:
+    if "--allow-unconfirmed-terms" in sys.argv:
+        sys.argv.remove("--allow-unconfirmed-terms")
+        return
+    raise SystemExit(BLOCK_MESSAGE)
+
+
 def main() -> None:
+    _guard()
     if not ANCHOR_STORES_PATH.exists():
         raise SystemExit(f"{ANCHOR_STORES_PATH.relative_to(config.ROOT)} 가 없습니다. clean_stores 를 먼저 실행하세요.")
     existing = pd.read_parquet(ANCHOR_STORES_PATH)

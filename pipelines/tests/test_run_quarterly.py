@@ -38,7 +38,7 @@ def test_step_names_are_unique_and_importable():
 # (먼저, 나중) — 나중 단계가 먼저 단계의 산출물을 입력으로 읽는다
 MUST_PRECEDE = [
     ("clean_stores", "build_store_snapshots"),
-    ("clean_stores", "merge_naver_anchors"), ("merge_naver_anchors", "compute_anchor_features"),
+    ("clean_stores", "merge_official_anchors"), ("build_licenses", "merge_official_anchors"), ("merge_official_anchors", "compute_anchor_features"),
     ("clean_stores", "compute_store_density"), ("clean_stores", "compute_anchor_features"),
     ("clean_stores", "build_trdar_areas"), ("clean_stores", "link_store_licenses"), ("clean_stores", "filter_seoul_trdar"),
     ("build_licenses", "build_industry_crosswalk"), ("build_licenses", "link_store_licenses"),

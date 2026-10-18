@@ -123,7 +123,21 @@ def collect_brand_district(
     print(f"[done] 저장: {out_path.relative_to(config.ROOT)}")
 
 
+import sys
+
+BLOCK_MESSAGE = ("[사용 중단] 네이버 지역 검색 결과는 저장·재가공 이용 조건을 확인하지 못해 앵커 분석에 쓰지 않습니다(공식 인허가 교차 검증 pipelines.transform.merge_official_anchors 로 대체). "
+                 "이용 조건을 확인한 뒤에만 --allow-unconfirmed-terms 로 실행하고, 결과를 공개 분석에 쓰지 마세요.")
+
+
+def _guard() -> None:
+    if "--allow-unconfirmed-terms" in sys.argv:
+        sys.argv.remove("--allow-unconfirmed-terms")
+        return
+    raise SystemExit(BLOCK_MESSAGE)
+
+
 def main() -> None:
+    _guard()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--brands", nargs="+", default=list(config.ANCHOR_BRANDS), choices=list(config.ANCHOR_BRANDS))
     ap.add_argument("--force", action="store_true")

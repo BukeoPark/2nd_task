@@ -57,9 +57,10 @@ SEOUL_ALL_QUARTER_DATASETS = ("trdar_workplace", "trdar_resident", "trdar_facili
 # (pipelines/tests/test_run_quarterly.py 가 둘 중 어디에도 없는 모듈을 잡아낸다).
 NOT_IN_QUARTERLY: dict[str, str] = {
     "pipelines.transform.build_regions": "행정동 경계·격자 — 분기마다 바뀌지 않는 정적 자료",
-    "pipelines.collect.collect_kakao_geocode": "R-ONE 상권 좌표 후보 — 상권 목록이 바뀔 때만 수동 수집",
-    "pipelines.transform.build_reb_zone_coords": "R-ONE 상권 좌표 — collect_kakao_geocode 와 함께 수동",
-    "pipelines.collect.collect_naver_local": "앵커(다이소) 보강 수집 — 호출량이 커 수동(원본이 있으면 merge_naver_anchors 가 합침)",
+    "pipelines.collect.collect_kakao_geocode": "[사용 중단] 카카오 로컬 결과는 저장 이용 조건이 확인되지 않아 R-ONE 상권 좌표에 쓰지 않는다(공식 역사 좌표 build_reb_zone_coords 로 대체). 원본 data/raw/kakao 는 로컬에 남아 있다",
+    "pipelines.transform.build_reb_zone_coords": "R-ONE 상권 좌표 — 공식 도시철도 역사 좌표(rail_official_stations)에서 뽑음, build_rail_national 이후 수동",
+    "pipelines.collect.collect_naver_local": "[사용 중단] 네이버 지역 검색 결과의 저장·재가공 이용 조건을 확인하지 못해 앵커 분석에 쓰지 않는다(공식 인허가 교차 검증 merge_official_anchors 로 대체). 원본이 남아 있어도 합치지 않는다",
+    "pipelines.transform.merge_naver_anchors": "[사용 중단] 네이버 출처 앵커 합병 — merge_official_anchors 가 이 출처 행을 지운다. 실행하면 권한 미확인 좌표가 다시 들어오므로 돌리지 않는다",
     "pipelines.transform.anchor_metrics": "거리·밀집도 계산 라이브러리(compute_anchor_features 가 부름)",
     "pipelines.collect.collect_bus_transit": "버스 교통 1차 검증 단계 — 정류장 위치(연 1회)·이용량(연 1회) 갱신 시 수동 수집(기준일별 버전이 따로 공개됨)",
     "pipelines.transform.build_bus_stops": "버스 교통 1차 검증 단계 — 서비스가 아직 소비하지 않는 산출물이라 갱신 순서에 넣지 않음",
@@ -85,12 +86,12 @@ STEPS: list[Step] = [
     # ── 매장·업종 ──────────────────────────────────────────
     Step("clean_stores", "pipelines.transform.clean_stores"),
     Step("build_store_snapshots", "pipelines.transform.build_store_snapshots"),
-    Step("merge_naver_anchors", "pipelines.transform.merge_naver_anchors", raw_glob="naver_local/*.json"),
+    Step("build_licenses", "pipelines.transform.build_licenses"),                   # 앵커 보강(merge_official_anchors)이 인허가를 읽으므로 앞에 둔다
+    Step("merge_official_anchors", "pipelines.transform.merge_official_anchors"),
     Step("compute_store_density", "pipelines.transform.compute_store_density"),
     Step("compute_anchor_features", "pipelines.transform.compute_anchor_features"),
     Step("build_dong_crosswalk", "pipelines.transform.build_dong_crosswalk"),
     Step("build_trdar_areas", "pipelines.transform.build_trdar_areas"),
-    Step("build_licenses", "pipelines.transform.build_licenses"),
     Step("build_industry_crosswalk", "pipelines.transform.build_industry_crosswalk"),
     Step("link_store_licenses", "pipelines.transform.link_store_licenses"),
     Step("build_closure_evidence", "pipelines.transform.build_closure_evidence"),

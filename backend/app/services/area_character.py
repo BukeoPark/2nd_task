@@ -63,7 +63,7 @@ def _spatial() -> dict[tuple[str, str], dict]:
     """(level, code) → 경계 기준 교통·앵커 사실. 한 번 계산해 캐시한다(파일이 바뀌면 서버를 다시 띄운다)."""
     off = data_store.load_parquet("rail_official_stations.parquet")
     usage = data_store.load_parquet("rail_usage_complex_2025.parquet")
-    links = data_store.load_parquet("rail_entrance_links.parquet")
+    links = rail_access.entrance_links()                   # 사용 중단 상태에서는 빈 표(출입구 좌표를 읽지 않는다)
     cx = rail_access.build_complexes(off, usage, links)
     cx["x"], cx["y"] = _to_m(cx["lon"].to_numpy(), cx["lat"].to_numpy())
     rail_pts = shapely.points(cx["x"].to_numpy(), cx["y"].to_numpy())

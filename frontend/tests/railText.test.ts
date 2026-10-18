@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railLinkedText, railMapPlan, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../src/lib/railText.ts";
+import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railMapPlan, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../src/lib/railText.ts";
 
 test("역 수: 0곳과 기준(출입구/중심점/혼합) 문구를 구분한다", () => {
   assert.equal(railCountText({ count: 0, count_state: "zero" }), "0곳");
@@ -9,7 +9,7 @@ test("역 수: 0곳과 기준(출입구/중심점/혼합) 문구를 구분한다
   assert.match(railCountNote({ count_state: "zero", stations_by_basis: { entrance: 0, center: 0 }, mixed_basis: false, center_inside_but_entrance_outside: 1 }), /출입구 기준으로는/);
   assert.match(railCountNote({ count_state: "ok", stations_by_basis: { entrance: 2, center: 1 }, mixed_basis: true }), /두 기준 혼합/);
   assert.match(railCountNote({ count_state: "ok", stations_by_basis: { entrance: 2, center: 0 }, mixed_basis: false }), /출입구 기준/);
-  assert.match(railCountNote({ count_state: "ok", stations_by_basis: { entrance: 0, center: 2 }, mixed_basis: false }), /중심점 기준\(출입구 자료 없음\)/);
+  assert.equal(railCountNote({ count_state: "ok", stations_by_basis: { entrance: 0, center: 2 }, mixed_basis: false }), "모두 공식 역 중심점 기준");
 });
 
 test("출입구·최근접: 수집 범위 밖이면 일부만 확인됨, 없으면 중심점 기준만", () => {
@@ -62,4 +62,15 @@ test("중심점은 안인데 출입구가 모두 밖이라 제외된 역은 알�
   assert.equal(railExcludedNote({ center_inside_but_entrance_outside: 0 }), "");
   assert.equal(railExcludedNote({}), "");
   assert.match(railExcludedNote({ center_inside_but_entrance_outside: 2 }), /세지 않은 역 2곳/);
+});
+
+test("출입구 좌표 사용 중단: 서버가 enabled=false 로 알리면 출입구 UI를 끄고, 거리가 중심점까지임을 밝힌다", () => {
+  assert.equal(railExitsEnabled({ entrance_data: { enabled: false } }), false);
+  assert.equal(railExitsEnabled({ entrance_data: { enabled: true } }), true);
+  assert.equal(railExitsEnabled({}), true);            // 필드가 없는 구버전 응답
+  assert.equal(railExitsEnabled(null), true);
+  const t = railCenterOnlyNote("공식 출입구 좌표 자료가 없어 출입구 위치를 쓰지 않습니다.");
+  assert.match(t, /공식 역 중심점까지의 직선거리/);
+  assert.match(t, /출입구까지의 거리가 아닙니다/);
+  assert.equal(railMapPlan({ status: "ok", radius_m: 500, stations: [{ complex_id: "A", name: "역", lines: "2호선", lon: 126.9, lat: 37.5, distance_m: 100, basis: "center", entrances: [] }] }, 500, true).exits.length, 0);
 });

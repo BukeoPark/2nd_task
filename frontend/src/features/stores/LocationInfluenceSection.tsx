@@ -5,7 +5,7 @@ import type { BusAccess, DemandType, FacilityAccess, RailAccess, LocationFactor,
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
 import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityReferenceText, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
-import { railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
+import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence, useStoreAnchors } from "./useStores";
@@ -95,11 +95,20 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
           {rail && rail.status === "ok" && (
             <>
               <li>지하철: {rail.source.title} ({rail.source.reference}). {rail.usage_basis.text}.</li>
-              <li>포함 기준: {rail.inclusion_rule} 출입구가 있다는 이유로 역 중심점과 출입구를 둘 다 세지 않고, 출입구 수는 반경 안에 좌표가 확인된 출입구만 셉니다.</li>
-              <li>
-                위치 자료 범위: {rail.scope.location_extent}. 출입구 자료 범위: {rail.scope.entrance_extent}
-                {rail.scope.entrance_scope_complete ? " — 이 반경은 그 범위 안입니다." : " — 이 반경의 일부가 그 범위 밖이라 출입구는 일부만 확인된 값이고, 출입구가 없는 역은 중심점 기준입니다."}
-              </li>
+              {railExitsEnabled(rail) ? (
+                <>
+                  <li>포함 기준: {rail.inclusion_rule} 출입구가 있다는 이유로 역 중심점과 출입구를 둘 다 세지 않고, 출입구 수는 반경 안에 좌표가 확인된 출입구만 셉니다.</li>
+                  <li>
+                    위치 자료 범위: {rail.scope.location_extent}. 출입구 자료 범위: {rail.scope.entrance_extent}
+                    {rail.scope.entrance_scope_complete ? " — 이 반경은 그 범위 안입니다." : " — 이 반경의 일부가 그 범위 밖이라 출입구는 일부만 확인된 값이고, 출입구가 없는 역은 중심점 기준입니다."}
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>포함 기준: {rail.inclusion_rule}</li>
+                  <li>위치 자료 범위: {rail.scope.location_extent}. {railCenterOnlyNote(rail.entrance_data?.reason)}.</li>
+                </>
+              )}
               <li>이용량이 있는 지역: {rail.scope.usage_regions.join("·")}. 그 밖 지역의 역은 이용량 자료를 아직 받지 않아 '자료 없음'이며 0명이 아닙니다.</li>
               <li>이용량 기간(원천별, 서로 다른 기간을 같은 기간처럼 비교하지 않음): {Object.entries(rail.usage_basis.periods).map(([k, v]) => `${k} ${v[0]}~${v[1]}`).join(" · ")}. 역사 합계는 2025년 달력 연도만 씁니다.</li>
               {rail.caveats.map((c) => <li key={c}>{c}</li>)}
@@ -279,6 +288,7 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
   const s = rail.selected;
   const nearest = railNearestText(rail.nearest_station);
   const mixed = s.mixed_basis;
+  const exitsOn = railExitsEnabled(rail);
   return (
     <>
       <div style={subTitle}>지하철 — 환승 노선은 한 역사로 한 번만 셉니다</div>
@@ -287,19 +297,23 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
         <Stat big label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
         <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
-      <div style={fine}>
-        {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
-      </div>
-      {railExcludedNote(s) && <div style={{ marginTop: 4 }}><Notice tone="warn">{railExcludedNote(s)}</Notice></div>}
-      {mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
-      {!mixed && s.count > 0 && s.stations_by_basis.center === s.count && <div style={fine}>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</div>}
-      {s.count > 0 && (
+      {!exitsOn && <div style={fine}>{railCenterOnlyNote(rail.entrance_data?.reason)}</div>}
+      {exitsOn && (
+        <div style={fine}>
+          {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
+        </div>
+      )}
+      {exitsOn && railExcludedNote(s) && <div style={{ marginTop: 4 }}><Notice tone="warn">{railExcludedNote(s)}</Notice></div>}
+      {exitsOn && mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
+      {exitsOn && !mixed && s.count > 0 && s.stations_by_basis.center === s.count && <div style={fine}>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</div>}
+      {exitsOn && s.count > 0 && (
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={showExits} onChange={(e) => onShowExitsChange(e.target.checked)} />
           지도에 출입구 위치 표시(기본 꺼짐)
         </label>
       )}
-      {s.count > 0 && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</div>}
+      {s.count > 0 && exitsOn && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</div>}
+      {s.count > 0 && !exitsOn && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다.</div>}
       {rail.stations.length > 0 && (
         <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>

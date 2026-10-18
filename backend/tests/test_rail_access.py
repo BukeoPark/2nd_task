@@ -161,7 +161,7 @@ def test_unavailable_when_rail_files_are_missing_and_the_rest_of_the_response_is
 def real():
     try:
         return (data_store.load_parquet("rail_official_stations.parquet"), data_store.load_parquet("rail_usage_complex_2025.parquet"),
-                data_store.load_parquet("rail_entrance_links.parquet"), data_store.load_json("rail_national_meta.json"))
+                rail_access.entrance_links(), data_store.load_json("rail_national_meta.json"))         # 출입구 좌표(카카오)는 읽지 않는다 — 빈 표
     except data_store.DataNotReady:
         pytest.skip("rail_*.parquet 없음 — pipelines 의 build_rail_national 을 먼저 실행")
 
@@ -178,15 +178,13 @@ def test_real_store_counts_match_an_independent_calculation_for_every_radius(rea
     # 독립 계산: 역사 중심점(소속 행 평균)·출입구 거리를 직접 구해 같은 규칙을 적용
     g = official[official["coord_ok"]].groupby("national_complex_id")[["lon", "lat"]].mean()
     cd = pd.Series(bus_access._haversine_m(lon, lat, g["lon"].to_numpy(), g["lat"].to_numpy()), index=g.index)
-    ed = pd.Series(bus_access._haversine_m(lon, lat, links["lon"].to_numpy(), links["lat"].to_numpy()), index=links.index)
-    emin = ed.groupby(links["national_complex_id"]).min()
-    eff = cd.copy()
-    eff.loc[emin.index.intersection(eff.index)] = emin.loc[emin.index.intersection(eff.index)]
+    eff = cd.copy()                                                                      # 출입구 좌표를 쓰지 않으므로 모든 역사는 중심점 거리
+    assert links.empty
     for radius in (250, 500, 1000):
         res = rail_access.metrics(st, radius)
         sel = res["selected"]
         assert sel["count"] == int((eff <= radius).sum()), radius
-        assert sel["entrances"] == int((ed <= radius).sum())
+        assert sel["entrances"] == 0 and sel["stations_by_basis"] == {"entrance": 0, "center": sel["count"]} and sel["mixed_basis"] is False
         assert res["by_radius"][str(radius)] == sel and len(res["stations"]) == sel["count"]
         assert res["nearest_station"]["distance_m"] == int(round(float(eff.min())))
     a = [rail_access.metrics(st, r)["selected"]["count"] for r in (250, 500, 1000)]
@@ -254,27 +252,31 @@ def _station_point(real, name_part: str, dlon: float = 0.0, dlat: float = 0.0) -
     return {"lon": float(g["lon"]) + dlon, "lat": float(g["lat"]) + dlat}
 
 
-def test_real_station_without_entrance_data_falls_back_to_the_center_and_says_the_entrance_scope_is_limited(real):
-    """당곡(신림선): 출입구 자료가 없다 — 중심점 기준으로 세고 출입구 수집 범위 밖임을 알린다."""
+def test_real_every_station_uses_the_official_center_and_no_exit_coordinates_are_exposed(real):
+    """출입구 좌표 사용 중단: 모든 역사는 공식 중심점 거리, 출입구는 없다고 알리며 '출입구 거리'라고 말하지 않는다."""
     p = _station_point(real, "당곡", 0.002)
-    for radius in (250, 500):
+    for radius in (250, 500, 1000):
         res = rail_access.metrics(p, radius)
-        st = {s["name"]: s for s in res["stations"]}["당곡"]
-        assert st["basis"] == "center" and not st["has_entrances"] and st["entrances"] == []
-        assert res["selected"]["stations_by_basis"] == {"entrance": 0, "center": res["selected"]["count"]} and res["selected"]["entrances"] == 0
-        assert res["selected"]["entrance_scope_complete"] is False and res["scope"]["entrance_scope_complete"] is False
-        assert st["distance_m"] == st["center_distance_m"]                                   # 중심점 거리를 그대로 쓴다
-    assert rail_access.metrics(p, 500)["nearest_entrance"] is not None                         # 가까운 출입구가 하나도 없는 것은 아니고, 다른 역의 출구가 최근접일 뿐
+        assert res["status"] == "ok" and res["stations"]
+        for st in res["stations"]:
+            assert st["basis"] == "center" and not st["has_entrances"] and st["entrances"] == [] and st["distance_m"] == st["center_distance_m"]
+        assert res["nearest_station"]["basis"] == "center" and res["nearest_entrance"] is None
+        assert res["selected"]["entrances"] == 0 and res["selected"]["mixed_basis"] is False
+        assert res["entrance_data"]["enabled"] is False and "출입구" in res["entrance_data"]["reason"]
+        assert "카카오" not in json.dumps(res, ensure_ascii=False) and "출입구까지의 거리가 아닙니다" in " ".join(res["caveats"])
+        assert "중심점" in res["inclusion_rule"] and "출입구까지의 거리가 아님" in res["inclusion_rule"]
 
 
-def test_real_mixed_basis_is_reported_when_only_some_stations_have_entrances(real):
-    res = rail_access.metrics(_station_point(real, "당곡", 0.002), 1000)
-    s = res["selected"]
-    assert s["mixed_basis"] is True and s["stations_by_basis"]["entrance"] >= 1 and s["stations_by_basis"]["center"] >= 1
-    by = {x["name"]: x["basis"] for x in res["stations"]}
-    assert by["당곡"] == "center" and by["보라매병원"] == "entrance"
-    for x in res["stations"]:
-        assert x["has_entrances"] == (x["basis"] == "entrance") == bool(x["entrances"])      # 출입구가 있으면 출입구 기준, 없으면 중심점 기준 — 둘을 섞어 쓰지 않는다
+def test_the_exit_coordinate_file_is_not_even_opened_while_the_feature_is_disabled(monkeypatch):
+    opened = []
+    real_load = data_store.load_parquet
+    monkeypatch.setattr(data_store, "load_parquet", lambda name, *a, **k: (opened.append(name), real_load(name, *a, **k))[1])
+    assert rail_access.entrance_links().empty and "rail_entrance_links.parquet" not in opened
+    try:
+        rail_access.metrics({"lon": 126.9, "lat": 37.52}, 500)
+    except Exception:  # noqa: BLE001 — 자료가 없는 환경이어도 이 테스트는 '열지 않았다'만 본다
+        pass
+    assert "rail_entrance_links.parquet" not in opened and rail_access.EXIT_COORDINATES_ENABLED is False
 
 
 def test_real_no_usage_region_shows_missing_not_zero(real):

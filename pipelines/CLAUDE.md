@@ -124,3 +124,8 @@
 
 ## common/
 - 순수 함수 위주. I/O·경로·좌표 변환 등 재사용 유틸만 둔다. 특정 데이터셋 로직은 넣지 않는다.
+
+## 사용 중단한 원천(이용 조건 미확인) — 2026-10-17
+- **카카오 로컬 출입구 좌표**(`collect_rail_transit` 의 출구 검색 → `rail_entrances`·`rail_entrance_links`): 카카오 공식 계정이 로컬 API 결과의 저장 사용을 불허한다고 답해 API·지도·분석에서 쓰지 않는다(`rail_access.EXIT_COORDINATES_ENABLED=False`). 공식 대체 후보였던 서울교통빅데이터플랫폼 `tnSubwayEntrc.csv` 는 좌표가 출입구가 아니라 버스정류장 위치라 쓸 수 없었다.
+- **네이버 지역 검색 앵커**(`collect_naver_local`·`merge_naver_anchors`): `--allow-unconfirmed-terms` 없이는 실행되지 않는다. 다이소는 `merge_official_anchors`(상가정보 + LOCALDATA 의료기기판매(임대)업 교차 검증, 인허가 영업·좌표 있는 사업장만, 좌표 없는 곳은 누락 기록)로 대체했고 `compute_anchor_features`·`build_location_model` 을 다시 돌린다.
+- 두 원천의 원본·가공본은 지우지 않고 로컬에 남는다(git 제외). 공개 배포 전 격리 여부는 별도 결정.
