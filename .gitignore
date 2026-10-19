@@ -28,6 +28,9 @@ docs/
 node_modules/
 frontend/dist/
 frontend/.vite/
+landing/.next/
+landing/out/
+landing/next-env.d.ts
 
 # OS
 .DS_Store
