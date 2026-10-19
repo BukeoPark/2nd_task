@@ -36,6 +36,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
   return (
     <div
       role="tablist"
+      data-tour={idPrefix ? `${idPrefix}rail` : "rail"}
       aria-label={ariaLabel}
       aria-orientation={orientation}
       onKeyDown={onKeyDown}

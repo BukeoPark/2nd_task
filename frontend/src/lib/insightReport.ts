@@ -1,4 +1,4 @@
-// 매장 '상권 인사이트 리포트' — 서비스가 이미 가진 값(동네 매출 비교·반경 인허가·입지 요인)을 4쪽짜리 읽을거리로 묶는다.
+// 매장 '상권 인사이트 리포트' — 서비스가 이미 가진 값(상권 매출 비교·반경 인허가·입지 요인)을 4쪽짜리 읽을거리로 묶는다.
 // 숫자는 API 값 그대로이고, 문장은 규칙으로만 만든다(데이터가 없으면 그 쪽·문장을 만들지 않는다). 원인을 단정하지 않고 '관측'과 '가능한 해석'만 쓴다.
 // 점수·순위를 새로 만들지 않고, 리뷰·평점은 쓰지 않는다. 다른 모듈을 import 하지 않는 순수 함수(tests/insightReport.test.ts).
 
@@ -104,7 +104,7 @@ const BIG_PEER_STORES = 20;
 const TIME_GROUP = "시간대별";
 const AGE_GROUP = "연령대별";
 
-/** 상권 점포당 월매출 순위: 점포가 BIG_PEER_STORES 곳 이상인 비교 상권끼리만 센 순위(점포 3~5곳짜리의 들쭉날쭉한 값을 뺀다). */
+/** 상권 점포당 월평균 추정매출 순위: 점포가 BIG_PEER_STORES 곳 이상인 비교 상권끼리만 센 순위(점포 3~5곳짜리의 들쭉날쭉한 값을 뺀다). */
 export function bigPeerRank(me: number, meStores: number, peers: { per_store_month: number | null; stores: number }[]): { rank: number | null; count: number } {
   const big = peers.filter((p) => p.stores >= BIG_PEER_STORES && p.per_store_month !== null) as { per_store_month: number; stores: number }[];
   if (meStores < BIG_PEER_STORES || big.length === 0) return { rank: null, count: big.length };
@@ -131,7 +131,7 @@ function levelSection(b: BenchIn): LevelSection | null {
   const yoyTotal = b.growth?.yoy.total_sales.value ?? null;
   const stores = b.trend.filter((t) => t.stores !== null);
   const q = b.quarter_label ?? "";
-  let text = `${b.unit.name} ${b.svc_nm ?? "같은 업종"} 점포당 추정 월매출은 ${fmt(me)}만원으로 ${b.unit.peer_label} ${hist.length}곳 중앙값(${fmt(med)}만원)의 약 ${ratio.toFixed(1)}배입니다.`;
+  let text = `${b.unit.name} ${b.svc_nm ?? "같은 업종"} 점포당 월평균 추정매출은 ${fmt(me)}만원으로 ${b.unit.peer_label} ${hist.length}곳 중앙값(${fmt(med)}만원)의 약 ${ratio.toFixed(1)}배입니다.`;
   if (big.rank !== null) text += ` 점포가 ${BIG_PEER_STORES}곳 이상인 ${big.count}곳만 비교하면 ${big.rank}위입니다.`;
   if (peak && last && peak.q !== last.q && peak.v > last.v * 1.03) {
     text += ` ${peak.label}(${fmt(peak.v)}만원)을 정점으로 내려와 ${q}은 정점보다 ${Math.round((1 - last.v / peak.v) * 100)}% 낮습니다.`;
@@ -256,7 +256,7 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   const findings: Finding[] = [];
   if (level) {
     findings.push({
-      title: `점포당 월매출은 비교 상권 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyPerStore !== null ? `, 전년 동기 대비 ${signed(level.yoyPerStore)}` : ""}입니다`,
+      title: `점포당 월평균 추정매출은 비교 상권 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyPerStore !== null ? `, 전년 동기 대비 ${signed(level.yoyPerStore)}` : ""}입니다`,
       body: `${level.unitName} 평균은 ${fmt(level.me)}만원입니다.${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기보다 ${signed(level.flpopYoy)}입니다.` : ""} → 2쪽`,
     });
   }

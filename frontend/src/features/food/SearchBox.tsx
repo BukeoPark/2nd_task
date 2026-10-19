@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchKind, SearchResult } from "../../lib/apiClient";
+import type { Mode } from "../../lib/mode";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 import { useSearch } from "./useFood";
 
@@ -11,10 +12,11 @@ interface SearchBoxProps {
   /** 이미 고른 위치 이름 — 입력 칸에 보여 준다 */
   pickedName: string | null;
   onClear: () => void;
+  mode: Mode;
 }
 
 /** 주소·역명·상권·행정동·매장명 검색. 결과를 고르면 지도가 그 위치로 가고 관련 정보로 이어진다(MapPage). */
-export function SearchBox({ onPick, pickedName, onClear }: SearchBoxProps) {
+export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps) {
   const [text, setText] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
@@ -47,11 +49,11 @@ export function SearchBox({ onPick, pickedName, onClear }: SearchBoxProps) {
   };
 
   return (
-    <div ref={boxRef} style={{ position: "relative", width: 280 }}>
+    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: 280 }}>
       <input
         type="search"
         value={text}
-        placeholder={pickedName ? `검색 위치: ${pickedName}` : "주소·역·상권·매장 검색"}
+        placeholder={pickedName ? `검색 위치: ${pickedName}` : mode === "owner" ? "내 가게 이름·주소 검색" : "관심 지역·역·상권 검색"}
         aria-label="위치·매장 검색"
         onFocus={() => setOpen(true)}
         onChange={(e) => {

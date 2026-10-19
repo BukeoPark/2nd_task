@@ -8,7 +8,7 @@ test("입력이 하나도 없으면 empty (0 으로 계산하지 않는다)", ()
   assert.equal(breakeven(none, null, null).status, "empty");
 });
 
-test("손익분기 = 고정비 ÷ (1 − 변동비율), 월 이익·안전마진·동네 평균 대비", () => {
+test("손익분기 = 고정비 ÷ (1 − 변동비율), 월 이익·안전마진·상권 평균 대비", () => {
   // 고정비 300+500+100 = 900, 변동비율 35%+5% = 40% → 손익분기 1500
   const b = breakeven({ rent: 300, labor: 500, otherFixed: 100, cogsPct: 35, feePct: 5 }, 2000, 2500);
   assert.equal(b.status, "ok");
@@ -19,7 +19,7 @@ test("손익분기 = 고정비 ÷ (1 − 변동비율), 월 이익·안전마진
   assert.ok(Math.abs((b.vsBenchPct ?? 0) - 60) < 1e-9); // 1500/2500
 });
 
-test("월 매출이 없으면 이익·안전마진은 null, 동네 평균이 없으면 비교는 null", () => {
+test("월 매출이 없으면 이익·안전마진은 null, 상권 평균이 없으면 비교는 null", () => {
   const b = breakeven({ ...none, rent: 400, cogsPct: 30 }, null, null);
   assert.equal(b.status, "ok");
   assert.equal(b.profit, null);

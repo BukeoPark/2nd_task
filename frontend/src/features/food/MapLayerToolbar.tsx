@@ -14,6 +14,7 @@ export function MapLayerToolbar({ anchorsOn, anchorsForced, onAnchorsChange, reb
   return (
     <div
       role="group"
+      data-tour="layers"
       aria-label="지도 레이어"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 200, right: 16, width: 160, background: "rgba(255,255,255,0.96)", borderRadius: 8,

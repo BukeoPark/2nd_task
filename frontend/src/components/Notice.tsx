@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { InfoTip } from "./InfoTip";
 
 export type NoticeTone = "info" | "pending" | "warn" | "error" | "muted";
 
@@ -19,10 +20,11 @@ export function Notice({ tone, children }: { tone: NoticeTone; children: ReactNo
   );
 }
 
+/** 출처·기준일 — 항상 펼쳐 두지 않고 '출처 ?' 에 마우스를 올리면(휴대폰은 누르면) 말풍선으로 보인다. */
 export function SourceNote({ title, reference }: { title: string; reference: string }) {
   return (
-    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
-      출처: {title} · {reference}
+    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
+      출처 <InfoTip label={`출처: ${title}`}><b>출처</b> {title}{reference ? <><br /><b>기준</b> {reference}</> : null}</InfoTip>
     </div>
   );
 }

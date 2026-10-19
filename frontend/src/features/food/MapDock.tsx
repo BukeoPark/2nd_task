@@ -27,6 +27,7 @@ export function MapDock({ legend, ranking }: { legend: ReactNode; ranking: React
   );
   return (
     <div
+      data-tour="dock"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX, bottom: 16, right: 16, width: "min(310px, calc(100vw - 32px))",
         background: "rgba(255,255,255,0.96)", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden",

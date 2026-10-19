@@ -1,4 +1,4 @@
-// 간이 손익분기 — 사장님이 입력한 비용만으로 계산한다(동네 평균 비용 자료는 없다). 만원 단위.
+// 간이 손익분기 — 사장님이 입력한 비용만으로 계산한다(상권 평균 비용 자료는 없다). 만원 단위.
 // 손익분기 매출 = 월 고정비 ÷ (1 − 변동비율). 세금·대출 원리금은 '기타 고정비'에 넣어야 반영된다.
 // 다른 모듈을 import 하지 않는 순수 함수(tests/breakeven.test.ts).
 
@@ -19,7 +19,7 @@ export interface Breakeven {
   bep: number | null; // 손익분기 월 매출
   profit: number | null; // 월 매출을 넣었을 때 예상 월 이익
   safetyPct: number | null; // 안전마진 = (매출 − 손익분기) ÷ 매출 × 100
-  vsBenchPct: number | null; // 손익분기 ÷ 동네 같은 업종 점포당 평균 × 100
+  vsBenchPct: number | null; // 손익분기 ÷ 상권 같은 업종 점포당 평균 × 100
 }
 
 const EMPTY: Breakeven = { status: "empty", fixed: 0, variableRatio: 0, bep: null, profit: null, safetyPct: null, vsBenchPct: null };

@@ -18,6 +18,6 @@ const ICON: Record<GroupId, ReactNode> = {
 const ITEMS: RailItem[] = GROUP_IDS.map((g) => ({ id: g, label: SCOPE_GROUP[g], icon: ICON[g], ...SCOPE_STYLE[g] }));
 
 /** 매장 상세의 묶음 메뉴(이 매장 / 주변 / 상권 / 내 가게). */
-export function GroupRail({ active, onChange, orientation }: { active: GroupId; onChange: (g: GroupId) => void; orientation: "vertical" | "horizontal" }) {
-  return <TabRail items={ITEMS} active={active} onChange={(id) => onChange(id as GroupId)} orientation={orientation} ariaLabel="매장 정보 묶음" />;
+export function GroupRail({ active, onChange, orientation, groups = GROUP_IDS }: { active: GroupId; onChange: (g: GroupId) => void; orientation: "vertical" | "horizontal"; groups?: GroupId[] }) {
+  return <TabRail items={ITEMS.filter((it) => groups.includes(it.id as GroupId))} active={active} onChange={(id) => onChange(id as GroupId)} orientation={orientation} ariaLabel="매장 정보 묶음" />;
 }

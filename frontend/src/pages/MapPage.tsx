@@ -8,6 +8,8 @@ import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
 import { SearchMarker } from "../features/food/SearchMarker";
 import { FlowGuide } from "../features/food/FlowGuide";
+import { useMode } from "../features/guide/useMode";
+import { useProgress } from "../features/guide/useProgress";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { MapLayerToolbar } from "../features/food/MapLayerToolbar";
@@ -108,6 +110,8 @@ function zoneToSelection(zone: RebZone, quarters: Record<string, string | null> 
 }
 
 export function MapPage() {
+  const [mode, setMode] = useMode();
+  const { seen, mark } = useProgress();
   const [svc, setSvc] = useState<string | null>(null);
   const [scls, setScls] = useState<string | null>(null);
   const [metric, setMetric] = useState<FoodMetric>("stores");
@@ -209,7 +213,7 @@ export function MapPage() {
   const onZone = useCallback((z: RebZone) => setSelection(zoneToSelection(z, rebQuarters)), [rebQuarters]);
 
   // 검색 결과를 골랐을 때: 그 위치로 가서 핀을 꽂고, 매장이면 상세를, 상권·행정동이면 도착 뒤 요약을 연다.
-  const onPickPlace = useCallback((r: SearchResult) => {
+  const openPlace = useCallback((r: SearchResult) => {
     if (!mapKakao) return;
     const target = searchTarget(r);
     setPlace({ name: r.name, lon: r.lon, lat: r.lat });
@@ -219,20 +223,25 @@ export function MapPage() {
     mapKakao.map.setLevel(target.level);
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, r));
   }, [mapKakao]);
+  const onPickPlace = useCallback((r: SearchResult) => { mark("place"); openPlace(r); }, [mark, openPlace]);
   const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
 
   // 처음 접속하면 기본 행정동(영등포동)을 열어 둔다. 사용자가 먼저 무언가를 고르면 건드리지 않고, 찾지 못하면 조용히 넘어간다.
   const touched = useRef(false);
   useEffect(() => { if (place !== null || selection !== null || storeId !== null) touched.current = true; }, [place, selection, storeId]);
   const defaultTried = useRef(false);
+  const autoCode = useRef<string | null>(null);
   useEffect(() => {
     if (!mapKakao || defaultTried.current) return;
     defaultTried.current = true;
     apiClient.searchPlaces(DEFAULT_PLACE_NAME).then((res) => {
       const hit = pickDefaultDong(res.results, DEFAULT_PLACE_NAME);
-      if (hit && !touched.current) onPickPlace(hit);
+      if (hit && !touched.current) {
+        autoCode.current = hit.code ?? null; // 처음 열어 둔 상권는 사용자가 한 일로 세지 않는다(이용 순서 표시)
+        openPlace(hit);
+      }
     }).catch(() => undefined);
-  }, [mapKakao, onPickPlace]);
+  }, [mapKakao, openPlace]);
 
   // 검색한 상권·행정동의 버블이 현재 조건으로 도착하면 그 요약을 연다(이전 조건의 결과가 아닐 때만).
   const searchSelection = useMemo(() => {
@@ -241,6 +250,19 @@ export function MapPage() {
     return b ? bubbleToSelection(b, bubbles.data) : null;
   }, [pendingOpen, bubbles.data, bubblesActionable]);
   const shownSelection = selection ?? searchSelection;
+
+  // 이용 순서 표시용: 화면에서 일어난 일을 기록한다(한 번 일어나면 이 방문 동안 유지).
+  const shownUnitLevel = shownSelection?.unit?.level ?? null;
+  const shownUnitCode = shownSelection?.unit?.code ?? null;
+  useEffect(() => { if (storeId !== null) mark("store"); }, [storeId, mark]);
+  useEffect(() => {
+    if (shownUnitCode === null) { autoCode.current = null; return; }
+    if ((shownUnitLevel === "dong" || shownUnitLevel === "trdar") && shownUnitCode !== autoCode.current) mark("area");
+  }, [shownUnitLevel, shownUnitCode, mark]);
+  useEffect(() => { if (metric !== "stores") mark("metric"); }, [metric, mark]);
+  useEffect(() => { if (svc !== null) mark("svc"); }, [svc, mark]);
+  useEffect(() => { if ((basket?.codes.length ?? 0) >= 2) mark("basket2"); }, [basket, mark]);
+  useEffect(() => { if (compareOpen) mark("compare"); }, [compareOpen, mark]);
   // 업종·지표를 바꾸면 이전 조건으로 만든 요약 패널은 닫는다(값이 섞여 보이지 않도록).
   const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); setPendingOpen(null); };
 
@@ -284,6 +306,8 @@ export function MapPage() {
           onPickPlace={onPickPlace}
           pickedPlaceName={place?.name ?? null}
           onClearPlace={onClearPlace}
+          mode={mode}
+          onModeChange={setMode}
         />
         <MapLayerToolbar
           anchorsOn={showAnchors}
@@ -292,7 +316,7 @@ export function MapPage() {
           rebOn={rebZonesVisible}
           onRebChange={setRebZonesVisible}
         />
-        <FlowGuide placeChosen={place !== null} svcChosen={svc !== null} basketCount={basket?.codes.length ?? 0} />
+        <FlowGuide mode={mode} seen={seen} />
         <MapDock
           legend={
             <FoodLegend
@@ -316,6 +340,8 @@ export function MapPage() {
         {storeId ? (
           <StoreDetailPanel
             storeId={storeId}
+            mode={mode}
+            onProgress={mark}
             mapView={mapKakao}
             onBack={() => setStoreId(null)}
             onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }}

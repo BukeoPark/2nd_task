@@ -26,7 +26,7 @@ export function HistogramChart({ level }: { level: LevelSection }) {
   const y = (c: number) => B - (c / max) * (B - Tp);
   const mx = L + (level.median / step) * w, ax = L + (level.me / step) * w;
   return (
-    <Svg w={460} h={250} label={`${level.peerCount}개 비교 상권의 점포당 월매출 분포. 이 상권은 ${fmt(level.me)}만원`}>
+    <Svg w={460} h={250} label={`${level.peerCount}개 비교 상권의 점포당 월평균 추정매출 분포. 이 상권은 ${fmt(level.me)}만원`}>
       {[0, 0.5, 1].map((f) => (<g key={f}><line x1={L} x2={R} y1={B - f * (B - Tp)} y2={B - f * (B - Tp)} stroke={C.line} /><T x={L - 6} y={B - f * (B - Tp)} anchor="end" mid>{fmt(max * f)}</T></g>))}
       {bins.map((c, i) => (
         <g key={i}>
@@ -45,7 +45,7 @@ export function HistogramChart({ level }: { level: LevelSection }) {
   );
 }
 
-/** 분기별 점포당 월매출 추이 */
+/** 분기별 점포당 월평균 추정매출 추이 */
 export function TrendChart({ level }: { level: LevelSection }) {
   const tr = level.trend;
   const vs = tr.map((t) => t.v);

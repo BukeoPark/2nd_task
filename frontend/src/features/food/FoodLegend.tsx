@@ -1,4 +1,5 @@
 import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClient";
+import { InfoTip } from "../../components/InfoTip";
 import { scopeLine } from "../../lib/foodText";
 import { ANCHOR_MARK, NO_DATA_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
@@ -47,12 +48,12 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               )}
             </div>
             <div style={{ color: "#6B7280", fontSize: 11 }}>계산: {data.basis}</div>
-            <div style={{ color: "#6B7280", fontSize: 11 }}>점포 수 출처: {data.size_source}</div>
-            {data.metric_source && (
-              <div style={{ color: "#6B7280", fontSize: 11 }}>
-                {data.label} 출처: {data.metric_source} · {data.as_of}
-              </div>
-            )}
+            <div style={{ color: "#6B7280", fontSize: 11 }}>
+              출처 <InfoTip label="출처 보기">
+                <b>점포 수</b> {data.size_source}
+                {data.metric_source && <><br /><b>{data.label}</b> {data.metric_source} · {data.as_of}</>}
+              </InfoTip>
+            </div>
           </>
         )
       )}

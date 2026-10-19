@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { RailHeading } from "../../components/RailHeading";
@@ -8,6 +8,8 @@ import { latestMonth } from "../../lib/checkup";
 import { facilityMapPlan } from "../../lib/facilityText";
 import { overlayRadius, validCenter } from "../../lib/radiusOverlay";
 import { railMapPlan } from "../../lib/railText";
+import type { ProgressKey } from "../../lib/flow";
+import type { Mode } from "../../lib/mode";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
 import { railPanelId, railTabId } from "../../lib/railIds";
 import { SCOPE_GROUP, SCOPE_HINT, SCOPE_STYLE } from "../../lib/scope";
@@ -39,6 +41,10 @@ interface StoreDetailPanelProps {
   onOpenArea: (target: { level: "dong" | "trdar"; store: StoreBasic }) => void;
   /** 카카오 지도 핸들 — 있으면 '주변' 묶음에서 선택 반경을 지도에 원으로 그린다(없으면 원 없음). */
   mapView?: { map: any; kakao: typeof window.kakao } | null;
+  /** 이용 모드 — 예비 창업자에게는 '내 가게' 묶음(내 매출 기록)을 보이지 않는다. */
+  mode: Mode;
+  /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
+  onProgress: (k: ProgressKey) => void;
 }
 
 /** 매장 상세 — 왼쪽 레일의 네 묶음(이 매장 / 주변 / 상권 / 내 가게)으로 나눠 한 번에 한 묶음만 보인다.
@@ -50,7 +56,7 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroup] = useState<GroupId>("store");
@@ -65,6 +71,10 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
   const lastMonth = latestMonth(mine.record.months);
+  const hasRecord = lastMonth !== null;
+  useEffect(() => { if (hasRecord) onProgress("record"); }, [hasRecord, onProgress]);
+  // 예비 창업자는 운영 중인 가게가 없어 '내 가게' 묶음을 빼고 세 묶음만 보인다.
+  const groups = mode === "founder" ? GROUP_IDS.filter((g) => g !== "mine") : GROUP_IDS;
   const manwon = lastMonth ? String(mine.record.months[lastMonth]) : "";
   const store = data?.store;
   // 지도 원은 위 radius(API 조회와 같은 상태값)로만 그린다. '주변' 묶음을 벗어나거나 매장이 바뀌어(key) 이 컴포넌트가 사라지면 원도 사라진다.
@@ -148,7 +158,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
 
   return (
     <>
-      {!narrow && <GroupRail active={group} onChange={setGroup} orientation="vertical" />}
+      {!narrow && <GroupRail active={group} onChange={setGroup} orientation="vertical" groups={groups} />}
       <Drawer
         title={store ? `${store.name}${store.branch ? ` ${store.branch}` : ""}` : "매장 정보"}
         subtitle={store ? `${store.category.lcls} > ${store.category.mcls} > ${store.category.scls}` : undefined}
@@ -169,14 +179,14 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView }: StoreDet
             {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && facilityPlan.length > 0 && (
               <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />
             )}
-            {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" />}
+            {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" groups={groups} />}
             <SummaryChips storeId={storeId} store={store} onJump={setGroup} />
-            <button type="button" onClick={() => setReportOpen(true)} style={reportButtonStyle}>
+            <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
               상권 인사이트 리포트 뽑기
               <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>공개 통계로 만든 4쪽 요약 · 인쇄·PDF 저장 가능</span>
             </button>
             {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
-            {GROUP_IDS.map((g) => (
+            {groups.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
                 <div style={{ marginTop: 12 }}>
                   <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />

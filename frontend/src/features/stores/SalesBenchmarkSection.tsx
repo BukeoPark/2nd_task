@@ -83,7 +83,7 @@ function Body({
         latestMonth={latestMonth}
         dongAvg={avg}
         peers={data.peers ?? []}
-        unitLabel={data.unit?.label ?? "동네"}
+        unitLabel={data.unit?.label ?? "상권"}
         peerLabel={data.unit?.peer_label ?? "파일럿"}
       />
 
@@ -125,7 +125,7 @@ function Body({
   );
 }
 
-/** 사장님 월 매출 입력 → 동네 평균·다른 동네 평균들과 비교. 값은 이 컴포넌트 상태에만 있고 네트워크로 나가지 않는다. */
+/** 사장님 월 매출 입력 → 상권 평균·다른 상권 평균들과 비교. 값은 이 컴포넌트 상태에만 있고 네트워크로 나가지 않는다. */
 function GrowthRow({ title, pair }: { title: string; pair: { compare_label: string; total_sales: GrowthCell; per_store: GrowthCell } }) {
   return (
     <div style={{ marginBottom: 8 }}>
@@ -151,7 +151,7 @@ function GrowthCard({ label, cell }: { label: string; cell: GrowthCell }) {
   );
 }
 
-/** 내 월 매출(기록한 가장 최근 달)을 동네 평균·다른 동네 평균들과 견준다. 입력은 '내 가게 점검'에서만 받고 여기서는 읽기만 한다. */
+/** 내 월 매출(기록한 가장 최근 달)을 상권 평균·다른 상권 평균들과 견준다. 입력은 '내 가게 점검'에서만 받고 여기서는 읽기만 한다. */
 function RevenueComparison({
   manwon,
   latestMonth,

@@ -31,7 +31,7 @@ function manwon(v: number): string {
   return `${Math.round(v).toLocaleString("ko-KR")}만원`;
 }
 
-/** '내 가게 점검' — 월 매출을 기록해 동네 같은 업종의 변화와 견주고, 비용을 넣어 손익분기 매출을 본다.
+/** '내 가게 점검' — 월 매출을 기록해 상권 같은 업종의 변화와 견주고, 비용을 넣어 손익분기 매출을 본다.
  * 내 매출 입력은 여기서만 받고, '내 매출 비교'·상권 점검은 기록한 가장 최근 달의 값을 읽는다.
  * 기록은 이 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다. 가게마다 따로 저장한다(상태는 useMyStoreRecord). */
 export function MyStoreCheckupSection({
@@ -57,7 +57,7 @@ export function MyStoreCheckupSection({
   const [formError, setFormError] = useState<string | null>(null);
 
   const bench = data?.status === "ok" ? data : null;
-  const unitLabel = bench?.unit?.label ?? "동네";
+  const unitLabel = bench?.unit?.label ?? "상권";
   const benchWon = bench?.per_store_month ?? null;
 
   const addMonth = (e: FormEvent) => {
@@ -108,7 +108,7 @@ export function MyStoreCheckupSection({
         </div>
       )}
 
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 동네 흐름과 비교</div>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 상권 흐름과 비교</div>
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
         <label style={{ fontSize: 11, color: "#6B7280" }}>
           월
@@ -149,8 +149,8 @@ export function MyStoreCheckupSection({
       )}
 
       <div style={{ marginTop: 10 }}>
-        {!bench && data && <Notice tone="muted">{data.message ?? "이 매장은 동네 매출 자료와 연결되지 않아 비교할 수 없습니다. 비용 계산은 아래에서 쓸 수 있어요."}</Notice>}
-        {!data && <Notice tone="muted">동네 매출 자료를 불러오는 중...</Notice>}
+        {!bench && data && <Notice tone="muted">{data.message ?? "이 매장은 상권 매출 자료와 연결되지 않아 비교할 수 없습니다. 비용 계산은 아래에서 쓸 수 있어요."}</Notice>}
+        {!data && <Notice tone="muted">상권 매출 자료를 불러오는 중...</Notice>}
         {bench && (
           <Notice tone={checkup.verdict === "lagging" ? "warn" : "info"}>
             {checkupText(checkup, unitLabel)}
@@ -178,7 +178,7 @@ export function MyStoreCheckupSection({
         </div>
       )}
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
-        동네 값은 서울시 카드 결제 기반 추정이라 현금·배달 매출이 섞인 내 매출과 금액 수준은 다를 수 있어요. 그래서 금액이 아니라 같은 기간의 변화율을 견줍니다.
+        상권 값은 서울시 카드 결제 기반 추정이라 현금·배달 매출이 섞인 내 매출과 금액 수준은 다를 수 있어요. 그래서 금액이 아니라 같은 기간의 변화율을 견줍니다.
         차이가 {GAP_PP}%p 이상일 때만 더 낮아짐·높아짐으로 말하며, 원인이나 개선 방향을 뜻하지는 않습니다.
       </div>
       {bench && <SourceNote title={bench.source.title} reference={bench.source.reference ?? "-"} />}
@@ -201,7 +201,7 @@ export function MyStoreCheckupSection({
       </div>
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
         손익분기 매출 = 월 고정비 ÷ (1 − 재료비율 − 수수료율). 세금·대출 원리금은 '기타 고정비'에 넣어야 반영됩니다. 사장님 본인 몫을 인건비에 넣을지는 직접 정하세요.
-        동네 평균 비용 자료는 없어 입력한 값만으로 계산한 참고용 숫자입니다.
+        상권 평균 비용 자료는 없어 입력한 값만으로 계산한 참고용 숫자입니다.
       </div>
 
       <div style={{ marginTop: 8 }}>

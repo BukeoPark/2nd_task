@@ -111,18 +111,18 @@ function ReportPages({ r, today: date }: { r: InsightReport; today: string }) {
 
       {lv && (
         <Page n={no("level")} total={total}>
-          <Head eyebrowText="인사이트 1 · 매출 수준과 흐름" title={`점포당 월매출은 중앙값의 ${lv.ratio.toFixed(1)}배${lv.yoyPerStore !== null ? `, 전년 동기 대비 ${lv.yoyPerStore > 0 ? "+" : ""}${lv.yoyPerStore.toFixed(1)}%` : ""}`} text={lv.text} />
+          <Head eyebrowText="인사이트 1 · 매출 수준과 흐름" title={`점포당 월평균 추정매출은 중앙값의 ${lv.ratio.toFixed(1)}배${lv.yoyPerStore !== null ? `, 전년 동기 대비 ${lv.yoyPerStore > 0 ? "+" : ""}${lv.yoyPerStore.toFixed(1)}%` : ""}`} text={lv.text} />
           <div className="irp-cols">
             <Fig title={`${lv.peerCount}개 ${lv.peerLabel} 중 어디에 있나`} note="상권별 점포당 월평균 추정매출 분포(만원). 점포가 적은 상권도 포함돼 값이 크게 흔들릴 수 있습니다."><HistogramChart level={lv} /></Fig>
-            <Fig title="최근 분기별 점포당 월매출" note={`단위 만원.${lv.storesFrom !== null && lv.storesNow !== null ? ` 점포 수는 ${lv.storesFrom}곳에서 ${lv.storesNow}곳으로 바뀌었습니다.` : ""}`}><TrendChart level={lv} /></Fig>
+            <Fig title="최근 분기별 점포당 월평균 추정매출" note={`단위 만원.${lv.storesFrom !== null && lv.storesNow !== null ? ` 점포 수는 ${lv.storesFrom}곳에서 ${lv.storesNow}곳으로 바뀌었습니다.` : ""}`}><TrendChart level={lv} /></Fig>
           </div>
           <div className="irp-tiles">
-            {lv.qoqPerStore !== null && <TileBox label="점포당 월매출 전분기 대비" value={`${lv.qoqPerStore > 0 ? "+" : ""}${lv.qoqPerStore.toFixed(1)}%`} note="직전 분기와 비교" tone={lv.qoqPerStore < 0 ? "neg" : "plain"} />}
+            {lv.qoqPerStore !== null && <TileBox label="점포당 월평균 추정매출 전분기 대비" value={`${lv.qoqPerStore > 0 ? "+" : ""}${lv.qoqPerStore.toFixed(1)}%`} note="직전 분기와 비교" tone={lv.qoqPerStore < 0 ? "neg" : "plain"} />}
             {lv.yoyTotal !== null && <TileBox label="총매출 전년 동기 대비" value={`${lv.yoyTotal > 0 ? "+" : ""}${lv.yoyTotal.toFixed(1)}%`} note="점포 수 변화가 함께 반영" tone={lv.yoyTotal < 0 ? "neg" : "plain"} />}
             {lv.flpopYoy !== null && <TileBox label="유동인구 지수 전년 동기 대비" value={`${lv.flpopYoy > 0 ? "+" : ""}${lv.flpopYoy.toFixed(1)}%`} note="길 단위로 배분한 추정치" tone={lv.flpopYoy < 0 ? "neg" : "plain"} />}
           </div>
           {lv.flpopYoy !== null && <div style={boxS}>유동인구 지수는 길 위의 사람만 세어 오피스 건물 안 인구가 적게 잡힙니다. 오피스가 많은 상권에서는 실제 손님 수와 다를 수 있어 감소 폭보다 방향을 참고하세요.</div>}
-          <Take text={`순위가 높다는 것은 이 ${lv.peerLabel.includes("상권") ? "상권" : "동네"}에 매출이 모인다는 뜻이고, 이익이 많이 남는다는 뜻은 아닙니다. 임대료·인건비·원가는 이 자료에 없습니다. 내 월 매출의 변화율을 점포당 ${lv.yoyPerStore !== null ? `${lv.yoyPerStore > 0 ? "+" : ""}${lv.yoyPerStore.toFixed(1)}%` : "평균"}와 견줘 보세요. 내 가게가 더 크게 내려갔다면 상권 전체 흐름보다 내 가게의 메뉴·가격·시간대를 먼저 점검해 볼 신호입니다. '내 가게 점검'에 월 매출을 기록하면 같은 업종 흐름과 바로 비교됩니다.`} />
+          <Take text={`순위가 높다는 것은 이 ${lv.peerLabel.includes("상권") ? "상권" : "행정동"}에 매출이 모인다는 뜻이고, 이익이 많이 남는다는 뜻은 아닙니다. 임대료·인건비·원가는 이 자료에 없습니다. 내 월 매출의 변화율을 점포당 ${lv.yoyPerStore !== null ? `${lv.yoyPerStore > 0 ? "+" : ""}${lv.yoyPerStore.toFixed(1)}%` : "평균"}와 견줘 보세요. 내 가게가 더 크게 내려갔다면 상권 전체 흐름보다 내 가게의 메뉴·가격·시간대를 먼저 점검해 볼 신호입니다. '내 가게 점검'에 월 매출을 기록하면 같은 업종 흐름과 바로 비교됩니다.`} />
           <div style={footS}><b style={{ color: C.ink }}>출처</b> 서울시 상권분석서비스(추정매출·점포·길단위인구-상권) {lv.quarterLabel}. 추정매출은 카드 결제 기반 평균이며 매출이 큰 점포가 평균을 끌어올릴 수 있습니다.</div>
         </Page>
       )}

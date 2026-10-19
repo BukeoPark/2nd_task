@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
+import { InfoTip } from "../../components/InfoTip";
 import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { Term } from "../../components/Term";
@@ -158,7 +159,7 @@ function Card({ row, label, hint }: { row: Row | undefined; label: string; hint?
       <div style={{ fontSize: 11, color: "#6B7280" }}>{label}</div>
       <div style={{ fontWeight: 700, fontSize: 16, color: c?.value == null ? "#9CA3AF" : "#111827" }}>{row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"}</div>
       {row?.scope && <div style={{ fontSize: 10, fontWeight: 600, color: "#1D4ED8" }}>{row.scope}</div>}
-      <div style={{ fontSize: 10, color: "#9CA3AF" }}>{hint ?? row?.as_of}</div>
+      {(hint ?? row?.as_of) && <div style={{ fontSize: 10, color: "#9CA3AF" }}>출처·기준 <InfoTip label="출처·기준 보기">{hint ?? row?.as_of}</InfoTip></div>}
       {c?.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
     </div>
   );
@@ -169,7 +170,7 @@ function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?
     <div style={{ marginTop: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Card row={stores} label="점포 수" hint={`소상공인 상가정보 ${stores?.as_of ?? ""}`} />
-        <Card row={perStore} label="점포당 추정 월매출" hint={`서울시 공개 자료(추정) · ${perStore?.as_of ?? ""}`} />
+        <Card row={perStore} label="점포당 월평균 추정매출" hint={`서울시 공개 자료(추정) · ${perStore?.as_of ?? ""}`} />
       </div>
       <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</div>
@@ -187,7 +188,9 @@ function Rows({ rows }: { rows: (Row | undefined)[] }) {
           <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderBottom: "1px solid #F3F4F6" }}>
             <div>
               <div>{r.label}</div>
-              <div style={{ fontSize: 10, color: "#9CA3AF" }}>{r.scope ? `${r.scope} · ` : ""}{r.source} · {r.as_of ?? "기준 시점 없음"}</div>
+              <div style={{ fontSize: 10, color: "#9CA3AF" }}>
+                {r.scope ? `${r.scope} · ` : ""}출처·기준 <InfoTip label="출처·기준 보기"><b>출처</b> {r.source}<br /><b>기준</b> {r.as_of ?? "기준 시점 없음"}</InfoTip>
+              </div>
               {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
             </div>
             <div style={{ fontWeight: 600, whiteSpace: "nowrap", color: c.value === null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c.value)}</div>
@@ -204,8 +207,8 @@ function GrowthBlock({ ov, change, yoy }: { ov: NonNullable<ReturnType<typeof us
   return (
     <div>
       <Rows rows={[yoy, change]} />
-      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포당 월평균 매출 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
-      <LineChart labels={labels} series={[{ name: "점포당 월매출", color: "#1D4ED8", values: ov.trend.map((t) => t.per_store_month) }]} fmt={(v) => formatKrw(v)} />
+      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포당 월평균 추정매출 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
+      <LineChart labels={labels} series={[{ name: "점포당 월평균 추정매출", color: "#1D4ED8", values: ov.trend.map((t) => t.per_store_month) }]} fmt={(v) => formatKrw(v)} />
       <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포 수 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
       <LineChart labels={labels} series={[{ name: "점포 수", color: "#059669", values: ov.trend.map((t) => t.stores) }]} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} />
       <SourceNote title={ov.trend_source} reference={`${ov.trend[0]?.label ?? ""}~${ov.trend.at(-1)?.label ?? ""}`} />

@@ -84,7 +84,7 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
           <div style={{ opacity: stale ? 0.45 : 1, pointerEvents: stale ? "none" : "auto", display: "flex", flexDirection: "column", gap: 16 }}>
             {trendable && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-                <Card title="점포당 월평균 매출 추이" sub={`서울시 추정 · ${data.scope.sales_label} 기준`}>
+                <Card title="점포당 월평균 추정매출 추이" sub={`서울시 추정 · ${data.scope.sales_label} 기준`}>
                   <LineChart labels={quarters.map(shortQuarter)} series={trendSeries((r) => r.per_store_month)} fmt={formatKrw} height={180} />
                 </Card>
                 <Card title="점포 수 추이" sub={`서울시 상권분석서비스 · ${data.scope.sales_label} 기준`}>

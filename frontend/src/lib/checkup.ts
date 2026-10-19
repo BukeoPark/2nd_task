@@ -1,4 +1,4 @@
-// 내 가게 월 매출 기록 vs 동네(상권·행정동) 같은 업종 점포당 평균 — 수준이 아니라 '변화율'을 비교한다.
+// 내 가게 월 매출 기록 vs 상권(상권·행정동) 같은 업종 점포당 평균 — 수준이 아니라 '변화율'을 비교한다.
 // 서울시 추정매출은 카드 결제 기반이라 현금·배달 매출이 섞인 사장님 매출과 수준 비교는 부정확하지만, 같은 기간의 변화 방향은 견줄 수 있다.
 // 다른 모듈을 import 하지 않는 순수 함수(tests/checkup.test.ts).
 
@@ -11,7 +11,7 @@ export interface QuarterRow {
   quarter: string;
   mine: number; // 원 — 그 분기에 기록한 달들의 월평균
   months: number; // 기록한 달 수(1~3)
-  bench: number | null; // 원 — 동네 같은 업종 점포당 월평균. 서울시가 아직 공개하지 않은 분기는 null
+  bench: number | null; // 원 — 상권 같은 업종 점포당 월평균. 서울시가 아직 공개하지 않은 분기는 null
 }
 
 export type Verdict = "insufficient" | "lagging" | "similar" | "leading";
@@ -23,11 +23,11 @@ export interface Checkup {
   to: string | null;
   myChangePct: number | null;
   benchChangePct: number | null;
-  gapPp: number | null; // 내 변화율 − 동네 변화율 (%p)
+  gapPp: number | null; // 내 변화율 − 상권 변화율 (%p)
   partial: boolean; // 비교한 분기 중 기록이 3개월 미만인 분기가 있음
 }
 
-/** 동네와 이 값(%p) 이상 차이 나야 '더 낮아짐/더 높아짐'으로 말한다. 그 안쪽은 비슷한 흐름으로 본다. */
+/** 상권와 이 값(%p) 이상 차이 나야 '더 낮아짐/더 높아짐'으로 말한다. 그 안쪽은 비슷한 흐름으로 본다. */
 export const GAP_PP = 5;
 
 const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
@@ -101,15 +101,15 @@ function signed(v: number): string {
 /** 점검 결과 문장. 사실과 차이만 말하고 원인·처방은 말하지 않는다. */
 export function checkupText(c: Checkup, unitLabel: string): string {
   if (c.verdict === "insufficient" || c.from === null || c.to === null || c.myChangePct === null || c.benchChangePct === null || c.gapPp === null) {
-    return "비교하려면 서로 다른 두 분기 이상의 매출 기록이 필요합니다. 달마다 기록을 쌓아 가면 동네와의 흐름 차이를 볼 수 있어요.";
+    return "비교하려면 서로 다른 두 분기 이상의 매출 기록이 필요합니다. 달마다 기록을 쌓아 가면 상권와의 흐름 차이를 볼 수 있어요.";
   }
   const span = `${quarterLabel(c.from)}→${quarterLabel(c.to)}`;
   const mine = `내 매출 ${signed(c.myChangePct)}`;
   const bench = `${unitLabel} 같은 업종 평균 ${signed(c.benchChangePct)}`;
   const gap = Math.abs(c.gapPp).toFixed(1);
-  if (c.verdict === "lagging") return `${span}: ${mine}, ${bench} — 동네보다 ${gap}%p 더 낮아졌어요.`;
-  if (c.verdict === "leading") return `${span}: ${mine}, ${bench} — 동네보다 ${gap}%p 더 높아졌어요.`;
-  return `${span}: ${mine}, ${bench} — 동네와 비슷한 흐름이에요(차이 ${gap}%p).`;
+  if (c.verdict === "lagging") return `${span}: ${mine}, ${bench} — 상권보다 ${gap}%p 더 낮아졌어요.`;
+  if (c.verdict === "leading") return `${span}: ${mine}, ${bench} — 상권보다 ${gap}%p 더 높아졌어요.`;
+  return `${span}: ${mine}, ${bench} — 상권와 비슷한 흐름이에요(차이 ${gap}%p).`;
 }
 
 /** 기록한 달 중 가장 최근 달('YYYY-MM'). 형식이 틀린 달·음수·숫자가 아닌 값은 건너뛴다. 없으면 null.
