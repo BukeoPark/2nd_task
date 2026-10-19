@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
@@ -127,7 +128,7 @@ export function MyStoreCheckupSection({
           <Notice tone="warn">{formError}</Notice>
         </div>
       )}
-      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>같은 달을 다시 기록하면 덮어씁니다. 달마다 쌓을수록 비교가 정확해져요.</div>
+      <Caveat>같은 달을 다시 기록하면 덮어씁니다. 달마다 쌓을수록 비교가 정확해져요.</Caveat>
 
       {monthKeys.length > 0 && (
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -177,10 +178,10 @@ export function MyStoreCheckupSection({
           ))}
         </div>
       )}
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+      <Caveat>
         상권 값은 서울시 카드 결제 기반 추정이라 현금·배달 매출이 섞인 내 매출과 금액 수준은 다를 수 있어요. 그래서 금액이 아니라 같은 기간의 변화율을 견줍니다.
         차이가 {GAP_PP}%p 이상일 때만 더 낮아짐·높아짐으로 말하며, 원인이나 개선 방향을 뜻하지는 않습니다.
-      </div>
+      </Caveat>
       {bench && <SourceNote title={bench.source.title} reference={bench.source.reference ?? "-"} />}
 
       <Fold title="간이 손익분기 계산 펼치기">

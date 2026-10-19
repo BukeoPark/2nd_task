@@ -34,6 +34,8 @@
     - **튜토리얼**(`features/guide/TourLayer`·`useTour`, 단계 정의는 `lib/tour`): 처음 방문하면(모드별로) 환영 팝업 → '튜토리얼 시작'이면 대상 요소만 밝게 하고 말풍선을 붙인다. 막지 않는다(밝은 곳은 그대로 눌러 볼 수 있고, 다음·이전·건너뛰기·방향키·Esc).
       '다시 보지 않기'·끝까지 봄·건너뜀은 `tour:v1:<모드>` 로 기억하고, 상단 '도움말'로 언제든 다시 본다. 대상이 지금 화면에 없으면(매장 상세·입지 비교 등) 가운데 카드가 `fallback` 문구로 말한다. 말풍선 자리는 `placeTip`(화면 안으로 눌러 넣음), 좁은 화면은 아래 시트.
       단계를 더하거나 고칠 때는 `lib/tour` 의 TOURS 만 고치고, 가리킬 요소에 `data-tour` 를 붙인다.
+    - **해석상 유의사항은 탭마다 한 곳에 모은다**(`components/NoteHost`·`Caveat`): 각 탭(매장 상세 묶음·종합분석 항목)은 위쪽에 접힌 '읽는 법·유의사항 (N)' 하나를 두고, 안의 `<Caveat>` 문장은 제자리에 그리지 않고 거기로 모인다.
+      **제자리에 남기는 것**: 값이 0 이거나 자료가 없는 이유·조회 실패 같은 상태 안내(`Notice`), 숫자 바로 옆의 핵심 경고(예: 이 값은 이 매장의 실제 매출이 아님, 미래 폐업 확률이 아님, 상관이지 인과가 아님), 업종 범위. 새 문구를 쓸 때 설명·배경 문장은 `Caveat`, 핵심 경고는 눈에 보이게 쓴다.
     - 튜토리얼이 가리킬 요소에는 `data-tour="..."` 를 붙인다(mode·search·svc·scls·metric·flow·dock·layers·rail·area-rail·report-button).
     - **상권 인사이트 리포트(예비 창업자용)**(`features/area/AreaReportModal`, 문장·숫자는 `lib/areaReport`): 행정동·상권 종합분석 '요약'의 버튼이 지역 × 업종 하나를 매장 리포트와 같은 틀(4쪽: 요약 / 매출 수준·흐름 / 시간대·수요 / 안정성·입지와 창업 전 확인)로 펼친다.
       틀·스타일·차트는 매장 리포트와 공유한다(`report/ReportShell`·`reportStyles`·`ReportCharts`). 자료는 종합분석·입지 비교가 쓰는 조회(`useFoodCompare`·`useUnitOverview`·`useAreaCharacter`·`useFoodBubbles`)를 같은 키로 재사용하고 백엔드는 바꾸지 않는다.

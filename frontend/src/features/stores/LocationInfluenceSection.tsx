@@ -1,4 +1,5 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { BusAccess, DemandType, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
@@ -254,7 +255,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
           )}
         </div>
       ))}
-      <div style={fine}>개수는 공식 목록에 있는 시설 기준이며 이용객·방문객 수가 아닙니다. 점포 유형은 인허가 등록 구분, '영업'은 인허가상 상태입니다. 자세한 기준·출처는 ⑥에서 봅니다.</div>
+      <Caveat>개수는 공식 목록에 있는 시설 기준이며 이용객·방문객 수가 아닙니다. 점포 유형은 인허가 등록 구분, '영업'은 인허가상 상태입니다. 자세한 기준·출처는 ⑥에서 봅니다.</Caveat>
       {facilities.facilities.length > 0 && (
         <>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
@@ -360,7 +361,7 @@ function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: 
       <div style={cardTitle}>④ 교통 이용 수요 — 지하철과 버스 (반경 {radiusText}, 2025년 일 평균)</div>
       {railOk && <RailDemandPart rail={railOk} />}
       {bus.status === "ok" && <BusDemandPart bus={bus} />}
-      <div style={fine}>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</div>
+      <Caveat>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</Caveat>
     </div>
   );
 }
@@ -395,10 +396,10 @@ function BusDemandPart({ bus }: { bus: Extract<BusAccess, { status: "ok" }> }) {
         <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
         <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
       </div>
-      <div style={fine}>
+      <Caveat>
         {usage.partial ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. ` : ""}
         정류장 승·하차 기록이며 승차와 하차는 합치지 않았습니다.
-      </div>
+      </Caveat>
     </>
   );
 }
@@ -465,10 +466,10 @@ function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
       ) : (
         <>
           {m.reliability_note && <div style={{ marginTop: 6 }}><Notice tone="warn">{m.reliability_note}</Notice></div>}
-          {m.not_in_sample_reason && <div style={{ marginTop: 6 }}><Notice tone="muted">{m.not_in_sample_reason}</Notice></div>}
-          <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
+          {m.not_in_sample_reason && <Caveat>{m.not_in_sample_reason}</Caveat>}
+          <Caveat>
             서울시 음식 업종 상권×업종 {m.rows}개를 비교했어요. 값이 <Term id="effectPerSd" label="표준편차 1" />만큼 클 때의 차이로 보여줘요.
-          </div>
+          </Caveat>
           <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {m.factors.map((f) => <FactorRow key={f.key} f={f} dim={!m.useful} />)}
           </ul>

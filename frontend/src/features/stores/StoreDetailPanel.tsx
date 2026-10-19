@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { NoteHost } from "../../components/NoteHost";
 import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
@@ -191,9 +192,11 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                 <div style={{ marginTop: 12 }}>
                   <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />
                 </div>
-                {blocksOf(g).map((id) => (
-                  <Fragment key={id}>{blocks[id]}</Fragment>
-                ))}
+                <NoteHost>
+                  {blocksOf(g).map((id) => (
+                    <Fragment key={id}>{blocks[id]}</Fragment>
+                  ))}
+                </NoteHost>
               </div>
             ))}
           </>

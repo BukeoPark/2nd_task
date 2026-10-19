@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
+import { Caveat, NoteHost } from "../../components/NoteHost";
 import { InfoTip } from "../../components/InfoTip";
 import type { ProgressKey } from "../../lib/flow";
 import { RailHeading } from "../../components/RailHeading";
@@ -79,7 +80,7 @@ export function AreaOverviewPanel(p: Props) {
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
       <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>{p.title}{p.type ? ` · ${p.type}` : ""}</div>
       <div style={{ marginBottom: 8 }}><RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={title} /></div>
-      {children}
+      <NoteHost>{children}</NoteHost>
     </div>
   );
   return (
@@ -193,7 +194,7 @@ function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?
         <Card row={perStore} label="점포당 월평균 추정매출" hint={`서울시 공개 자료(추정) · ${perStore?.as_of ?? ""}`} />
       </div>
       <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</div>
+      <Caveat>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</Caveat>
     </div>
   );
 }

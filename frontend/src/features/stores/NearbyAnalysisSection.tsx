@@ -1,4 +1,5 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { useNearbyAnalysis } from "./useStores";
@@ -12,7 +13,7 @@ export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; ra
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}
-      {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 8 }}>{data.disclaimer}</div>}
+      {data && <Caveat>{data.disclaimer}</Caveat>}
     </Section>
   );
 }
@@ -65,7 +66,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
 
       {coordWarnings.length > 0 && (
         <div style={{ marginTop: 6 }}>
-          <Notice tone="warn">일부 위치정보 누락으로 주변 분석에서 제외된 인허가가 있습니다.</Notice>
+          <Caveat>일부 위치정보 누락으로 주변 분석에서 제외된 인허가가 있습니다.</Caveat>
         </div>
       )}
       {otherWarnings.map((w) => (
@@ -100,9 +101,9 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
       <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
         인허가상 영업 확인 {c.open_confirmed_count}곳 · 영업 여부 미확인 {c.unconfirmed_count}곳(제외하지 않음)
       </div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
+      <Caveat>
         {c.caveat} 기준일: 상가정보 {c.as_of.store_info ?? "자료 없음"} · 인허가 {c.as_of.license ?? "자료 없음"} 수집.
-      </div>
+      </Caveat>
     </div>
   );
 }

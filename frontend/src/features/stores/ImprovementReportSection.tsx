@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Notice, Section, SourceNote } from "../../components/Notice";
+import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { apiClient } from "../../lib/apiClient";
 import { formatKrw, parseManwon } from "../../lib/format";
@@ -56,9 +57,9 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
             ) : (
               <div style={{ color: "#6B7280" }}>위 '내 매출 비교'에 월 매출을 입력하면 평균과의 비율이 여기에 표시됩니다.</div>
             )}
-            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
+            <Caveat>
               입력값은 이 화면(브라우저)에서만 계산하며 서버로 보내거나 저장하지 않습니다. 이 비교는 아래 ② 점검 항목에 <strong>반영되지 않습니다</strong>.
-            </div>
+            </Caveat>
           </div>
 
           {/* ② 상권 기반 점검 — 입력 매출과 무관 */}
@@ -102,7 +103,8 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
           {data.source && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
         </div>
       )}
-      {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>{data.disclaimer}</div>}
+      {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>관측된 차이와 가능한 해석이며, 원인이나 개별 매장 진단이 아닙니다.</div>}
+      {data && <Caveat>{data.disclaimer}</Caveat>}
     </Section>
   );
 }

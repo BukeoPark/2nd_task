@@ -1,3 +1,4 @@
+import { Caveat } from "../../components/NoteHost";
 import type { CompareBasis } from "../../lib/compareBasis";
 import { PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR } from "../../lib/vizConfig";
 
@@ -12,7 +13,7 @@ export function CompareBasisBox({ basis, quarter, showLegend }: { basis: Compare
       </div>
       <div style={{ color: "#6B7280" }}>{basis.why}</div>
       <div>비교 업종: {basis.category}</div>
-      {basis.map && <div style={{ color: "#6B7280", marginTop: 2 }}>{basis.map}</div>}
+      {basis.map && <Caveat>{basis.map}</Caveat>}
       {showLegend && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", marginTop: 4, color: "#374151" }}>
           <Swatch ring={SELECTED_RING_COLOR} label="선택한 매장" />
