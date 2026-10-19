@@ -446,6 +446,23 @@ export interface FoodAnchorsResponse {
   note: string;
 }
 
+/** 지도 히트맵 — 상권 단위 점(중심점 + 값). 값이 없는 상권은 0 이 아니라 빠져 있다(missing). weight 는 상위 5% 값을 1 로 둔 비율. */
+export interface FoodHeatResponse {
+  metric: "flpop" | "resident" | "worker";
+  level: "trdar";
+  label: string;
+  unit: string;
+  quarter: string;
+  source: string;
+  basis: string;
+  caveats: string[];
+  count: number;
+  missing: number;
+  total_trdars: number;
+  scale: { p50: number; p95: number; max: number };
+  points: { code: string; name: string; type: string | null; lon: number; lat: number; value: number; weight: number }[];
+}
+
 export interface StoreAnchorsResponse {
   walk_m: number;
   brands: { brand: AnchorBrand; label: string; nearest_m: number | null; count_500m: number; in_zone: boolean }[];
@@ -1004,6 +1021,7 @@ export const apiClient = {
     return request<UnitOverviewResponse>(`/api/food/units/${level}/${encodeURIComponent(code)}/overview?${q}`);
   },
   getFoodAnchors: () => request<FoodAnchorsResponse>("/api/food/anchors"),
+  getFoodHeat: (metric: FoodHeatResponse["metric"]) => request<FoodHeatResponse>(`/api/food/heat?${new URLSearchParams({ metric })}`),
   getStoreAnchors: (storeId: string) => request<StoreAnchorsResponse>(`/api/stores/${encodeURIComponent(storeId)}/anchors`),
   getStore: (storeId: string) => request<StoreDetailResponse>(`/api/stores/${encodeURIComponent(storeId)}`),
   getNearbyAnalysis: (storeId: string, radiusM = 500) =>

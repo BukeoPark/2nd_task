@@ -18,7 +18,9 @@ import { MapLayerToolbar } from "../features/food/MapLayerToolbar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { MapDock } from "../features/food/MapDock";
 import { RankingTable } from "../features/food/RankingTable";
-import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodStores, type Bounds } from "../features/food/useFood";
+import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodHeat, useFoodStores, type Bounds } from "../features/food/useFood";
+import { HeatmapLayer } from "../features/food/HeatmapLayer";
+import type { HeatMetric } from "../lib/heatmap";
 import { UnitStoreList } from "../features/food/UnitStoreList";
 import { CompareDashboard } from "../features/food/CompareDashboard";
 import { AreaOverviewPanel } from "../features/area/AreaOverviewPanel";
@@ -120,6 +122,7 @@ export function MapPage() {
   const [metric, setMetric] = useState<FoodMetric>("stores");
   const [rebZonesVisible, setRebZonesVisible] = useState(false);
   const [anchorsVisible, setAnchorsVisible] = useState(false);
+  const [heatMetric, setHeatMetric] = useState<HeatMetric | null>(null);
   const [mapKakao, setMapKakao] = useState<{ map: any; kakao: typeof window.kakao } | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_LEVEL);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -157,6 +160,9 @@ export function MapPage() {
   const anchorsForced = metric === "starbucks_zone_share" || metric === "daiso_zone_share";
   const showAnchors = anchorsVisible || anchorsForced;
   const anchors = useFoodAnchors(showAnchors);
+  const heat = useFoodHeat(heatMetric);
+  // 지표를 바꾸는 동안에는 이전 지표의 점이 아니라 새 지표가 올 때까지 그리지 않는다(값이 섞여 보이지 않도록)
+  const heatData = heat.data && heat.data.metric === heatMetric ? heat.data : undefined;
 
   // 상세를 보고 있는 매장: 어디 있는지(좌표)와, 어느 매장들·어느 영역과 비교한 숫자인지(비교 단위 매장·경계)
   const selectedDetail = useStoreDetail(storeId ?? "", storeId !== null);
@@ -293,6 +299,7 @@ export function MapPage() {
           <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
         )}
         {mapKakao && <SearchMarker map={mapKakao.map} kakao={mapKakao.kakao} place={place} />}
+        {mapKakao && heatData && <HeatmapLayer map={mapKakao.map} kakao={mapKakao.kakao} data={heatData} />}
         {mapKakao && rebZonesVisible && rebZones.data && (
           <RebZoneLayer map={mapKakao.map} kakao={mapKakao.kakao} zones={rebZones.data.records} onSelect={onZone} />
         )}
@@ -320,6 +327,7 @@ export function MapPage() {
           onAnchorsChange={setAnchorsVisible}
           rebOn={rebZonesVisible}
           onRebChange={setRebZonesVisible}
+          heat={{ metric: heatMetric, onChange: setHeatMetric, data: heatData, loading: heatMetric !== null && heat.isPending, failed: heatMetric !== null && heat.isError }}
         />
         <FlowGuide mode={mode} seen={seen} />
         <MapDock

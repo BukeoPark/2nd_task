@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import area_character, area_overview, data_store, food_map
+from app.services import area_character, area_overview, data_store, food_map, heatmap
 
 router = APIRouter(prefix="/api/food", tags=["food"])
 
@@ -114,5 +114,15 @@ def food_unit_character(level: str, code: str, svc: str | None = None, scls: str
         raise HTTPException(status_code=400, detail=str(e))
     except KeyError:
         raise HTTPException(status_code=404, detail=f"단위를 찾을 수 없습니다: {level}/{code}")
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/heat")
+def food_heat(metric: str = Query("flpop", description=f"{'|'.join(heatmap.METRICS)} — 지도 히트맵에 쓸 인구 지표(상권 단위 점)")) -> dict:
+    try:
+        return heatmap.heat(metric)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except data_store.DataNotReady as e:
         raise HTTPException(status_code=503, detail=str(e))

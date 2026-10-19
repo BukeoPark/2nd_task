@@ -1,5 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { apiClient, type FoodLevel, type FoodMetric, type UnitStoreSort } from "../../lib/apiClient";
+import { apiClient, type FoodHeatResponse, type FoodLevel, type FoodMetric, type UnitStoreSort } from "../../lib/apiClient";
 
 const LONG = 10 * 60 * 1000;
 export const UNIT_STORE_PAGE = 50;
@@ -78,6 +78,16 @@ export function useAreaCharacter(level: "dong" | "trdar", code: string, svc: str
     queryFn: () => apiClient.getAreaCharacter(level, code, svc, scls),
     staleTime: LONG,
     enabled,
+  });
+}
+
+/** 지도 히트맵 점 — 켠 지표(metric)가 있을 때만 조회한다. 분기 단위 자료라 오래 재사용한다. */
+export function useFoodHeat(metric: FoodHeatResponse["metric"] | null) {
+  return useQuery({
+    queryKey: ["food-heat", metric],
+    queryFn: () => apiClient.getFoodHeat(metric as FoodHeatResponse["metric"]),
+    enabled: metric !== null,
+    staleTime: Infinity,
   });
 }
 
