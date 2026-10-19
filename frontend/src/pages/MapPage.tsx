@@ -8,7 +8,9 @@ import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
 import { SearchMarker } from "../features/food/SearchMarker";
 import { FlowGuide } from "../features/food/FlowGuide";
+import { TourLayer } from "../features/guide/TourLayer";
 import { useMode } from "../features/guide/useMode";
+import { useTour } from "../features/guide/useTour";
 import { useProgress } from "../features/guide/useProgress";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
@@ -112,6 +114,7 @@ function zoneToSelection(zone: RebZone, quarters: Record<string, string | null> 
 export function MapPage() {
   const [mode, setMode] = useMode();
   const { seen, mark } = useProgress();
+  const tour = useTour(mode);
   const [svc, setSvc] = useState<string | null>(null);
   const [scls, setScls] = useState<string | null>(null);
   const [metric, setMetric] = useState<FoodMetric>("stores");
@@ -308,7 +311,9 @@ export function MapPage() {
           onClearPlace={onClearPlace}
           mode={mode}
           onModeChange={setMode}
+          onHelp={tour.openHelp}
         />
+        <TourLayer mode={mode} tour={tour} />
         <MapLayerToolbar
           anchorsOn={showAnchors}
           anchorsForced={anchorsForced}
@@ -450,6 +455,7 @@ export function MapPage() {
         {basket && !compareOpen && (
           <button
             type="button"
+            data-tour="compare-open"
             onClick={() => setCompareOpen(true)}
             style={{
               position: "absolute", zIndex: OVERLAY_Z_INDEX, bottom: 24, left: "50%", transform: "translateX(-50%)", padding: "10px 18px",
@@ -502,7 +508,7 @@ function CompareButton({ basket, target, onAdd }: {
   const full = !otherLevel && (basket?.codes.length ?? 0) >= MAX_COMPARE;
   const label = added ? "비교 목록에 있음" : full ? `비교는 최대 ${MAX_COMPARE}곳` : otherLevel ? `비우고 이 ${UNIT_LABEL[target.level]}부터 비교` : `비교에 담기 (${basket?.codes.length ?? 0}/${MAX_COMPARE})`;
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div data-tour="compare-add" style={{ marginBottom: 12 }}>
       <button
         type="button"
         disabled={added || full}
