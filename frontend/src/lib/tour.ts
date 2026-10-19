@@ -41,6 +41,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
     { id: "dock", target: "dock", placement: "top", title: "순위표로 후보 찾기", body: "순위표 탭에서 지금 지표의 순위를 확인하고, 행을 누르면 그 지역 요약이 열려요." },
     { id: "compare-add", target: "compare-add", placement: "right", title: "④ 후보 담기", body: "후보 상권·행정동의 요약 패널에서 '비교에 담기'를 눌러 최대 4곳까지 모아요.", fallback: "후보 상권·행정동을 눌러 열린 요약 패널에서 '비교에 담기'를 눌러 최대 4곳까지 모아요." },
     { id: "compare-open", target: "compare-open", placement: "top", title: "⑤ 입지 비교", body: "후보를 나란히 견줘 보세요. 매출·점포 수·개폐업·입지 요인을 한 화면에서 비교해요.", fallback: "후보를 담으면 지도 아래에 '입지 비교' 버튼이 나타나요. 눌러서 후보를 나란히 견줘 보세요." },
+    { id: "report", target: "area-report-button", placement: "right", title: "⑥ 인사이트 리포트", body: "마음에 드는 후보의 요약에서 이 버튼을 누르면 매출 수준·시간대·안정성·입지를 4쪽으로 정리해 드려요. 인쇄·PDF 저장도 돼요.", fallback: "후보 상권·행정동의 요약 패널에서 '인사이트 리포트 뽑기'를 누르면 매출 수준·시간대·안정성·입지를 4쪽으로 정리해 드려요." },
   ],
 };
 

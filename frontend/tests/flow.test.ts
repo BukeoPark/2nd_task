@@ -17,12 +17,13 @@ test("자영업자 흐름: 내 가게 → 상권 → 주변 비교 → 업종 �
   assert.equal(all.steps.every((s) => s.done), true);
 });
 
-test("예비 창업자 흐름: 지역 → 업종 → 후보 담기 → 입지 비교", () => {
-  assert.equal(flowStatus("founder", seen()).steps.length, 4);
+test("예비 창업자 흐름: 지역 → 업종 → 후보 담기 → 입지 비교 → 인사이트 리포트", () => {
+  assert.equal(flowStatus("founder", seen()).steps.length, 5);
   assert.equal(flowStatus("founder", seen("place")).current, 1);
   assert.equal(flowStatus("founder", seen("place", "svc")).current, 2);
   assert.equal(flowStatus("founder", seen("area", "svc", "basket2")).current, 3);
-  assert.equal(flowStatus("founder", seen("place", "svc", "basket2", "compare")).finished, true);
+  assert.equal(flowStatus("founder", seen("place", "svc", "basket2", "compare")).current, 4);
+  assert.equal(flowStatus("founder", seen("place", "svc", "basket2", "compare", "report")).finished, true);
 });
 
 test("앞 단계를 건너뛰어도 막지 않고 비어 있는 첫 단계를 안내한다", () => {

@@ -35,6 +35,9 @@
       '다시 보지 않기'·끝까지 봄·건너뜀은 `tour:v1:<모드>` 로 기억하고, 상단 '도움말'로 언제든 다시 본다. 대상이 지금 화면에 없으면(매장 상세·입지 비교 등) 가운데 카드가 `fallback` 문구로 말한다. 말풍선 자리는 `placeTip`(화면 안으로 눌러 넣음), 좁은 화면은 아래 시트.
       단계를 더하거나 고칠 때는 `lib/tour` 의 TOURS 만 고치고, 가리킬 요소에 `data-tour` 를 붙인다.
     - 튜토리얼이 가리킬 요소에는 `data-tour="..."` 를 붙인다(mode·search·svc·scls·metric·flow·dock·layers·rail·area-rail·report-button).
+    - **상권 인사이트 리포트(예비 창업자용)**(`features/area/AreaReportModal`, 문장·숫자는 `lib/areaReport`): 행정동·상권 종합분석 '요약'의 버튼이 지역 × 업종 하나를 매장 리포트와 같은 틀(4쪽: 요약 / 매출 수준·흐름 / 시간대·수요 / 안정성·입지와 창업 전 확인)로 펼친다.
+      틀·스타일·차트는 매장 리포트와 공유한다(`report/ReportShell`·`reportStyles`·`ReportCharts`). 자료는 종합분석·입지 비교가 쓰는 조회(`useFoodCompare`·`useUnitOverview`·`useAreaCharacter`·`useFoodBubbles`)를 같은 키로 재사용하고 백엔드는 바꾸지 않는다.
+      비교 지역 값(순위·중앙값·상위 25% 경계)은 지도 지표(버블)에서 만들며, 개업·폐업률은 지도 지표가 **분기** 값이라 같은 분기 값끼리만 견준다(연 값은 비교 없이 따로 보임). '창업 적합도' 같은 점수는 만들지 않는다.
     - 어려운 말은 `components/Term`(`?` 버튼)과 `lib/glossary` 로 풀이한다. 풀이 문구는 서버·계산 모듈의 실제 정의와 같게 유지하고, 화면에서 쓰지 않는 용어는 넣지 않는다.
     - 화면에 라벨이 없는 `<select>` 등은 `aria-label` 로 용도 이름을 단다. 작은 보조 글씨는 흰 배경에서 `#6B7280`(대비 4.5:1) 이상으로 쓴다.
   - 첫 화면: 지도가 준비되면 기본 행정동(`lib/geo.DEFAULT_PLACE_NAME`, 영등포동)을 검색해 열어 둔다(사용자가 먼저 고르면 건드리지 않고, 못 찾으면 조용히 넘어간다).

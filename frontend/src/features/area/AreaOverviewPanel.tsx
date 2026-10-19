@@ -3,6 +3,7 @@ import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice, SourceNote } from "../../components/Notice";
 import { InfoTip } from "../../components/InfoTip";
+import type { ProgressKey } from "../../lib/flow";
 import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { Term } from "../../components/Term";
@@ -13,6 +14,7 @@ import { railPanelId, railTabId } from "../../lib/railIds";
 import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
+import { AreaReportModal } from "./AreaReportModal";
 import { UnitStoreList } from "../food/UnitStoreList";
 import { AreaCharacterSection } from "./AreaCharacterSection";
 
@@ -34,6 +36,8 @@ interface Props {
   onClose: () => void;
   onSelectTrdar: (t: OverviewTrdar) => void;
   onSelectStore: (id: string) => void;
+  /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
+  onProgress?: (k: ProgressKey) => void;
   /** 매장 목록 항목에 마우스·초점이 올라가면 그 id, 벗어나면 null — 지도의 같은 점 강조용 */
   onHoverStore?: (id: string | null) => void;
 }
@@ -66,6 +70,7 @@ export function AreaOverviewPanel(p: Props) {
   const unitKind = LEVEL_NOUN[p.level];
   const narrow = useNarrow();
   const [tab, setTab] = useState<AreaTabId>("summary");
+  const [reportOpen, setReportOpen] = useState(false);
   const tabIds = areaTabsFor(p.level);
   const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...AREA_TAB_STYLE[id] }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
@@ -101,6 +106,16 @@ export function AreaOverviewPanel(p: Props) {
           {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
           {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
           {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+          <button
+            type="button"
+            data-tour="area-report-button"
+            onClick={() => { setReportOpen(true); p.onProgress?.("report"); }}
+            style={{ width: "100%", marginTop: 12, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" }}
+          >
+            {unitKind} 인사이트 리포트 뽑기
+            <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>예비 창업자용 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+          </button>
+          {reportOpen && <AreaReportModal level={p.level} code={p.code} name={plainName(p.title, p.type)} type={p.type} svc={p.svc} scls={p.scls} onClose={() => setReportOpen(false)} />}
         </>
       ))}
 
@@ -145,6 +160,11 @@ export function AreaOverviewPanel(p: Props) {
     </Drawer>
     </>
   );
+}
+
+/** 선택 제목은 '이름 (유형)' 으로 오므로, 리포트에는 이름만 넘긴다(유형은 따로 붙인다). */
+function plainName(title: string, type?: string | null): string {
+  return type && title.endsWith(`(${type})`) ? title.slice(0, -(type.length + 2)).trim() : title;
 }
 
 function OvState({ q }: { q: ReturnType<typeof useUnitOverview> }) {

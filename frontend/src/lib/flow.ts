@@ -36,6 +36,7 @@ export const FLOW: Record<Mode, FlowStep[]> = {
     { label: "업종 고르기", hint: "창업하려는 업종을 고르면 그 업종 기준으로 후보 지역이 보입니다.", done: (s) => s.has("svc") },
     { label: "후보 담기", hint: "후보 지역을 눌러 '비교에 담기'로 두 곳 이상 모아 보세요.", done: (s) => s.has("basket2") },
     { label: "입지 비교", hint: "'입지 비교'에서 후보를 나란히 견줘 보세요.", done: (s) => s.has("compare") },
+    { label: "인사이트 리포트", hint: "상권 요약의 '인사이트 리포트 뽑기'로 후보 한 곳을 4쪽으로 정리해 보세요.", done: (s) => s.has("report") },
   ],
 };
 

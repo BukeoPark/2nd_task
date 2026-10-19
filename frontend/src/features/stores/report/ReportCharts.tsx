@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { AreaSlots } from "../../../lib/areaReport";
 import type { CompetitionSection, FactorsSection, LevelSection, SlotsSection } from "../../../lib/insightReport";
 
 import { C } from "./reportColors";
@@ -161,10 +162,10 @@ export function ChurnChart({ yearly }: { yearly: NonNullable<CompetitionSection[
 }
 
 /** 이 상권의 연 개업률·폐업률과 비교 상권 중앙값·상위 25% 경계 */
-export function RateBullets({ churn }: { churn: NonNullable<CompetitionSection["churn"]> }) {
+export function RateBullets({ churn, labels = { close: "연 폐업률", open: "연 개업률" } }: { churn: Pick<NonNullable<CompetitionSection["churn"]>, "openRate" | "closeRate" | "medOpen" | "p75Open" | "medClose" | "p75Close">; labels?: { close: string; open: string } }) {
   const rows = [
-    churn.closeRate !== null && churn.medClose !== null && churn.p75Close !== null ? { label: "연 폐업률", me: churn.closeRate * 100, med: churn.medClose * 100, p75: churn.p75Close * 100, color: C.accent } : null,
-    churn.openRate !== null && churn.medOpen !== null && churn.p75Open !== null ? { label: "연 개업률", me: churn.openRate * 100, med: churn.medOpen * 100, p75: churn.p75Open * 100, color: C.teal } : null,
+    churn.closeRate !== null && churn.medClose !== null && churn.p75Close !== null ? { label: labels.close, me: churn.closeRate * 100, med: churn.medClose * 100, p75: churn.p75Close * 100, color: C.accent } : null,
+    churn.openRate !== null && churn.medOpen !== null && churn.p75Open !== null ? { label: labels.open, me: churn.openRate * 100, med: churn.medOpen * 100, p75: churn.p75Open * 100, color: C.teal } : null,
   ].filter((r): r is { label: string; me: number; med: number; p75: number; color: string } => r !== null);
   if (rows.length === 0) return null;
   const L = 20, R = 440;
@@ -214,6 +215,38 @@ export function ForestChart({ f }: { f: FactorsSection }) {
             <line x1={x(d.lo)} x2={x(d.hi)} y1={cy} y2={cy} stroke={col} strokeWidth={3} />
             <circle cx={x(d.pct)} cy={cy} r={6} fill={d.sig ? col : C.paper} stroke={col} strokeWidth={2.5} />
             <T x={696} y={cy} anchor="end" mid bold={d.sig} color={d.sig ? C.accent : undefined}>{d.pct > 0 ? "+" : ""}{d.pct.toFixed(1)}%</T>
+          </g>
+        );
+      })}
+    </Svg>
+  );
+}
+
+/** 상권·행정동 리포트: 시간대별 매출 비중과 유동인구 비중(두 계열). */
+export function AreaSlotsChart({ s }: { s: AreaSlots }) {
+  const L = 34, R = 692, B = 215, Tp = 22;
+  const max = Math.max(20, Math.ceil(Math.max(...s.rows.flatMap((d) => [d.sales, d.flpop ?? 0])) / 20) * 20);
+  const gw = (R - L) / s.rows.length, bw = 26, gap = 4;
+  const n = s.hasFloating ? 2 : 1;
+  const y = (v: number) => B - (v / max) * (B - Tp);
+  const ticks: number[] = [];
+  for (let g = 0; g <= max; g += 20) ticks.push(g);
+  return (
+    <Svg w={700} h={260} label="시간대별 매출 비중과 유동인구 비중 비교">
+      {ticks.map((g) => (<g key={g}><line x1={L} x2={R} y1={y(g)} y2={y(g)} stroke={C.line} /><T x={L - 6} y={y(g)} anchor="end" mid>{g}</T></g>))}
+      {s.rows.map((d, i) => {
+        const cx = L + i * gw + gw / 2, x0 = cx - (n * bw + (n - 1) * gap) / 2;
+        const bars: [number, string, boolean][] = [[d.sales, C.accent, true]];
+        if (s.hasFloating) bars.push([d.flpop ?? 0, C.teal, false]);
+        return (
+          <g key={d.label}>
+            {bars.map(([v, c, strong], j) => (
+              <g key={j}>
+                <rect x={x0 + j * (bw + gap)} y={y(v)} width={bw} height={B - y(v)} fill={c} />
+                <T x={x0 + j * (bw + gap) + bw / 2} y={y(v) - 4} anchor="middle" bold={strong} color={strong ? C.accent : undefined}>{v.toFixed(v < 10 ? 1 : 0)}</T>
+              </g>
+            ))}
+            <T x={cx} y={B + 17} anchor="middle" bold color={C.ink}>{d.label}</T>
           </g>
         );
       })}

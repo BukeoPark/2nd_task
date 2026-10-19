@@ -412,6 +412,7 @@ export function MapPage() {
               return (
                 <AreaOverviewPanel
                   key={`${sel.unit.level}:${sel.unit.code}`}
+                  onProgress={mark}
                   level={sel.unit.level}
                   code={sel.unit.code}
                   title={sel.title}

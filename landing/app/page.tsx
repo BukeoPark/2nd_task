@@ -44,7 +44,7 @@ export default function Page() {
           <div className="wrap">
             <p className="eyebrow">인사이트 리포트</p>
             <h2 className="h2" style={{ marginTop: 8 }}>본 것을 4쪽으로 정리해 드려요</h2>
-            <p className="lead" style={{ marginTop: 14 }}>매장을 열고 버튼 하나를 누르면, 매출 수준과 흐름·시간대·경쟁·폐업을 한 번에 읽을 수 있는 리포트가 만들어져요. 인쇄하거나 PDF로 저장할 수도 있어요.</p>
+            <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면, 매출 수준과 흐름·시간대·경쟁·폐업을 한 번에 읽을 수 있는 리포트가 만들어져요. 자영업자는 내 가게 기준으로, 예비 창업자는 후보 상권 기준으로 받을 수 있고, 인쇄하거나 PDF로 저장할 수도 있어요.</p>
             <div className="reports">
               {REPORT_PAGES.map((p) => (
                 <div className="rp" key={p.n}>
