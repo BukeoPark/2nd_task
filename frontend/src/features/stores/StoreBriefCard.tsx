@@ -3,20 +3,20 @@ import type { StoreBrief, StoreBriefTarget } from "../../lib/storeBrief";
 /** 자영업자가 매장을 열면 맨 위에 보이는 핵심 점검 요약 — 확인된 사실 → 어떻게 읽을까? → 다음 확인사항(눌러서 이동). 계산은 lib/storeBrief. */
 export function StoreBriefCard({ brief, onAction }: { brief: StoreBrief; onAction: (t: StoreBriefTarget) => void }) {
   return (
-    <section aria-label="핵심 점검 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 12px", background: "#FFFFFF" }}>
+    <section aria-label="핵심 점검 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 12, padding: "14px 14px 12px", background: "#FFFFFF" }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#3730A3" }}>{brief.eyebrow}</div>
       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8 }}>① 확인된 사실</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8, marginTop: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))", gap: 10, marginTop: 6 }}>
         {brief.facts.map((f) => (
-          <div key={f.label} style={{ background: "#F9FAFB", borderRadius: 8, padding: "6px 8px" }}>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>{f.label}</div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{f.value}</div>
+          <div key={f.label} style={{ background: "#F9FAFB", borderRadius: 10, padding: "8px 10px" }}>
+            <div style={{ fontSize: 12, color: "#4B5563" }}>{f.label}</div>
+            <div style={{ fontWeight: 800, fontSize: f.value.length > 8 ? 15 : 18, lineHeight: 1.3 }}>{f.value}</div>
             <div style={{ fontSize: 10, color: "#6B7280" }}>{f.note}</div>
           </div>
         ))}
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 10 }}>② 어떻게 읽을까?</div>
-      <ul style={{ margin: "4px 0 0", paddingLeft: 16, fontSize: 12, color: "#374151", lineHeight: 1.6 }}>
+      <ul style={{ margin: "4px 0 0", paddingLeft: 16, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
         {brief.reading.map((t) => <li key={t}>{t}</li>)}
       </ul>
       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 10 }}>③ 다음 확인사항</div>

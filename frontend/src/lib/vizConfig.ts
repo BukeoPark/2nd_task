@@ -93,8 +93,17 @@ export const UNIT_BOUNDARY = {
   fillOpacity: 0.06,
 } as const;
 
+/** 평소의 비교 단위 경계 — 지도를 가리지 않게 약하게. '주변·경쟁' 분석을 보는 중에는 UNIT_BOUNDARY 로 진하게 그린다. */
+export const UNIT_BOUNDARY_WEAK = {
+  strokeColor: PEER_RING_COLOR,
+  strokeWeight: 2,
+  strokeOpacity: 0.4,
+  fillColor: PEER_RING_COLOR,
+  fillOpacity: 0.02,
+} as const;
+
 /** 지도 왼쪽에 뜨는 상세·요약 패널(Drawer) 너비 — 이 아래 가려지는 점을 찾는 데도 같은 값을 쓴다. */
-export const SIDE_PANEL_WIDTH_PX = 360;
+export const SIDE_PANEL_WIDTH_PX = 400;
 /** 지도 위 상단 바 높이. */
 export const TOP_BAR_HEIGHT_PX = 56;
 

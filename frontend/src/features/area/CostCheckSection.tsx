@@ -1,17 +1,26 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Notice } from "../../components/Notice";
 import { Term } from "../../components/Term";
 import { COST_CHECK_EXCLUDED, COST_CHECK_FIELDS, clearDraft, computeCostCheck, loadDraft, saveDraft, type CostCheckDraft, type CostCheckKey } from "../../lib/costCheck";
 import { formatKrw } from "../../lib/format";
+import { useNarrow } from "../../lib/useNarrow";
 
 const manwon = (v: number) => `${Math.round(v).toLocaleString("ko-KR")}만원`;
 const signedManwon = (v: number) => `${v < 0 ? "-" : v > 0 ? "+" : ""}${manwon(Math.abs(v))}`;
 
-/** 예비 창업자 '창업 비용 점검' — 내가 입력한 값으로 영업손익·손익분기를 계산하는 시뮬레이션. 기존 손익분기 계산(lib/breakeven)을 쓴다.
+interface Props {
+  unitWord: string;
+  scopeLabel: string;
+  benchWon: number | null;
+}
+
+/** 예비 창업자 '창업 비용 점검' 작업 화면 — 내가 입력한 값으로 영업손익·손익분기를 계산하는 시뮬레이션. 기존 손익분기 계산(lib/breakeven)을 쓴다.
+ * 넓은 화면에서는 입력(왼쪽)과 결과(오른쪽)를 나란히, 좁은 화면에서는 위아래로 둔다. 입력은 바로 결과에 반영된다.
  * 입력은 이 브라우저에만 저장하고('내 가게' 실제 기록과 다른 저장 공간) 서버로 보내지 않는다. 실제 매출 예측이 아니다. */
-export function CostCheckSection({ unitWord, scopeLabel, benchWon }: { unitWord: string; scopeLabel: string; benchWon: number | null }) {
+export function CostCheckSection({ unitWord, scopeLabel, benchWon }: Props) {
   const [draft, setDraft] = useState<CostCheckDraft>(() => loadDraft());
   const [saveFailed, setSaveFailed] = useState(false);
+  const narrow = useNarrow();
   const benchMan = benchWon !== null ? benchWon / 1e4 : null;
   const res = useMemo(() => computeCostCheck(draft, benchMan), [draft, benchMan]);
   const set = (k: CostCheckKey, v: string) => {
@@ -20,69 +29,135 @@ export function CostCheckSection({ unitWord, scopeLabel, benchWon }: { unitWord:
     setSaveFailed(!saveDraft(next));
   };
   const hasAny = Object.values(draft).some((v) => v !== "");
+  const showResult = (res.status === "ok" || res.status === "no_revenue") && res.bep !== null;
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Notice tone="info">
-        입력한 값으로 계산해 보는 <strong>시뮬레이션</strong>입니다. 이 서비스가 매출을 예측한 것이 아니며, 입력값은 이 브라우저에만 저장되고 서버로 보내지 않습니다.
+        입력한 값으로 계산해 보는 <strong>시뮬레이션</strong>입니다. 서비스가 매출을 예측한 것이 아니며, 입력값은 이 브라우저에만 저장되고 서버로 보내지 않습니다.
       </Notice>
-      {benchMan !== null && (
-        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>
-          참고: 이 {unitWord} {scopeLabel} 점포당 월평균 추정매출은 {formatKrw(benchWon)}입니다(서울시 카드 결제 기반 추정 평균 — 내 매출의 예측이 아닙니다).
-        </div>
+      {/* 좁은 화면: 입력 위에 결과 요약을 먼저 둔다(스크롤하면 올라가는 일반 영역 — 입력칸·키보드를 가리는 고정 UI 는 쓰지 않는다) */}
+      {narrow && (
+        <section aria-label="결과 요약" aria-live="polite" style={{ ...card, padding: "10px 12px" }}>
+          {showResult && res.bep !== null ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Mini label="예상 영업손익(월)" value={res.status === "ok" && res.profit !== null ? `${res.profit < 0 ? "-" : ""}${manwon(Math.abs(res.profit))}` : "매출을 넣으면"} color={res.profit !== null && res.profit < 0 ? "#B91C1C" : res.profit !== null ? "#047857" : "#6B7280"} />
+              <Mini label="손익분기 월매출" value={manwon(res.bep)} color="#1D4ED8" />
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: res.status === "invalid" || res.status === "no_margin" ? "#92400E" : "#4B5563" }}>
+              {res.status === "invalid" ? "입력값을 확인해 주세요(금액은 0 이상, 비율은 0~100%). 계산을 보류합니다." : res.status === "no_margin" ? "원가율+수수료율이 100% 이상이라 손익분기가 없습니다." : "값을 넣으면 영업손익과 손익분기 월매출이 여기에 바로 나와요."}
+            </div>
+          )}
+        </section>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-        {COST_CHECK_FIELDS.map((f) => (
-          <label key={f.key} style={{ fontSize: 11, color: "#4B5563", gridColumn: f.key === "revenue" ? "1 / -1" : undefined }}>
-            {f.label} ({f.unit})
-            <input type="text" inputMode="decimal" value={draft[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder={`예: ${f.placeholder}`} aria-describedby={`cc-help-${f.key}`} style={inputStyle} />
-            <span id={`cc-help-${f.key}`} style={{ display: "block", fontSize: 10, color: "#9CA3AF", lineHeight: 1.4 }}>{f.help}</span>
-          </label>
-        ))}
-      </div>
-      {saveFailed && <div style={{ marginTop: 6 }}><Notice tone="warn">이 브라우저가 저장을 막아 입력값이 새로고침하면 사라집니다.</Notice></div>}
-
-      <div style={{ marginTop: 12 }}>
-        {res.status === "empty" && <Notice tone="muted">비용과 예상 월매출을 넣으면 영업손익과 손익분기를 계산해 드려요(아직 입력 없음).</Notice>}
-        {res.status === "invalid" && <Notice tone="warn">금액은 0 이상의 숫자로, 비율(%)은 0~100 사이로 입력해 주세요. 계산을 보류합니다.</Notice>}
-        {res.status === "no_margin" && <Notice tone="warn">원가율과 수수료율의 합이 100% 이상이면 매출이 늘어도 고정비를 갚을 수 없어 손익분기가 없습니다. 비율을 다시 확인해 주세요(계산 보류).</Notice>}
-        {(res.status === "ok" || res.status === "no_revenue") && res.bep !== null && (
-          <div role="status" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <Card label="월 고정비 합" value={manwon(res.fixed)} />
-            <Card label={<Term id="breakeven" />} value={manwon(res.bep)} sub={res.vsBenchPct === null ? undefined : `이 ${unitWord} 점포당 추정 평균의 ${res.vsBenchPct.toFixed(0)}%`} />
-            {res.status === "ok" && res.profit !== null && (
-              <Card label="입력값 기준 예상 영업손익(월)" value={`${res.profit < 0 ? "-" : ""}${manwon(Math.abs(res.profit))}`} sub={res.profit < 0 ? "적자(입력한 매출이 손익분기보다 낮음)" : "흑자(입력값 기준)"} />
-            )}
-            {res.status === "ok" && res.gap !== null && (
-              <Card label="예상 월매출 − 손익분기" value={signedManwon(res.gap)} sub={res.gap >= 0 ? "손익분기보다 높게 잡은 매출" : "손익분기에 못 미치게 잡은 매출"} />
-            )}
-            {res.status === "ok" && res.safetyPct !== null && <Card label={<Term id="safetyMargin" />} value={`${res.safetyPct.toFixed(0)}%`} sub="입력 매출이 이만큼 줄어도 적자가 아닌 정도(음수면 이미 적자)" />}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 14, alignItems: "start" }}>
+        {/* 입력 */}
+        <section aria-label="입력" style={card}>
+          <strong style={{ fontSize: 15 }}>내가 넣는 값</strong>
+          {benchMan !== null && (
+            <div style={{ fontSize: 12, color: "#4B5563", margin: "4px 0 0" }}>
+              참고: 이 {unitWord} {scopeLabel} 점포당 월평균 추정매출은 <strong>{formatKrw(benchWon)}</strong>입니다(카드 결제 기반 추정 평균 — 내 매출의 예측이 아닙니다).
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 136px), 1fr))", gap: 10, marginTop: 12 }}>
+            {COST_CHECK_FIELDS.map((f) => (
+              <label key={f.key} style={{ fontSize: 12, color: "#374151", fontWeight: 600, gridColumn: f.key === "revenue" ? "1 / -1" : undefined }}>
+                {f.label} <span style={{ fontWeight: 400, color: "#6B7280" }}>({f.unit})</span>
+                <input type="text" inputMode="decimal" value={draft[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder={`예: ${f.placeholder}`} aria-describedby={`cc-help-${f.key}`} style={inputStyle} />
+                <span id={`cc-help-${f.key}`} style={{ display: "block", fontSize: 11, color: "#6B7280", fontWeight: 400, lineHeight: 1.4 }}>{f.help}</span>
+              </label>
+            ))}
           </div>
-        )}
-        {res.status === "no_revenue" && <div style={{ marginTop: 6 }}><Notice tone="muted">예상 월매출을 넣으면 영업손익과 손익분기와의 차이도 계산합니다.</Notice></div>}
-      </div>
+          {saveFailed && <div style={{ marginTop: 8 }}><Notice tone="warn">이 브라우저가 저장을 막아 입력값이 새로고침하면 사라집니다.</Notice></div>}
+          {hasAny && (
+            <button type="button" onClick={() => { clearDraft(); setDraft(loadDraft()); setSaveFailed(false); }} style={{ marginTop: 12, padding: "6px 12px", border: "1px solid #FCA5A5", borderRadius: 6, background: "white", color: "#991B1B", cursor: "pointer", fontSize: 12 }}>
+              입력값 모두 지우기
+            </button>
+          )}
+        </section>
 
-      <div style={{ marginTop: 12, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
-        <strong style={{ color: "#374151" }}>포함하지 않은 항목</strong>
-        <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>{COST_CHECK_EXCLUDED.map((x) => <li key={x}>{x}</li>)}</ul>
-        손익분기 월매출 = 월 고정비 ÷ (1 − 원가율 − 수수료율). 필요한 항목은 '기타 고정비'에 직접 넣으세요.
+        {/* 결과 — 넓은 화면에서는 스크롤해도 따라온다 */}
+        <section aria-label="계산 결과" style={{ ...card, position: narrow ? "static" : "sticky", top: 76 }}>
+          <strong style={{ fontSize: 15 }}>계산 결과</strong>
+          <div style={{ marginTop: 10 }}>
+            {res.status === "empty" && <Notice tone="muted">비용과 예상 월매출을 넣으면 영업손익과 손익분기를 바로 계산해 드려요(아직 입력 없음).</Notice>}
+            {res.status === "invalid" && <Notice tone="warn">금액은 0 이상의 숫자로, 비율(%)은 0~100 사이로 입력해 주세요. 계산을 보류합니다.</Notice>}
+            {res.status === "no_margin" && <Notice tone="warn">원가율과 수수료율의 합이 100% 이상이면 매출이 늘어도 고정비를 갚을 수 없어 손익분기가 없습니다. 비율을 다시 확인해 주세요(계산 보류).</Notice>}
+            {showResult && res.bep !== null && (
+              <div role="status" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {res.status === "ok" && res.profit !== null && (
+                  <Big label="예상 영업손익(월)" value={`${res.profit < 0 ? "-" : ""}${manwon(Math.abs(res.profit))}`} color={res.profit < 0 ? "#B91C1C" : "#047857"} sub={res.profit < 0 ? "적자 — 입력한 매출이 손익분기보다 낮습니다" : "흑자 — 입력값 기준"} />
+                )}
+                <Big label={<Term id="breakeven" />} value={manwon(res.bep)} color="#1D4ED8" sub={res.vsBenchPct === null ? "월 고정비 ÷ (1 − 원가율 − 수수료율)" : `이 ${unitWord} 점포당 추정 평균의 ${res.vsBenchPct.toFixed(0)}%`} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                  <Small label="월 고정비 합" value={manwon(res.fixed)} />
+                  {res.status === "ok" && res.gap !== null && <Small label="예상 월매출 − 손익분기" value={signedManwon(res.gap)} sub={res.gap >= 0 ? "손익분기보다 높게 잡음" : "손익분기에 못 미침"} />}
+                  {res.status === "ok" && res.safetyPct !== null && <Small label={<Term id="safetyMargin" />} value={`${res.safetyPct.toFixed(0)}%`} sub="음수면 이미 적자" />}
+                </div>
+                {res.status === "no_revenue" && <Notice tone="muted">예상 월매출을 넣으면 영업손익과 손익분기와의 차이도 계산합니다.</Notice>}
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: 14, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+            <strong style={{ color: "#374151" }}>포함하지 않은 항목</strong>
+            <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>{COST_CHECK_EXCLUDED.map((x) => <li key={x}>{x}</li>)}</ul>
+            필요한 항목은 '기타 고정비'에 직접 넣으세요.
+          </div>
+        </section>
       </div>
-      {hasAny && (
-        <button type="button" onClick={() => { clearDraft(); setDraft(loadDraft()); setSaveFailed(false); }} style={{ marginTop: 10, padding: "5px 10px", border: "1px solid #FCA5A5", borderRadius: 6, background: "white", color: "#991B1B", cursor: "pointer", fontSize: 12 }}>
-          입력값 모두 지우기
-        </button>
-      )}
     </div>
   );
 }
 
-function Card({ label, value, sub }: { label: React.ReactNode; value: string; sub?: string }) {
+/** 지도 옆 좁은 패널에서는 계산하지 않고, 저장된 값의 결과 한 줄과 작업 화면으로 가는 단추만 둔다. */
+export function CostCheckLauncher({ unitWord, benchWon, onOpen }: { unitWord: string; benchWon: number | null; onOpen: () => void }) {
+  const res = computeCostCheck(loadDraft(), benchWon !== null ? benchWon / 1e4 : null);
+  const has = res.bep !== null;
   return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
+    <div>
+      <Notice tone="info">내가 넣은 비용으로 영업손익·손익분기를 계산해 보는 <strong>시뮬레이션</strong>이에요(매출 예측이 아닙니다). 넓은 작업 화면에서 입력과 결과를 함께 볼 수 있어요.</Notice>
+      {has && res.bep !== null && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+          <Small label="저장된 값 기준 손익분기 월매출" value={manwon(res.bep)} />
+          {res.profit !== null && <Small label="예상 영업손익(월)" value={`${res.profit < 0 ? "-" : ""}${manwon(Math.abs(res.profit))}`} />}
+        </div>
+      )}
+      <button type="button" onClick={onOpen} style={{ width: "100%", marginTop: 12, padding: "10px 12px", border: "none", borderRadius: 8, background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+        {has ? "비용 점검 이어서 하기" : "비용 점검 작업 화면 열기"} ›
+        <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.9 }}>이 {unitWord} 기준 참고값과 함께 · 입력값은 이 브라우저에만 저장</span>
+      </button>
+    </div>
+  );
+}
+
+function Big({ label, value, sub, color }: { label: ReactNode; value: string; sub?: string; color: string }) {
+  return (
+    <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "12px 14px" }}>
+      <div style={{ fontSize: 12, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.2, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Mini({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.3, color }}>{value}</div>
+    </div>
+  );
+}
+
+function Small({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
+  return (
+    <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "8px 10px" }}>
+      <div style={{ fontSize: 11, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: 18 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }
 
-const inputStyle: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 2, padding: "5px 8px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: 13 };
+const card: CSSProperties = { background: "white", borderRadius: 12, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" };
+const inputStyle: CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 16 };

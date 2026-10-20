@@ -18,7 +18,8 @@ import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
 import { AreaReportModal } from "./AreaReportModal";
 import { AreaBriefCard } from "./AreaBriefCard";
-import { CostCheckSection } from "./CostCheckSection";
+import { CostCheckLauncher } from "./CostCheckSection";
+import { CostCheckModal } from "./CostCheckModal";
 import { VisitChecklistSection } from "./VisitChecklistSection";
 import { unitSampleStores } from "../../lib/interpretRules";
 import { buildAreaBrief, type BriefTarget } from "../../lib/areaBrief";
@@ -91,6 +92,7 @@ export function AreaOverviewPanel(p: Props) {
   const narrow = useNarrow();
   const [tabState, setTab] = useState<AreaTabId>("summary");
   const [reportOpen, setReportOpen] = useState(false);
+  const [costOpen, setCostOpen] = useState(false);
   const goTab = (id: AreaTabId) => { setTab(id); };
   const unitWord = p.level === "trdar" ? "상권" : "행정동";
   const sampleStores = unitSampleStores(ov.data?.trend ?? [], row("stores_sbiz")?.cells[0]?.value ?? null);
@@ -186,7 +188,8 @@ export function AreaOverviewPanel(p: Props) {
         </>, { scoped: true })}
 
       {p.mode === "founder" && pane("cost", "창업 비용 점검 — 내가 넣은 값으로 계산",
-        <CostCheckSection unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} />)}
+        <CostCheckLauncher unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onOpen={() => setCostOpen(true)} />)}
+      {p.mode === "founder" && costOpen && <CostCheckModal unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
       {p.mode === "founder" && pane("visit", "현장 확인 — 답사 체크리스트",
         <VisitChecklistSection level={p.level} code={p.code} unitWord={unitWord} onShowStores={() => goTab("stores")} />)}
 
@@ -243,7 +246,7 @@ function Card({ row, label, hint }: { row: Row | undefined; label: string; hint?
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
       <div style={{ fontSize: 11, color: "#6B7280" }}>{label} <MetricTip row={row} hint={hint} /></div>
-      <div style={{ fontWeight: 700, fontSize: 16, color: c?.value == null ? "#9CA3AF" : "#111827" }}>{row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"}</div>
+      <div style={{ fontWeight: 800, fontSize: 20, color: c?.value == null ? "#9CA3AF" : "#111827" }}>{row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"}</div>
       {c?.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
     </div>
   );
@@ -269,12 +272,12 @@ function Rows({ rows }: { rows: (Row | undefined)[] }) {
       {rows.filter((r): r is Row => r !== undefined).map((r) => {
         const c = r.cells[0];
         return (
-          <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderBottom: "1px solid #F3F4F6" }}>
+          <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "7px 0", borderBottom: "1px solid #F3F4F6" }}>
             <div>
               <div>{r.label} <MetricTip row={r} /></div>
               {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
             </div>
-            <div style={{ fontWeight: 600, whiteSpace: "nowrap", color: c.value === null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c.value)}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", color: c.value === null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c.value)}</div>
           </div>
         );
       })}
