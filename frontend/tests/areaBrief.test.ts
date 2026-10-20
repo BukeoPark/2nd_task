@@ -81,9 +81,11 @@ test("소규모 상권 주의는 숫자 옆 메모에 남고 기간도 함께 �
   assert.match(f.note, /2026년 2분기 · 소규모 상권: 변동성 주의/);
 });
 
-test("비교 목록에 이미 담았으면 문구가 '후보와 나란히 비교'로 바뀐다", () => {
-  assert.equal(buildAreaBrief({ ...base, basketHas: true }).next[0].label, "후보와 나란히 비교");
-  assert.equal(buildAreaBrief(base).next[0].label, "비교에 담아 후보와 견주기");
+test("비교는 '내 관심 지역'으로 합쳐졌다 — 같은 행동 이름이고, 이미 저장한 지역이 있으면 설명만 달라진다", () => {
+  assert.equal(buildAreaBrief({ ...base, basketHas: true }).next[0].label, "내 관심 지역에 담고 비교하기");
+  assert.equal(buildAreaBrief(base).next[0].label, "내 관심 지역에 담고 비교하기");
+  assert.match(buildAreaBrief({ ...base, basketHas: true }).next[0].why, /저장한 지역 중 2~4곳/);
+  assert.match(buildAreaBrief(base).next[0].why, /보고서·비용·답사/);
 });
 
 test("개업·폐업률 문장은 최근 1년의 기준 기간을 밝히고 리포트의 분기 값과 직접 비교하지 말라고 말한다", () => {

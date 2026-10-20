@@ -34,9 +34,9 @@ export const FLOW: Record<Mode, FlowStep[]> = {
   founder: [
     { label: "지역 찾기", hint: "관심 있는 지역·역·상권을 검색해 보세요.", done: (s) => s.has("place") || s.has("area") },
     { label: "업종 고르기", hint: "창업하려는 업종을 고르면 그 업종 기준으로 후보 지역이 보입니다.", done: (s) => s.has("svc") },
-    { label: "후보 담기", hint: "후보 지역을 눌러 '비교에 담기'로 두 곳 이상 모아 보세요.", done: (s) => s.has("basket2") },
-    { label: "입지 비교", hint: "'입지 비교'에서 후보를 나란히 견줘 보세요.", done: (s) => s.has("compare") },
-    { label: "인사이트 리포트", hint: "상권 요약의 '인사이트 리포트 뽑기'로 후보 한 곳을 4쪽으로 정리해 보세요.", done: (s) => s.has("report") },
+    { label: "후보 담기", hint: "후보 지역을 '내 관심 지역에 담기'로 두 곳 이상 모아 보세요.", done: (s) => s.has("basket2") },
+    { label: "지역 비교", hint: "'내 관심 지역'에서 2~4곳을 골라 나란히 견줘 보세요.", done: (s) => s.has("compare") },
+    { label: "상권분석 보고서", hint: "'상권분석 보고서 보기'로 후보 한 곳을 4쪽으로 정리해 보세요.", done: (s) => s.has("report") },
   ],
 };
 

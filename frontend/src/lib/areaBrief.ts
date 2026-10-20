@@ -103,7 +103,7 @@ export function buildAreaBrief(inp: BriefInput): AreaBrief {
 
   const next: BriefAction[] = founder
     ? [
-        { target: "compare", label: inp.basketHas ? "후보와 나란히 비교" : "비교에 담아 후보와 견주기", why: "같은 단위 2~4곳을 같은 기준으로" },
+        { target: "compare", label: "내 관심 지역에 담고 비교하기", why: inp.basketHas ? "저장한 지역 중 2~4곳을 같은 기준으로" : "담아 두면 보고서·비용·답사까지 이어져요" },
         { target: "tab-cost", label: "창업 비용 점검", why: "내가 넣은 비용으로 손익분기 계산" },
         { target: "tab-visit", label: "현장 확인 체크리스트", why: "숫자로 못 보는 동선·가시성 확인" },
       ]

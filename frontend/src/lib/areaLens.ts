@@ -192,7 +192,7 @@ export function buildLens(mode: Mode, c: LensContext): Lens {
   return {
     mode,
     eyebrow: founder ? "예비 창업자용 · 창업 전 점검" : "자영업자용 · 매출 증대·기회 포착",
-    pageTitle: founder ? "상권 인사이트 리포트 · 예비 창업자용" : "상권 인사이트 리포트 · 자영업자용",
+    pageTitle: founder ? "상권분석 보고서 · 예비 창업자용" : "상권분석 보고서 · 자영업자용",
     signalsTitle: founder ? "창업 전에 살펴볼 신호" : "내 가게에 적용해 볼 기회와 점검",
     positiveTitle: founder ? "긍정 신호" : "기회로 볼 만한 점",
     cautionTitle: founder ? "주의 신호" : "대비해 둘 점",

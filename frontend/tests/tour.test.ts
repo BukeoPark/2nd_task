@@ -15,7 +15,7 @@ test("모드마다 튜토리얼이 있고, 단계 id 는 겹치지 않으며, �
   }
   // 매장·후보를 먼저 골라야 나타나는 요소는 지금 없을 때를 위한 문구를 갖는다
   for (const id of ["report"]) assert.ok(TOURS.owner.find((s) => s.id === id)?.fallback);
-  for (const id of ["compare-add", "compare-open", "report"]) assert.ok(TOURS.founder.find((s) => s.id === id)?.fallback);
+  for (const id of ["compare-add", "report"]) assert.ok(TOURS.founder.find((s) => s.id === id)?.fallback);
 });
 
 test("처음 방문이면 환영 팝업을 띄우고, 끝낸 모드는 다시 띄우지 않는다(모드별로 따로 기억)", () => {
