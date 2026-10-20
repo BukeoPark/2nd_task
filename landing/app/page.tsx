@@ -1,7 +1,8 @@
 import { HeroMap, ReportThumb } from "../components/Art";
 import { FlowTabs } from "../components/FlowTabs";
+import { SummaryPreview } from "../components/SummaryPreview";
 import { ModeCards } from "../components/ModeCards";
-import { FAQ, HERO, REPORT_PAGES, SCOPE_NOTE, SOURCES, TRUST } from "../lib/content";
+import { FAQ, FEATURES, HERO, REPORT_PAGES, SCOPE_NOTE, SOURCES, TRUST } from "../lib/content";
 import { appLink, normalizeAppUrl } from "../lib/links";
 
 // 지도 앱 주소 — 빌드할 때 NEXT_PUBLIC_APP_URL 로 정한다(없으면 로컬 개발 주소).
@@ -14,6 +15,7 @@ export default function Page() {
         <div className="wrap">
           <a className="brand" href="#top">상권<b>분석</b></a>
           <nav className="nav" aria-label="주요 메뉴">
+            <a href="#features">기능</a>
             <a href="#flow">이용 흐름</a>
             <a href="#report">샘플 리포트</a>
             <a href="#trust">믿는 이유</a>
@@ -33,6 +35,24 @@ export default function Page() {
               <ModeCards appUrl={APP_URL} />
             </div>
             <div className="hero-art"><HeroMap /></div>
+          </div>
+        </section>
+
+        <section className="section" id="features" style={{ paddingBottom: 0 }}>
+          <div className="wrap features">
+            <div>
+              <p className="eyebrow">서비스에서 하는 일</p>
+              <h2 className="h2" style={{ marginTop: 8 }}>지도에서 시작해, 판단에 필요한 숫자까지</h2>
+              <ul className="feat">
+                {FEATURES.map((f) => (
+                  <li key={f.title}>
+                    <div><b>{f.title}</b><span className={`who ${f.who === "모두" ? "all" : f.who === "자영업자" ? "o" : "f"}`}>{f.who}</span></div>
+                    <p>{f.body}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <SummaryPreview />
           </div>
         </section>
 

@@ -7,8 +7,8 @@ const body = Noto_Sans_KR({ weight: ["400", "500", "700", "800"], subsets: ["lat
 
 const SITE = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 
-const TITLE = "상권분석 — 내 가게 상권, 지금 어느 수준일까요?";
-const DESC = "자영업자와 예비 창업자를 위한 상권분석. 공식 통계로 매출·경쟁·입지·영업 안정성을 지도에서 보고, 내 가게와 견주고, 인사이트 리포트로 정리하세요.";
+const TITLE = "상권분석 — 내 가게든 창업 자리든, 상권부터 숫자로 확인하세요";
+const DESC = "자영업자와 예비 창업자를 위한 상권분석. 공식 통계로 매출·경쟁·입지·영업 안정성을 지도에서 보고, 후보 지역을 비교하고, 창업 비용을 점검하고, 내 가게와 견주고, 인사이트 리포트로 정리하세요.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
