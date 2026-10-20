@@ -16,6 +16,7 @@ export function KakaoMap({ center = DEFAULT_CENTER, level = DEFAULT_LEVEL, onRea
 
   useEffect(() => {
     let cancelled = false;
+    let observer: ResizeObserver | null = null;
     loadKakaoMaps()
       .then((kakao) => {
         if (cancelled || !containerRef.current) return;
@@ -30,6 +31,23 @@ export function KakaoMap({ center = DEFAULT_CENTER, level = DEFAULT_LEVEL, onRea
           map.relayout();
           map.setCenter(toKakaoLatLng(kakao, center));
         });
+        // 컨테이너 크기가 바뀌면(창·패널 크기 변경, 휴대폰 회전, 숨겨졌다 다시 보임) 카카오맵은 스스로 알지 못하고 중심도 밀려서, 선택 매장 마커 같은 오버레이가
+        // 화면 밖으로 나가 사라진다(카카오맵은 화면 밖 오버레이를 그리지 않는다). 크기가 바뀔 때마다 relayout 하고, 크기가 바뀌기 전에 보던 중심으로 되돌린다.
+        // 중심은 크기가 그대로일 때의 idle(이동·확대 끝)에서만 기억한다 — 크기가 바뀐 뒤 카카오맵이 밀어 놓은 중심을 기억하지 않도록.
+        const el = containerRef.current;
+        let size = { w: el.clientWidth, h: el.clientHeight };
+        let lastCenter = map.getCenter();
+        kakao.maps.event.addListener(map, "idle", () => {
+          if (el.clientWidth === size.w && el.clientHeight === size.h) lastCenter = map.getCenter();
+        });
+        observer = new ResizeObserver(() => {
+          if (el.clientWidth === 0 || el.clientHeight === 0) return; // 숨겨져 크기가 0 인 동안은 건드리지 않는다(다시 보일 때 원래 크기와 같으면 그대로 둔다)
+          if (el.clientWidth === size.w && el.clientHeight === size.h) return;
+          size = { w: el.clientWidth, h: el.clientHeight };
+          map.relayout();
+          map.setCenter(lastCenter);
+        });
+        observer.observe(el);
         onReady(map, kakao);
       })
       .catch((err: Error) => {
@@ -37,6 +55,7 @@ export function KakaoMap({ center = DEFAULT_CENTER, level = DEFAULT_LEVEL, onRea
       });
     return () => {
       cancelled = true;
+      observer?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 지도 인스턴스는 최초 1회만 생성한다.
   }, []);
