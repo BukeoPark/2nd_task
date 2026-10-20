@@ -17,7 +17,7 @@ export default function Page() {
           <nav className="nav" aria-label="주요 메뉴">
             <a href="#features">기능</a>
             <a href="#flow">이용 흐름</a>
-            <a href="#report">샘플 리포트</a>
+            <a href="#report">샘플 보고서</a>
             <a href="#trust">믿는 이유</a>
             <a href="#faq">질문</a>
           </nav>
@@ -33,6 +33,7 @@ export default function Page() {
               <h1><span>{HERO.title[0]}</span><span><em>{HERO.title[1]}</em></span></h1>
               <p className="lead">{HERO.sub}</p>
               <ModeCards appUrl={APP_URL} />
+              <p className="reportlink"><a href="#report">먼저 보고서가 어떤지 볼래요 — 샘플 상권분석 보고서 보기 →</a></p>
             </div>
             <div className="hero-art"><HeroMap /></div>
           </div>
@@ -62,7 +63,7 @@ export default function Page() {
 
         <section className="section dark" id="report">
           <div className="wrap">
-            <p className="eyebrow">인사이트 리포트</p>
+            <p className="eyebrow">상권분석 보고서</p>
             <h2 className="h2" style={{ marginTop: 8 }}>본 것을 4쪽으로 정리해 드려요</h2>
             <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면, 매출 수준과 흐름·시간대·경쟁·폐업을 한 번에 읽을 수 있는 리포트가 만들어져요. 자영업자는 내 가게 기준으로, 예비 창업자는 후보 상권 기준으로 받을 수 있고, 인쇄하거나 PDF로 저장할 수도 있어요.</p>
             <div className="reports">

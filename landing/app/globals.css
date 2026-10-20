@@ -89,6 +89,9 @@ h1, h2, h3, p { margin: 0; }
 .mode.founder .go { color: var(--orange); }
 @media (max-width: 640px) { .modes { grid-template-columns: minmax(0, 1fr); } }
 
+.reportlink { margin-top: 16px; font-weight: 700; }
+.reportlink a { color: var(--orange); }
+
 /* 서비스 기능 + 화면 미리보기 */
 .features { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: clamp(24px, 5vw, 56px); align-items: start; }
 .feat { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 4px; }
