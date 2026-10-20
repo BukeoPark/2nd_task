@@ -43,7 +43,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
       style={
         vertical
           ? { position: "absolute", zIndex: OVERLAY_Z_INDEX, top: TOP_BAR_HEIGHT_PX, bottom: 0, left: 0, width: RAIL_WIDTH_PX, background: "#F9FAFB", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 0" }
-          : { position: "sticky", top: -20, zIndex: 2, display: "flex", gap: 4, background: "white", padding: "4px 0 8px", margin: "0 0 4px", borderBottom: "1px solid #E5E7EB" }
+          : { position: "sticky", top: -20, zIndex: 2, display: "flex", gap: 4, background: "white", padding: "4px 0 8px", margin: "0 0 4px", borderBottom: "1px solid #E5E7EB", overflowX: "auto", scrollbarWidth: "none" }
       }
     >
       {items.map((it) => {
@@ -59,7 +59,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(it.id)}
             style={{
-              width: vertical ? 46 : undefined, flex: vertical ? undefined : 1, padding: "6px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: on ? 700 : 500, lineHeight: 1.3,
+              width: vertical ? 46 : undefined, flex: vertical ? undefined : "0 0 auto", minWidth: vertical ? undefined : 64, whiteSpace: "nowrap", padding: vertical ? "6px 0" : "6px 10px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: on ? 700 : 500, lineHeight: 1.3,
               background: on ? it.bg : "transparent", color: on ? it.fg : "#4B5563", boxShadow: on ? `inset 3px 0 0 ${it.fg}` : "none",
               display: "flex", flexDirection: vertical ? "column" : "row", alignItems: "center", justifyContent: "center", gap: vertical ? 2 : 4,
             }}

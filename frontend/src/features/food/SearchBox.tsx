@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchKind, SearchResult } from "../../lib/apiClient";
 import type { Mode } from "../../lib/mode";
+import { useNarrow } from "../../lib/useNarrow";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 import { useSearch } from "./useFood";
 
@@ -17,6 +18,7 @@ interface SearchBoxProps {
 
 /** 주소·역명·상권·행정동·매장명 검색. 결과를 고르면 지도가 그 위치로 가고 관련 정보로 이어진다(MapPage). */
 export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps) {
+  const narrow = useNarrow();
   const [text, setText] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
@@ -49,7 +51,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
   };
 
   return (
-    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: 280 }}>
+    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: narrow ? 190 : 280, flexShrink: 0 }}>
       <input
         type="search"
         value={text}

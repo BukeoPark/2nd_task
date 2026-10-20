@@ -12,6 +12,7 @@ import { TourLayer } from "../features/guide/TourLayer";
 import { useMode } from "../features/guide/useMode";
 import { useTour } from "../features/guide/useTour";
 import { useProgress } from "../features/guide/useProgress";
+import { useNarrow } from "../lib/useNarrow";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
 import { MapLayerToolbar } from "../features/food/MapLayerToolbar";
@@ -117,6 +118,7 @@ export function MapPage() {
   const [mode, setMode] = useMode();
   const { seen, mark } = useProgress();
   const tour = useTour(mode);
+  const narrow = useNarrow();
   const [svc, setSvc] = useState<string | null>(null);
   const [scls, setScls] = useState<string | null>(null);
   const [metric, setMetric] = useState<FoodMetric>("stores");
@@ -259,6 +261,8 @@ export function MapPage() {
     return b ? bubbleToSelection(b, bubbles.data) : null;
   }, [pendingOpen, bubbles.data, bubblesActionable]);
   const shownSelection = selection ?? searchSelection;
+  // 좁은 화면에서 서랍(매장 상세·상권 분석)이 열려 있으면 그 위를 덮는 지도 도구·이용 순서·범례는 가린다
+  const hideOverlays = narrow && (storeId !== null || shownSelection !== null);
 
   // 이용 순서 표시용: 화면에서 일어난 일을 기록한다(한 번 일어나면 이 방문 동안 유지).
   const shownUnitLevel = shownSelection?.unit?.level ?? null;
@@ -321,16 +325,16 @@ export function MapPage() {
           onHelp={tour.openHelp}
         />
         <TourLayer mode={mode} tour={tour} />
-        <MapLayerToolbar
+        {!hideOverlays && <MapLayerToolbar
           anchorsOn={showAnchors}
           anchorsForced={anchorsForced}
           onAnchorsChange={setAnchorsVisible}
           rebOn={rebZonesVisible}
           onRebChange={setRebZonesVisible}
           heat={{ metric: heatMetric, onChange: setHeatMetric, data: heatData, loading: heatMetric !== null && heat.isPending, failed: heatMetric !== null && heat.isError }}
-        />
-        <FlowGuide mode={mode} seen={seen} />
-        <MapDock
+        />}
+        {!hideOverlays && <FlowGuide mode={mode} seen={seen} />}
+        {!hideOverlays && <MapDock
           legend={
             <FoodLegend
               data={bubbles.data}
@@ -348,7 +352,7 @@ export function MapPage() {
               <RankingTable data={bubbles.data} unitLabel={UNIT_LABEL[unit]} stale={bubblesStale} actionable={bubblesActionable} onPick={onRankPick} />
             )
           }
-        />
+        />}
 
         {storeId ? (
           <StoreDetailPanel

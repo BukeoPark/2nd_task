@@ -1,5 +1,6 @@
 import type { FoodCategoriesResponse, FoodMetric, SearchResult } from "../../lib/apiClient";
 import { MODES, MODE_HINT, MODE_LABEL, type Mode } from "../../lib/mode";
+import { useNarrow } from "../../lib/useNarrow";
 import { SearchBox } from "./SearchBox";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 
@@ -38,14 +39,17 @@ interface FoodTopBarProps {
 /** 요식업·카페 전용 GNB — 업종(서울시 외식 10개) → 세부 업종(소상공인 소분류), 지표. */
 export function FoodTopBar(p: FoodTopBarProps) {
   const group = p.categories?.groups.find((g) => g.svc_cd === p.svc);
+  const narrow = useNarrow();
   return (
     <div
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX + 1, top: 0, left: 0, right: 0, height: 56, background: "white",
         boxShadow: "0 1px 6px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 10, padding: "0 16px",
+        // 좁은 화면: 줄이 넘치면 바 안에서 옆으로 밀어 본다(페이지 전체가 옆으로 넓어지지 않게)
+        overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none",
       }}
     >
-      <strong style={{ fontSize: 16, color: "#111827", whiteSpace: "nowrap" }}>상권분석 · 요식업</strong>
+      <strong style={{ fontSize: narrow ? 14 : 16, color: "#111827", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow ? "상권분석" : "상권분석 · 요식업"}</strong>
       <ModeSwitch mode={p.mode} onChange={p.onModeChange} />
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
       <Select
@@ -68,7 +72,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
         options={[{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))]}
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
-      <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap" }}>지도 단위: {p.unitLabel}</span>
+      <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>
       <button type="button" data-tour="help" onClick={p.onHelp} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
         <span aria-hidden="true">? </span>도움말
       </button>
@@ -117,7 +121,7 @@ function Select({ label, value, onChange, options, disabled, title, tour }: {
       title={title}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        maxWidth: 220, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb",
+        maxWidth: 220, flexShrink: 0, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb",
         background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 13,
         cursor: disabled ? "not-allowed" : "pointer",
       }}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useNarrow } from "../lib/useNarrow";
 import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX } from "../lib/vizConfig";
 
 interface DrawerProps {
@@ -14,16 +15,18 @@ interface DrawerProps {
 }
 
 /** 지도 왼쪽에서 열리는 상세 서랍의 공용 틀(GNB 아래 전체 높이). */
+/** 좁은 화면에서는 레일 옆 남는 폭까지 꽉 채우고 지도 조작 단추(확대·축소)보다 위에 둔다. */
 export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
+  const narrow = useNarrow();
   return (
     <div
       style={{
         position: "absolute",
-        zIndex: OVERLAY_Z_INDEX,
+        zIndex: narrow ? OVERLAY_Z_INDEX + 3 : OVERLAY_Z_INDEX,
         top: 56,
         bottom: 0,
         left,
-        width: SIDE_PANEL_WIDTH_PX,
+        width: narrow ? `calc(100vw - ${left}px)` : SIDE_PANEL_WIDTH_PX,
         background: "white",
         boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
         padding: 20,
