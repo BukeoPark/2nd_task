@@ -14,7 +14,7 @@ export interface CompareRowIn { key: string; label: string; as_of: string | null
 export interface OverviewIn {
   latest_quarter: string;
   trend: { quarter: string; label: string; per_store_month: number | null; stores: number | null }[];
-  hours: { slots: { label: string; pct: number | null }[] };
+  hours: { slots: { label: string; pct: number | null }[]; pilot?: { label: string; units: number; slots: { label: string; pct: number | null }[] } };
   floating: { label: string; flpop: number | null; yoy_pct: number | null; weekend_pct: number | null; slots: { label: string; pct: number | null }[] } | null;
   area_m2?: number | null;
 }
@@ -37,7 +37,7 @@ export interface AreaReportInput {
 }
 
 // ── 출력 ──
-export interface AreaSlots { rows: { label: string; sales: number; flpop: number | null }[]; hasFloating: boolean; text: string; facts: { label: string; value: string; note: string }[]; take: string }
+export interface AreaSlots { rows: { label: string; sales: number; pilot: number | null; flpop: number | null }[]; hasPilot: boolean; pilotLabel: string; hasFloating: boolean; text: string; facts: { label: string; value: string; note: string }[]; take: string }
 export interface AreaStability {
   churn: { openRate: number | null; closeRate: number | null; medOpen: number | null; p75Open: number | null; medClose: number | null; p75Close: number | null; peers: number | null } | null;
   frc: { share: number; median: number | null } | null;
@@ -112,12 +112,31 @@ function slotsSection(inp: AreaReportInput): AreaSlots | null {
   const sales = inp.overview?.hours.slots ?? [];
   if (sales.length === 0 || sales.every((s) => s.pct === null)) return null;
   const fl = inp.overview?.floating?.slots ?? [];
-  const rows = sales.filter((s) => s.pct !== null).map((s) => ({ label: s.label, sales: s.pct as number, flpop: fl.find((f) => f.label === s.label)?.pct ?? null }));
+  const pilot = inp.overview?.hours.pilot ?? null;
+  const rows = sales.filter((s) => s.pct !== null).map((s) => ({
+    label: s.label, sales: s.pct as number, pilot: pilot?.slots.find((p) => p.label === s.label)?.pct ?? null, flpop: fl.find((f) => f.label === s.label)?.pct ?? null,
+  }));
   const hasFloating = rows.some((r) => r.flpop !== null);
+  const hasPilot = rows.some((r) => r.pilot !== null);
+  const pilotLabel = pilot?.label ?? "비교 지역";
   const top = rows.reduce((m, r) => (r.sales > m.sales ? r : m), rows[0]);
+  const scopeWord = inp.scope.replace(/ 전체$/, "");
+  let text: string;
+  if (hasPilot) {
+    // 평균과 견준 차이가 큰 시간대를 먼저 말한다(매장 리포트와 같은 기준: 5%p 이상)
+    const gaps = rows.filter((r) => r.pilot !== null).map((r) => ({ ...r, gap: r.sales - (r.pilot as number) }));
+    const hi = gaps.reduce((m, r) => (r.gap > m.gap ? r : m), gaps[0]);
+    const lo = gaps.reduce((m, r) => (r.gap < m.gap ? r : m), gaps[0]);
+    const hiOn = hi.gap >= 5, loOn = lo.gap <= -5;
+    const hiText = `${hi.label} 매출 비중 ${hi.sales.toFixed(1)}%는 ${pilotLabel} 평균(${(hi.pilot as number).toFixed(1)}%)보다 ${hi.gap.toFixed(1)}%p 높`;
+    const loText = `${lo.label} 비중 ${lo.sales.toFixed(1)}%는 평균(${(lo.pilot as number).toFixed(1)}%)보다 ${Math.abs(lo.gap).toFixed(1)}%p 낮`;
+    text = hiOn && loOn ? `${hiText}고, ${loText}습니다.` : hiOn ? `${hiText}습니다.` : loOn ? `${loText}습니다.` : `시간대별 매출 비중은 ${pilotLabel} 평균과 큰 차이가 없습니다.`;
+    text = `이 ${inp.unit.level === "trdar" ? "상권" : "행정동"}의 ${scopeWord} ` + text;
+  } else {
+    text = `이 ${inp.unit.level === "trdar" ? "상권" : "행정동"}의 ${scopeWord} 매출은 ${top.label}에 ${top.sales.toFixed(1)}%가 몰려 있습니다.`;
+  }
+  if (hasFloating && top.flpop !== null) text += ` 가장 매출이 몰린 ${top.label}의 유동인구 비중은 ${top.flpop.toFixed(1)}%입니다.`;
   const gapRow = hasFloating ? rows.filter((r) => r.flpop !== null).reduce((m, r) => ((r.sales - (r.flpop as number)) > (m.sales - (m.flpop as number)) ? r : m)) : null;
-  let text = `이 ${inp.unit.level === "trdar" ? "상권" : "행정동"}의 ${inp.scope.replace(/ 전체$/, "")} 매출은 ${top.label}에 ${top.sales.toFixed(1)}%가 몰려 있습니다.`;
-  if (hasFloating && top.flpop !== null) text += ` 같은 시간대 유동인구 비중은 ${top.flpop.toFixed(1)}%입니다.`;
   if (gapRow && gapRow.label !== top.label) text += ` ${gapRow.label}은 매출 비중이 유동인구 비중보다 ${(gapRow.sales - (gapRow.flpop as number)).toFixed(1)}%p 큽니다.`;
 
   const fo = inp.overview?.floating ?? null;
@@ -132,8 +151,10 @@ function slotsSection(inp: AreaReportInput): AreaSlots | null {
   if (fac !== null) facts.push({ label: "집객시설", value: `${fmt(fac)}곳`, note: "서울시 시설 수" });
 
   let take = "이 비중은 이 상권 같은 업종 점포 전체가 만든 평균 소비 패턴이며, 내 가게의 매출을 예측하지 않습니다. 영업시간과 메뉴를 어느 시간대 수요에 맞출지 정할 때 참고하고, 현장에서 시간대별 손님 흐름을 직접 확인하세요.";
+  const lowRow = hasPilot ? rows.filter((r) => r.pilot !== null).reduce((m, r) => ((r.sales - (r.pilot as number)) < (m.sales - (m.pilot as number)) ? r : m)) : null;
+  if (lowRow && lowRow.sales - (lowRow.pilot as number) <= -5) take = `${lowRow.label}의 매출 비중이 ${pilotLabel} 평균보다 낮다는 것은 그 시간대 수요를 덜 가져오고 있을 가능성을 보여 줍니다. 원인은 이 자료로 알 수 없습니다. ` + take;
   if (top.sales >= 45) take = `${top.label}에 매출이 크게 쏠린 상권입니다. 그 시간대 수요를 노린 영업이라면 잘 맞고, 다른 시간대(예: 점심) 수요를 기대한다면 현장 유동을 먼저 확인해 보세요. ` + take;
-  return { rows, hasFloating, text, facts, take };
+  return { rows, hasPilot, pilotLabel, hasFloating, text, facts, take };
 }
 
 function stabilitySection(inp: AreaReportInput): AreaStability | null {
@@ -208,7 +229,10 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   const unitWord = inp.unit.level === "trdar" ? "상권" : "행정동";
 
   const top = slots ? slots.rows.reduce((m, r) => (r.sales > m.sales ? r : m), slots.rows[0]) : null;
-  const headline = top && top.sales >= 40
+  const pgap = slots && slots.hasPilot ? slots.rows.filter((r) => r.pilot !== null).map((r) => ({ label: r.label, gap: r.sales - (r.pilot as number) })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0] : null;
+  const headline = pgap && Math.abs(pgap.gap) >= 8
+    ? `${inp.unit.name} ${scopeShort}, ${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높습니다" : "낮습니다"}`
+    : top && top.sales >= 40
     ? `${inp.unit.name} ${scopeShort}, 매출의 ${Math.round(top.sales)}%가 ${top.label}에 몰립니다`
     : level
       ? `${inp.unit.name}, ${scopeShort} 점포당 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배입니다`

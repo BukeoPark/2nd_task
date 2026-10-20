@@ -20,7 +20,10 @@ const input: AreaReportInput = {
       { quarter: "20244", label: "2024년 4분기", per_store_month: 45_118_608, stores: 33 },
       { quarter: "20262", label: "2026년 2분기", per_store_month: 39_341_113, stores: 31 },
     ],
-    hours: { slots: [{ label: "00~06시", pct: 1 }, { label: "06~11시", pct: 0.2 }, { label: "11~14시", pct: 19.5 }, { label: "14~17시", pct: 5.5 }, { label: "17~21시", pct: 55.3 }, { label: "21~24시", pct: 18.5 }] },
+    hours: {
+      slots: [{ label: "00~06시", pct: 1 }, { label: "06~11시", pct: 0.2 }, { label: "11~14시", pct: 19.5 }, { label: "14~17시", pct: 5.5 }, { label: "17~21시", pct: 55.3 }, { label: "21~24시", pct: 18.5 }],
+      pilot: { label: "파일럿 구 상권", units: 127, slots: [{ label: "00~06시", pct: 2.5 }, { label: "06~11시", pct: 1.6 }, { label: "11~14시", pct: 32.6 }, { label: "14~17시", pct: 8.5 }, { label: "17~21시", pct: 40.7 }, { label: "21~24시", pct: 14.2 }] },
+    },
     floating: { label: "2026년 2분기", flpop: 30639, yoy_pct: -15.51, weekend_pct: 25.7, slots: [{ label: "00~06시", pct: 20.3 }, { label: "06~11시", pct: 21.1 }, { label: "11~14시", pct: 15.3 }, { label: "14~17시", pct: 14.7 }, { label: "17~21시", pct: 17.5 }, { label: "21~24시", pct: 11.1 }] },
   },
   character: { type: { headline: "상업 집중형" }, strengths: ["경계 안에 역 1곳이 있습니다."], cautions: ["직장·상주 인구 자료가 없습니다."], sections: { transit: { rail: { count: 1, boardings_observed: 21816, alightings_observed: 22550, year: 2025, usage_state: "all_linked" }, bus: { count: 0, boardings_observed: null, alightings_observed: null, usage_state: "no_stops" } } } },
@@ -50,13 +53,16 @@ test("상권 단위 리포트: 값은 API 그대로, 순위는 점포 20곳 이�
   assert.match(r.level!.text, /3,934만원으로 비교 상권 5곳 중앙값\(3,934만원\)의 약 1\.0배/);
   assert.match(r.level!.text, /정점보다 13% 낮습니다/);
   assert.match(r.level!.text, /총매출은 전년 동기 대비 -5\.6%/);
-  assert.equal(r.headline, "문래역(문래로데오거리) 한식음식점, 매출의 55%가 17~21시에 몰립니다");
+  assert.equal(r.headline, "문래역(문래로데오거리) 한식음식점, 17~21시 매출 비중이 평균보다 14.6%p 높습니다");
 });
 
 test("시간대: 매출과 유동인구 비중을 나란히 말하고, 한 시간대에 쏠리면 다른 시간대 확인을 권한다", () => {
   const s = buildAreaReport(input).slots!;
   assert.equal(s.hasFloating, true);
-  assert.match(s.text, /17~21시에 55\.3%가 몰려 있습니다\. 같은 시간대 유동인구 비중은 17\.5%/);
+  assert.match(s.text, /17~21시 매출 비중 55\.3%는 파일럿 구 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
+  assert.match(s.text, /가장 매출이 몰린 17~21시의 유동인구 비중은 17\.5%/);
+  assert.equal(s.hasPilot, true);
+  assert.match(s.take, /11~14시의 매출 비중이 파일럿 구 상권 평균보다 낮다는 것은/);
   assert.match(s.take, /다른 시간대/);
   assert.deepEqual(s.facts.find((f) => f.label === "상주인구"), { label: "상주인구", value: "자료 없음", note: "원천에 값이 없음(0이 아님)" });
 });
@@ -85,6 +91,6 @@ test("자료가 없는 쪽은 만들지 않는다", () => {
   assert.deepEqual(empty.tiles, []);
   assert.equal(empty.headline, "문래역(문래로데오거리) 한식음식점 상권 읽기");
   // 시간대 쏠림이 없으면 매출 수준으로 제목을 만든다
-  const flat = buildAreaReport({ ...input, overview: { ...input.overview!, hours: { slots: input.overview!.hours.slots.map((x) => ({ ...x, pct: 16.6 })) } } });
+  const flat = buildAreaReport({ ...input, overview: { ...input.overview!, hours: { slots: input.overview!.hours.slots.map((x) => ({ ...x, pct: 16.6 })) } /* 평균 자료 없음 */ } });
   assert.equal(flat.headline, "문래역(문래로데오거리), 한식음식점 점포당 추정매출은 비교 상권 중앙값의 1.0배입니다");
 });

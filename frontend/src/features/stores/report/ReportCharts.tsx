@@ -225,9 +225,9 @@ export function ForestChart({ f }: { f: FactorsSection }) {
 /** 상권·행정동 리포트: 시간대별 매출 비중과 유동인구 비중(두 계열). */
 export function AreaSlotsChart({ s }: { s: AreaSlots }) {
   const L = 34, R = 692, B = 215, Tp = 22;
-  const max = Math.max(20, Math.ceil(Math.max(...s.rows.flatMap((d) => [d.sales, d.flpop ?? 0])) / 20) * 20);
-  const gw = (R - L) / s.rows.length, bw = 26, gap = 4;
-  const n = s.hasFloating ? 2 : 1;
+  const max = Math.max(20, Math.ceil(Math.max(...s.rows.flatMap((d) => [d.sales, d.pilot ?? 0, d.flpop ?? 0])) / 20) * 20);
+  const n = 1 + (s.hasPilot ? 1 : 0) + (s.hasFloating ? 1 : 0);
+  const gw = (R - L) / s.rows.length, bw = n === 3 ? 22 : 26, gap = 4;
   const y = (v: number) => B - (v / max) * (B - Tp);
   const ticks: number[] = [];
   for (let g = 0; g <= max; g += 20) ticks.push(g);
@@ -237,6 +237,7 @@ export function AreaSlotsChart({ s }: { s: AreaSlots }) {
       {s.rows.map((d, i) => {
         const cx = L + i * gw + gw / 2, x0 = cx - (n * bw + (n - 1) * gap) / 2;
         const bars: [number, string, boolean][] = [[d.sales, C.accent, true]];
+        if (s.hasPilot) bars.push([d.pilot ?? 0, C.slate, false]);
         if (s.hasFloating) bars.push([d.flpop ?? 0, C.teal, false]);
         return (
           <g key={d.label}>

@@ -422,7 +422,7 @@ export interface UnitOverviewResponse {
   trend: { quarter: string; label: string; sales_q: number | null; stores: number | null; per_store_month: number | null; used: number; total: number }[];
   trend_source: string;
   trend_scope: string;
-  hours: { quarter: string; label: string; used: number; total: number; slots: HourSlot[] };
+  hours: { quarter: string; label: string; used: number; total: number; slots: HourSlot[]; /** 같은 단위(상권 또는 행정동) 전체의 시간대 매출 비중 평균 — 비교용 */ pilot?: { label: string; units: number; slots: HourSlot[] } };
   floating: {
     quarter: string;
     label: string;

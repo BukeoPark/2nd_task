@@ -75,17 +75,37 @@ def _trend(df: pd.DataFrame) -> list[dict]:
     return sorted(out, key=lambda r: r["quarter"])
 
 
-def _consumption_hours(df: pd.DataFrame, latest: str) -> dict:
-    """매출 시간대 비중 — 업종별 비중을 매출액으로 가중 평균. 여섯 칸이 모두 값인 업종 행만 쓴다."""
-    g = df.loc[df["quarter"] == latest]
+def _weighted_shares(g: pd.DataFrame) -> tuple[list[float] | None, int]:
+    """업종 행별 시간대 비중을 매출액으로 가중 평균(%). 여섯 칸이 모두 값이고 매출이 있는 행만 쓴다. (비중, 쓴 행 수)"""
     cols = [c for c, _ in TIME_COLS]
     ok = g.loc[g["sales_q"].notna() & (g["sales_q"] > 0) & g[cols].notna().all(axis=1)]
-    shares = None
-    if len(ok):
-        w = ok["sales_q"].to_numpy()
-        shares = [_num((ok[c].to_numpy() * w).sum() / w.sum() * 100, 1) for c in cols]
-    return {"quarter": latest, "label": store_churn.quarter_label(latest), "used": int(len(ok)), "total": int(len(g)),
-            "slots": [{"label": lb, "pct": None if shares is None else shares[i]} for i, (_, lb) in enumerate(TIME_COLS)]}
+    if ok.empty:
+        return None, 0
+    w = ok["sales_q"].to_numpy()
+    return [float((ok[c].to_numpy() * w).sum() / w.sum() * 100) for c in cols], int(len(ok))
+
+
+@lru_cache(maxsize=64)
+def _pilot_hours(level: str, svc: str | None, latest: str) -> tuple[tuple[float, ...] | None, int]:
+    """같은 단위(상권 또는 행정동) 전체의 시간대 매출 비중 평균 — 파일럿 두 구 안의 같은 업종 모든 단위를 매출액으로 가중. 이 단위 자신도 포함한다."""
+    table, key = ("trdar_industry_sales.parquet", "trdar_cd") if level == "trdar" else ("dong_industry_sales.parquet", "adongCd")
+    df = data_store.load_parquet(table)
+    g = df.loc[df["svc_cd"].str.startswith(food_map.FOOD_SVC_PREFIX) & (df["quarter"] == latest)]
+    if svc:
+        g = g.loc[g["svc_cd"] == svc]
+    shares, _ = _weighted_shares(g)
+    return (None if shares is None else tuple(shares)), int(g[key].nunique())
+
+
+def _consumption_hours(df: pd.DataFrame, latest: str, level: str = "trdar", svc: str | None = None) -> dict:
+    """매출 시간대 비중 — 업종별 비중을 매출액으로 가중 평균. 여섯 칸이 모두 값인 업종 행만 쓴다. pilot 은 같은 단위 전체 평균(비교용)."""
+    g = df.loc[df["quarter"] == latest]
+    shares, used = _weighted_shares(g)
+    pilot, pilot_units = _pilot_hours(level, svc, latest)
+    return {"quarter": latest, "label": store_churn.quarter_label(latest), "used": used, "total": int(len(g)),
+            "slots": [{"label": lb, "pct": None if shares is None else _num(shares[i], 1)} for i, (_, lb) in enumerate(TIME_COLS)],
+            "pilot": {"label": "파일럿 구 " + ("상권" if level == "trdar" else "행정동"), "units": pilot_units,
+                      "slots": [{"label": lb, "pct": None if pilot is None else _num(pilot[i], 1)} for i, (_, lb) in enumerate(TIME_COLS)]}}
 
 
 def _floating(level: str, code: str) -> dict | None:
@@ -114,7 +134,7 @@ def overview(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     body = {"level": level, "code": code, "name": units.loc[code, "name"], "type": units.loc[code].get("type") if "type" in units else None,
             "scope": scope, "latest_quarter": latest,
             "trend": _trend(df), "trend_source": "서울시 상권분석서비스(추정매출·점포)", "trend_scope": scope["sales_label"] + " 기준",
-            "hours": _consumption_hours(df, latest), "floating": _floating(level, code)}
+            "hours": _consumption_hours(df, latest, level, svc), "floating": _floating(level, code)}
     if level == "dong":
         found = _overlaps().get(code, [])
         keep = [r for r in found if r["overlap_pct"] >= MIN_OVERLAP * 100]

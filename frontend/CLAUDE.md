@@ -42,6 +42,7 @@
     - 튜토리얼이 가리킬 요소에는 `data-tour="..."` 를 붙인다(mode·search·svc·scls·metric·flow·dock·layers·rail·area-rail·report-button).
     - **상권 인사이트 리포트(예비 창업자용)**(`features/area/AreaReportModal`, 문장·숫자는 `lib/areaReport`): 행정동·상권 종합분석 '요약'의 버튼이 지역 × 업종 하나를 매장 리포트와 같은 틀(4쪽: 요약 / 매출 수준·흐름 / 시간대·수요 / 안정성·입지와 창업 전 확인)로 펼친다.
       틀·스타일·차트는 매장 리포트와 공유한다(`report/ReportShell`·`reportStyles`·`ReportCharts`). 자료는 종합분석·입지 비교가 쓰는 조회(`useFoodCompare`·`useUnitOverview`·`useAreaCharacter`·`useFoodBubbles`)를 같은 키로 재사용하고 백엔드는 바꾸지 않는다.
+      시간대 매출 비중은 종합분석 overview 의 `hours.pilot`(같은 단위 전체의 매출 가중 평균, 매장 리포트가 쓰는 값과 같은 방식)과 견줘 '평균보다 높다·낮다'로 말한다(5%p 이상 차이만).
       비교 지역 값(순위·중앙값·상위 25% 경계)은 지도 지표(버블)에서 만들며, 개업·폐업률은 지도 지표가 **분기** 값이라 같은 분기 값끼리만 견준다(연 값은 비교 없이 따로 보임). '창업 적합도' 같은 점수는 만들지 않는다.
     - 어려운 말은 `components/Term`(`?` 버튼)과 `lib/glossary` 로 풀이한다. 풀이 문구는 서버·계산 모듈의 실제 정의와 같게 유지하고, 화면에서 쓰지 않는 용어는 넣지 않는다.
     - 화면에 라벨이 없는 `<select>` 등은 `aria-label` 로 용도 이름을 단다. 작은 보조 글씨는 흰 배경에서 `#6B7280`(대비 4.5:1) 이상으로 쓴다.

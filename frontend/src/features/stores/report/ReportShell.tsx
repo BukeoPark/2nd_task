@@ -38,8 +38,8 @@ export const TileBox = ({ label, value, note, tone = "plain" }: { label: string;
     {note && <span style={{ fontSize: 12, color: C.mute, lineHeight: 1.45 }}>{note}</span>}
   </div>
 );
-export const Take = ({ text }: { text: string }) => (
-  <div style={takeS}><div style={{ ...eyebrow, marginBottom: 2 }}>사장님께 의미</div><p style={{ margin: 0 }}>{text}</p></div>
+export const Take = ({ text, label = "사장님께 의미" }: { text: string; label?: string }) => (
+  <div style={takeS}><div style={{ ...eyebrow, marginBottom: 2 }}>{label}</div><p style={{ margin: 0 }}>{text}</p></div>
 );
 
 /** 전체 화면 리포트 틀 — 위쪽 도구줄(인쇄·닫기), Esc 로 닫기, 인쇄할 때는 리포트만 나오게 한다. */
