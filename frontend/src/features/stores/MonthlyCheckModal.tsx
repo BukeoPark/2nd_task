@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Notice } from "../../components/Notice";
+import { ModalNav } from "../nav/ModalNav";
+import { useOverlayBack } from "../nav/useOverlayBack";
 import { apiClient } from "../../lib/apiClient";
 import { MONTHLY_ITEMS, MEMO_MAX, loadMonth, monthOf, monthlyDone, recordSummary, saveMonth, type MonthState } from "../../lib/monthlyCheck";
 import type { StoreRecord } from "../../lib/myStoreStorage";
@@ -33,13 +35,12 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
   const nearby = useNearbyAnalysis(storeId, 500);
   const bench = useQuery({ queryKey: ["sales-benchmark", storeId], queryFn: () => apiClient.getSalesBenchmark(storeId), staleTime: 10 * 60 * 1000 });
   const back = useRef<HTMLButtonElement>(null);
+  const requestClose = useOverlayBack(onClose);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     back.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); opener?.focus?.(); };
-  }, [onClose]);
+    return () => { opener?.focus?.(); };
+  }, []);
 
   const update = (next: MonthState) => { setState(next); setSaveFailed(!saveMonth(storeId, month, next)); };
   const done = monthlyDone(state, sum.hasThisMonth);
@@ -49,7 +50,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="우리 가게 월간 점검" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button ref={back} type="button" onClick={onClose} style={{ border: "1px solid #3B82F6", background: "white", color: "#3B82F6", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}>← 지도로 돌아가기</button>
+        <ModalNav onBack={requestClose} backRef={back} />
         <strong style={{ fontSize: 22 }}>우리 가게 월간 점검</strong>
         <span style={{ color: "#6B7280", fontSize: 13 }}>{storeName} · {month}</span>
       </div>

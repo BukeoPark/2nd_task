@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { HOME_HREF } from "../../../lib/homeLink";
+import { useOverlayBack } from "../../nav/useOverlayBack";
 import { C } from "./reportColors";
 import { capS, eyebrow, h2, reportCss, takeS } from "./reportStyles";
 
@@ -7,7 +9,7 @@ export function Page({ n, total, children }: { n: number; total: number; childre
   return (
     <section className="irp-page">
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 11, letterSpacing: ".04em", color: C.mute, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
-        <span>상권 인사이트 리포트 · 공개 통계 기반</span><span>{n} / {total}</span>
+        <span>상권분석 보고서 · 공개 통계 기반</span><span>{n} / {total}</span>
       </div>
       {children}
     </section>
@@ -44,22 +46,22 @@ export const Take = ({ text, label = "사장님께 의미" }: { text: string; la
 
 /** 전체 화면 리포트 틀 — 위쪽 도구줄(인쇄·닫기), Esc 로 닫기, 인쇄할 때는 리포트만 나오게 한다. */
 export function ReportFrame({ title, canPrint, onClose, children }: { title: string; canPrint: boolean; onClose: () => void; children: ReactNode }) {
+  const requestClose = useOverlayBack(onClose);   // 브라우저 뒤로·'← 뒤로'·Esc 가 같은 길로 닫는다
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", key);
-    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", key); };
-  }, [onClose]);
+    return () => { document.body.style.overflow = prev; };
+  }, []);
   return createPortal(
     <div className="irp-overlay" role="dialog" aria-modal="true" aria-label={title}>
       <style>{reportCss}</style>
       <div className="irp-bar">
-        <strong style={{ fontSize: 14 }}>{title}</strong>
-        <span style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => window.print()} disabled={!canPrint} style={{ background: "#fff", color: C.ink }}>인쇄 / PDF로 저장</button>
-          <button type="button" onClick={onClose} style={{ background: "#3A4656", color: "#fff" }}>닫기</button>
+        <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0, flexWrap: "wrap" }}>
+          <button type="button" onClick={requestClose} style={{ background: "#fff", color: C.ink }}>← 뒤로</button>
+          <a href={HOME_HREF} aria-label="홈(랜딩페이지)으로" style={{ background: "#3A4656", color: "#fff", borderRadius: 6, padding: "7px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>홈</a>
+          <strong style={{ fontSize: 14 }}>{title}</strong>
         </span>
+        <button type="button" onClick={() => window.print()} disabled={!canPrint} style={{ background: "#fff", color: C.ink }}>인쇄 / PDF로 저장</button>
       </div>
       <div className="irp-sheet">{children}</div>
     </div>,

@@ -141,18 +141,22 @@ export function AreaOverviewPanel(p: Props) {
       {pane("summary", "요약", (
         <>
           {brief && <AreaBriefCard brief={brief} onAction={onBriefAction} />}
-          {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
-          <Fold title="그 밖의 작업 — 지도에서 보기 · 관심 지역 · 비교 · 리포트">
-            {p.actions}
+          {brief && (
             <button
               type="button"
               data-tour="area-report-button"
               onClick={() => { setReportOpen(true); p.onProgress?.("report"); }}
-              style={{ width: "100%", marginTop: 4, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" }}
+              style={{ width: "100%", marginTop: 12, minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" }}
             >
-              {unitKind} 인사이트 리포트 뽑기
-              <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.85 }}>{p.mode === "owner" ? "자영업자용" : "예비 창업자용"} 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+              상권분석 보고서 보기 ›
+              <span style={{ display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>
+                {unitKind} 전체 · {p.mode === "owner" ? "내 매장 주변 경쟁·상권 변화·고객 수요" : "매출 흐름·경쟁·입지·확인사항"} · 지역 보고서 · 인쇄·PDF 저장
+              </span>
             </button>
+          )}
+          {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
+          <Fold title="그 밖의 작업 — 지도에서 보기 · 내 관심 지역">
+            {p.actions}
           </Fold>
           <Fold title="지표 카드·기준 안내 자세히">
             {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}

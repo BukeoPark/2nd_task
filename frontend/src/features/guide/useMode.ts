@@ -19,7 +19,7 @@ export function useMode(): [Mode, (m: Mode) => void] {
     } catch {
       /* 저장 못 해도 이번 방문에는 적용된다 */
     }
-    window.history.replaceState(null, "", `${window.location.pathname}${withMode(window.location.search, m)}${window.location.hash}`);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${withMode(window.location.search, m)}${window.location.hash}`);
   }, []);
   return [mode, setMode];
 }

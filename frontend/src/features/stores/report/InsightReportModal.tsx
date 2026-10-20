@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { apiClient } from "../../../lib/apiClient";
 import { buildInsightReport, sampleNote, type InsightReport } from "../../../lib/insightReport";
 import { buildTriad } from "../../../lib/reportTriad";
+import { ReportLead } from "./ReportLead";
+import { reportLead } from "../../../lib/reportLead";
 import { ReportTriad } from "./ReportTriad";
 import { useLocationInfluence, useNearbyAnalysis, useStoreDetail } from "../useStores";
 import { AgeChart, ChurnChart, ForestChart, HistogramChart, RateBullets, SlotsChart, TrendChart } from "./ReportCharts";
@@ -28,6 +30,7 @@ function ReportPages({ r, today: date }: { r: InsightReport; today: string }) {
           <h1 style={{ fontSize: "clamp(26px,5vw,38px)", lineHeight: 1.25, fontWeight: 900, margin: 0, letterSpacing: "-.02em", textWrap: "balance" }}>{r.headline}</h1>
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
+        <ReportLead lead={reportLead("owner", "store", { level: no("level") || undefined, slots: no("slots") || undefined, competition: hasChurn ? no("comp") : undefined, checklist: r.checklist.length > 0 ? total : undefined })} />
         <ReportTriad triad={buildTriad({ mode: "owner", tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <div>
@@ -155,7 +158,7 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
   const partialFailures = [bench.isError && "상권 매출 비교", nearby.isError && "주변 인허가 분석", loc.isError && "입지 영향력"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame title="상권 인사이트 리포트" canPrint={Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame title="상권분석 보고서 · 내 매장(자영업자용)" canPrint={Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>

@@ -1,11 +1,14 @@
 import { useQueries } from "@tanstack/react-query";
 import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { BarList, LineChart } from "../../components/MiniCharts";
 import { Notice } from "../../components/Notice";
 import { apiClient, type FoodLevel, type UnitOverviewResponse } from "../../lib/apiClient";
 import { compareHighlights } from "../../lib/compareHighlights";
 import { compactPeriod, formatKrw, formatMetric, shortQuarter } from "../../lib/format";
 import { useNarrow } from "../../lib/useNarrow";
+import { ModalNav } from "../nav/ModalNav";
+import { useOverlayBack } from "../nav/useOverlayBack";
 import { viewState } from "../../lib/queryState";
 import { SERIES_COLORS } from "../../lib/vizConfig";
 import { CompareTable } from "./ComparePanel";
@@ -41,6 +44,7 @@ interface Props {
 
 /** 전체 화면 지역 비교 — 같은 단위 2~4곳. 기존 /api/food/compare 값을 표와 차트로 보여주고, 추이는 단위별 overview 를 쓴다. */
 export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, onRemove, onClose, suggestions = [], onShowOnMap }: Props) {
+  const requestClose = useOverlayBack(onClose);
   const q = useFoodCompare(level, codes, svc, scls);
   const state = viewState({ isPending: q.isPending, isError: q.isError, isPlaceholderData: q.isPlaceholderData, hasData: q.data !== undefined });
   const list = useFoodBubbles(level, "stores", svc, scls);
@@ -65,10 +69,10 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
       const t = trends[i]?.data;
       return { name: t?.name ?? c, color: color(c), values: quarters.map((qt) => { const r = t?.trend.find((x) => x.quarter === qt); return r ? pick(r) : null; }) };
     });
-  return (
-    <div role="dialog" aria-label="지역 비교" style={{ position: "fixed", inset: 0, zIndex: 100, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="지역 비교" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
       <div style={{ position: "sticky", top: 0, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", zIndex: 1 }}>
-        <button type="button" onClick={onClose} style={{ border: "1px solid #3B82F6", background: "white", color: "#3B82F6", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}>← 지도로 돌아가기</button>
+        <ModalNav onBack={requestClose} />
         <strong style={{ fontSize: 22 }}>{UNIT_NOUN[level]} 비교</strong>
         <span style={{ color: "#6B7280", fontSize: 13 }}>선택 업종: {filterName}</span>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto", alignItems: "center" }}>
@@ -184,7 +188,8 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

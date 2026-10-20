@@ -14,12 +14,10 @@ interface Props {
   filterName: string;
   /** 후보를 눌렀을 때 — 기존 상권·행정동 종합분석으로 연결(MapPage 가 선택 상태를 만든다) */
   onPick: (b: FoodBubble, data: FoodBubblesResponse) => void;
-  onCompare: (code: string) => void;
+  /** 그 지역의 상권분석 보고서 */
+  onReport: (b: FoodBubble) => void;
   onFavorite: (b: FoodBubble, data: FoodBubblesResponse) => void;
   isFavorite: (code: string) => boolean;
-  inBasket: (code: string) => boolean;
-  /** 비교 목록에 담을 수 없는 이유(담을 수 있으면 null) */
-  basketBlock: (code: string) => string | null;
   onPreset: (id: PresetId) => void;
   onLevel: (l: "dong" | "trdar") => void;
   onClose: () => void;
@@ -75,8 +73,6 @@ export function ExplorePanel(p: Props) {
               {res.candidates.map((c) => {
                 const b = fresh.bubbles.find((x) => x.code === c.code) as FoodBubble;
                 const fav = p.isFavorite(c.code);
-                const inB = p.inBasket(c.code);
-                const block = p.basketBlock(c.code);
                 return (
                   <li key={c.code} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 10px", background: "white" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
@@ -87,9 +83,9 @@ export function ExplorePanel(p: Props) {
                       {fresh.label} · 같은 업종 점포 {c.stores.toLocaleString()}곳{c.caution ? ` · 점포 ${SAMPLE_MIN}~19곳이라 값이 크게 흔들릴 수 있어요` : ""}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                      <button type="button" onClick={() => p.onPick(b, fresh)} style={btn(true)}>상세 보기 ›</button>
-                      <button type="button" disabled={inB || block !== null} onClick={() => p.onCompare(c.code)} style={btn(false, inB || block !== null)} title={!inB && block ? block : undefined}>{inB ? "비교에 담김" : "비교에 담기"}</button>
-                      <button type="button" aria-pressed={fav} onClick={() => p.onFavorite(b, fresh)} style={btn(false)}>{fav ? "★ 검토함에서 빼기" : "☆ 검토함에 담기"}</button>
+                      <button type="button" onClick={() => p.onReport(b)} style={btn(true)}>상권분석 보고서 보기 ›</button>
+                      <button type="button" onClick={() => p.onPick(b, fresh)} style={btn(false)}>종합분석 보기</button>
+                      <button type="button" aria-pressed={fav} onClick={() => p.onFavorite(b, fresh)} style={btn(false)}>{fav ? "★ 내 관심 지역에서 빼기" : "☆ 내 관심 지역에 담기"}</button>
                     </div>
                   </li>
                 );

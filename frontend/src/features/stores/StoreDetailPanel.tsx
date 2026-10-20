@@ -60,6 +60,8 @@ interface StoreDetailPanelProps {
   onHoverStore?: (id: string | null) => void;
   /** 경쟁 가게 목록에서 열어 본 곳이면 true — '내 가게'와 헷갈리지 않게 알린다 */
   asRival?: boolean;
+  /** 이 매장이 속한 상권(없으면 행정동)의 지역 보고서를 연다 — 매장 보고서는 자영업자용만 있어서 예비 창업자는 이쪽을 쓴다 */
+  onOpenAreaReport?: (t: { level: "dong" | "trdar"; code: string; name: string; type: string | null; svc: string | null }) => void;
   /** 우리 가게 월간 점검 화면(자영업자) — 열림 상태는 상단 바 단추와 함께 쓰려고 MapPage 가 들고 있다 */
   monthlyOpen?: boolean;
   onMonthlyOpenChange?: (open: boolean) => void;
@@ -74,7 +76,7 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange, onSelectStore, onHoverStore, asRival = false, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange, onSelectStore, onHoverStore, asRival = false, onOpenAreaReport, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroupState] = useState<GroupId>("store");
@@ -110,6 +112,13 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
   const facilityPlan = useMemo(() => facilityMapPlan(loc.isPlaceholderData ? null : facResp, radius, showFacilities), [facResp, loc.isPlaceholderData, radius, showFacilities]);
   // 네이버 장소 ID 가 없어 장소 상세가 아니라 검색 결과로만 보낸다. 긴 전체 주소는 '업체 없음'이 나오기 쉬워 기본 검색어는 짧게 쓴다.
   const naver = store ? naverSearches(store) : null;
+  /** 소속 상권(없으면 행정동)의 지역 보고서 — 그 매장의 업종 기준 */
+  const areaReport = () => {
+    if (!store || !onOpenAreaReport) return;
+    onOpenAreaReport(store.trdar
+      ? { level: "trdar", code: store.trdar.code, name: store.trdar.name, type: store.trdar.type, svc: store.category.svc ?? null }
+      : { level: "dong", code: store.adong_cd, name: store.dong, type: null, svc: store.category.svc ?? null });
+  };
 
   const blocks: Record<BlockId, ReactNode> | null =
     store && data
@@ -236,6 +245,23 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                   <div style={{ marginTop: 10 }}><Notice tone="info">경쟁 가게로 열어 본 곳이에요. 아래 '내 가게' 기록이나 점검은 이 가게가 아니라 내 가게 기준이에요(이 가게의 기록은 없어요).</Notice></div>
                 )}
                 {g === "store" && (
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {mode === "owner" && (
+                      <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
+                        내 매장 보고서 보기 ›
+                        <span style={reportSubStyle}>이 매장 기준 · 주변 경쟁·상권 변화·고객 수요·확인사항 · 매장 보고서</span>
+                      </button>
+                    )}
+                    {onOpenAreaReport && (
+                      <button type="button" data-tour={mode === "founder" ? "report-button" : undefined} onClick={() => { areaReport(); onProgress("report"); }} style={mode === "owner" ? reportSecondaryStyle : reportButtonStyle}>
+                        소속 {store.trdar ? "상권" : "행정동"} 보고서 보기 ›
+                        <span style={mode === "owner" ? { ...reportSubStyle, color: "#7C2D12" } : reportSubStyle}>{store.trdar ? store.trdar.name : store.dong} 전체 · {mode === "owner" ? "지역 보고서" : "후보지 매출 흐름·경쟁·입지·확인사항 · 지역 보고서"}</span>
+                      </button>
+                    )}
+                    {mode === "founder" && <div style={{ fontSize: 12.5, color: "#6B7280" }}>매장 한 곳의 보고서는 자영업자용만 제공돼요. 예비 창업자는 이 매장이 속한 지역의 보고서를 볼 수 있어요.</div>}
+                  </div>
+                )}
+                {g === "store" && (
                   <StoreBriefCard
                     brief={buildStoreBrief({
                       mode,
@@ -258,10 +284,11 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                     <Fragment key={id}>{blocks[id]}</Fragment>
                   ))}
                 </NoteHost>
-                <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
-                  상권 인사이트 리포트 뽑기
-                  <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>공개 통계로 만든 4쪽 요약 · 인쇄·PDF 저장 가능</span>
-                </button>
+                {g !== "store" && (
+                  <button type="button" onClick={() => (mode === "owner" ? (setReportOpen(true), onProgress("report")) : areaReport())} style={{ ...reportLinkStyle }}>
+                    {mode === "owner" ? "내 매장 보고서 보기 ›" : "소속 상권 보고서 보기 ›"}
+                  </button>
+                )}
               </div>
             ))}
           </>
@@ -286,6 +313,9 @@ function naverSearches(store: StoreBasic): { primary: string | null; nameOnly: s
 
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
-const reportButtonStyle: React.CSSProperties = { width: "100%", marginTop: 16, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" };
+const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" };
+const reportSubStyle: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 };
+const reportSecondaryStyle: React.CSSProperties = { width: "100%", minHeight: 48, padding: "10px 14px", border: "2px solid #C2410C", borderRadius: 12, background: "white", color: "#9A3412", fontWeight: 800, fontSize: 15.5, cursor: "pointer", textAlign: "left" };
+const reportLinkStyle: React.CSSProperties = { marginTop: 16, minHeight: 40, padding: "8px 14px", border: "1px solid #C2410C", borderRadius: 10, background: "white", color: "#9A3412", fontWeight: 700, fontSize: 14.5, cursor: "pointer" };
 const naverLinkStyle: React.CSSProperties = { display: "inline-block", marginTop: 6, padding: "4px 10px", border: "1px solid #03C75A", borderRadius: 6, color: "#02A94C", fontSize: 12, fontWeight: 600, textDecoration: "none" };
 const subLinkStyle: React.CSSProperties = { color: "#02A94C", textDecoration: "underline" };

@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { ReportLead } from "../stores/report/ReportLead";
+import { reportLead } from "../../lib/reportLead";
 import { ReportTriad } from "../stores/report/ReportTriad";
 import { buildTriad } from "../../lib/reportTriad";
 import { sampleNote } from "../../lib/insightReport";
@@ -61,6 +63,7 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
           <h1 style={{ fontSize: "clamp(26px,5vw,38px)", lineHeight: 1.25, fontWeight: 900, margin: 0, letterSpacing: "-.02em", textWrap: "balance" }}>{r.headline}</h1>
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
+        <ReportLead lead={reportLead(r.lens.mode, "area", { level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("stab") : undefined, checklist: r.checklist.length > 0 ? total : undefined })} />
         <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: r.lens.caution.map((c) => c.title), checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <div>
@@ -196,7 +199,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
   const partialFailures = [ov.isError && "시간대·유동인구", ch.isError && "상권 유형·입지", (bPer.isError || bClose.isError || bOpen.isError || bFrc.isError) && "비교 지역 분포"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame title={`상권 인사이트 리포트 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame title={`상권분석 보고서 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>

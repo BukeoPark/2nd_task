@@ -40,7 +40,7 @@ export function ComparePanel({ level, codes, svc, scls, filterName, onRemove, on
           ×
         </button>
       </div>
-      {codes.length < 2 && <Notice tone="muted">지도에서 버블을 눌러 '비교에 담기'로 한 곳 이상 더 담으면 나란히 비교할 수 있어요(최대 4곳).</Notice>}
+      {codes.length < 2 && <Notice tone="muted">위쪽 '+ 추가'로 한 곳 이상 더 고르면 나란히 비교할 수 있어요(최대 4곳). '내 관심 지역'에서 저장한 지역을 골라 와도 돼요.</Notice>}
       {state === "loading" && <Notice tone="muted">비교 자료를 불러오는 중...</Notice>}
       {state === "error" && (
         <Notice tone="error">

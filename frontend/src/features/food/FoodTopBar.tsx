@@ -1,5 +1,6 @@
 import type { FoodCategoriesResponse, FoodMetric, SearchResult } from "../../lib/apiClient";
 import { MODES, MODE_HINT, MODE_LABEL, type Mode } from "../../lib/mode";
+import { HOME_HREF } from "../../lib/homeLink";
 import { useNarrow } from "../../lib/useNarrow";
 import { useEffect, useState } from "react";
 import { SearchBox } from "./SearchBox";
@@ -35,12 +36,13 @@ interface FoodTopBarProps {
   onModeChange: (m: Mode) => void;
   /** 도움말 — 튜토리얼 다시 보기 */
   onHelp: () => void;
-  /** 관심 지역 — 저장한 곳 수와 목록 열기 */
-  favCount: number;
-  favOpen: boolean;
-  onToggleFav: () => void;
-  /** 모드별 주요 메뉴 — 예비 창업자: 후보지 검토함, 자영업자: 우리 가게 월간 점검 */
-  modeMenu: { label: string; count: number | null; onClick: () => void };
+  /** 내 관심 지역 — 저장한 곳 수와 작업 화면 열기(저장 목록·지역 비교·보고서·비용 점검·답사 메모를 한곳에서) */
+  interestCount: number;
+  onOpenInterest: () => void;
+  /** 자영업자 전용 메뉴 — 우리 가게 월간 점검(예비 창업자에게는 없다) */
+  ownerMenu?: { label: string; onClick: () => void };
+  /** 앱 안에서 이전 화면으로(되돌아갈 화면이 있을 때만 보인다) */
+  onBack?: () => void;
 }
 
 function useWide(min: number): boolean {
@@ -69,7 +71,10 @@ export function FoodTopBar(p: FoodTopBarProps) {
         overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none",
       }}
     >
-      <strong style={{ fontSize: narrow ? 15 : 17, color: "#111827", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</strong>
+      {p.onBack && (
+        <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>← 뒤로</button>
+      )}
+      <a href={HOME_HREF} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: narrow ? 15 : 17, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</a>
       <ModeSwitch mode={p.mode} onChange={p.onModeChange} />
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
       <Select
@@ -93,11 +98,13 @@ export function FoodTopBar(p: FoodTopBarProps) {
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       {wide && <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
-      <button type="button" data-tour="mode-menu" onClick={p.modeMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-        {p.modeMenu.label}{p.modeMenu.count !== null ? ` ${p.modeMenu.count}` : ""}
-      </button>
-      <button type="button" data-tour="favorites" onClick={p.onToggleFav} aria-expanded={p.favOpen} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: p.favOpen ? "#FEF3C7" : "white", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-        <span aria-hidden="true">★ </span>관심 지역 {p.favCount}
+      {p.ownerMenu && (
+        <button type="button" data-tour="mode-menu" onClick={p.ownerMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+          {p.ownerMenu.label}
+        </button>
+      )}
+      <button type="button" data-tour="favorites" onClick={p.onOpenInterest} style={{ marginLeft: p.ownerMenu ? 0 : "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+        <span aria-hidden="true">★ </span>내 관심 지역 {p.interestCount}
       </button>
       <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">? </span>도움말

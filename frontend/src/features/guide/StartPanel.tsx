@@ -7,7 +7,8 @@ import type { MyStoreEntry } from "../../lib/monthlyCheck";
 interface Props {
   mode: Mode;
   categories: FoodCategoriesResponse | undefined;
-  reviewCount: number;
+  /** 내 관심 지역에 저장한 곳 수 */
+  interestCount: number;
   myStores: MyStoreEntry[];
   /** 예비 창업자 ① 지역·업종 미정 → 조건으로 후보 찾기 */
   onUndecided: () => void;
@@ -15,10 +16,11 @@ interface Props {
   onPickSvc: (svc: string) => void;
   /** ③ 관심 지역 확정 → 검색창 */
   onFocusSearch: () => void;
-  onOpenReview: () => void;
+  onOpenInterest: () => void;
   /** 자영업자: 내 가게 찾기(검색창)·월간 점검·지역 흐름부터 */
   onOpenMonthly: (storeId: string) => void;
-  onAreaFirst: () => void;
+  /** 보고서부터 — 지역을 고르는 화면(조건으로 찾기)으로 간다. 거기서 지역마다 '상권분석 보고서 보기'가 있다 */
+  onReportFirst: () => void;
   onClose: () => void;
 }
 
@@ -52,7 +54,7 @@ function OwnerStart(p: Props) {
           </div>
         </div>
       )}
-      <button type="button" onClick={p.onAreaFirst} style={{ ...linkBtn, marginTop: 16 }}>가게는 나중에, 우리 지역 상권 흐름부터 볼래요 ›</button>
+      <ReportCta onClick={p.onReportFirst} who="우리 지역 상권" />
       <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>매출·비용 기록은 이 브라우저에만 저장되고 서버로 보내지 않아요. 상권 매출은 카드 결제 기반 추정이라 내 가게의 실제 매출이 아니에요.</div>
     </Drawer>
   );
@@ -88,9 +90,20 @@ function FounderStart(p: Props) {
           <span style={sub2}>지역·역·상권 이름을 검색해서 바로 요약부터 볼게요</span>
         </button>
       </div>
-      {p.reviewCount > 0 && <button type="button" onClick={p.onOpenReview} style={{ ...linkBtn, marginTop: 14 }}>담아 둔 후보지 {p.reviewCount}곳 이어서 검토하기 ›</button>}
+      <ReportCta onClick={p.onReportFirst} who="후보 지역 상권" />
+      {p.interestCount > 0 && <button type="button" onClick={p.onOpenInterest} style={{ ...linkBtn, marginTop: 14 }}>내 관심 지역 {p.interestCount}곳 이어서 보기(비교·보고서·비용·답사) ›</button>}
       <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: 후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검 → 현장 답사. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
     </Drawer>
+  );
+}
+
+/** 보고서 진입 — 지역을 고르면 그 지역의 상권분석 보고서를 바로 볼 수 있다(매출 흐름·경쟁·수요·입지를 4쪽으로, 인쇄·PDF 저장). */
+function ReportCta({ onClick, who }: { onClick: () => void; who: string }) {
+  return (
+    <button type="button" onClick={onClick} style={{ width: "100%", marginTop: 14, minHeight: 48, padding: "10px 14px", border: "none", borderRadius: 10, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 16, cursor: "pointer", textAlign: "left" }}>
+      상권분석 보고서 보기 ›
+      <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>{who}을 고르면 매출 흐름·경쟁·수요·입지를 4쪽으로 정리해 드려요</span>
+    </button>
   );
 }
 

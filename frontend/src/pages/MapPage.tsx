@@ -29,11 +29,11 @@ import { checkShare, shareIssueText } from "../lib/shareCheck";
 import { MapPeekContext } from "../components/MapPeekContext";
 import { StartPanel } from "../features/guide/StartPanel";
 import { ExplorePanel } from "../features/food/ExplorePanel";
-import { CandidateBox } from "../features/area/CandidateBox";
+import { InterestBox } from "../features/area/InterestBox";
+import { AreaReportModal } from "../features/area/AreaReportModal";
 import { MonthlyPicker } from "../features/stores/MonthlyPicker";
 import { presetById, type PresetId } from "../lib/explorePresets";
 import { loadMyStores } from "../lib/monthlyCheck";
-import { FavoritesPanel } from "../features/area/FavoritesPanel";
 import { MAX_FAVORITES, addFavorite, favKey, isFavorite, loadFavorites, parseShare, removeFavorite, saveFavorites, shareSearch, type FavoriteArea } from "../lib/favorites";
 import { loadRecent, pushRecent, saveRecent, suggestForCompare, type RecentUnit } from "../lib/recentUnits";
 import { AreaOverviewPanel } from "../features/area/AreaOverviewPanel";
@@ -127,6 +127,9 @@ function zoneToSelection(zone: RebZone, quarters: Record<string, string | null> 
   };
 }
 
+interface NavSnap { storeId: string | null; selection: Selection | null; explore: { preset: PresetId; level: "dong" | "trdar" } | null; startOpen: boolean }
+const HOME_SNAP: NavSnap = { storeId: null, selection: null, explore: null, startOpen: true };
+
 export function MapPage() {
   const [mode, setMode] = useMode();
   const { seen, mark } = useProgress();
@@ -155,7 +158,11 @@ export function MapPage() {
   // 모드별 첫 화면·조건 탐색·검토함·월간 점검
   const [startOpen, setStartOpen] = useState(true);
   const [explore, setExplore] = useState<{ preset: PresetId; level: "dong" | "trdar" } | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  // 내 관심 지역(저장 목록·비교·검토를 합친 작업 화면)과 그 안에서 여는 지역 보고서
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [interestPicked, setInterestPicked] = useState<string[]>([]);
+  const [reportFor, setReportFor] = useState<FavoriteArea | null>(null);
+  const [navDepth, setNavDepth] = useState(0);
   const [monthlyFor, setMonthlyFor] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [rivalId, setRivalId] = useState<string | null>(null);   // 경쟁 가게 목록에서 열어 본 매장
@@ -165,7 +172,6 @@ export function MapPage() {
   const [groupAt, setGroupAt] = useState<{ id: string; group: string } | null>(null);
   // 관심 지역 — 이 브라우저에만 최대 10곳(계정·서버 없음)
   const [favorites, setFavorites] = useState<FavoriteArea[]>(() => loadFavorites());
-  const [favOpen, setFavOpen] = useState(false);
   const [favNote, setFavNote] = useState<string | null>(null);
   // 열릴 지역의 위치로 지도를 한 번 옮기기 위한 표시(공유 주소·관심 지역 다시 열기)
   const focusCode = useRef<string | null>(null);
@@ -325,6 +331,51 @@ export function MapPage() {
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, searchSelection.center));
   }, [searchSelection, mapKakao]);
   const shownSelection = selection ?? searchSelection;
+  // ── 화면 이동 기록 — 지역·매장·후보 탐색·시작 화면 사이의 이동을 브라우저 기록에 쌓아 '뒤로·앞으로'와 앱 안 '← 뒤로'가 같은 길을 가게 한다.
+  // 전체 화면 작업창(비교·내 관심 지역·보고서·비용·월간 점검)은 lib/overlayHistory 가 따로 쌓는다. 새로고침·직접 접속으로 기록의 화면 정보가 없으면 지도 기본 화면(시작 화면)으로 간다.
+  const snaps = useRef(new Map<number, NavSnap>());
+  const seqRef = useRef(0);
+  const lastKey = useRef<string | null>(null);
+  const restoring = useRef(false);
+  const viewKey = [storeId ?? "", shownSelection ? (shownSelection.unit ? `${shownSelection.unit.level}:${shownSelection.unit.code}` : shownSelection.title) : "", explore ? `${explore.preset}:${explore.level}` : "", startOpen ? "1" : "0"].join("|");
+  const nowSnap: NavSnap = { storeId, selection: shownSelection, explore, startOpen };
+  const keyOfSnap = (n: NavSnap) => [n.storeId ?? "", n.selection ? (n.selection.unit ? `${n.selection.unit.level}:${n.selection.unit.code}` : n.selection.title) : "", n.explore ? `${n.explore.preset}:${n.explore.level}` : "", n.startOpen ? "1" : "0"].join("|");
+  const applySnap = useCallback((n: NavSnap) => {
+    if (keyOfSnap(n) === lastKey.current) return;
+    restoring.current = true;
+    lastKey.current = keyOfSnap(n);
+    setStoreId(n.storeId); setSelection(n.selection); setPendingOpen(null); setExplore(n.explore); setStartOpen(n.startOpen);
+  }, []);
+  useEffect(() => {
+    const st = (window.history.state && typeof window.history.state === "object" ? window.history.state : {}) as { seq?: number; pos?: number };
+    if (lastKey.current === null) {   // 첫 화면 — 이 기록 칸을 '화면 0'으로 표시한다
+      window.history.replaceState({ ...st, seq: 0, pos: 0 }, "", window.location.href);
+      snaps.current.set(0, nowSnap);
+      lastKey.current = viewKey;
+      return;
+    }
+    if (restoring.current) { restoring.current = false; lastKey.current = viewKey; return; }
+    if (viewKey === lastKey.current) return;
+    lastKey.current = viewKey;
+    const seq = ++seqRef.current;
+    const pos = (st.pos ?? 0) + 1;
+    window.history.pushState({ seq, pos }, "", window.location.href);
+    snaps.current.set(seq, nowSnap);
+    setNavDepth(pos);
+  }, [viewKey]);   // eslint-disable-line react-hooks/exhaustive-deps -- nowSnap 은 viewKey 가 바뀔 때의 값만 쓴다
+  useEffect(() => {
+    const onPop = () => {
+      const st = window.history.state as { seq?: number; pos?: number; ov?: number } | null;
+      if (st && typeof st.ov === "number") return;   // 작업창 칸은 overlayHistory 가 처리한다
+      setNavDepth(st?.pos ?? 0);
+      applySnap((typeof st?.seq === "number" ? snaps.current.get(st.seq) : undefined) ?? HOME_SNAP);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [applySnap]);
+  /** 앱 안 '← 뒤로' — 되돌아갈 기록이 있으면 브라우저 뒤로, 없으면 안전한 지도 기본 화면으로. */
+  const goBack = () => { if (navDepth > 0) window.history.back(); else applySnap(HOME_SNAP); };
+
   const startVisible = startOpen && !explore && storeId === null && shownSelection === null && shareTarget === null;
   const myStores = useMemo(() => (startVisible && mode === "owner" ? loadMyStores() : []), [startVisible, mode]);
   // 좁은 화면에서 서랍(매장 상세·상권 분석)이 열려 있으면 그 위를 덮는 지도 도구·이용 순서·범례는 가린다
@@ -349,7 +400,7 @@ export function MapPage() {
   }, [shownUnitLevel, shownUnitCode, mark]);
   useEffect(() => { if (metric !== "stores") mark("metric"); }, [metric, mark]);
   useEffect(() => { if (svc !== null) mark("svc"); }, [svc, mark]);
-  useEffect(() => { if ((basket?.codes.length ?? 0) >= 2) mark("basket2"); }, [basket, mark]);
+  useEffect(() => { if (favorites.length >= 2) mark("basket2"); }, [favorites.length, mark]);
   useEffect(() => { if (compareOpen) mark("compare"); }, [compareOpen, mark]);
   const openFavorite = (f: FavoriteArea) => {
     if (!mapKakao) return;
@@ -359,7 +410,6 @@ export function MapPage() {
     setPendingOpen({ unit: f.level, code: f.code });
     mapKakao.map.setLevel(OPEN_AT[f.level]);
     if (f.lon !== null && f.lat !== null) mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, { lon: f.lon, lat: f.lat }));
-    setFavOpen(false);
   };
   const updateFavorites = (next: FavoriteArea[]) => { setFavorites(next); if (!saveFavorites(next)) setFavNote("이 브라우저가 저장을 막아 새로고침하면 관심 지역이 사라집니다."); };
   const toggleFavorite = (f: FavoriteArea) => {
@@ -368,8 +418,6 @@ export function MapPage() {
     if (r.status === "full") setFavNote(`관심 지역은 최대 ${MAX_FAVORITES}곳까지예요. 목록에서 하나를 지운 뒤 담아 주세요.`);
     else if (r.status === "added") { updateFavorites(r.list); setFavNote(null); }
   };
-  const favCompareBlock = (f: FavoriteArea): string | null =>
-    basket && basket.level === f.level && basket.codes.includes(f.code) ? "이미 비교 목록에 있어요" : basket && basket.level !== f.level ? "비교 목록이 다른 단위예요(크기가 다른 단위는 섞지 않습니다)." : basket && !basket.codes.includes(f.code) && basket.codes.length >= MAX_COMPARE ? `비교는 최대 ${MAX_COMPARE}곳` : null;
   // ── 모드별 시작·조건 탐색·검토함·월간 점검 ──
   const focusSearch = () => { setStartOpen(false); document.querySelector<HTMLInputElement>('[data-tour="search"] input')?.focus(); };
   const openExplore = (preset: PresetId, level: "dong" | "trdar" = explore?.level ?? "dong") => {
@@ -379,20 +427,12 @@ export function MapPage() {
     setMetric(presetById(preset)?.metric ?? "stores");        // 지도도 같은 지표로 칠한다
     mapKakao?.map.setLevel(OPEN_AT[level]);                    // 지도 단위를 후보 단위와 맞춘다
   };
-  const addCompare = (level: FoodLevel, code: string) =>
-    setBasket((b) => (b && b.level === level ? (b.codes.includes(code) || b.codes.length >= MAX_COMPARE ? b : { level, codes: [...b.codes, code] }) : { level, codes: [code] }));
   const pickCandidate = (b: FoodBubble, data: FoodBubblesResponse) => {
     setPendingOpen(null); setStoreId(null);
     setSelection(bubbleToSelection(b, data));
     mapKakao?.map.setCenter(toKakaoLatLng(mapKakao.kakao, b));
   };
   const favFromBubble = (b: FoodBubble, level: "dong" | "trdar"): FavoriteArea => ({ level, code: b.code, name: b.name, type: b.type, lon: b.lon, lat: b.lat, svc, scls });
-  const exploreBlock = (code: string): string | null => {
-    if (!explore) return null;
-    if (basket && basket.level !== explore.level) return "비교 목록이 다른 단위예요(크기가 다른 단위는 섞지 않습니다).";
-    if (basket && !basket.codes.includes(code) && basket.codes.length >= MAX_COMPARE) return `비교는 최대 ${MAX_COMPARE}곳`;
-    return null;
-  };
   const openMonthly = (id: string) => { setPickerOpen(false); setStartOpen(false); setBrand(null); setPlace(null); setSelection(null); setPendingOpen(null); setStoreId(id); setMonthlyFor(id); };
   const industryNameOf = (sv: string | null, sc: string | null) => {
     const g = categories.data?.groups.find((x) => x.svc_cd === sv);
@@ -446,44 +486,31 @@ export function MapPage() {
           pickedPlaceName={place?.name ?? null}
           onClearPlace={onClearPlace}
           mode={mode}
-          onModeChange={(m) => { setMode(m); setStartOpen(true); setExplore(null); setReviewOpen(false); setPickerOpen(false); setMonthlyFor(null); }}
+          onModeChange={(m) => { setMode(m); setStartOpen(true); setExplore(null); setInterestOpen(false); setPickerOpen(false); setMonthlyFor(null); }}
           onHelp={tour.openHelp}
-          modeMenu={mode === "founder"
-            ? { label: "후보지 검토함", count: favorites.length, onClick: () => setReviewOpen(true) }
-            : { label: "월간 점검", count: null, onClick: () => (storeId !== null ? setMonthlyFor(storeId) : setPickerOpen(true)) }}
-          favCount={favorites.length}
-          favOpen={favOpen}
-          onToggleFav={() => setFavOpen((v) => !v)}
+          interestCount={favorites.length}
+          onOpenInterest={() => { setInterestPicked([]); setInterestOpen(true); }}
+          ownerMenu={mode === "owner" ? { label: "월간 점검", onClick: () => (storeId !== null ? setMonthlyFor(storeId) : setPickerOpen(true)) } : undefined}
+          onBack={navDepth > 0 ? goBack : undefined}
         />
-        {reviewOpen && (
-          <CandidateBox
+        {interestOpen && (
+          <InterestBox
+            mode={mode}
             favorites={favorites}
+            initialPicked={interestPicked}
             industryName={industryNameOf}
-            compareBlock={favCompareBlock}
-            onOpenArea={(f) => { setReviewOpen(false); setExplore(null); setStartOpen(false); openFavorite(f); }}
-            onCompare={(f) => addCompare(f.level, f.code)}
+            shareUrl={(f) => `${window.location.origin}${window.location.pathname}${shareSearch(mode, f)}`}
+            onOpenArea={(f) => { setInterestOpen(false); setExplore(null); setStartOpen(false); openFavorite(f); }}
+            onReport={(f) => setReportFor(f)}
+            onCompare={(picked) => { setBasket({ level: picked[0].level, codes: picked.map((f) => f.code) }); setCompareOpen(true); }}
             onRemove={(f) => updateFavorites(removeFavorite(favorites, favKey(f)))}
-            onClose={() => setReviewOpen(false)}
+            onClose={() => setInterestOpen(false)}
           />
+        )}
+        {reportFor && (
+          <AreaReportModal level={reportFor.level} code={reportFor.code} name={reportFor.name} type={reportFor.type} svc={reportFor.svc} scls={reportFor.scls} mode={mode} onClose={() => setReportFor(null)} />
         )}
         {pickerOpen && <MonthlyPicker stores={loadMyStores()} onPick={openMonthly} onSearch={() => { setPickerOpen(false); focusSearch(); }} onClose={() => setPickerOpen(false)} />}
-        {favOpen && (
-          <FavoritesPanel
-            favorites={favorites}
-            industryName={industryNameOf}
-            compareBlock={favCompareBlock}
-            shareUrl={(f) => `${window.location.origin}${window.location.pathname}${shareSearch(mode, f)}`}
-            narrow={narrow}
-            onOpen={openFavorite}
-            onCompare={(f) => {
-              setBasket((b) => (b && b.level === f.level ? (b.codes.includes(f.code) ? b : { level: f.level, codes: [...b.codes, f.code] }) : { level: f.level, codes: [f.code] }));
-              setCompareOpen(true);
-              setFavOpen(false);
-            }}
-            onRemove={(f) => updateFavorites(removeFavorite(favorites, favKey(f)))}
-            onClose={() => setFavOpen(false)}
-          />
-        )}
         {brand !== null && !hideOverlays && (
           <SearchResultChip query={brand} total={brandStores.data?.total ?? null} truncated={brandStores.data?.truncated ?? false} loading={brandStores.isPending} failed={brandStores.isError} onClose={() => setBrand(null)} />
         )}
@@ -493,7 +520,7 @@ export function MapPage() {
             {issueText}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
               <button type="button" onClick={() => { document.querySelector<HTMLInputElement>('[data-tour="search"] input')?.focus(); setDismissedIssue(issueText); }} style={issueBtn(true)}>직접 검색하기</button>
-              <button type="button" onClick={() => { setSvc(null); setScls(null); setPendingOpen(null); window.history.replaceState(null, "", `${window.location.pathname}?mode=${mode}`); }} style={issueBtn(false)}>처음 상태로</button>
+              <button type="button" onClick={() => { setSvc(null); setScls(null); setPendingOpen(null); window.history.replaceState(window.history.state, "", `${window.location.pathname}?mode=${mode}`); }} style={issueBtn(false)}>처음 상태로</button>
               <button type="button" onClick={() => setDismissedIssue(issueText)} style={issueBtn(false)}>닫기</button>
             </div>
           </div>
@@ -540,6 +567,7 @@ export function MapPage() {
             onSelectStore={(id) => { setHoveredId(null); setRivalId(id); setStoreId(id); }}
             onHoverStore={setHoveredId}
             asRival={rivalId === storeId}
+            onOpenAreaReport={(t) => setReportFor({ level: t.level, code: t.code, name: t.name, type: t.type, lon: null, lat: null, svc: t.svc, scls: null })}
             monthlyOpen={monthlyFor === storeId}
             onMonthlyOpenChange={(open) => setMonthlyFor(open ? storeId : null)}
             onBack={() => setStoreId(null)}
@@ -593,23 +621,12 @@ export function MapPage() {
                   return (
                     <div style={{ marginBottom: 12 }}>
                       <button type="button" aria-pressed={on} onClick={() => toggleFavorite(f)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #D97706", background: on ? "#FEF3C7" : "white", color: "#92400E", cursor: "pointer" }}>
-                        {on ? "★ 관심 지역에서 빼기" : `☆ 관심 지역에 담기 (${favorites.length}/${MAX_FAVORITES})`}
+                        {on ? "★ 내 관심 지역에서 빼기" : `☆ 내 관심 지역에 담기 (${favorites.length}/${MAX_FAVORITES})`}
                       </button>
                       {favNote && <div role="status" style={{ fontSize: 11, color: "#B45309", marginTop: 2 }}>{favNote}</div>}
                     </div>
                   );
                 })()}
-                {sel.compare && (
-                  <CompareButton
-                    basket={basket}
-                    target={sel.compare}
-                    onAdd={() => {
-                      const c = sel.compare!;
-                      setBasket((b) => (b && b.level === c.level ? { level: c.level, codes: [...b.codes, c.code] } : { level: c.level, codes: [c.code] }));
-                      setCompareOpen(true);
-                    }}
-                  />
-                )}
               </>
             );
             const actions = <>{unitNotice}{buttons}</>;
@@ -646,12 +663,17 @@ export function MapPage() {
                   }}
                   onSelectStore={(id) => { setHoveredId(null); setStoreId(id); }}
                   onHoverStore={setHoveredId}
-                  basketHas={(basket?.codes.length ?? 0) > 0}
-                  // 다른 단위(행정동↔상권)가 담겨 있으면 목록을 조용히 비우지 않도록 이동 항목을 보이지 않는다(위 '비우고 비교' 버튼이 따로 묻는다)
-                  onCompare={sel.compare && (!basket || basket.level === sel.compare.level) ? () => {
-                    const c = sel.compare!;
-                    setBasket((b) => (b && b.codes.includes(c.code)) || (b?.codes.length ?? 0) >= MAX_COMPARE ? b : { level: c.level, codes: [...(b?.codes ?? []), c.code] });
-                    setCompareOpen(true);
+                  basketHas={favorites.length > 0}
+                  // '내 관심 지역에 담고 비교하기' — 담은 뒤 내 관심 지역 화면에서 이 지역을 미리 골라 둔 채 연다(비교·보고서·메모가 한곳에서 이어진다)
+                  onCompare={sel.unit ? () => {
+                    const f: FavoriteArea = { level: sel.unit!.level as "dong" | "trdar", code: sel.unit!.code, name: plainTitle(sel.title, sel.type), type: sel.type ?? null, lon: sel.center?.lon ?? null, lat: sel.center?.lat ?? null, svc, scls };
+                    if (!isFavorite(favorites, f)) {
+                      const r = addFavorite(favorites, f);
+                      if (r.status === "full") { setFavNote(`내 관심 지역은 최대 ${MAX_FAVORITES}곳까지예요. 목록에서 하나를 뺀 뒤 담아 주세요.`); setInterestPicked([]); setInterestOpen(true); return; }
+                      if (r.status === "added") updateFavorites(r.list);
+                    }
+                    setInterestPicked([favKey(f)]);
+                    setInterestOpen(true);
                   } : undefined}
                   onFocusSearch={() => document.querySelector<HTMLInputElement>('[data-tour="search"] input')?.focus()}
                 />
@@ -676,11 +698,9 @@ export function MapPage() {
               scls={scls}
               filterName={filterName}
               onPick={pickCandidate}
-              onCompare={(code) => addCompare(explore.level, code)}
               onFavorite={(b) => toggleFavorite(favFromBubble(b, explore.level))}
               isFavorite={(code) => isFavorite(favorites, { level: explore.level, code })}
-              inBasket={(code) => basket?.level === explore.level && basket.codes.includes(code)}
-              basketBlock={exploreBlock}
+              onReport={(b) => setReportFor(favFromBubble(b, explore.level))}
               onPreset={(id) => openExplore(id)}
               onLevel={(l) => openExplore(explore.preset, l)}
               onClose={() => setExplore(null)}
@@ -689,14 +709,14 @@ export function MapPage() {
             <StartPanel
               mode={mode}
               categories={categories.data}
-              reviewCount={favorites.length}
+              interestCount={favorites.length}
               myStores={myStores}
               onUndecided={() => openExplore("growing")}
               onPickSvc={(sv) => { setSvc(sv); setScls(null); openExplore("growing"); }}
               onFocusSearch={focusSearch}
-              onOpenReview={() => { setStartOpen(false); setReviewOpen(true); }}
+              onOpenInterest={() => { setStartOpen(false); setInterestPicked([]); setInterestOpen(true); }}
               onOpenMonthly={openMonthly}
-              onAreaFirst={() => openExplore("growing")}
+              onReportFirst={() => openExplore("growing")}
               onClose={() => setStartOpen(false)}
             />
           ) : null
@@ -713,19 +733,6 @@ export function MapPage() {
             ← 상세 보기
           </button>
         )}
-        {basket && !compareOpen && (
-          <button
-            type="button"
-            data-tour="compare-open"
-            onClick={() => setCompareOpen(true)}
-            style={{
-              position: "absolute", zIndex: OVERLAY_Z_INDEX, bottom: 24, left: "50%", transform: "translateX(-50%)", padding: "10px 18px",
-              borderRadius: 999, border: "none", background: "#1D4ED8", color: "white", fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.25)", cursor: "pointer",
-            }}
-          >
-            입지 비교 {basket.codes.length}곳 보기
-          </button>
-        )}
         {basket && compareOpen && (
           <CompareDashboard
             level={basket.level}
@@ -739,6 +746,7 @@ export function MapPage() {
             suggestions={suggestForCompare(recent, basket.level, basket.codes)}
             onShowOnMap={mapKakao && basket.level !== "gu" ? ({ level, lon, lat }) => {
               setCompareOpen(false);
+              setInterestOpen(false);
               mapKakao.map.setLevel(ZOOM_IN_TO[level as "dong" | "trdar"]);
               mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, { lon, lat }));
             } : undefined}
@@ -771,36 +779,6 @@ function plainTitle(title: string, type?: string | null): string {
   return type && title.endsWith(`(${type})`) ? title.slice(0, -(type.length + 2)).trim() : title;
 }
 
-function CompareButton({ basket, target, onAdd }: {
-  basket: { level: FoodLevel; codes: string[] } | null;
-  target: { level: FoodLevel; code: string };
-  onAdd: () => void;
-}) {
-  const otherLevel = basket !== null && basket.level !== target.level;
-  const added = !otherLevel && basket?.codes.includes(target.code);
-  const full = !otherLevel && (basket?.codes.length ?? 0) >= MAX_COMPARE;
-  const label = added ? "비교 목록에 있음" : full ? `비교는 최대 ${MAX_COMPARE}곳` : otherLevel ? `비우고 이 ${UNIT_LABEL[target.level]}부터 비교` : `비교에 담기 (${basket?.codes.length ?? 0}/${MAX_COMPARE})`;
-  return (
-    <div data-tour="compare-add" style={{ marginBottom: 12 }}>
-      <button
-        type="button"
-        disabled={added || full}
-        onClick={onAdd}
-        style={{
-          width: "100%", padding: "8px 0", borderRadius: 8, border: "none", fontWeight: 600,
-          background: added || full ? "#E5E7EB" : "#1D4ED8", color: added || full ? "#6B7280" : "white", cursor: added || full ? "default" : "pointer",
-        }}
-      >
-        {label}
-      </button>
-      {otherLevel && (
-        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
-          지금 비교 목록은 {UNIT_LABEL[basket!.level]} 단위예요. 크기가 다른 단위는 섞어 비교하지 않습니다.
-        </div>
-      )}
-    </div>
-  );
-}
 
 type BannerTone = "info" | "warn" | "error";
 
