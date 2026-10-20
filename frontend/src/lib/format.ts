@@ -49,3 +49,8 @@ export function formatMetric(kind: string, value: number | null): string {
 export function shortQuarter(q: string): string {
   return `${q.slice(2, 4)}.${q.slice(4)}Q`;
 }
+
+/** '2025년 3분기~2026년 2분기' → '25.3Q~26.2Q' — 좁은 화면 표에서 기준 기간을 한 줄에 넣기 위한 줄임(원문은 상세 차트·전체 표에 그대로 있다). 형식이 다르면 원문 그대로. */
+export function compactPeriod(label: string): string {
+  return label.replace(/(\d{4})년 ?([1-4])분기/g, (_m, y: string, q: string) => `${y.slice(2)}.${q}Q`);
+}

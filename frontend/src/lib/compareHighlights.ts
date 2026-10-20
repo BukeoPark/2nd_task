@@ -24,6 +24,10 @@ export interface Highlight {
   low: { name: string; text: string };
   /** '약 2.3배' 또는 '12.4%p 차이' */
   gap: string;
+  /** 차이를 어떻게 셌는지(근거) — '가장 높은 값 ÷ 가장 낮은 값' 같은 한 줄 */
+  basis: string;
+  /** 값이 있는 모든 지역의 값(큰 순) — 높음·낮음만이 아니라 전체를 보인다 */
+  values: { name: string; text: string }[];
   /** 정렬에 쓴 0~1 값(점수가 아니라 차이 크기) */
   size: number;
 }
@@ -44,17 +48,20 @@ export function compareHighlights(inp: HighlightInput, limit = 3): Highlight[] {
     const pct = row.kind === "growth" || row.kind === "rate";
     let size: number;
     let gap: string;
+    let basis: string;
     if (pct) {
       if (spread < MIN_PP) continue;
       size = Math.min(1, spread / PP_SCALE);
       gap = `${spread.toFixed(1)}%p 차이`;
+      basis = "가장 높은 지역 − 가장 낮은 지역(%p = 퍼센트포인트)";
     } else {
       const maxAbs = Math.max(Math.abs(hi.v), Math.abs(lo.v));
       if (maxAbs <= 0 || spread / maxAbs < MIN_REL) continue;
       size = spread / maxAbs;
       gap = lo.v > 0 ? `약 ${(hi.v / lo.v).toFixed(1)}배` : `${formatMetric(row.kind, spread)} 차이`;
+      basis = lo.v > 0 ? "가장 높은 값 ÷ 가장 낮은 값" : "가장 높은 값 − 가장 낮은 값";
     }
-    out.push({ key, label: row.label, asOf: row.as_of, scope: row.scope ?? null, high: { name: hi.name, text: formatMetric(row.kind, hi.v) }, low: { name: lo.name, text: formatMetric(row.kind, lo.v) }, gap, size });
+    out.push({ key, label: row.label, asOf: row.as_of, scope: row.scope ?? null, high: { name: hi.name, text: formatMetric(row.kind, hi.v) }, low: { name: lo.name, text: formatMetric(row.kind, lo.v) }, gap, basis, values: [...vals].sort((a, b) => b.v - a.v).map((x) => ({ name: x.name, text: formatMetric(row.kind, x.v) })), size });
   }
   return out.sort((a, b) => b.size - a.size).slice(0, limit);
 }

@@ -49,3 +49,11 @@ test("기간·업종 범위는 그대로 가져온다", () => {
   assert.equal(h[0].scope, "한식음식점 전체");
   assert.equal(h[0].high.text, "40.0%");
 });
+
+test("차이의 근거(어떻게 셌는지)와 값이 있는 모든 지역의 값을 함께 준다", () => {
+  const h = compareHighlights({ units, rows: [row("per_store_month", "money", [30_000_000, 10_000_000, 20_000_000]), row("sales_yoy_pct", "growth", [10, -5, 0])] });
+  const by = Object.fromEntries(h.map((x) => [x.key, x]));
+  assert.equal(by.per_store_month.basis, "가장 높은 값 ÷ 가장 낮은 값");
+  assert.match(by.sales_yoy_pct.basis, /%p = 퍼센트포인트/);
+  assert.deepEqual(by.per_store_month.values.map((v) => v.name), ["가상권", "다상권", "나상권"]);   // 큰 순, 3곳 모두
+});
