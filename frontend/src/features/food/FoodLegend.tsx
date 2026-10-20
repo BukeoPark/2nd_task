@@ -1,6 +1,7 @@
 import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClient";
 import { InfoTip } from "../../components/InfoTip";
 import { scopeLine } from "../../lib/foodText";
+import { LEGEND_GLYPHS } from "../../lib/storeGlyph";
 import { ANCHOR_MARK, NO_DATA_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
@@ -18,7 +19,17 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
     <div style={{ opacity: stale ? 0.55 : 1 }}>
       {stale && !showStores && <div style={{ color: "#B45309", fontWeight: 600 }}>새 조건을 불러오는 중 — 아래는 이전 조건의 범례</div>}
       {showStores ? (
-        <Dot color={STORE_POINT_COLOR} label="외식 매장 (점을 누르면 매장 상세)" />
+        <>
+          <div style={{ color: "#374151" }}>외식 매장 — 점을 누르면 매장 상세</div>
+          <div aria-label="업종별 점 모양" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px", marginTop: 4 }}>
+            {LEGEND_GLYPHS.map((g) => (
+              <span key={g.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, lineHeight: 1 }}>{g.glyph}</span>
+                {g.label}
+              </span>
+            ))}
+          </div>
+        </>
       ) : (
         data && (
           <>

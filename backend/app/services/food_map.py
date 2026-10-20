@@ -268,6 +268,13 @@ def bubbles(level: str, svc: str | None, scls: str | None, metric: str) -> dict:
             "bubbles": out}
 
 
+@lru_cache(maxsize=1)
+def _scls_to_svc() -> dict[str, str]:
+    """소상공인 세부 업종 코드 → 서울시 외식 업종 코드(대응표). 대응이 없는 세부 업종(외국식·구내식당·뷔페 등)은 빠진다."""
+    cw = data_store.load_parquet("sales_industry_crosswalk.parquet")
+    return {r.indsSclsCd: r.svc_cd for r in cw.loc[cw["svc_cd"].notna(), ["indsSclsCd", "svc_cd"]].itertuples()}
+
+
 def stores_in_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float,
                    svc: str | None, scls: str | None, limit: int) -> dict:
     validate_filter(svc, scls)
@@ -275,9 +282,10 @@ def stores_in_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: floa
     s = s.loc[s["lon"].between(min_lon, max_lon) & s["lat"].between(min_lat, max_lat)]
     total = len(s)
     s = s.sort_values("bizesId").head(limit)
+    svc_of = _scls_to_svc()  # 점 모양(업종 이모티콘)을 정하는 서울시 업종 — 대응이 없으면 None
     return {"svc": svc, "scls": scls, "total": total, "truncated": total > limit,
             "stores": [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category": r.indsSclsNm,
-                        "lon": float(r.lon), "lat": float(r.lat)} for r in s.itertuples()]}
+                        "svc": svc_of.get(r.indsSclsCd), "lon": float(r.lon), "lat": float(r.lat)} for r in s.itertuples()]}
 
 
 UNIT_STORE_SORTS = ("distance", "name")

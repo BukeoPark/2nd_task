@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { FoodStorePoint } from "../../lib/apiClient";
 import { toKakaoLatLng } from "../../lib/geo";
 import { pointLook, pointRole } from "../../lib/pointStyle";
+import { glyphFontSize, glyphFor } from "../../lib/storeGlyph";
 import { PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR } from "../../lib/vizConfig";
 
 interface StorePointLayerProps {
@@ -31,11 +32,18 @@ export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, s
     for (const s of stores) {
       if (s.store_id === selectedId) continue;
       const el = document.createElement("div");
+      // 점 안에 업종 이모티콘(치킨 🍗·커피 ☕ …) — 모두 같은 색 점이면 업종이 헷갈려서. 흰 바탕에 파란 테두리로 지도 위에서 읽히게 한다.
+      const g = glyphFor(s.svc);
       Object.assign(el.style, {
-        boxSizing: "border-box", borderRadius: "50%", background: STORE_POINT_COLOR, border: "2px solid white",
-        cursor: stale ? "default" : "pointer", pointerEvents: stale ? "none" : "auto", transition: "width .12s, height .12s, margin .12s, box-shadow .12s, opacity .12s",
+        boxSizing: "border-box", borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`,
+        display: "flex", alignItems: "center", justifyContent: "center", lineHeight: "1", overflow: "hidden", userSelect: "none",
+        fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+        cursor: stale ? "default" : "pointer", pointerEvents: stale ? "none" : "auto", transition: "width .12s, height .12s, margin .12s, box-shadow .12s, opacity .12s, font-size .12s",
       });
-      el.title = `${s.name}${s.branch ? ` ${s.branch}` : ""} · ${s.category}`;
+      el.textContent = g.glyph;
+      el.setAttribute("role", "img");
+      el.setAttribute("aria-label", `${g.label} 매장`);
+      el.title = `${s.name}${s.branch ? ` ${s.branch}` : ""} · ${g.label} · ${s.category}`;
       if (!stale) el.addEventListener("click", () => onSelect(s.store_id));
       const overlay = new kakao.maps.CustomOverlay({ position: toKakaoLatLng(kakao, s), content: el, map, zIndex: 3, clickable: true });
       itemsRef.current.set(s.store_id, { el, overlay });
@@ -55,6 +63,7 @@ export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, s
       const look = pointLook(pointRole(id, { selectedId, hoveredId, peerIds }), colors);
       overlay.setZIndex(look.zIndex);
       el.style.width = el.style.height = `${look.size}px`;
+      el.style.fontSize = `${glyphFontSize(look.size)}px`;
       el.style.marginLeft = el.style.marginTop = `${-look.size / 2}px`;
       el.style.opacity = stale ? "0.3" : String(look.opacity);
       el.style.boxShadow = look.ring ? `0 0 0 ${look.ringWidth}px ${look.ring}, 0 1px 4px rgba(0,0,0,0.45)` : "0 1px 3px rgba(0,0,0,0.4)";

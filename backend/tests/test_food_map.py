@@ -261,3 +261,15 @@ def test_yoy_hidden_for_tiny_trdars(client):
     vals = [b["value"] for b in body["bubbles"] if b["value"] is not None]
     assert vals and max(abs(v) for v in vals) < 300        # 표본이 작아 +390% 가 나오던 상권이 빠졌다
     assert any(b["reason"] == "too_few_stores" for b in body["bubbles"])
+
+
+def test_bbox_stores_carry_seoul_industry_for_point_glyph(client):
+    """점 모양(업종 이모티콘)을 정하는 서울시 업종 — 업종 필터를 걸면 모두 그 업종이고, 필터가 없으면 서울시 10개 업종이 다 나오며 대응 없는 세부 업종은 None 이다."""
+    box = {"min_lon": 126.90, "min_lat": 37.51, "max_lon": 126.93, "max_lat": 37.53}
+    one = client.get("/api/food/stores", params={**box, "svc": "CS100007", "limit": 1000}).json()["stores"]
+    assert one and {s["svc"] for s in one} == {"CS100007"}  # 치킨전문점
+    from app.services import food_map
+    allv = food_map.stores_in_bbox(**box, svc=None, scls=None, limit=100_000)["stores"]  # 호출 한도(1000)와 무관하게 전체로 확인
+    codes = {s["svc"] for s in allv}
+    assert {f"CS1000{n:02d}" for n in range(1, 11)} <= codes
+    assert None in codes  # 구내식당·뷔페 같은 대응 없는 세부 업종

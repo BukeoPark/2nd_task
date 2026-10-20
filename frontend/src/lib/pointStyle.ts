@@ -19,7 +19,7 @@ export function pointRole(id: string, ctx: PointContext): PointRole {
 }
 
 export interface PointLook {
-  /** 지름(px) — 테두리 포함(border-box) */
+  /** 지름(px) — 테두리 포함(border-box). 점 안에 업종 이모티콘이 들어가 읽을 수 있는 크기다 */
   size: number;
   /** 흰 테두리 바깥에 두르는 링 색(없으면 null) */
   ring: string | null;
@@ -31,14 +31,14 @@ export interface PointLook {
 export function pointLook(role: PointRole, colors: { selectedRing: string; peerRing: string }): PointLook {
   switch (role) {
     case "selected":
-      return { size: 26, ring: colors.selectedRing, ringWidth: 4, opacity: 1, zIndex: 7 };
+      return { size: 32, ring: colors.selectedRing, ringWidth: 4, opacity: 1, zIndex: 7 };
     case "hovered":
-      return { size: 22, ring: colors.selectedRing, ringWidth: 3, opacity: 1, zIndex: 6 };
+      return { size: 28, ring: colors.selectedRing, ringWidth: 3, opacity: 1, zIndex: 6 };
     case "peer":
-      return { size: 16, ring: colors.peerRing, ringWidth: 3, opacity: 1, zIndex: 4 };
+      return { size: 22, ring: colors.peerRing, ringWidth: 3, opacity: 1, zIndex: 4 };
     case "other":
-      return { size: 12, ring: null, ringWidth: 0, opacity: 0.3, zIndex: 3 };
+      return { size: 17, ring: null, ringWidth: 0, opacity: 0.3, zIndex: 3 };
     default:
-      return { size: 16, ring: null, ringWidth: 0, opacity: 1, zIndex: 3 };
+      return { size: 22, ring: null, ringWidth: 0, opacity: 1, zIndex: 3 };
   }
 }

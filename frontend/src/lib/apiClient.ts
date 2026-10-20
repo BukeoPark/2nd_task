@@ -906,6 +906,8 @@ export interface FoodStorePoint {
   name: string;
   branch: string | null;
   category: string;
+  /** 서울시 외식 업종 코드(점 모양을 정한다). 대응이 없는 세부 업종은 null */
+  svc: string | null;
   lon: number;
   lat: number;
 }
