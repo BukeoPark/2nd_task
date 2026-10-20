@@ -66,3 +66,81 @@ export function typeNotice(t: { kind: "traits" | "mixed" | "hold"; mixed_evidenc
   if (t.kind === "mixed") return (t.mixed_evidence ?? []).join(" · ");
   return "";
 }
+
+// ── 특성 네 영역의 '핵심 메시지' — 긴 설명 위에 한두 줄로 먼저 보이는 요약. 값이 있는 사실만 말하고 좋고 나쁨·성공 가능성은 말하지 않는다.
+export interface KeyMessageInput {
+  transit: {
+    rail: { count: number; nearest_m: number | null; boardings_observed: number | null; year: number };
+    bus: { count: number; per_km2: number | null };
+  };
+  demand: {
+    workers: { value: number | null };
+    residents: { value: number | null };
+    demand_type: string | null;
+    floating: { lunch_pct: number | null; lunch_rank: number | null } | null;
+  };
+  anchor: {
+    starbucks: { inside: number; nearest_m: number | null };
+    daiso: { inside: number; nearest_m: number | null };
+    facilities: { total: { value: number | null }; per_km2: number | null; reference_median: number | null };
+  };
+  competition: {
+    stores: { value: number | null };
+    density_per_km2: number | null;
+    small_area: boolean;
+    change_2y: { value: number | null };
+    open_rate_y: { value: number | null };
+    close_rate_y: { value: number | null };
+  };
+}
+
+const num = (v: number) => Math.round(v).toLocaleString("ko-KR");
+const signed1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+
+/** 앵커 한 브랜드를 짧게 — 경계 안 N곳, 없으면 경계 밖 가장 가까운 거리, 모르면 null. */
+function anchorShort(a: { inside: number; nearest_m: number | null }): string | null {
+  if (a.inside > 0) return `경계 안 ${a.inside}곳`;
+  return a.nearest_m === null ? null : `경계 밖 ${num(a.nearest_m)}m`;
+}
+
+export interface KeyMessages {
+  transit: string | null;
+  demand: string | null;
+  commerce: string | null;
+  competition: string | null;
+}
+
+export function keyMessages(d: KeyMessageInput): KeyMessages {
+  const { rail, bus } = d.transit;
+  let transit: string | null = null;
+  if (rail.count > 0) {
+    transit = `지하철역 ${rail.count}곳이 경계 안·250m 이내에 있고${rail.boardings_observed !== null ? `, 연결된 역의 하루 평균 승차는 약 ${num(rail.boardings_observed)}명(${rail.year}년)입니다` : "입니다"}.`;
+    if (bus.count > 0) transit += ` 경계 안 버스 정류장은 ${bus.count}곳입니다.`;
+  } else {
+    transit = `경계 안·250m 이내에 지하철역이 없고${rail.nearest_m !== null ? `(가장 가까운 역 ${num(rail.nearest_m)}m)` : ""} 경계 안 버스 정류장은 ${bus.count}곳입니다.`;
+  }
+
+  const w = d.demand.workers.value, r = d.demand.residents.value, f = d.demand.floating;
+  const parts: string[] = [];
+  if (w !== null && r !== null) parts.push(`직장인구 ${num(w)}명·상주인구 ${num(r)}명${d.demand.demand_type ? `으로 ${d.demand.demand_type}에 가깝고` : "이고"}`);
+  else if (w !== null) parts.push(`직장인구 ${num(w)}명이고`);
+  if (f && f.lunch_pct !== null) parts.push(`점심(11~14시) 유동 비중은 ${f.lunch_pct.toFixed(1)}%${f.lunch_rank !== null ? `(${rankText(f.lunch_rank)})` : ""}`);
+  const demand = parts.length ? parts.join(" ").replace(/(고|이고)\s*$/, "") + "입니다." : null;
+
+  const sb = anchorShort(d.anchor.starbucks), ds = anchorShort(d.anchor.daiso);
+  const fac = d.anchor.facilities.total.value;
+  const cparts: string[] = [];
+  if (sb) cparts.push(`스타벅스 ${sb}`);
+  if (ds) cparts.push(`다이소 ${ds}`);
+  if (fac !== null) cparts.push(`집객시설 ${num(fac)}곳${d.anchor.facilities.reference_median !== null && d.anchor.facilities.per_km2 !== null ? `(㎢당 ${num(d.anchor.facilities.per_km2)}곳, 같은 단위 중앙값 ${num(d.anchor.facilities.reference_median)}곳)` : ""}`);
+  const commerce = cparts.length ? `${cparts.join(" · ")}입니다.` : null;
+
+  const c = d.competition;
+  const kparts: string[] = [];
+  if (c.stores.value !== null) kparts.push(`선택 업종 점포 ${num(c.stores.value)}곳${c.density_per_km2 !== null ? `(㎢당 ${num(c.density_per_km2)}곳${c.small_area ? ", 면적이 작아 참고용" : ""})` : ""}`);
+  if (c.close_rate_y.value !== null && c.open_rate_y.value !== null) kparts.push(`최근 1년 개업률 ${c.open_rate_y.value.toFixed(1)}%·폐업률 ${c.close_rate_y.value.toFixed(1)}%`);
+  if (c.change_2y.value !== null) kparts.push(`약 2년간 점포 수 ${signed1(c.change_2y.value)}`);
+  const competition = kparts.length ? `${kparts.join(", ")}입니다.` : null;
+
+  return { transit, demand, commerce, competition };
+}

@@ -36,6 +36,7 @@ const input: AreaReportInput = {
     open: [10, 12.8, 14, 13.11, 20, 9].map((v, i) => ({ code: i === 3 ? "u" : String(i), value: v, size: 30 })),
     frc: [5, 8, 10, 29.03].map((v, i) => ({ code: String(i), value: v, size: 30 })),
   },
+  mode: "founder",
   today: "2026-10-20",
 };
 
@@ -93,4 +94,52 @@ test("자료가 없는 쪽은 만들지 않는다", () => {
   // 시간대 쏠림이 없으면 매출 수준으로 제목을 만든다
   const flat = buildAreaReport({ ...input, overview: { ...input.overview!, hours: { slots: input.overview!.hours.slots.map((x) => ({ ...x, pct: 16.6 })) } /* 평균 자료 없음 */ } });
   assert.equal(flat.headline, "문래역(문래로데오거리), 한식음식점 점포당 추정매출은 비교 상권 중앙값의 1.0배입니다");
+});
+
+test("관점: 예비 창업자는 긍정·주의 신호를 값 그대로 나열하고 점수·적합도는 만들지 않는다", () => {
+  const r = buildAreaReport(input);
+  assert.equal(r.lens.mode, "founder");
+  assert.equal(r.lens.eyebrow, "예비 창업자용 · 창업 전 점검");
+  const pos = r.lens.positive.map((s) => s.title), cau = r.lens.caution.map((s) => s.title);
+  assert.ok(cau.some((t) => t.includes("총매출이 전년 동기보다 줄었습니다")), cau.join("|"));
+  assert.ok(cau.some((t) => t.includes("문 닫는 비율")));
+  assert.ok(cau.some((t) => t.includes("프랜차이즈 점포 비중이 높습니다")));
+  assert.ok(cau.some((t) => t.includes("매출이 한 시간대에 쏠려")));
+  assert.ok(cau.some((t) => t.includes("임대료·공실률을 이 자료로 알 수 없습니다")));
+  assert.ok(pos.some((t) => t.includes("점포당 추정매출이 비교 지역 중앙값보다 높")) === false); // 중앙값과 같은 수준이면 긍정으로 세지 않는다
+  assert.match(r.lens.ruleNote, /점수나 '창업 적합도'가 아니고/);
+  const text = JSON.stringify(r.lens);
+  assert.doesNotMatch(text, /적합도\s*\d|점수\s*\d|\d+점/); // 점수 표현 없음
+  assert.equal(r.lens.checklistTitle, "창업 전에 확인해 볼 것");
+});
+
+test("관점: 자영업자는 매출 증대 기회(비는 시간대·유동 대비 매출·차별화)와 내 가게와 견주기를 짚는다", () => {
+  const r = buildAreaReport({ ...input, mode: "owner" });
+  assert.equal(r.lens.mode, "owner");
+  assert.equal(r.lens.eyebrow, "자영업자용 · 매출 증대·기회 포착");
+  const pos = r.lens.positive.map((s) => s.title);
+  assert.ok(pos.some((t) => t.startsWith("11~14시에 손님을 더 모을 여지")), pos.join("|")); // 평균보다 13%p 낮은 점심
+  assert.ok(pos.some((t) => t.includes("17~21시가 이 상권 매출의 중심입니다")), pos.join("|"));
+  assert.ok(pos.some((t) => t.includes("개인 가게의 차별화")));
+  assert.match(r.headline, /11~14시 시간대에 매출을 더 올릴 여지가 보입니다/);
+  assert.ok(r.checklist.some((c) => c.includes("'내 가게 점검'에 월 매출을 기록")));
+  assert.ok(r.checklist.some((c) => c.includes("11~14시 시간대에 한 가지")));
+  assert.equal(r.lens.checklistTitle, "이번 달 해볼 것");
+  assert.match(r.slots!.take, /^11~14시는 비교 지역 평균보다 매출 비중이 낮습니다/);
+  assert.match(r.lens.levelTake, /내 가게의 매출이 아닙니다/);
+});
+
+test("관점이 달라도 같은 숫자를 쓴다(제목·해석·확인할 일만 다르다)", () => {
+  const a = buildAreaReport(input), b = buildAreaReport({ ...input, mode: "owner" });
+  assert.deepEqual(a.tiles, b.tiles);
+  assert.equal(a.level!.me, b.level!.me);
+  assert.notEqual(a.lens.levelTake, b.lens.levelTake);
+});
+
+test("조사는 받침에 맞게 고른다(은/는, 이/가)", async () => {
+  const { eunNeun, iGa } = await import("../src/lib/areaLens.ts");
+  assert.equal(eunNeun("17~21시"), "는");
+  assert.equal(eunNeun("점심"), "은");
+  assert.equal(iGa("17~21시"), "가");
+  assert.equal(iGa("저녁"), "이");
 });

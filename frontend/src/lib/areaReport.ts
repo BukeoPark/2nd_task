@@ -2,7 +2,9 @@
 // 값은 종합분석·입지 비교가 이미 쓰는 API 값 그대로이고, 문장은 규칙으로만 만든다(자료가 없는 쪽은 만들지 않는다).
 // 원인을 단정하지 않고 '관측'과 '가능한 해석'만 쓴다. 점수·'창업 적합도'를 만들지 않으며 리뷰·평점은 쓰지 않는다.
 // 같은 폴더의 순수 함수(insightReport)만 가져온다(tests/areaReport.test.ts).
+import { buildLens, type Lens } from "./areaLens.ts";
 import { bigPeerRank, median, type Finding, type LevelSection, type Tile } from "./insightReport.ts";
+import type { Mode } from "./mode";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ko-KR");
 const man = (won: number) => won / 1e4;
@@ -32,6 +34,8 @@ export interface AreaReportInput {
   overview: OverviewIn | null;
   character: CharacterIn | null;
   peers: { perStore: PeerPoint[]; close: PeerPoint[]; open: PeerPoint[]; frc: PeerPoint[] };
+  /** 읽는 사람 — 자영업자(매출 증대·기회 포착) / 예비 창업자(창업 전 점검). 같은 자료를 다른 관점으로 짚는다 */
+  mode: Mode;
   /** 작성일 YYYY-MM-DD */
   today: string;
 }
@@ -42,6 +46,9 @@ export interface AreaStability {
   churn: { openRate: number | null; closeRate: number | null; medOpen: number | null; p75Open: number | null; medClose: number | null; p75Close: number | null; peers: number | null } | null;
   frc: { share: number; median: number | null } | null;
   facts: { label: string; value: string; note: string }[];
+  /** 약 2년 점포 수 증감(%)·분기 평균 변동폭(%) — 신호 판단용 숫자 */
+  chg2y: number | null;
+  volatility: number | null;
   text: string;
   take: string;
 }
@@ -64,6 +71,8 @@ export interface AreaReport {
   checklist: string[];
   sources: string[];
   limits: string[];
+  /** 읽는 사람에 따른 관점(제목·신호·해석·확인할 일) */
+  lens: Lens;
 }
 
 const BIG_PEER_STORES = 20;
@@ -195,7 +204,7 @@ function stabilitySection(inp: AreaReportInput): AreaStability | null {
   if (frc) text += ` 프랜차이즈 점포 비중은 ${(frc.share * 100).toFixed(1)}%${frc.median !== null ? `로 비교 중앙값 ${(frc.median * 100).toFixed(0)}%${frc.share > frc.median ? "보다 높습니다" : "와 같거나 낮습니다"}` : "입니다"}.`;
   const higher = churn?.closeRate != null && churn.medClose != null && churn.closeRate > churn.medClose;
   const take = (higher ? "최근 분기 폐업률이 비교 지역 중앙값보다 높습니다. 수요가 부족했을 수도, 고정비 부담이 컸을 수도 있어 원인은 이 자료로 알 수 없으니, 최근 문을 닫은 가게의 사정을 현장에서 확인해 보세요. " : "") + "개폐업에는 업종 변경·이전도 섞여 있어 실제 영업 중단 수와 다를 수 있습니다. 상관관계이며 창업 성공 가능성을 뜻하지 않습니다.";
-  return { churn, frc, facts, text: text.trim(), take };
+  return { churn, frc, facts, chg2y: chg, volatility: vol, text: text.trim(), take };
 }
 
 function locationSection(inp: AreaReportInput): AreaLocation | null {
@@ -230,13 +239,20 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
 
   const top = slots ? slots.rows.reduce((m, r) => (r.sales > m.sales ? r : m), slots.rows[0]) : null;
   const pgap = slots && slots.hasPilot ? slots.rows.filter((r) => r.pilot !== null).map((r) => ({ label: r.label, gap: r.sales - (r.pilot as number) })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0] : null;
-  const headline = pgap && Math.abs(pgap.gap) >= 8
+  const workers = val(inp.rows, "wrc_total");
+  const lens = buildLens(inp.mode, { unitWord, level, slots, stability, location, workers });
+  const lowGap = slots && slots.hasPilot ? slots.rows.filter((r) => r.pilot !== null).map((r) => ({ label: r.label, gap: r.sales - (r.pilot as number) })).sort((a, b) => a.gap - b.gap)[0] : null;
+  const factHeadline = pgap && Math.abs(pgap.gap) >= 8
     ? `${inp.unit.name} ${scopeShort}, ${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높습니다" : "낮습니다"}`
     : top && top.sales >= 40
     ? `${inp.unit.name} ${scopeShort}, 매출의 ${Math.round(top.sales)}%가 ${top.label}에 몰립니다`
     : level
       ? `${inp.unit.name}, ${scopeShort} 점포당 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배입니다`
       : `${inp.unit.name} ${scopeShort} ${unitWord} 읽기`;
+  // 자영업자는 '어디에서 더 벌 수 있는가'(평균보다 비는 시간대)를, 예비 창업자는 사실 그대로의 제목을 앞세운다
+  const headline = inp.mode === "owner" && lowGap && lowGap.gap <= -8
+    ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 시간대에 매출을 더 올릴 여지가 보입니다`
+    : factHeadline;
   const subtitle = `${inp.unit.name}${inp.unit.type ? `(${inp.unit.type})` : ""} · ${inp.scope} 기준 · ${unitWord} 단위`;
 
   const tiles: Tile[] = [];
@@ -263,16 +279,7 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   const stores = val(inp.rows, "stores_sbiz");
   if (stores !== null) profile.push({ label: `${scopeShort} 점포 수`, value: `${fmt(stores)}곳(상가정보)` });
   if (stability?.frc) profile.push({ label: "프랜차이즈 비중", value: `${(stability.frc.share * 100).toFixed(1)}%` });
-  const workers = val(inp.rows, "wrc_total");
   if (workers !== null) profile.push({ label: "직장인구", value: `${fmt(workers)}명` });
-
-  const checklist: string[] = [
-    `후보 ${unitWord}을 '입지 비교'에 담아 점포당 월평균 추정매출·폐업률·점포 수를 나란히 견주기`,
-  ];
-  if (top && top.sales >= 45) checklist.push(`${top.label} 외 시간대(특히 내 메뉴가 노리는 시간대)의 실제 유동·손님을 현장에서 시간대별로 확인하기`);
-  if (stability?.churn?.closeRate != null && stability.churn.medClose != null && stability.churn.closeRate > stability.churn.medClose) checklist.push("최근 문을 닫은 가게의 이유를 이웃 상인·부동산에 물어보기");
-  checklist.push("실제 임대료·보증금·권리금은 이 자료에 없으니 부동산에서 직접 확인하기");
-  if (stability?.frc && stability.frc.median !== null && stability.frc.share > stability.frc.median) checklist.push(`프랜차이즈 점포(${(stability.frc.share * 100).toFixed(0)}%)와 메뉴·가격대가 겹치는지 점검하기`);
 
   const sources = [
     "서울시 상권분석서비스(추정매출·점포·유동인구·직장인구·집객시설)",
@@ -286,5 +293,7 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
     "분석 지역이 양천구·영등포구 상권뿐이라 표본이 작고, 비교 기준은 이 안의 상대 위치입니다.",
     "유형 분류와 임대료·공실률은 참고용이며, 원인을 단정하지 않습니다.",
   ];
-  return { headline, subtitle, tiles, findings, profile, level, slots, stability, location, checklist, sources, limits };
+  // 관점에 따른 해석을 시간대 해석 앞에 붙인다(예비 창업자는 앞 문구가 비어 있다)
+  if (slots && lens.slotsTakePrefix) slots.take = lens.slotsTakePrefix + slots.take;
+  return { headline, subtitle, tiles, findings, profile, level, slots, stability, location, checklist: lens.checklist, sources, limits, lens };
 }

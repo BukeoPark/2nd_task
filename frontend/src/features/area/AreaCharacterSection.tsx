@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
+import { Caveat } from "../../components/NoteHost";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
-import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
+import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, keyMessages, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
 import { busUsageLines } from "../../lib/busText";
 import { railUsageLines } from "../../lib/railText";
 import { useAreaCharacter } from "../food/useFood";
@@ -14,9 +15,8 @@ interface Props {
   unitKind: string;
 }
 
-/** '유형·특성' — 이 행정동·상권 경계 기준의 교통 접근성·배후 소비 수요·앵커/상업·경쟁 환경과 참고용 규칙 분류.
- * 종합점수·창업 성공 확률은 없다. 매장 반경 값(매장 상세 '주변')과 다른 값이다. */
-export function AreaCharacterSection({ level, code, svc, scls, unitKind }: Props) {
+/** 조회 상태(불러오는 중·실패)를 한 곳에서 처리하고, 값이 오면 그리는 함수에 넘긴다 — '유형'과 '특성' 두 항목이 같은 조회를 나눠 쓴다. */
+function WithCharacter({ level, code, svc, scls, children }: Omit<Props, "unitKind"> & { children: (d: AreaCharacter) => ReactNode }) {
   const q = useAreaCharacter(level, code, svc, scls);
   if (q.isPending) return <Notice tone="muted">상권 유형·입지 특성을 계산하는 중...</Notice>;
   if (q.isError) {
@@ -29,88 +29,111 @@ export function AreaCharacterSection({ level, code, svc, scls, unitKind }: Props
       </Notice>
     );
   }
-  const d = q.data;
-  const s = d.sections;
-  return (
-    <div>
-      <Notice tone="info">{d.basis.label}</Notice>
-      <div style={{ ...card, marginTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, color: "#6B7280" }}>이 {unitKind}의 유형(복수 특성 가능)</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 4, padding: "1px 6px" }}>참고용 분류</span>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-          {d.type.traits.length > 0 ? (
-            d.type.traits.map((t) => <Chip key={t.key} text={t.label} style={TRAIT_STYLE[t.key]} />)
-          ) : (
-            <Chip text={d.type.headline} style={NEUTRAL_STYLE} />
-          )}
-        </div>
-        {typeNotice(d.type) && <div style={{ ...fine, marginTop: 6 }}>{typeNotice(d.type)}</div>}
-        {demandStructureNote(d.type) && <div style={{ ...fine, marginTop: 6 }}>{demandStructureNote(d.type)}</div>}
-        {d.basis.relative_note && <div style={fine}>기준은 양천·영등포 188개 단위(행정동 36·상권 152) 안의 상대 위치입니다.</div>}
-        {d.type.traits.some((t) => t.key === "transit" || t.key === "commercial") && d.basis.success_note && (
-          <div style={{ marginTop: 6 }}><Notice tone="warn">{d.basis.success_note}</Notice></div>
-        )}
-        {d.type.traits.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>판정 근거</div>
-            {d.type.traits.map((t) => (
-              <div key={t.key} style={{ marginTop: 3 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: TRAIT_STYLE[t.key].fg }}>{t.label}</span>
-                {t.evidence.map((e) => <div key={e} style={{ fontSize: 11, color: "#4B5563" }}>· {e}</div>)}
-              </div>
-            ))}
-          </div>
-        )}
-        {d.type.held.length > 0 && d.type.kind !== "hold" && d.type.held.map((h) => <div key={h.key} style={{ ...fine, marginTop: 4 }}>· {h.reason}</div>)}
-      </div>
+  return <>{children(q.data)}</>;
+}
 
-      {(d.strengths.length > 0 || d.cautions.length > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-          <Points title="강점" tone="#166534" items={d.strengths} empty="뚜렷한 강점 문장을 만들 근거가 부족합니다." />
-          <Points title="주의사항" tone="#92400E" items={d.cautions} empty="특별히 짚을 주의사항이 없습니다(자료가 있는 범위)." />
+/** '유형' — 이 행정동·상권의 참고용 규칙 분류(업무·주거·교통 거점·상업 집중)와 판정 근거, 강점·주의사항, 계산 기준.
+ * 종합점수·창업 성공 확률은 없다. 매장 반경 값(매장 상세 '주변')과 다른 값이다. */
+export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
+  return (
+    <WithCharacter level={level} code={code} svc={svc} scls={scls}>
+      {(d) => (
+        <div>
+          <Notice tone="info">{d.basis.label}</Notice>
+          <div style={{ ...card, marginTop: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "#6B7280" }}>이 {unitKind}의 유형(복수 특성 가능)</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 4, padding: "1px 6px" }}>참고용 분류</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+              {d.type.traits.length > 0 ? (
+                d.type.traits.map((t) => <Chip key={t.key} text={t.label} style={TRAIT_STYLE[t.key]} />)
+              ) : (
+                <Chip text={d.type.headline} style={NEUTRAL_STYLE} />
+              )}
+            </div>
+            {typeNotice(d.type) && <div style={{ ...fine, marginTop: 6 }}>{typeNotice(d.type)}</div>}
+            {demandStructureNote(d.type) && <div style={{ ...fine, marginTop: 6 }}>{demandStructureNote(d.type)}</div>}
+            {d.basis.relative_note && <div style={fine}>기준은 양천·영등포 188개 단위(행정동 36·상권 152) 안의 상대 위치입니다.</div>}
+            {d.type.traits.some((t) => t.key === "transit" || t.key === "commercial") && d.basis.success_note && (
+              <div style={{ marginTop: 6 }}><Notice tone="warn">{d.basis.success_note}</Notice></div>
+            )}
+            {d.type.traits.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>판정 근거</div>
+                {d.type.traits.map((t) => (
+                  <div key={t.key} style={{ marginTop: 3 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: TRAIT_STYLE[t.key].fg }}>{t.label}</span>
+                    {t.evidence.map((e) => <div key={e} style={{ fontSize: 11, color: "#4B5563" }}>· {e}</div>)}
+                  </div>
+                ))}
+              </div>
+            )}
+            {d.type.held.length > 0 && d.type.kind !== "hold" && d.type.held.map((h) => <div key={h.key} style={{ ...fine, marginTop: 4 }}>· {h.reason}</div>)}
+          </div>
+
+          {(d.strengths.length > 0 || d.cautions.length > 0) && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+              <Points title="강점" tone="#166534" items={d.strengths} empty="뚜렷한 강점 문장을 만들 근거가 부족합니다." />
+              <Points title="주의사항" tone="#92400E" items={d.cautions} empty="특별히 짚을 주의사항이 없습니다(자료가 있는 범위)." />
+            </div>
+          )}
+
+          <Fold title="계산 기준·출처 자세히 보기">
+            <div style={{ fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
+              <div>{d.basis.unit}</div>
+              <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{d.basis.rules.map((r) => <li key={r}>{r}</li>)}</ul>
+              <div>
+                기준 분포: 같은 단위 {d.basis.reference.units}곳 — 외식 점포 밀도 상위 25% {d.basis.reference.store_density_p75?.toLocaleString("ko-KR")}곳/㎢ · 집객시설 밀도 중앙값 {d.basis.reference.fac_density_median?.toLocaleString("ko-KR")}곳/㎢ · 역 이용량(연결된 역 승차 합) 상위 25% {d.basis.reference.transit_boardings_p75?.toLocaleString("ko-KR")}명. {d.basis.reference.note}
+              </div>
+              <div style={{ marginTop: 4 }}>유형 판정은 선택 업종과 무관하게 외식 전체 기준이고, 특성의 '경쟁 환경'만 선택 업종을 따릅니다.</div>
+              {d.basis.relative_note && <div style={{ marginTop: 4 }}>{d.basis.relative_note}</div>}
+              {d.basis.success_note && <div style={{ marginTop: 4 }}>{d.basis.success_note}</div>}
+              {d.basis.data_notes && (
+                <>
+                  <div style={{ marginTop: 6, fontWeight: 700 }}>값의 집계 기준</div>
+                  <ul style={{ margin: "2px 0", paddingLeft: 16 }}>{d.basis.data_notes.map((n) => <li key={n}>{n}</li>)}</ul>
+                </>
+              )}
+            </div>
+            {d.basis.sources.map((src) => <SourceNote key={src.title} title={src.title} reference={src.reference} />)}
+          </Fold>
         </div>
       )}
+    </WithCharacter>
+  );
+}
 
-      <Area title="① 교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장">
-        <RailPart rail={s.transit.rail} />
-        <BusPart bus={s.transit.bus} />
-        <div style={fine}>{s.transit.note}</div>
-      </Area>
-
-      <Area title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`}>
-        <DemandPart demand={s.demand} />
-      </Area>
-
-      <Area title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설">
-        <AnchorPart anchor={s.anchor} />
-      </Area>
-
-      <Area title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`}>
-        <CompetitionPart c={s.competition} />
-      </Area>
-
-      <Fold title="계산 기준·출처 자세히 보기">
-        <div style={{ fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
-          <div>{d.basis.unit}</div>
-          <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{d.basis.rules.map((r) => <li key={r}>{r}</li>)}</ul>
+/** '특성' — 교통 접근성·배후 소비 수요·상업·앵커 환경·경쟁 환경. 영역마다 핵심 메시지를 먼저 한두 줄로 보이고 그 아래에 값과 근거를 둔다. */
+export function AreaTraitsSection({ level, code, svc, scls, unitKind }: Props) {
+  return (
+    <WithCharacter level={level} code={code} svc={svc} scls={scls}>
+      {(d) => {
+        const s = d.sections;
+        const key = keyMessages(s);
+        return (
           <div>
-            기준 분포: 같은 단위 {d.basis.reference.units}곳 — 외식 점포 밀도 상위 25% {d.basis.reference.store_density_p75?.toLocaleString("ko-KR")}곳/㎢ · 집객시설 밀도 중앙값 {d.basis.reference.fac_density_median?.toLocaleString("ko-KR")}곳/㎢ · 역 이용량(연결된 역 승차 합) 상위 25% {d.basis.reference.transit_boardings_p75?.toLocaleString("ko-KR")}명. {d.basis.reference.note}
+            <Area tone={AREA_TONE.transit} title="① 교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장" message={key.transit}>
+              <RailPart rail={s.transit.rail} />
+              <BusPart bus={s.transit.bus} />
+              <Caveat>{s.transit.note}</Caveat>
+            </Area>
+
+            <Area tone={AREA_TONE.demand} title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`} message={key.demand}>
+              <DemandPart demand={s.demand} />
+            </Area>
+
+            <Area tone={AREA_TONE.commerce} title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설" message={key.commerce}>
+              <AnchorPart anchor={s.anchor} />
+            </Area>
+
+            <Area tone={AREA_TONE.competition} title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`} message={key.competition}>
+              <CompetitionPart c={s.competition} />
+            </Area>
           </div>
-          <div style={{ marginTop: 4 }}>유형 판정은 선택 업종과 무관하게 외식 전체 기준이고, ④ 경쟁 환경만 선택 업종을 따릅니다.</div>
-          {d.basis.relative_note && <div style={{ marginTop: 4 }}>{d.basis.relative_note}</div>}
-          {d.basis.success_note && <div style={{ marginTop: 4 }}>{d.basis.success_note}</div>}
-          {d.basis.data_notes && (
-            <>
-              <div style={{ marginTop: 6, fontWeight: 700 }}>값의 집계 기준</div>
-              <ul style={{ margin: "2px 0", paddingLeft: 16 }}>{d.basis.data_notes.map((n) => <li key={n}>{n}</li>)}</ul>
-            </>
-          )}
-        </div>
-        {d.basis.sources.map((src) => <SourceNote key={src.title} title={src.title} reference={src.reference} />)}
-      </Fold>
-    </div>
+        );
+      }}
+    </WithCharacter>
   );
 }
 
@@ -146,7 +169,7 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
           </Fold>
         </>
       )}
-      <div style={fine}>{rail.basis}</div>
+      <Caveat>{rail.basis}</Caveat>
     </div>
   );
 }
@@ -172,7 +195,7 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
         </div>
       )}
       {bus.caution && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.caution}</Notice></div>}
-      <div style={fine}>{bus.basis}</div>
+      <Caveat>{bus.basis}</Caveat>
     </div>
   );
 }
@@ -199,7 +222,7 @@ function DemandPart({ demand }: { demand: AreaCharacter["sections"]["demand"] })
       ) : (
         <div style={{ marginTop: 6 }}><Notice tone="muted">유동인구 자료 없음</Notice></div>
       )}
-      <div style={fine}>{demand.note}</div>
+      <Caveat>{demand.note}</Caveat>
     </>
   );
 }
@@ -215,7 +238,7 @@ function AnchorPart({ anchor }: { anchor: AreaCharacter["sections"]["anchor"] })
         <Mini label="집객시설" value={cellText(anchor.facilities.total, countText)} sub={cellSub(anchor.facilities.total)} />
         <Mini label="집객시설 밀도" value={densityText(anchor.facilities.per_km2, false)} sub={anchor.facilities.reference_median === null ? undefined : `같은 단위 중앙값 ${anchor.facilities.reference_median.toLocaleString("ko-KR")}곳/㎢`} />
       </div>
-      <div style={fine}>{anchor.note}</div>
+      <Caveat>{anchor.note}</Caveat>
     </>
   );
 }
@@ -233,17 +256,30 @@ function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] })
         <Mini label="연 폐업률(최근 1년)" value={cellText(c.close_rate_y, pctText)} sub={cellSub(c.close_rate_y)} />
       </div>
       {c.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{c.scope.notice}</Notice></div>}
-      <div style={fine}>{c.note}</div>
+      <Caveat>{c.note}</Caveat>
     </>
   );
 }
 
-function Area({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+/** 영역별 색 — 제목·핵심 메시지 막대·배경이 같은 색 계열이라 영역이 눈에 띈다(글자색은 배경과 대비 4.5:1 이상). */
+const AREA_TONE = {
+  transit: { fg: "#5B21B6", bg: "#F5F3FF", bar: "#7C3AED" },
+  demand: { fg: "#92400E", bg: "#FFFBEB", bar: "#D97706" },
+  commerce: { fg: "#9A3412", bg: "#FFF7ED", bar: "#EA580C" },
+  competition: { fg: "#1E3A8A", bg: "#EFF6FF", bar: "#2563EB" },
+};
+
+function Area({ title, hint, tone, message, children }: { title: string; hint: string; tone: { fg: string; bg: string; bar: string }; message: string | null; children: ReactNode }) {
   return (
-    <div style={{ ...card, marginTop: 10 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{title}</div>
+    <div style={{ ...card, marginTop: 10, borderTop: `3px solid ${tone.bar}` }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: tone.fg }}>{title}</div>
       <div style={fine}>{hint}</div>
-      {children}
+      {message && (
+        <div style={{ marginTop: 8, padding: "8px 10px", borderLeft: `4px solid ${tone.bar}`, background: tone.bg, borderRadius: 6, color: tone.fg, fontWeight: 700, fontSize: 13.5, lineHeight: 1.55 }}>
+          “{message}”
+        </div>
+      )}
+      <div style={{ marginTop: 8 }}>{children}</div>
     </div>
   );
 }

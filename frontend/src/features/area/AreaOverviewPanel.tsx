@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
-import { Notice, SourceNote } from "../../components/Notice";
-import { Caveat, NoteHost } from "../../components/NoteHost";
+import { Notice } from "../../components/Notice";
+import { Caveat, NoteHost, NoteSlot } from "../../components/NoteHost";
 import { InfoTip } from "../../components/InfoTip";
 import type { ProgressKey } from "../../lib/flow";
+import type { Mode } from "../../lib/mode";
 import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { Term } from "../../components/Term";
@@ -17,7 +18,7 @@ import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
 import { AreaReportModal } from "./AreaReportModal";
 import { UnitStoreList } from "../food/UnitStoreList";
-import { AreaCharacterSection } from "./AreaCharacterSection";
+import { AreaTraitsSection, AreaTypeSection } from "./AreaCharacterSection";
 
 type Row = FoodCompareResponse["rows"][number];
 const LEVEL_NOUN = { dong: "행정동", trdar: "상권" } as const;
@@ -39,6 +40,8 @@ interface Props {
   onSelectStore: (id: string) => void;
   /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
   onProgress?: (k: ProgressKey) => void;
+  /** 이용 모드 — 인사이트 리포트의 관점(자영업자: 매출 증대·기회 / 예비 창업자: 창업 전 점검)을 정한다 */
+  mode: Mode;
   /** 매장 목록 항목에 마우스·초점이 올라가면 그 id, 벗어나면 null — 지도의 같은 점 강조용 */
   onHoverStore?: (id: string | null) => void;
 }
@@ -46,7 +49,8 @@ interface Props {
 const RAIL_PREFIX = "area-";
 const ICON: Record<AreaTabId, ReactNode> = {
   summary: <path d="M4 4h12v12H4zM7 8h6M7 12h4" />,
-  character: <path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v4l3 2" />,
+  type: <path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v4l3 2" />,
+  traits: <path d="M5 5h10M5 10h10M5 15h6" />,
   growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
   stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
   demand: (
@@ -76,11 +80,12 @@ export function AreaOverviewPanel(p: Props) {
   const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...AREA_TAB_STYLE[id] }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
   /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
-  const pane = (id: AreaTabId, title: string, children: ReactNode) => (
+  const pane = (id: AreaTabId, title: string, children: ReactNode, opts: { scoped?: boolean; manualNotes?: boolean } = {}) => (
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
-      <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>{p.title}{p.type ? ` · ${p.type}` : ""}</div>
-      <div style={{ marginBottom: 8 }}><RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={title} /></div>
-      <NoteHost>{children}</NoteHost>
+      <div style={{ marginTop: 12, marginBottom: 8 }}>
+        <RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={title} hint={opts.scoped ? `업종 범위: ${p.filterName}` : undefined} />
+      </div>
+      <NoteHost manual={opts.manualNotes}>{children}</NoteHost>
     </div>
   );
   return (
@@ -98,15 +103,18 @@ export function AreaOverviewPanel(p: Props) {
 
       {pane("summary", "요약", (
         <>
-          <Notice tone="info">
-            {p.level === "trdar"
-              ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
-              : "행정동 전체 기준 값입니다. '세부 상권' 항목에서 상권을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
-            선택 업종: <strong>{p.filterName}</strong>
-          </Notice>
-          {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
-          {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
           {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+          {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
+          <NoteSlot />
+          <div style={{ marginTop: 10 }}>
+            <Notice tone="info">
+              {p.level === "trdar"
+                ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
+                : "행정동 전체 기준 값입니다. '세부 상권' 항목에서 상권을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
+              선택 업종: <strong>{p.filterName}</strong>
+            </Notice>
+          </div>
+          {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
           <button
             type="button"
             data-tour="area-report-button"
@@ -114,29 +122,30 @@ export function AreaOverviewPanel(p: Props) {
             style={{ width: "100%", marginTop: 12, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" }}
           >
             {unitKind} 인사이트 리포트 뽑기
-            <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>예비 창업자용 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+            <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{p.mode === "owner" ? "자영업자용" : "예비 창업자용"} 4쪽 요약 · 인쇄·PDF 저장 가능</span>
           </button>
-          {reportOpen && <AreaReportModal level={p.level} code={p.code} name={plainName(p.title, p.type)} type={p.type} svc={p.svc} scls={p.scls} onClose={() => setReportOpen(false)} />}
+          {reportOpen && <AreaReportModal level={p.level} code={p.code} name={plainName(p.title, p.type)} type={p.type} svc={p.svc} scls={p.scls} mode={p.mode} onClose={() => setReportOpen(false)} />}
         </>
-      ))}
+      ), { manualNotes: true })}
 
-      {pane("character", "유형·특성 — 교통·배후 수요·앵커·경쟁", <AreaCharacterSection level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />)}
+      {pane("type", "유형 — 참고용 규칙 분류", <AreaTypeSection level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />)}
+      {pane("traits", "특성 — 교통·배후 수요·앵커·경쟁", <AreaTraitsSection level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />, { scoped: true })}
 
       {cmp.data && pane("growth", "성장성 — 매출 추이·점포 수 증감",
-        ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />)}
+        ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />, { scoped: true })}
       {cmp.data && pane("stability", "안정성·경쟁 — 개폐업·변동성·프랜차이즈",
-        <Rows rows={["open_rate_y", "close_rate_y", "stores_volatility", "frc_share"].map(row)} />)}
+        <Rows rows={["open_rate_y", "close_rate_y", "stores_volatility", "frc_share"].map(row)} />, { scoped: true })}
       {cmp.data && pane("demand", "소비 수요 — 유동·상주·직장인구, 시간대별 소비",
         <>
           <Rows rows={["wrc_total", "repop_total", "fac_total", "sales_per_10k_flpop"].map(row)} />
           {ov.data ? <DemandBlock ov={ov.data} /> : <OvState q={ov} />}
-        </>)}
+        </>, { scoped: true })}
       {cmp.data && pane("location", "입지 — 앵커 브랜드·임대료·공실률",
         <>
           <Rows rows={["starbucks_zone_share", "daiso_zone_share"].map(row)} />
           <div style={{ marginTop: 8 }}><Notice tone="warn">임대료·공실률은 이 {unitKind}의 실제 값이 아니라, 가까운(1km 이내) R-ONE 조사상권의 <strong>참고값</strong>입니다.</Notice></div>
           <Rows rows={["rent_small_shop", "vacancy_small_shop_pct"].map(row)} />
-        </>)}
+        </>, { scoped: true })}
 
       {p.level === "dong" && pane("trdars", `세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`,
         ov.data?.trdars ? (
@@ -173,14 +182,25 @@ function OvState({ q }: { q: ReturnType<typeof useUnitOverview> }) {
   return <Notice tone="muted">불러오는 중...</Notice>;
 }
 
+/** 지표 이름 옆의 '?' — 범위(업종)·출처·기준 시점은 여기에 담고, 값 아래에 반복해서 적지 않는다. */
+function MetricTip({ row, hint }: { row?: Row; hint?: string }) {
+  if (!row && !hint) return null;
+  return (
+    <InfoTip label="범위·출처·기준 보기">
+      {row?.scope && <><b>업종 범위</b> {row.scope}<br /></>}
+      {row?.source && <><b>출처</b> {row.source}<br /></>}
+      {hint && <><b>출처·기준</b> {hint}<br /></>}
+      <b>기준</b> {row?.as_of ?? "기준 시점 없음"}
+    </InfoTip>
+  );
+}
+
 function Card({ row, label, hint }: { row: Row | undefined; label: string; hint?: string }) {
   const c = row?.cells[0];
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6B7280" }}>{label}</div>
+      <div style={{ fontSize: 11, color: "#6B7280" }}>{label} <MetricTip row={row} hint={hint} /></div>
       <div style={{ fontWeight: 700, fontSize: 16, color: c?.value == null ? "#9CA3AF" : "#111827" }}>{row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"}</div>
-      {row?.scope && <div style={{ fontSize: 10, fontWeight: 600, color: "#1D4ED8" }}>{row.scope}</div>}
-      {(hint ?? row?.as_of) && <div style={{ fontSize: 10, color: "#9CA3AF" }}>출처·기준 <InfoTip label="출처·기준 보기">{hint ?? row?.as_of}</InfoTip></div>}
       {c?.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
     </div>
   );
@@ -208,10 +228,7 @@ function Rows({ rows }: { rows: (Row | undefined)[] }) {
         return (
           <div key={r.key} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderBottom: "1px solid #F3F4F6" }}>
             <div>
-              <div>{r.label}</div>
-              <div style={{ fontSize: 10, color: "#9CA3AF" }}>
-                {r.scope ? `${r.scope} · ` : ""}출처·기준 <InfoTip label="출처·기준 보기"><b>출처</b> {r.source}<br /><b>기준</b> {r.as_of ?? "기준 시점 없음"}</InfoTip>
-              </div>
+              <div>{r.label} <MetricTip row={r} /></div>
               {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
             </div>
             <div style={{ fontWeight: 600, whiteSpace: "nowrap", color: c.value === null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c.value)}</div>
@@ -228,12 +245,10 @@ function GrowthBlock({ ov, change, yoy }: { ov: NonNullable<ReturnType<typeof us
   return (
     <div>
       <Rows rows={[yoy, change]} />
-      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포당 월평균 추정매출 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
+      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포당 월평균 추정매출 추이 <InfoTip label="추이 범위·출처 보기"><b>업종 범위</b> {ov.trend_scope}<br /><b>출처</b> {ov.trend_source}<br /><b>기간</b> {ov.trend[0]?.label ?? ""}~{ov.trend.at(-1)?.label ?? ""}</InfoTip></div>
       <LineChart labels={labels} series={[{ name: "점포당 월평균 추정매출", color: "#1D4ED8", values: ov.trend.map((t) => t.per_store_month) }]} fmt={(v) => formatKrw(v)} />
-      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포 수 추이 <span style={{ color: "#1D4ED8", fontSize: 10 }}>{ov.trend_scope}</span></div>
+      <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 2px" }}>점포 수 추이 <InfoTip label="추이 범위·출처 보기"><b>업종 범위</b> {ov.trend_scope}<br /><b>출처</b> {ov.trend_source}<br />서울시 집계 점포 수라 요약의 점포 수(상가정보)와 다를 수 있습니다.</InfoTip></div>
       <LineChart labels={labels} series={[{ name: "점포 수", color: "#059669", values: ov.trend.map((t) => t.stores) }]} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} />
-      <SourceNote title={ov.trend_source} reference={`${ov.trend[0]?.label ?? ""}~${ov.trend.at(-1)?.label ?? ""}`} />
-      <div style={{ fontSize: 10, color: "#9CA3AF" }}>이 추이의 점포 수는 서울시 집계라 위 요약의 점포 수(상가정보)와 다릅니다.</div>
       {partial > 0 && <div style={{ fontSize: 10, color: "#B45309" }}>{partial}개 분기는 일부 업종의 매출·점포 수가 비어 그 업종을 뺀 값입니다(0 으로 채우지 않음).</div>}
     </div>
   );
@@ -246,16 +261,14 @@ function DemandBlock({ ov }: { ov: NonNullable<ReturnType<typeof useUnitOverview
     <div>
       {f ? (
         <>
-          <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 4px" }}><Term id="floatingIndex" label="유동인구" /> {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}{f.yoy_pct !== null && ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%`}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, margin: "10px 0 4px" }}><Term id="floatingIndex" label="유동인구" /> {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}{f.yoy_pct !== null && ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%`} <InfoTip label="유동인구 출처 보기"><b>출처</b> 서울시 상권분석서비스(유동인구) · 시간대별 비중<br /><b>기준</b> {f.label}</InfoTip></div>
           <BarList items={f.slots.map((s) => ({ label: s.label, value: s.pct, color: "#6366F1" }))} fmt={(v) => `${v}%`} />
-          <SourceNote title="서울시 상권분석서비스(유동인구) · 시간대별 비중" reference={f.label} />
         </>
       ) : <div style={{ marginTop: 8 }}><Notice tone="muted">이 단위의 유동인구 자료가 원천에 없습니다(0 이 아님).</Notice></div>}
-      <div style={{ fontSize: 12, fontWeight: 600, margin: "12px 0 4px" }}>시간대별 소비(매출 비중)</div>
+      <div style={{ fontSize: 12, fontWeight: 600, margin: "12px 0 4px" }}>시간대별 소비(매출 비중) <InfoTip label="시간대 소비 출처 보기"><b>출처</b> 서울시 상권분석서비스(추정매출) · {ov.trend_scope}<br /><b>기준</b> {sales.label} · 업종 {sales.total}개 중 {sales.used}개 반영(매출액 가중)</InfoTip></div>
       {sales.slots.every((s) => s.pct === null)
         ? <Notice tone="muted">시간대 비중이 모두 확인되는 업종 행이 없어 계산하지 않았습니다(자료 없음).</Notice>
         : <BarList items={sales.slots.map((s) => ({ label: s.label, value: s.pct, color: "#F59E0B" }))} fmt={(v) => `${v}%`} />}
-      <SourceNote title={`서울시 상권분석서비스(추정매출) · ${ov.trend_scope}`} reference={`${sales.label} · 업종 ${sales.total}개 중 ${sales.used}개 반영(매출액 가중)`} />
     </div>
   );
 }
