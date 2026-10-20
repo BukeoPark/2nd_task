@@ -82,3 +82,53 @@ test("기본 행정동은 이름이 정확히 같은 행정동만 고른다", ()
   assert.equal(pickDefaultDong(res.slice(0, 2), "영등포동"), null);
   assert.equal(pickDefaultDong([{ kind: "dong", name: "양천구 신영등포동" }], "영등포동"), null);
 });
+
+// ── 표본 기준(지역 집계에만 적용: 10곳 미만 제외·10~19곳 주의) ──
+const withSample = (stores: number, over: Partial<BenchIn> = {}): ReportInput => ({ ...input, bench: { ...bench, stores, trend: bench.trend!.map((t, i, a) => (i === a.length - 1 ? { ...t, stores } : t)), ...over } });
+
+test("매장 리포트: 지역 점포 9곳이면 순위·증감·참고 문구를 만들지 않고, 10·19곳은 주의, 20곳은 일반", () => {
+  const nine = buildInsightReport(withSample(9));
+  assert.equal(nine.level?.sampleStatus, "too_few");
+  assert.ok(!nine.tiles.some((t) => /위$|증감/.test(t.value) || t.label.includes("증감")));
+  assert.match(nine.findings[0].title, /비교 점포가 9곳뿐이라 매출 비교는 참고용/);
+  assert.ok(!nine.checklist.some((c) => c.includes("전년 동기 변화율")));
+  assert.match(nine.level!.text, /9곳뿐이라.*참고만/);
+  for (const n of [10, 19]) {
+    const r = buildInsightReport(withSample(n));
+    assert.equal(r.level?.sampleStatus, "caution");
+    assert.match(r.level!.text, /소규모/);
+  }
+  const twenty = buildInsightReport(withSample(20));
+  assert.equal(twenty.level?.sampleStatus, "ok");
+  assert.doesNotMatch(twenty.level!.text, /소규모|참고만/);
+  assert.ok(twenty.tiles.some((t) => t.label.includes("증감")));
+});
+
+test("매장 리포트: 서버가 증감에 '주의'를 달면 타일·제목에 그대로 따른다", () => {
+  const r = buildInsightReport(withSample(15, { growth: { yoy: { compare_label: "2025년 2분기", total_sales: { value: -5.6, status: "caution" }, per_store: { value: -2.6, status: "caution" } }, qoq: { compare_label: "2026년 1분기", per_store: { value: -2.9 } } } }));
+  assert.equal(r.level?.yoyCaution, true);
+  assert.ok(r.tiles.find((t) => t.label.includes("증감"))?.note.includes("소규모 상권: 변동성 주의"));
+  assert.match(r.findings[0].title, /소규모 상권: 변동성 주의/);
+});
+
+test("매장 리포트: 지역 개폐업·프랜차이즈 표본이 10곳 미만이면 비율 비교를 빼고, 매장 개별 정보(반경 안 점포·업력·앵커)는 그대로 둔다", () => {
+  const small = withSample(31, { churn: { ...bench.churn!, avg_stores: 6 }, franchise_share: { share: 0.5, frc_stores: 3, stores: 6, peer_median: 0.08 } });
+  const r = buildInsightReport(small);
+  assert.equal(r.competition?.churn, null);
+  assert.equal(r.competition?.franchise, null);
+  assert.match(r.competition!.text, /폐업률은 비교하지 않았습니다/);
+  assert.match(r.competition!.text, /중앙값과 견주지 않았습니다/);
+  assert.ok(!r.checklist.some((c) => c.includes("프랜차이즈") || c.includes("문을 닫은")));
+  assert.equal(r.profile.find((p) => p.label === "인허가 업력")?.value, "7년 1개월");
+  assert.ok(r.profile.some((p) => p.label === "가까운 앵커 브랜드"));
+});
+
+test("매장 리포트: 제목이 중립 문장이면 시간대 핵심 발견은 제목을 되풀이하지 않는다", () => {
+  const flat = buildInsightReport({ ...input, bench: { ...bench, insights: [{ group: "시간대별", label: "17~21시", gap_pctp: 2 }] } });
+  assert.match(flat.headline, /상권 읽기$/);
+  const t = flat.findings.map((f) => f.title);
+  assert.equal(new Set(t).size, t.length);
+  assert.ok(t.includes("시간대별 매출 비중은 평균과 큰 차이가 없습니다"));
+  const gap = buildInsightReport(input);
+  assert.equal(gap.findings.find((f) => f.body.endsWith("→ 3쪽"))!.title, gap.headline);       // 차이가 크면 제목이 곧 시간대 발견
+});

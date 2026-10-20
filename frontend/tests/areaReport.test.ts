@@ -121,7 +121,7 @@ test("관점: 자영업자는 매출 증대 기회(비는 시간대·유동 대�
   assert.ok(pos.some((t) => t.startsWith("11~14시에 손님을 더 모을 여지")), pos.join("|")); // 평균보다 13%p 낮은 점심
   assert.ok(pos.some((t) => t.includes("17~21시가 이 상권 매출의 중심입니다")), pos.join("|"));
   assert.ok(pos.some((t) => t.includes("개인 가게의 차별화")));
-  assert.match(r.headline, /11~14시 시간대에 매출을 더 올릴 여지가 보입니다/);
+  assert.match(r.headline, /11~14시 매출 비중이 평균보다 .*%p 낮아 손님을 더 모을 여지를 점검해 볼 만합니다/);
   assert.ok(r.checklist.some((c) => c.includes("'내 가게 점검'에 월 매출을 기록")));
   assert.ok(r.checklist.some((c) => c.includes("11~14시 시간대에 한 가지")));
   assert.equal(r.lens.checklistTitle, "이번 달 해볼 것");
@@ -142,4 +142,159 @@ test("조사는 받침에 맞게 고른다(은/는, 이/가)", async () => {
   assert.equal(eunNeun("점심"), "은");
   assert.equal(iGa("17~21시"), "가");
   assert.equal(iGa("저녁"), "이");
+});
+
+// ── 표본 기준(서버 증감률 기준과 같다: 10곳 미만 제외·10~19곳 주의) ──
+const withStores = (n: number, mode: "owner" | "founder" = "founder", yoyCaution = false): AreaReportInput => ({
+  ...input, mode,
+  rows: input.rows.map((r) => (r.key === "sales_yoy_pct" && yoyCaution ? { ...r, cells: [{ ...r.cells[0], caution: true, note: "소규모 상권: 변동성 주의" }] } : r)),
+  overview: input.overview && { ...input.overview, trend: input.overview.trend.map((t, i, a) => (i === a.length - 1 ? { ...t, stores: n } : t)) },
+});
+
+test("표본 상태: 10곳 미만 제외, 10~19곳 주의, 20곳 이상 일반", async () => {
+  const { sampleStatus, sampleNote } = await import("../src/lib/areaReport.ts");
+  assert.equal(sampleStatus(9), "too_few");
+  assert.equal(sampleStatus(10), "caution");
+  assert.equal(sampleStatus(19), "caution");
+  assert.equal(sampleStatus(20), "ok");
+  assert.equal(sampleStatus(null), "unknown");
+  assert.equal(sampleNote(31, "상권"), "");
+  assert.match(sampleNote(7, "상권"), /7곳뿐이라.*10곳 미만.*참고만/);
+  assert.match(sampleNote(15, "상권"), /소규모 상권.*흔들릴 수/);
+});
+
+test("점포 10곳 미만 상권은 매출 비교·폐업률 신호를 만들지 않고 참고용이라고 말한다(두 관점 모두)", () => {
+  for (const mode of ["founder", "owner"] as const) {
+    const r = buildAreaReport(withStores(7, mode));
+    assert.equal(r.level?.sampleStatus, "too_few");
+    const sig = [...r.lens.positive, ...r.lens.caution].map((s) => s.title).join("|");
+    assert.doesNotMatch(sig, /중앙값|총매출|문 닫는|폐업/);
+    assert.match(r.findings[0].title, /점포가 7곳뿐이라 매출 비교는 참고용/);
+    assert.doesNotMatch(r.headline, /중앙값의/);
+    assert.match(r.level?.text ?? "", /참고만 하세요/);
+  }
+});
+
+test("점포 10~19곳은 신호를 만들되 '소규모 상권' 주의를 붙이고, 서버가 증감에 주의를 달았으면 그 말을 그대로 따른다", () => {
+  const r = buildAreaReport(withStores(15, "founder", true));
+  assert.equal(r.level?.sampleStatus, "caution");
+  const sig = [...r.lens.positive, ...r.lens.caution];
+  const cmp = sig.filter((s) => /중앙값|총매출|문 닫는/.test(s.title));
+  assert.ok(cmp.length >= 2 && cmp.every((s) => s.body.includes("소규모 상권")));
+  assert.ok(r.tiles.some((t) => t.label.startsWith("총매출 증감") && t.note.includes("소규모 상권: 변동성 주의")));
+  assert.match(r.findings[0].title, /소규모 상권: 변동성 주의/);
+});
+
+test("점포 20곳 이상이면 주의 문구를 붙이지 않는다", () => {
+  const r = buildAreaReport(withStores(31));
+  assert.equal(r.level?.sampleStatus, "ok");
+  assert.ok(![...r.lens.positive, ...r.lens.caution].some((s) => s.body.includes("소규모 상권")));
+  assert.doesNotMatch(r.level?.text ?? "", /소규모|참고만 하세요/);
+});
+
+test("자영업자 '문 닫는 비율 중앙값 이하'는 오래 버틴다고 단정하지 않는다", () => {
+  const low = { ...input, mode: "owner" as const, peers: { ...input.peers, close: [30, 28, 26, 19.67, 40, 35].map((v, i) => ({ code: i === 3 ? "u" : String(i), value: v, size: 30 })) } };
+  const t = buildAreaReport(low).lens.positive.find((s) => s.title.includes("문 닫는"));
+  assert.ok(t);
+  assert.doesNotMatch(t.title, /오래 버/);
+  assert.match(t.body, /오래 버틴다는 뜻은 아닙니다/);
+});
+
+test("점포 10곳 미만이면 프랜차이즈 비중·점포 수 증감·폐업률 기반 확인 항목도 만들지 않는다", () => {
+  for (const mode of ["founder", "owner"] as const) {
+    const r = buildAreaReport(withStores(7, mode));
+    const text = [...r.lens.positive, ...r.lens.caution].map((s) => s.title).concat(r.lens.checklist).join("|");
+    assert.doesNotMatch(text, /프랜차이즈|점포 수가 약 2년|점포 수가 안정|문 닫|최근 문을 닫은|상권 전체 매출/);
+    assert.match(r.lens.checklist.join("|"), /내 가게 점검|입지 비교/);   // 현장 확인·내 가게 점검 같은 일반 항목은 남는다
+  }
+});
+
+test("폐업률이 중앙값을 조금 넘는 정도로는 '높다'고 하지 않고, 1.25배 이상일 때만 눈에 띄게 높다고 한다", () => {
+  const mk = (self: number, mode: "owner" | "founder") => ({ ...input, mode, peers: { ...input.peers, close: [4, 4.2, 4.3, self, 6, 3.9].map((v, i) => ({ code: i === 3 ? "u" : String(i), value: v, size: 30 })) } });
+  for (const mode of ["owner", "founder"] as const) {
+    const near = buildAreaReport(mk(4.9, mode));
+    const sigNear = [...near.lens.positive, ...near.lens.caution].map((s) => s.title).join("|");
+    assert.doesNotMatch(sigNear, /문 닫는|문을 닫는/);                       // 4.9% vs 중앙값 약 4.25% — 신호 없음
+    const far = buildAreaReport(mk(9, mode));
+    assert.match([...far.lens.caution].map((s) => s.title).join("|"), /눈에 띄게 높습니다|상위 25%/);
+  }
+});
+
+test("자영업자: 제목이 말한 비는 시간대를 핵심 발견에서 다시 반복하지 않는다", () => {
+  const r = buildAreaReport({ ...input, mode: "owner" });
+  assert.ok(r.lens.positive.some((s) => s.title.includes("손님을 더 모을 여지")));
+  assert.ok(!r.findings.some((f) => f.title === r.headline));
+});
+
+test("직장인구 신호: 절대 인원이 아니라 업무형 판정 비중으로 말하고, 판정 불가·자료 없음이면 만들지 않는다", () => {
+  const ch = (demand: unknown) => ({ ...input, mode: "owner" as const, character: { ...input.character!, sections: { ...input.character!.sections, demand } as never } });
+  const has = (r: ReturnType<typeof buildAreaReport>) => r.lens.positive.some((s) => s.title.includes("직장인구"));
+  assert.ok(has(buildAreaReport(ch({ workers: { value: 14034 }, worker_share_pct: 72.4, demand_type: "업무형", base_ok: true }))));
+  assert.ok(!has(buildAreaReport(ch({ workers: { value: 14034 }, worker_share_pct: 40, demand_type: "혼합형", base_ok: true }))));       // 인원이 커도 비중이 낮으면 만들지 않는다
+  assert.ok(!has(buildAreaReport(ch({ workers: { value: 245 }, worker_share_pct: 63.6, demand_type: "업무형", base_ok: false }))));       // 판정 가능 최소 인구 미만
+  assert.ok(!has(buildAreaReport({ ...input, mode: "owner", character: null })));                                                           // 유형 자료 없음 — 1,500명 같은 고정 기준으로 대신하지 않는다
+  const r = buildAreaReport(ch({ workers: { value: 3000 }, worker_share_pct: 66.2, demand_type: "업무형", base_ok: true }));
+  assert.match(r.lens.positive.find((s) => s.title.includes("직장인구"))!.body, /66\.2%.*60% 이상/);
+});
+
+test("신호가 없을 때 이유를 구분한다: 자료 없음 / 표본 부족 / 평균 수준(중립) — 일부러 신호를 만들지 않는다", () => {
+  const none = buildAreaReport({ ...input, rows: input.rows.filter((r) => r.key === "stores_sbiz"), overview: null, character: null, mode: "owner", peers: { perStore: [], close: [], open: [], frc: [] } });
+  assert.equal(none.lens.positive.length + none.lens.caution.length, 0);
+  assert.match(none.lens.emptyNote, /추정매출 자료가 없어.*0이 아니라 자료 없음/);
+  const small = buildAreaReport({ ...withStores(6, "owner"), overview: { ...withStores(6).overview!, hours: { slots: [], pilot: undefined }, floating: null }, character: null });
+  assert.match(small.lens.emptyNote, /6곳뿐이라.*표본이 작아 해석을 보류/);
+  // 평균 수준: 신호 기준을 넘는 값이 하나도 없는 자료
+  const flat = buildAreaReport({
+    ...input, mode: "founder", character: null,
+    rows: input.rows.map((r) => (r.key === "sales_yoy_pct" ? { ...r, cells: [{ value: 0 }] } : ["stores_change_2y", "stores_volatility", "frc_share", "wrc_total"].includes(r.key) ? { ...r, cells: [{ value: r.key === "wrc_total" ? 100 : 5 }] } : r)),
+    overview: { ...input.overview!, hours: { slots: input.overview!.hours.slots.map((s) => ({ ...s, pct: 16.6 })), pilot: { ...input.overview!.hours.pilot!, slots: input.overview!.hours.pilot!.slots.map((s) => ({ ...s, pct: 16.6 })) } }, floating: null },
+    peers: { ...input.peers, perStore: [{ code: "u", value: 39_000_000, size: 31 }, { code: "x", value: 40_000_000, size: 30 }, { code: "y", value: 38_000_000, size: 30 }], close: [4, 5, 4.5].map((v, i) => ({ code: i === 0 ? "u" : String(i), value: v, size: 30 })), open: [] },
+  });
+  if (flat.lens.positive.length + flat.lens.caution.length === 0) assert.match(flat.lens.emptyNote, /평균 수준.*일부러 만들지 않았습니다/);
+  else assert.equal(flat.lens.emptyNote, "");
+});
+
+test("점포 10곳 미만 상권 리포트: 순위·증감·폐업률 타일을 만들지 않고, 시간대 신호에는 참고용 문구를 붙인다", () => {
+  for (const mode of ["owner", "founder"] as const) {
+    const r = buildAreaReport(withStores(7, mode));
+    assert.ok(!r.tiles.some((t) => /위$/.test(t.value) || t.label.includes("증감") || t.label.includes("폐업률")));
+    assert.match(r.tiles[0].note, /참고용\(10곳 미만\)/);
+    const slotSignals = [...r.lens.positive, ...r.lens.caution].filter((s) => /시간대|중심|쏠려/.test(s.title));
+    assert.ok(slotSignals.length > 0 && slotSignals.every((s) => s.body.includes("참고용")));
+  }
+});
+
+test("점포 10곳 미만 상권: 안정성 문장·프로필에서도 폐업률·개업률·프랜차이즈 비율을 빼고 이유를 밝힌다", () => {
+  const r = buildAreaReport(withStores(7, "owner"));
+  assert.equal(r.stability?.churn, null);
+  assert.equal(r.stability?.frc, null);
+  assert.match(r.stability!.text, /7곳뿐이라.*비교하지 않았습니다/);
+  assert.ok(!r.profile.some((p) => p.label.includes("프랜차이즈")));
+  assert.ok(!r.stability!.facts.some((f) => f.label.includes("폐업률") || f.label.includes("개업률")));
+  assert.ok(!r.findings.some((f) => /폐업률은 \d/.test(f.title)));
+  const ok = buildAreaReport(withStores(25, "owner"));            // 25곳이면 그대로 비교한다
+  assert.ok(ok.stability?.churn && ok.stability.frc);
+});
+
+test("지나가는 사람 대비 매출 비교에서 0~6시(대부분 집에 있는 주민)는 뺀다", () => {
+  const base = withStores(31, "owner");
+  const slots = ["00~06시", "06~11시", "11~14시", "14~17시", "17~21시", "21~24시"];
+  const r = buildAreaReport({ ...base, overview: { ...base.overview!, hours: { slots: slots.map((label, i) => ({ label, pct: [0, 10, 30, 10, 40, 10][i] })), pilot: undefined }, floating: { label: "x", flpop: 1000, yoy_pct: 0, weekend_pct: 25, slots: slots.map((label, i) => ({ label, pct: [40, 20, 10, 10, 10, 10][i] })) } } });
+  const t = [...r.lens.positive].map((s) => s.title).join("|");
+  assert.doesNotMatch(t, /00~06시는 지나가는 사람/);
+  assert.match(t, /06~11시은?는? 지나가는 사람|06~11시.*지나가는 사람/);
+  assert.ok(!r.lens.checklist.some((c) => c.includes("00~06시 시간대에 내 가게가 열려")));
+});
+
+test("핵심 발견 제목은 서로 되풀이하지 않는다 — 제목이 점포당 매출 문장이면 시간대 발견은 자기 제목을 쓴다", () => {
+  const base = withStores(31, "founder");
+  const flat = (v: number) => ({ ...base, overview: { ...base.overview!, hours: { slots: base.overview!.hours.slots.map((s) => ({ ...s, pct: v })), pilot: { ...base.overview!.hours.pilot!, slots: base.overview!.hours.pilot!.slots.map((s) => ({ ...s, pct: v })) } } } });
+  const r = buildAreaReport(flat(16.6));
+  assert.match(r.headline, /중앙값의/);
+  assert.equal(new Set(r.findings.map((f) => f.title)).size, r.findings.length);
+  assert.match(r.findings.find((f) => f.body.endsWith("→ 3쪽"))!.title, /시간대별 매출 비중은 평균과 큰 차이가 없습니다/);
+  for (const m of ["owner", "founder"] as const) {
+    const t = buildAreaReport({ ...base, mode: m }).findings.map((f) => f.title);
+    assert.equal(new Set(t).size, t.length);
+  }
 });

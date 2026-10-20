@@ -3,7 +3,8 @@
 // 원인을 단정하지 않고 '관측'과 '가능한 해석'만 쓴다. 점수·'창업 적합도'를 만들지 않으며 리뷰·평점은 쓰지 않는다.
 // 같은 폴더의 순수 함수(insightReport)만 가져온다(tests/areaReport.test.ts).
 import { buildLens, type Lens } from "./areaLens.ts";
-import { bigPeerRank, median, type Finding, type LevelSection, type Tile } from "./insightReport.ts";
+import { bigPeerRank, median, sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type Finding, type LevelSection, type SampleStatus, type Tile } from "./insightReport.ts";
+export { sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type SampleStatus };
 import type { Mode } from "./mode";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ko-KR");
@@ -12,7 +13,7 @@ const signed = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}%`;
 
 // ── 입력 ──
 export interface PeerPoint { code: string; value: number | null; size: number | null }
-export interface CompareRowIn { key: string; label: string; as_of: string | null; cells: { value: number | null; note?: string }[] }
+export interface CompareRowIn { key: string; label: string; as_of: string | null; cells: { value: number | null; note?: string; caution?: boolean }[] }
 export interface OverviewIn {
   latest_quarter: string;
   trend: { quarter: string; label: string; per_store_month: number | null; stores: number | null }[];
@@ -24,7 +25,7 @@ export interface CharacterIn {
   type: { headline: string };
   strengths: string[];
   cautions: string[];
-  sections?: { transit?: { rail?: { count: number; boardings_observed: number | null; alightings_observed: number | null; year: number; usage_state: string }; bus?: { count: number; boardings_observed: number | null; alightings_observed: number | null; usage_state: string } } };
+  sections?: { demand?: { workers?: { value: number | null } | null; worker_share_pct: number | null; demand_type: string | null; base_ok: boolean }; transit?: { rail?: { count: number; boardings_observed: number | null; alightings_observed: number | null; year: number; usage_state: string }; bus?: { count: number; boardings_observed: number | null; alightings_observed: number | null; usage_state: string } } };
 }
 export interface AreaReportInput {
   unit: { level: "dong" | "trdar"; code: string; name: string; type: string | null };
@@ -80,12 +81,19 @@ const BIG_PEER_STORES = 20;
 const val = (rows: CompareRowIn[], key: string): number | null => rows.find((r) => r.key === key)?.cells[0]?.value ?? null;
 const asOf = (rows: CompareRowIn[], key: string): string => rows.find((r) => r.key === key)?.as_of ?? "";
 const note = (rows: CompareRowIn[], key: string): string | undefined => rows.find((r) => r.key === key)?.cells[0]?.note;
+const caution = (rows: CompareRowIn[], key: string): boolean => rows.find((r) => r.key === key)?.cells[0]?.caution === true;
 
 function nums(p: PeerPoint[]): number[] { return p.filter((x) => x.value !== null).map((x) => x.value as number); }
 /** 위쪽 25% 경계 — 값을 작은 순으로 세웠을 때 75% 위치(가까운 순위 방식). */
 export function p75(values: number[]): number {
   const s = [...values].sort((a, b) => a - b);
   return s[Math.floor(0.75 * (s.length - 1))];
+}
+
+/** 표본 점포 수 — 서울시 집계 최근 분기 점포 수(점포당 매출과 같은 기준), 없으면 상가정보 점포 수. */
+function unitSample(inp: AreaReportInput): number | null {
+  const st = (inp.overview?.trend ?? []).filter((t) => t.stores !== null);
+  return st.length ? (st.at(-1)?.stores as number) : val(inp.rows, "stores_sbiz");
 }
 
 function levelSection(inp: AreaReportInput): LevelSection | null {
@@ -109,11 +117,15 @@ function levelSection(inp: AreaReportInput): LevelSection | null {
   if (big.rank !== null) text += ` 점포가 ${BIG_PEER_STORES}곳 이상인 ${big.count}곳만 비교하면 ${big.rank}위입니다.`;
   if (peak && last && peak.q !== last.q && peak.v > last.v * 1.03) text += ` ${peak.label}(${fmt(peak.v)}만원)을 정점으로 내려와 ${inp.overview?.latest_quarter ? "최근 분기는" : "지금은"} 정점보다 ${Math.round((1 - last.v / peak.v) * 100)}% 낮습니다.`;
   if (yoyTotal !== null) text += ` 총매출은 전년 동기 대비 ${signed(yoyTotal)}입니다.`;
+  const sampleStores = unitSample(inp);
+  const sNote = sampleNote(sampleStores, label);
+  if (sNote) text += ` ${sNote}`;
   return {
     me: meMan, median: med, ratio, hist: peers.map(man), rank, peerCount: peers.length, bigRank: big.rank, bigCount: big.count,
     trend: trend.map((t) => ({ q: t.q, v: t.v })), yoyPerStore: null, yoyTotal, qoqPerStore: null, flpopYoy: ov.floating?.yoy_pct ?? null,
     storesFrom: stores.length ? (stores[0].stores as number) : null, storesNow: stores.length ? (stores.at(-1)?.stores as number) : null,
     unitName: inp.unit.name, peerLabel: `파일럿 구 ${label}`, quarterLabel: asOf(inp.rows, "per_store_month") || ov.latest_quarter, text,
+    sampleStores, sampleStatus: sampleStatus(sampleStores), yoyCaution: caution(inp.rows, "sales_yoy_pct"),
   };
 }
 
@@ -169,6 +181,14 @@ function slotsSection(inp: AreaReportInput): AreaSlots | null {
 function stabilitySection(inp: AreaReportInput): AreaStability | null {
   // 지도 지표의 개업률·폐업률은 '분기' 값이라, 같은 분기 값끼리(이 지역 vs 비교 지역)만 견준다. 연 값(최근 1년)은 비교 없이 따로 보인다.
   const self = (p: PeerPoint[]) => p.find((x) => x.code === inp.unit.code)?.value ?? null;
+  // 표본 점포 10곳 미만이면 개업·폐업·프랜차이즈 비율을 비교에 쓰지 않는다(점포 수 같은 사실만 남긴다)
+  const sampleN = unitSample(inp);
+  if (sampleStatus(sampleN) === "too_few") {
+    const stores0 = val(inp.rows, "stores_sbiz");
+    const facts0: AreaStability["facts"] = stores0 !== null ? [{ label: "같은 업종 점포 수", value: `${fmt(stores0)}곳`, note: "소상공인 상가정보 기준" }] : [];
+    const text0 = `서울시 집계 점포가 ${sampleN}곳뿐이라(${SAMPLE_MIN}곳 미만) 폐업률·개업률·프랜차이즈 비중은 비교하지 않았습니다. 점포 몇 곳의 변화로 비율이 크게 달라져 해석이 어렵습니다.`;
+    return { churn: null, frc: null, facts: facts0, chg2y: null, volatility: null, text: text0, take: "이 상권은 점포가 적어 비율 지표로 안정성을 판단하기 어렵습니다. 현장에서 가게 수·업종 구성·운영 기간을 직접 확인하세요." };
+  }
   const qClose = self(inp.peers.close);
   const qOpen = self(inp.peers.open);
   const pc = nums(inp.peers.close);
@@ -240,36 +260,46 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   const top = slots ? slots.rows.reduce((m, r) => (r.sales > m.sales ? r : m), slots.rows[0]) : null;
   const pgap = slots && slots.hasPilot ? slots.rows.filter((r) => r.pilot !== null).map((r) => ({ label: r.label, gap: r.sales - (r.pilot as number) })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0] : null;
   const workers = val(inp.rows, "wrc_total");
-  const lens = buildLens(inp.mode, { unitWord, level, slots, stability, location, workers });
+  const dm = inp.character?.sections?.demand ?? null;
+  const demand = dm ? { type: dm.demand_type, sharePct: dm.worker_share_pct, workers: dm.workers?.value ?? null, baseOk: dm.base_ok } : null;
+  const lens = buildLens(inp.mode, { unitWord, level, slots, stability, location, workers, demand, sample: { stores: level?.sampleStores ?? null, status: level?.sampleStatus ?? "unknown" } });
   const lowGap = slots && slots.hasPilot ? slots.rows.filter((r) => r.pilot !== null).map((r) => ({ label: r.label, gap: r.sales - (r.pilot as number) })).sort((a, b) => a.gap - b.gap)[0] : null;
+  const tooFew = level?.sampleStatus === "too_few";
   const factHeadline = pgap && Math.abs(pgap.gap) >= 8
     ? `${inp.unit.name} ${scopeShort}, ${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높습니다" : "낮습니다"}`
     : top && top.sales >= 40
     ? `${inp.unit.name} ${scopeShort}, 매출의 ${Math.round(top.sales)}%가 ${top.label}에 몰립니다`
-    : level
+    : level && !tooFew
       ? `${inp.unit.name}, ${scopeShort} 점포당 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배입니다`
       : `${inp.unit.name} ${scopeShort} ${unitWord} 읽기`;
   // 자영업자는 '어디에서 더 벌 수 있는가'(평균보다 비는 시간대)를, 예비 창업자는 사실 그대로의 제목을 앞세운다
   const headline = inp.mode === "owner" && lowGap && lowGap.gap <= -8
-    ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 시간대에 매출을 더 올릴 여지가 보입니다`
+    ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 매출 비중이 평균보다 ${Math.abs(lowGap.gap).toFixed(1)}%p 낮아 손님을 더 모을 여지를 점검해 볼 만합니다`
     : factHeadline;
   const subtitle = `${inp.unit.name}${inp.unit.type ? `(${inp.unit.type})` : ""} · ${inp.scope} 기준 · ${unitWord} 단위`;
 
   const tiles: Tile[] = [];
   if (level) {
-    tiles.push({ label: `${unitWord} 점포당 월평균 추정매출`, value: `${fmt(level.me)}만원`, note: `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
-    if (level.bigRank !== null) tiles.push({ label: `점포 ${BIG_PEER_STORES}곳 이상 ${level.bigCount}곳 중`, value: `${level.bigRank}위`, note: `전체 ${level.peerCount}곳 중 ${level.rank}위`, tone: "accent" });
+    tiles.push({ label: `${unitWord} 점포당 월평균 추정매출`, value: `${fmt(level.me)}만원`, note: tooFew ? `점포 ${level.sampleStores}곳 — 참고용(${SAMPLE_MIN}곳 미만)` : `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
+    if (tooFew) { /* 점포 10곳 미만 — 순위·증감 타일은 만들지 않는다 */ }
+    else if (level.bigRank !== null) tiles.push({ label: `점포 ${BIG_PEER_STORES}곳 이상 ${level.bigCount}곳 중`, value: `${level.bigRank}위`, note: `전체 ${level.peerCount}곳 중 ${level.rank}위`, tone: "accent" });
     else if (level.rank !== null) tiles.push({ label: `${level.peerCount}곳 중`, value: `${level.rank}위`, note: "점포 수가 적은 곳이 섞여 있습니다", tone: "accent" });
-    if (level.yoyTotal !== null) tiles.push({ label: "총매출 증감(전년 동기)", value: signed(level.yoyTotal), note: level.storesFrom !== null && level.storesNow !== null ? `점포 수 ${level.storesFrom}→${level.storesNow}곳(서울시 집계)` : "", tone: level.yoyTotal < 0 ? "neg" : "plain" });
+    if (level.yoyTotal !== null && !tooFew) tiles.push({ label: "총매출 증감(전년 동기)", value: signed(level.yoyTotal), note: [level.storesFrom !== null && level.storesNow !== null ? `점포 수 ${level.storesFrom}→${level.storesNow}곳(서울시 집계)` : "", level.yoyCaution ? "소규모 상권: 변동성 주의" : ""].filter(Boolean).join(" · "), tone: level.yoyTotal < 0 ? "neg" : "plain" });
   }
-  if (stability?.churn?.closeRate != null) {
+  if (stability?.churn?.closeRate != null && !tooFew) {
     const c = stability.churn;
     tiles.push({ label: "같은 업종 분기 폐업률(최근 분기)", value: `${((c.closeRate as number) * 100).toFixed(1)}%`, note: c.medClose != null ? `비교 중앙값 ${(c.medClose * 100).toFixed(1)}%` : "", tone: c.medClose != null && (c.closeRate as number) > c.medClose ? "neg" : "plain" });
   }
 
   const findings: Finding[] = [];
-  if (level) findings.push({ title: `점포당 월평균 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyTotal !== null ? `, 총매출은 전년 동기 ${signed(level.yoyTotal)}` : ""}입니다`, body: `${inp.unit.name} 평균은 ${fmt(level.me)}만원입니다.${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기 ${signed(level.flpopYoy)}입니다.` : ""} → 2쪽` });
-  if (slots) findings.push({ title: headline, body: `${slots.text} → 3쪽` });
+  if (level && tooFew) findings.push({ title: `점포가 ${level.sampleStores}곳뿐이라 매출 비교는 참고용입니다`, body: `${inp.unit.name} 점포당 월평균 추정매출은 ${fmt(level.me)}만원이지만 ${sampleNote(level.sampleStores, unitWord)} → 2쪽` });
+  else if (level) findings.push({ title: `점포당 월평균 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyTotal !== null ? `, 총매출은 전년 동기 ${signed(level.yoyTotal)}${level.yoyCaution ? "(소규모 상권: 변동성 주의)" : ""}` : ""}입니다`, body: `${inp.unit.name} 평균은 ${fmt(level.me)}만원입니다.${sampleNote(level.sampleStores, unitWord) ? ` ${sampleNote(level.sampleStores, unitWord)}` : ""}${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기 ${signed(level.flpopYoy)}입니다.` : ""} → 2쪽` });
+  // 자영업자 제목이 이미 '비는 시간대'를 말하고 신호 상자에도 같은 내용이 있으면 핵심 발견에서는 겹치지 않게 뺀다
+  const slotsDuplicated = inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8 && lens.positive.some((s) => s.title.startsWith(`${lowGap.label}에 손님을`));
+  // 제목이 시간대 이야기가 아닌 문장(점포당 매출 등)으로 정해졌으면, 시간대 핵심 발견은 제목을 그대로 되풀이하지 않고 자기 내용의 제목을 쓴다
+  const headlineIsSlots = (inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8) || (pgap !== null && Math.abs(pgap.gap) >= 8) || (top !== null && top.sales >= 40);
+  const slotsTitle = headlineIsSlots ? headline : pgap && Math.abs(pgap.gap) >= 5 ? `${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높" : "낮"}습니다` : "시간대별 매출 비중은 평균과 큰 차이가 없습니다";
+  if (slots && !slotsDuplicated) findings.push({ title: slotsTitle, body: `${slots.text} → 3쪽` });
   if (stability) findings.push({ title: stability.churn?.closeRate != null ? `같은 업종 최근 분기 폐업률은 ${(stability.churn.closeRate * 100).toFixed(1)}%입니다` : "경쟁과 안정성", body: `${stability.text || "점포 수 변화와 프랜차이즈 비중을 봅니다."} → 4쪽` });
 
   const profile: { label: string; value: string }[] = [];

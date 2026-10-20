@@ -148,10 +148,17 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
     });
   }, [store, detail.data, bench.data, nearby.data, loc.data, anchors.data]);
   const hasAny = report !== null && (report.level || report.slots || report.competition || report.factors);
+  // 일부 조회만 실패했을 때 그 쪽이 조용히 빠지면 '자료 없음'으로 오해하므로 실패한 자료를 밝힌다
+  const partialFailures = [bench.isError && "상권 매출 비교", nearby.isError && "주변 인허가 분석", loc.isError && "입지 영향력"].filter(Boolean) as string[];
 
   return (
     <ReportFrame title="상권 인사이트 리포트" canPrint={Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
+      {!pending && partialFailures.length > 0 && (
+        <div style={{ ...boxS, background: C.paper, color: C.bad }}>
+          다음 자료를 불러오지 못해 해당 내용이 이 리포트에 빠져 있습니다: {partialFailures.join(" · ")}. 자료가 없는 것이 아니라 조회 실패이니 잠시 후 리포트를 다시 열어 주세요.
+        </div>
+      )}
       {!pending && detail.isError && <div style={{ ...boxS, background: C.paper, color: C.bad }}>매장 정보를 불러오지 못했습니다: {detail.error.message}</div>}
       {!pending && report && !hasAny && (
         <div style={{ ...boxS, background: C.paper }}>이 매장은 상권 매출·경쟁 자료가 부족해 리포트를 만들 수 없습니다. 자료가 없는 것이지 0이라는 뜻이 아닙니다.{bench.data?.message ? ` (${bench.data.message})` : ""}</div>

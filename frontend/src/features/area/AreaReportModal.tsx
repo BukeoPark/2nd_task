@@ -67,6 +67,12 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
             </div>
           ))}
         </div>
+        {r.lens.positive.length === 0 && r.lens.caution.length === 0 && (
+          <div style={{ ...boxS, background: C.paper }}>
+            <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: C.mute }}>{r.lens.emptyNote}</p>
+          </div>
+        )}
         {(r.lens.positive.length > 0 || r.lens.caution.length > 0) && (
           <div>
             <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>{r.lens.signalsTitle}</h3>
@@ -181,10 +187,17 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
     });
   }, [cmp.data, ov.data, ch.data, bPer.data, bClose.data, bOpen.data, bFrc.data, level, code, name, type, mode]);
   const hasAny = report !== null && (report.level || report.slots || report.stability || report.location);
+  // 일부 조회만 실패했을 때 그 쪽이 조용히 빠지면 '자료 없음'으로 오해하므로 실패한 자료를 밝힌다
+  const partialFailures = [ov.isError && "시간대·유동인구", ch.isError && "상권 유형·입지", (bPer.isError || bClose.isError || bOpen.isError || bFrc.isError) && "비교 지역 분포"].filter(Boolean) as string[];
 
   return (
     <ReportFrame title={`상권 인사이트 리포트 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
+      {!pending && partialFailures.length > 0 && (
+        <div style={{ ...boxS, background: C.paper, color: C.bad }}>
+          다음 자료를 불러오지 못해 해당 내용이 이 리포트에 빠져 있습니다: {partialFailures.join(" · ")}. 자료가 없는 것이 아니라 조회 실패이니 잠시 후 리포트를 다시 열어 주세요.
+        </div>
+      )}
       {!pending && cmp.isError && <div style={{ ...boxS, background: C.paper, color: C.bad }}>지표를 불러오지 못했습니다: {cmp.error.message}</div>}
       {!pending && report && !hasAny && <div style={{ ...boxS, background: C.paper }}>이 지역·업종은 매출·점포 자료가 부족해 리포트를 만들 수 없습니다. 자료가 없는 것이지 0이라는 뜻이 아닙니다.</div>}
       {report && hasAny && <Pages r={report} date={today()} />}

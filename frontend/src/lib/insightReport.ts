@@ -7,7 +7,7 @@ const man = (won: number) => won / 1e4;
 const signed = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}%`;
 
 // ── 입력: API 응답의 필요한 부분만(구조적으로 맞으면 그대로 넘길 수 있다) ──
-interface Pct { value: number | null }
+interface Pct { value: number | null; status?: string; sample?: number | null }
 export interface BenchIn {
   status: string;
   svc_nm?: string;
@@ -61,6 +61,11 @@ export interface LevelSection {
   storesFrom: number | null; storesNow: number | null;
   unitName: string; peerLabel: string; quarterLabel: string;
   text: string;
+  /** 표본 점포 수(서울시 집계 최근 분기)와 표본 상태 — 서버 증감률 기준과 같다(10곳 미만 제외·10~19곳 주의). 없으면 판단하지 않는다. */
+  sampleStores?: number | null;
+  sampleStatus?: "ok" | "caution" | "too_few" | "unknown";
+  /** 서버가 총매출 증감에 '소규모 상권: 변동성 주의'를 붙였는가 */
+  yoyCaution?: boolean;
 }
 export interface SlotsSection {
   slots: { label: string; me: number; pilot: number; fl: number | null }[];
@@ -101,6 +106,23 @@ export interface InsightReport {
 }
 
 const BIG_PEER_STORES = 20;
+
+/** 표본 기준 — 서버 unit_metrics(MIN_STORES_FOR_YOY·YOY_CAUTION_BELOW)와 같다: 10곳 미만은 제외, 10~19곳은 변동성 주의.
+ * 지역 집계(상권·행정동의 점포당 매출·증감·폐업률·프랜차이즈 비중)에만 적용한다. 매장 한 곳의 정보(주소·업력·반경 안 점포 수·앵커 거리)에는 적용하지 않는다. */
+export const SAMPLE_MIN = 10;
+export const SAMPLE_CAUTION_BELOW = 20;
+export type SampleStatus = "ok" | "caution" | "too_few" | "unknown";
+export function sampleStatus(n: number | null | undefined): SampleStatus {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "unknown";
+  return n < SAMPLE_MIN ? "too_few" : n < SAMPLE_CAUTION_BELOW ? "caution" : "ok";
+}
+/** 표본 상태를 한 문장으로(ok·unknown 이면 빈 문자열). */
+export function sampleNote(n: number | null | undefined, unitWord: string): string {
+  const st = sampleStatus(n);
+  if (st === "too_few") return `서울시 집계 점포가 ${n}곳뿐이라(${SAMPLE_MIN}곳 미만) 이 ${unitWord}의 비교 순위·증감은 참고만 하세요.`;
+  if (st === "caution") return `점포가 ${n}곳(${SAMPLE_MIN}~${SAMPLE_CAUTION_BELOW - 1}곳)이라 소규모 ${unitWord}입니다 — 한두 곳 변화로 값이 크게 흔들릴 수 있습니다.`;
+  return "";
+}
 const TIME_GROUP = "시간대별";
 const AGE_GROUP = "연령대별";
 
@@ -131,17 +153,22 @@ function levelSection(b: BenchIn): LevelSection | null {
   const yoyTotal = b.growth?.yoy.total_sales.value ?? null;
   const stores = b.trend.filter((t) => t.stores !== null);
   const q = b.quarter_label ?? "";
+  const sampleStores = b.stores ?? (stores.length ? (stores.at(-1)?.stores as number) : null);
+  const yoyCaution = b.growth?.yoy.total_sales.status === "caution" || b.growth?.yoy.per_store.status === "caution";
   let text = `${b.unit.name} ${b.svc_nm ?? "같은 업종"} 점포당 월평균 추정매출은 ${fmt(me)}만원으로 ${b.unit.peer_label} ${hist.length}곳 중앙값(${fmt(med)}만원)의 약 ${ratio.toFixed(1)}배입니다.`;
   if (big.rank !== null) text += ` 점포가 ${BIG_PEER_STORES}곳 이상인 ${big.count}곳만 비교하면 ${big.rank}위입니다.`;
   if (peak && last && peak.q !== last.q && peak.v > last.v * 1.03) {
     text += ` ${peak.label}(${fmt(peak.v)}만원)을 정점으로 내려와 ${q}은 정점보다 ${Math.round((1 - last.v / peak.v) * 100)}% 낮습니다.`;
   }
   if (yoy !== null) text += ` ${b.growth?.yoy.compare_label} 대비로는 점포당 ${signed(yoy)}${yoyTotal !== null ? `, 총매출 ${signed(yoyTotal)}` : ""}입니다.`;
+  const sNote = sampleNote(sampleStores, b.unit.label);
+  if (sNote) text += ` ${sNote}`;
   return {
     me, median: med, ratio, hist, rank: b.rank ?? null, peerCount: b.peer_count ?? hist.length, bigRank: big.rank, bigCount: big.count,
     trend: trend.map((t) => ({ q: t.q, v: t.v })), yoyPerStore: yoy, yoyTotal, qoqPerStore: b.growth?.qoq.per_store.value ?? null, flpopYoy: b.floating?.flpop_yoy_pct ?? null,
     storesFrom: stores.length ? (stores[0].stores as number) : null, storesNow: stores.length ? (stores.at(-1)?.stores as number) : null,
     unitName: b.unit.name, peerLabel: b.unit.peer_label, quarterLabel: q, text,
+    sampleStores, sampleStatus: sampleStatus(sampleStores), yoyCaution,
   };
 }
 
@@ -189,17 +216,24 @@ function slotsSection(b: BenchIn): SlotsSection | null {
 function competitionSection(b: BenchIn | null, n: NearbyIn | null, l: LocIn | null): CompetitionSection | null {
   const same = l?.radius_metrics.competitors.same_category ?? null;
   const comp = n?.status === "ok" ? n.competitors ?? null : null;
-  const churn = b?.churn && (b.churn.status === "ok" || b.churn.status === "partial") && b.churn.opened !== undefined ? b.churn : null;
-  const fr = b?.franchise_share && b.franchise_share.share !== null ? b.franchise_share : null;
+  const churn0 = b?.churn && (b.churn.status === "ok" || b.churn.status === "partial") && b.churn.opened !== undefined ? b.churn : null;
+  // 지역 집계 표본(같은 업종 평균 점포 수·프랜차이즈 산출 점포 수)이 10곳 미만이면 비율을 비교에 쓰지 않는다(개폐업 건수는 사실이라 남긴다)
+  const churnSmall = churn0 !== null && sampleStatus(churn0.avg_stores) === "too_few";
+  const churn = churn0 && !churnSmall ? churn0 : null;
+  const fr0 = b?.franchise_share && b.franchise_share.share !== null ? b.franchise_share : null;
+  const frSmall = fr0 !== null && sampleStatus(fr0.stores) === "too_few";
+  const fr = fr0 && !frSmall ? fr0 : null;
   const yearly = n?.status === "ok" && n.trend ? n.trend.filter((t) => t.closed !== null).map((t) => ({ y: t.year, o: t.opened, c: t.closed as number, partial: t.partial_year })) : null;
   const cohort = n?.status === "ok" && n.closure_cohort?.status === "ok" && n.closure_cohort.rate !== null ? { rate: n.closure_cohort.rate, num: n.closure_cohort.numerator ?? 0, den: n.closure_cohort.denominator ?? 0, years: n.closure_cohort.horizon_years ?? 3 } : null;
-  if (!same && !comp && !churn && !fr && !yearly) return null;
+  if (!same && !comp && !churn0 && !fr0 && !yearly) return null;
   const radiusM = n?.radius_m ?? 500;
   const parts: string[] = [];
   if (same) parts.push(`반경 ${radiusM}m에 같은 소분류(${same.label}) 점포가 ${same.count}곳${same.nearest_m !== null ? `이고 가장 가까운 곳은 ${same.nearest_m}m입니다` : "입니다"}.`);
   if (fr) parts.push(`프랜차이즈 점포 비중은 ${((fr.share as number) * 100).toFixed(1)}%(${fr.stores}곳 중 ${fr.frc_stores}곳)${fr.peer_median !== null ? `로 비교 상권 중앙값 ${(fr.peer_median * 100).toFixed(0)}%${(fr.share as number) > fr.peer_median ? "보다 높습니다" : "와 같거나 낮습니다"}` : "입니다"}.`);
+  if (fr0 && frSmall) parts.push(`프랜차이즈 점포는 ${fr0.stores}곳 중 ${fr0.frc_stores}곳입니다 — 점포가 ${SAMPLE_MIN}곳 미만이라 비교 상권 중앙값과 견주지 않았습니다.`);
+  if (churn0 && churnSmall) parts.push(`최근 1년(${churn0.period}) 이 ${b?.unit?.label ?? "상권"} 같은 업종은 ${churn0.opened}곳이 열고 ${churn0.closed}곳이 닫았습니다 — 평균 점포 ${Math.round(churn0.avg_stores ?? 0)}곳(${SAMPLE_MIN}곳 미만)이라 폐업률은 비교하지 않았습니다.`);
   if (churn) {
-    parts.push(`최근 1년(${churn.period}) 이 ${b?.unit?.label ?? "상권"} 같은 업종은 ${churn.opened}곳이 열고 ${churn.closed}곳이 닫았습니다${churn.close_rate != null ? `. 연 폐업률 ${(churn.close_rate * 100).toFixed(1)}%${churn.peer_median_close != null ? `(비교 상권 중앙값 ${(churn.peer_median_close * 100).toFixed(1)}%)` : ""}` : ""}.`);
+    parts.push(`최근 1년(${churn.period}) 이 ${b?.unit?.label ?? "상권"} 같은 업종은 ${churn.opened}곳이 열고 ${churn.closed}곳이 닫았습니다${churn.close_rate != null ? `. 연 폐업률 ${(churn.close_rate * 100).toFixed(1)}%${churn.peer_median_close != null ? `(비교 상권 중앙값 ${(churn.peer_median_close * 100).toFixed(1)}%)` : ""}` : ""}${sampleStatus(churn.avg_stores) === "caution" ? ` (소규모 상권: 변동성 주의, 평균 점포 ${Math.round(churn.avg_stores ?? 0)}곳)` : ""}.`);
   }
   const take = "경쟁이 많다는 사실만으로 매출이 낮아진다고 볼 수 없습니다. 같은 업종이 모이는 상권에서 점포당 매출이 높게 나타나는 경향도 있으므로, 그 안에서 내 가게가 무엇이 다른지가 중요합니다. 상관관계이며 내 매장의 매출을 예측하지 않습니다.";
   return {
@@ -242,11 +276,13 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
     : `${areaLabel} ${svcName} 상권 읽기`;
 
   const tiles: Tile[] = [];
+  const tooFew = level?.sampleStatus === "too_few";
   if (level) {
-    tiles.push({ label: `${level.unitName.length > 12 ? "상권" : level.unitName} 점포당 월평균 추정매출`, value: `${fmt(level.me)}만원`, note: `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
-    if (level.bigRank !== null) tiles.push({ label: `점포 ${BIG_PEER_STORES}곳 이상 ${level.bigCount}곳 중`, value: `${level.bigRank}위`, note: level.rank !== null ? `전체 ${level.peerCount}곳 중에서는 ${level.rank}위` : "", tone: "accent" });
+    tiles.push({ label: `${level.unitName.length > 12 ? "상권" : level.unitName} 점포당 월평균 추정매출`, value: `${fmt(level.me)}만원`, note: tooFew ? `점포 ${level.sampleStores}곳 — 참고용(${SAMPLE_MIN}곳 미만)` : `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
+    if (tooFew) { /* 점포 10곳 미만 — 순위·증감은 만들지 않는다 */ }
+    else if (level.bigRank !== null) tiles.push({ label: `점포 ${BIG_PEER_STORES}곳 이상 ${level.bigCount}곳 중`, value: `${level.bigRank}위`, note: level.rank !== null ? `전체 ${level.peerCount}곳 중에서는 ${level.rank}위` : "", tone: "accent" });
     else if (level.rank !== null) tiles.push({ label: `${level.peerCount}곳 중`, value: `${level.rank}위`, note: "점포 수가 적은 상권이 섞여 있습니다", tone: "accent" });
-    if (level.yoyPerStore !== null) tiles.push({ label: "점포당 매출 증감(전년 동기)", value: signed(level.yoyPerStore), note: level.yoyTotal !== null ? `총매출 ${signed(level.yoyTotal)}` : "", tone: level.yoyPerStore < 0 ? "neg" : "plain" });
+    if (level.yoyPerStore !== null && !tooFew) tiles.push({ label: "점포당 매출 증감(전년 동기)", value: signed(level.yoyPerStore), note: [level.yoyTotal !== null ? `총매출 ${signed(level.yoyTotal)}` : "", level.yoyCaution ? "소규모 상권: 변동성 주의" : ""].filter(Boolean).join(" · "), tone: level.yoyPerStore < 0 ? "neg" : "plain" });
   }
   if (competition?.churn?.closeRate != null) {
     const c = competition.churn;
@@ -254,13 +290,16 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   }
 
   const findings: Finding[] = [];
-  if (level) {
+  if (level && tooFew) {
+    findings.push({ title: `비교 점포가 ${level.sampleStores}곳뿐이라 매출 비교는 참고용입니다`, body: `${level.unitName} 평균은 ${fmt(level.me)}만원이지만 ${sampleNote(level.sampleStores, level.unitName.length > 12 ? "상권" : "지역")} → 2쪽` });
+  } else if (level) {
     findings.push({
-      title: `점포당 월평균 추정매출은 비교 상권 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyPerStore !== null ? `, 전년 동기 대비 ${signed(level.yoyPerStore)}` : ""}입니다`,
+      title: `점포당 월평균 추정매출은 비교 상권 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyPerStore !== null ? `, 전년 동기 대비 ${signed(level.yoyPerStore)}${level.yoyCaution ? "(소규모 상권: 변동성 주의)" : ""}` : ""}입니다`,
       body: `${level.unitName} 평균은 ${fmt(level.me)}만원입니다.${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기보다 ${signed(level.flpopYoy)}입니다.` : ""} → 2쪽`,
     });
   }
-  if (slots) findings.push({ title: headline, body: `${slots.text} → 3쪽` });
+  // 제목이 시간대 차이를 말하지 않는 중립 문장이면(차이 5%p 미만) 시간대 발견이 그 제목을 되풀이하지 않게 자기 제목을 쓴다
+  if (slots) findings.push({ title: topGap && Math.abs(topGap.gap_pctp) >= 5 ? headline : "시간대별 매출 비중은 평균과 큰 차이가 없습니다", body: `${slots.text} → 3쪽` });
   if (competition) findings.push({ title: competition.churn ? `최근 1년 ${competition.churn.opened}곳이 열고 ${competition.churn.closed}곳이 닫았습니다` : `반경 ${competition.radiusM}m 같은 업종 점포 ${competition.sameCount ?? "?"}곳`, body: `${competition.text} → 4쪽` });
 
   const profile: { label: string; value: string }[] = [];
@@ -271,7 +310,7 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   if (anchors.length) profile.push({ label: "가까운 앵커 브랜드", value: anchors.map((a) => `${a.label} ${a.nearestM}m`).join(" · ") });
 
   const checklist: string[] = [];
-  if (level?.yoyPerStore != null) checklist.push(`내 월 매출의 전년 동기 변화율을 상권 평균 ${signed(level.yoyPerStore)}와 견주기('내 가게 점검'에 월 매출을 기록하면 바로 비교됩니다)`);
+  if (level?.yoyPerStore != null && !tooFew) checklist.push(`내 월 매출의 전년 동기 변화율을 상권 평균 ${signed(level.yoyPerStore)}와 견주기('내 가게 점검'에 월 매출을 기록하면 바로 비교됩니다)`);
   if (slots) {
     const lo = slots.slots.reduce((m, s) => (s.me - s.pilot < m.me - m.pilot ? s : m), slots.slots[0]);
     if (lo.me - lo.pilot <= -5) checklist.push(`${lo.label} 매출 비중이 상권 평균(${lo.pilot.toFixed(1)}%)보다 낮은지 내 가게 기록으로 확인하고, 그 시간대 메뉴·운영을 시험할지 정하기`);
