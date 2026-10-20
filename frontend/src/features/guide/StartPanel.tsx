@@ -1,0 +1,103 @@
+import { useState } from "react";
+import { Drawer } from "../../components/Drawer";
+import type { FoodCategoriesResponse } from "../../lib/apiClient";
+import type { Mode } from "../../lib/mode";
+import type { MyStoreEntry } from "../../lib/monthlyCheck";
+
+interface Props {
+  mode: Mode;
+  categories: FoodCategoriesResponse | undefined;
+  reviewCount: number;
+  myStores: MyStoreEntry[];
+  /** 예비 창업자 ① 지역·업종 미정 → 조건으로 후보 찾기 */
+  onUndecided: () => void;
+  /** ② 업종 확정 → 그 업종으로 조건 탐색 */
+  onPickSvc: (svc: string) => void;
+  /** ③ 관심 지역 확정 → 검색창 */
+  onFocusSearch: () => void;
+  onOpenReview: () => void;
+  /** 자영업자: 내 가게 찾기(검색창)·월간 점검·지역 흐름부터 */
+  onOpenMonthly: (storeId: string) => void;
+  onAreaFirst: () => void;
+  onClose: () => void;
+}
+
+/** 첫 화면 — 모드마다 다른 질문으로 시작한다. 자영업자는 '우리 가게 장사 점검', 예비 창업자는 '창업할 자리 찾기'. 지도를 가리지 않게 닫을 수 있다. */
+export function StartPanel(p: Props) {
+  return p.mode === "owner" ? <OwnerStart {...p} /> : <FounderStart {...p} />;
+}
+
+function OwnerStart(p: Props) {
+  const steps = ["내 가게 찾기", "매출·비용 점검", "주변 경쟁 변화", "시간대별 상권 수요", "이번 달 확인사항"];
+  return (
+    <Drawer title="우리 가게 장사 점검" subtitle="자영업자 · 5단계로 이번 달 장사를 돌아봐요" onClose={p.onClose}>
+      <ol style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+        {steps.map((s, i) => (
+          <li key={s} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 15, color: "#374151" }}>
+            <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: "50%", background: i === 0 ? "#1D4ED8" : "#E5E7EB", color: i === 0 ? "white" : "#4B5563", fontSize: 12.5, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <button type="button" onClick={p.onFocusSearch} style={primary}>내 가게 찾기 ›<span style={sub}>가게 이름이나 주소를 검색하면 점검 요약이 열려요</span></button>
+      {p.myStores.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>이어서 이번 달 점검하기</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {p.myStores.slice(0, 3).map((s) => (
+              <button key={s.storeId} type="button" onClick={() => p.onOpenMonthly(s.storeId)} style={secondary}>
+                {s.name}{s.dong ? <span style={{ color: "#6B7280", fontWeight: 400 }}> · {s.dong}</span> : null} ›
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button type="button" onClick={p.onAreaFirst} style={{ ...linkBtn, marginTop: 16 }}>가게는 나중에, 우리 지역 상권 흐름부터 볼래요 ›</button>
+      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>매출·비용 기록은 이 브라우저에만 저장되고 서버로 보내지 않아요. 상권 매출은 카드 결제 기반 추정이라 내 가게의 실제 매출이 아니에요.</div>
+    </Drawer>
+  );
+}
+
+function FounderStart(p: Props) {
+  const [choosingSvc, setChoosingSvc] = useState(false);
+  const [svc, setSvc] = useState("");
+  return (
+    <Drawer title="창업할 자리 찾기" subtitle="예비 창업자 · 어디까지 정하셨나요?" onClose={p.onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+        <button type="button" onClick={p.onUndecided} style={choice}>
+          <strong>① 지역도 업종도 아직 못 정했어요</strong>
+          <span style={sub2}>매출이 늘고 있는 곳, 경쟁이 적은 곳 같은 조건으로 후보를 모아 볼게요</span>
+        </button>
+        <div style={{ ...choice, cursor: "default" }}>
+          <button type="button" onClick={() => setChoosingSvc((v) => !v)} aria-expanded={choosingSvc} style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}>
+            <strong>② 업종은 정했어요</strong>
+            <span style={sub2}>그 업종 기준으로 후보 지역을 찾아 볼게요</span>
+          </button>
+          {choosingSvc && (
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <select aria-label="창업 업종" value={svc} onChange={(e) => setSvc(e.target.value)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 15 }}>
+                <option value="">업종을 고르세요</option>
+                {(p.categories?.groups ?? []).map((g) => <option key={g.svc_cd} value={g.svc_cd}>{g.svc_nm}</option>)}
+              </select>
+              <button type="button" disabled={!svc} onClick={() => p.onPickSvc(svc)} style={{ ...btnSmall, opacity: svc ? 1 : 0.5 }}>찾기 ›</button>
+            </div>
+          )}
+        </div>
+        <button type="button" onClick={p.onFocusSearch} style={choice}>
+          <strong>③ 관심 지역이 있어요</strong>
+          <span style={sub2}>지역·역·상권 이름을 검색해서 바로 요약부터 볼게요</span>
+        </button>
+      </div>
+      {p.reviewCount > 0 && <button type="button" onClick={p.onOpenReview} style={{ ...linkBtn, marginTop: 14 }}>담아 둔 후보지 {p.reviewCount}곳 이어서 검토하기 ›</button>}
+      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: 후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검 → 현장 답사. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
+    </Drawer>
+  );
+}
+
+const primary: React.CSSProperties = { width: "100%", marginTop: 16, padding: "11px 14px", border: "none", borderRadius: 10, background: "#1D4ED8", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left" };
+const sub: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9, marginTop: 2 };
+const secondary: React.CSSProperties = { textAlign: "left", minHeight: 40, padding: "8px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontWeight: 700, fontSize: 15, cursor: "pointer" };
+const linkBtn: React.CSSProperties = { border: "none", background: "none", color: "#1D4ED8", cursor: "pointer", fontSize: 15, padding: 0, textAlign: "left", textDecoration: "underline" };
+const choice: React.CSSProperties = { textAlign: "left", padding: "12px 14px", border: "1px solid #D1D5DB", borderRadius: 12, background: "white", cursor: "pointer", fontSize: 16, lineHeight: 1.5, minHeight: 56 };
+const sub2: React.CSSProperties = { display: "block", fontSize: 13.5, color: "#4B5563", marginTop: 2 };
+const btnSmall: React.CSSProperties = { minHeight: 40, padding: "6px 14px", borderRadius: 8, border: "none", background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" };

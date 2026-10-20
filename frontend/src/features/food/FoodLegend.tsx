@@ -26,7 +26,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
           <div aria-label="업종별 점 모양" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px", marginTop: 4 }}>
             {LEGEND_GLYPHS.map((g) => (
               <span key={g.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
-                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, lineHeight: 1 }}>{g.glyph}</span>
+                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, lineHeight: 1 }}>{g.glyph}</span>
                 {g.label}
               </span>
             ))}
@@ -50,7 +50,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
             )}
             <Dot color={NO_DATA_COLOR} label="자료 없음 (0 아님)" />
             {data.metric === "stores_volatility" && (
-              <div style={{ color: "#6B7280", fontSize: 11 }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
+              <div style={{ color: "#6B7280", fontSize: 12.5 }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
             )}
             <div style={{ color: "#6B7280" }}>원 크기 = 점포 수</div>
             <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 4, paddingTop: 4 }}>
@@ -58,11 +58,11 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               <div>{scopeLine("점포 수", `${data.scope.stores_label} 기준`)}</div>
               {data.metric !== "stores" && <div>{scopeLine(data.label, data.scope.metric_scope)}</div>}
               {data.scope.notice && (
-                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "4px 6px", fontSize: 11, marginTop: 2 }}>{data.scope.notice}</div>
+                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, marginTop: 2 }}>{data.scope.notice}</div>
               )}
             </div>
-            <div style={{ color: "#6B7280", fontSize: 11 }}>계산: {data.basis}</div>
-            <div style={{ color: "#6B7280", fontSize: 11 }}>
+            <div style={{ color: "#6B7280", fontSize: 12.5 }}>계산: {data.basis}</div>
+            <div style={{ color: "#6B7280", fontSize: 12.5 }}>
               출처 <InfoTip label="출처 보기">
                 <b>점포 수</b> {data.size_source}
                 {data.metric_source && <><br /><b>{data.label}</b> {data.metric_source} · {data.as_of}</>}
@@ -75,7 +75,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
         <>
           <Mark brand="starbucks" label={`스타벅스 (${anchors.stores.filter((s) => s.brand === "starbucks").length}곳)`} />
           <Mark brand="daiso" label={`다이소 (${anchors.stores.filter((s) => s.brand === "daiso").length}곳)`} />
-          <div style={{ color: "#6B7280", fontSize: 11 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
+          <div style={{ color: "#6B7280", fontSize: 12.5 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
         </>
       )}
       {rebZonesVisible && <Dot color={REB_ZONE_COLOR} label={`R-ONE 임대동향 상권 (${rebQuarter ?? "기준 분기 기록 없음"})`} />}
@@ -98,7 +98,7 @@ function StoreRoleLegend({ roles }: { roles: { peers: boolean; boundary: boolean
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{dot(11, null, 0, 0.3)} 그 외 매장 — 흐리게</div>
         </>
       ) : (
-        <div style={{ color: "#6B7280", fontSize: 11 }}>경쟁 매장 표시는 비교 대상을 불러오는 중이거나 없습니다.</div>
+        <div style={{ color: "#6B7280", fontSize: 12.5 }}>경쟁 매장 표시는 비교 대상을 불러오는 중이거나 없습니다.</div>
       )}
       {roles.boundary && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -116,7 +116,7 @@ function Mark({ brand, label }: { brand: "starbucks" | "daiso"; label: string })
       <span
         aria-hidden="true"
         style={{
-          width: 16, height: 16, borderRadius: 4, background: ZONE_COLORS[brand], color: "white", fontSize: 10, fontWeight: 700, flexShrink: 0,
+          width: 16, height: 16, borderRadius: 4, background: ZONE_COLORS[brand], color: "white", fontSize: 12, fontWeight: 700, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid white", boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
         }}
       >

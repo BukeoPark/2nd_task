@@ -24,7 +24,11 @@ import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
 import { AreaCharacterLine } from "../area/AreaCharacterSection";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
+import { CompetitorBlock } from "./CompetitorBlock";
 import { MineStatusBar } from "./MineStatusBar";
+import { MonthlyCheckModal } from "./MonthlyCheckModal";
+import { noteMyStore } from "../../lib/monthlyCheck";
+import { toKakaoLatLng } from "../../lib/geo";
 import { StoreBriefCard } from "./StoreBriefCard";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
@@ -50,6 +54,15 @@ interface StoreDetailPanelProps {
   onProgress: (k: ProgressKey) => void;
   /** 보고 있는 묶음이 바뀌면 알린다 — 지도가 '주변·경쟁' 분석일 때 경쟁 매장·상권 경계를 진하게 그린다 */
   onGroupChange?: (g: GroupId) => void;
+  /** 경쟁 매장 목록에서 다른 매장의 상세·운영이력으로 넘어간다 */
+  onSelectStore?: (id: string) => void;
+  /** 목록 항목에 마우스·초점이 올라간 매장 id(지도의 같은 점 강조) */
+  onHoverStore?: (id: string | null) => void;
+  /** 경쟁 가게 목록에서 열어 본 곳이면 true — '내 가게'와 헷갈리지 않게 알린다 */
+  asRival?: boolean;
+  /** 우리 가게 월간 점검 화면(자영업자) — 열림 상태는 상단 바 단추와 함께 쓰려고 MapPage 가 들고 있다 */
+  monthlyOpen?: boolean;
+  onMonthlyOpenChange?: (open: boolean) => void;
 }
 
 /** 매장 상세 — 왼쪽 레일의 네 묶음(이 매장 / 주변 / 상권 / 내 가게)으로 나눠 한 번에 한 묶음만 보인다.
@@ -61,7 +74,7 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange, onSelectStore, onHoverStore, asRival = false, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroupState] = useState<GroupId>("store");
@@ -80,9 +93,13 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
   const hasRecord = lastMonth !== null;
   useEffect(() => { if (hasRecord) onProgress("record"); }, [hasRecord, onProgress]);
   // 예비 창업자는 운영 중인 가게가 없어 '내 가게' 묶음을 빼고 세 묶음만 보인다.
-  const groups = mode === "founder" ? GROUP_IDS.filter((g) => g !== "mine") : GROUP_IDS;
+  // 자영업자: 내 가게 찾기(이 매장) → 매출·비용 점검(내 가게) → 주변 경쟁 변화(주변) → 상권 수요(상권) 순서. 예비 창업자는 운영 중인 가게 전용 '내 가게'를 숨긴다.
+  const groups: GroupId[] = mode === "founder" ? GROUP_IDS.filter((g) => g !== "mine") : ["store", "mine", "radius", "area"];
   const manwon = lastMonth ? String(mine.record.months[lastMonth]) : "";
   const store = data?.store;
+  // 자영업자가 연 가게의 이름을 남겨 두면 '월간 점검'에서 다시 고를 수 있다(이름·동만, 이 브라우저에만)
+  const storeIdName = store ? `${store.name}${store.branch ? ` ${store.branch}` : ""}` : null;
+  useEffect(() => { if (mode === "owner" && store && storeIdName) noteMyStore({ storeId, name: storeIdName, dong: store.dong }, Date.now()); }, [mode, store, storeId, storeIdName]);
   // 지도 원은 위 radius(API 조회와 같은 상태값)로만 그린다. '주변' 묶음을 벗어나거나 매장이 바뀌어(key) 이 컴포넌트가 사라지면 원도 사라진다.
   const circleRadius = overlayRadius(group, radius);
   // 지도의 역·출입구 표시는 아래 반경 블록과 같은 쿼리(같은 키)의 같은 반경 결과만 쓴다 — 이전 반경 결과가 남아 있는 동안은 그리지 않는다.
@@ -129,6 +146,18 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
           google: <GoogleReviewSection storeId={storeId} />,
           history: <OperationHistorySection history={data.operation_history} />,
           radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
+          competitors: (
+            <CompetitorBlock
+              storeId={storeId}
+              storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`}
+              center={{ lon: store.lon, lat: store.lat }}
+              svc={store.category.svc ?? null}
+              radius={radius}
+              onSelectStore={(id) => onSelectStore?.(id)}
+              onHoverStore={onHoverStore}
+              onShowOnMap={mapView ? (c) => { mapView.map.setCenter(toKakaoLatLng(mapView.kakao, { lon: c.lon, lat: c.lat })); } : undefined}
+            />
+          ),
           competition: <NearbyAnalysisSection storeId={storeId} radius={radius} />,
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
@@ -186,12 +215,26 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
               <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />
             )}
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" groups={groups} />}
+            {monthlyOpen && (
+              <MonthlyCheckModal
+                storeId={storeId}
+                storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`}
+                record={mine.record}
+                onClose={() => onMonthlyOpenChange?.(false)}
+                onGoMine={() => { onMonthlyOpenChange?.(false); setGroup("mine"); }}
+                onGoRadius={() => { onMonthlyOpenChange?.(false); setGroup("radius"); }}
+                onGoArea={() => { onMonthlyOpenChange?.(false); setGroup("area"); }}
+              />
+            )}
             {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
             {groups.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
                 <div style={{ marginTop: 12 }}>
                   <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />
                 </div>
+                {g === "store" && asRival && (
+                  <div style={{ marginTop: 10 }}><Notice tone="info">경쟁 가게로 열어 본 곳이에요. 아래 '내 가게' 기록이나 점검은 이 가게가 아니라 내 가게 기준이에요(이 가게의 기록은 없어요).</Notice></div>
+                )}
                 {g === "store" && (
                   <StoreBriefCard
                     brief={buildStoreBrief({
@@ -208,7 +251,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                   />
                 )}
                 {g === "mine" && (
-                  <MineStatusBar months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
+                  <MineStatusBar onOpenMonthly={() => onMonthlyOpenChange?.(true)} months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
                 )}
                 <NoteHost>
                   {blocksOf(g).map((id) => (

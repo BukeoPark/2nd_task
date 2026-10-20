@@ -33,30 +33,30 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
         boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
         padding: 20,
         overflowY: "auto",
-        fontSize: 13,
+        fontSize: 15,
         lineHeight: 1.6,
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 8 }}>
         <div>
           {onBack && (
-            <button type="button" onClick={onBack} style={{ border: "none", background: "none", color: "#3B82F6", cursor: "pointer", padding: 0, fontSize: 12 }}>
+            <button type="button" onClick={onBack} style={{ border: "none", background: "none", color: "#3B82F6", cursor: "pointer", padding: 0, fontSize: 13.5 }}>
               {backLabel}
             </button>
           )}
-          <strong style={{ fontSize: 16, display: "block" }}>{title}</strong>
-          {subtitle && <span style={{ fontSize: 12, color: "#6B7280" }}>{subtitle}</span>}
+          <strong style={{ fontSize: 22, lineHeight: 1.3, fontWeight: 800, display: "block" }}>{title}</strong>
+          {subtitle && <span style={{ fontSize: 13, color: "#6B7280" }}>{subtitle}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
         {narrow && showMap && (
-          <button type="button" onClick={showMap} style={{ border: "1px solid #3B82F6", background: "white", color: "#1D4ED8", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>
+          <button type="button" onClick={showMap} style={{ border: "1px solid #3B82F6", background: "white", color: "#1D4ED8", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>
             지도 보기
           </button>
         )}
         <button
           type="button"
           onClick={onClose}
-          style={{ border: "none", background: "none", cursor: "pointer", fontSize: 18, color: "#6b7280" }}
+          style={{ border: "none", background: "none", cursor: "pointer", fontSize: 24, lineHeight: 1, padding: "0 4px", color: "#6b7280" }}
           aria-label="닫기"
         >
           ×

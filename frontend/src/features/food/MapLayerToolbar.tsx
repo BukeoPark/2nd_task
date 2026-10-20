@@ -23,7 +23,7 @@ export function MapLayerToolbar({ anchorsOn, anchorsForced, onAnchorsChange, reb
       aria-label="지도 레이어"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 200, right: 16, width: 160, background: "rgba(255,255,255,0.96)", borderRadius: 8,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden", fontSize: 12,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden", fontSize: 13,
       }}
     >
       <div style={{ padding: "5px 10px", color: "#4B5563", fontWeight: 600, borderBottom: "1px solid #E5E7EB" }}>지도 레이어</div>
@@ -77,10 +77,10 @@ function HeatControls({ heat }: { heat: MapLayerToolbarProps["heat"] }) {
       {heat.metric && (
         <div style={{ marginTop: 8 }}>
           <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: HEAT_CSS_GRADIENT }} />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#6B7280", marginTop: 2 }}><span>낮음</span><span>높음</span></div>
-          {heat.loading && <div role="status" style={{ fontSize: 10.5, color: "#6B7280", marginTop: 2 }}>불러오는 중...</div>}
-          {heat.failed && <div role="alert" style={{ fontSize: 10.5, color: "#B91C1C", marginTop: 2 }}>조회 실패 — 다시 선택해 주세요.</div>}
-          {d && <div style={{ fontSize: 10.5, color: "#6B7280", marginTop: 2, lineHeight: 1.4 }}>상권 단위 · {heatLegendText(d.unit, d.scale.p95)}</div>}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280", marginTop: 2 }}><span>낮음</span><span>높음</span></div>
+          {heat.loading && <div role="status" style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>불러오는 중...</div>}
+          {heat.failed && <div role="alert" style={{ fontSize: 12, color: "#B91C1C", marginTop: 2 }}>조회 실패 — 다시 선택해 주세요.</div>}
+          {d && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, lineHeight: 1.4 }}>상권 단위 · {heatLegendText(d.unit, d.scale.p95)}</div>}
         </div>
       )}
     </div>
@@ -97,12 +97,12 @@ function LayerButton({ label, on, locked, title, onToggle }: { label: string; on
       onClick={() => { if (!locked) onToggle(); }}
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, width: "100%", padding: "8px 10px", border: "none", borderTop: "1px solid #F3F4F6",
-        background: on ? "#EFF6FF" : "transparent", color: on ? "#1D4ED8" : "#374151", fontWeight: on ? 700 : 500, fontSize: 12, textAlign: "left", whiteSpace: "nowrap",
+        background: on ? "#EFF6FF" : "transparent", color: on ? "#1D4ED8" : "#374151", fontWeight: on ? 700 : 500, fontSize: 13, textAlign: "left", whiteSpace: "nowrap",
         cursor: locked ? "default" : "pointer",
       }}
     >
       <span>{label}</span>
-      <span aria-hidden="true" style={{ fontSize: 11 }}>{on ? "켜짐" : "꺼짐"}</span>
+      <span aria-hidden="true" style={{ fontSize: 12.5 }}>{on ? "켜짐" : "꺼짐"}</span>
     </button>
   );
 }

@@ -35,7 +35,7 @@ export function AreaBubbleLayer({ map, kakao, data, onSelect, stale = false }: A
         background: color, opacity: stale ? "0.35" : "0.88", pointerEvents: stale ? "none" : "auto", border: b.value === null ? "1px dashed #9CA3AF" : "2px solid white",
         boxShadow: "0 1px 4px rgba(0,0,0,0.25)", cursor: stale ? "default" : "pointer", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: "1.15",
-        color: dark || data.kind === "growth" ? "white" : "#111827", fontSize: r > 24 ? "11px" : "9px", overflow: "hidden",
+        color: dark || data.kind === "growth" ? "white" : "#111827", fontSize: r > 24 ? "12px" : "11px", overflow: "hidden",
       });
       el.title = stale ? "새 조건을 불러오는 중 — 이전 조건의 값" : `${b.name} · ${data.label} ${formatMetric(data.kind, b.value)} · 점포 ${b.size ?? "-"}곳`;
       if (r >= 20) {

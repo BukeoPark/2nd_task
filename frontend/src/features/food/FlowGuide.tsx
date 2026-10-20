@@ -14,12 +14,12 @@ export function FlowGuide({ mode, seen }: { mode: Mode; seen: Seen }) {
       aria-label="이용 순서"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 62, left: "50%", transform: "translateX(-50%)", background: "rgba(255,255,255,0.96)", maxWidth: "calc(100vw - 24px)",
-        borderRadius: 999, padding: "5px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 12, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+        borderRadius: 999, padding: "5px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 13, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
       }}
     >
       {(narrow ? [current] : steps.map((_, i) => i)).map((i) => (
         <span key={steps[i].label} aria-current={i === current && !finished ? "step" : undefined} style={{ display: "flex", alignItems: "center", gap: 4, color: color(i), fontWeight: i === current ? 700 : 400 }}>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "white", background: color(i) === "#9CA3AF" ? "#D1D5DB" : color(i) }}>
+          <span style={{ width: 16, height: 16, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "white", background: color(i) === "#9CA3AF" ? "#D1D5DB" : color(i) }}>
             {steps[i].done && !(i === current && !finished) ? "✓" : i + 1}
           </span>
           {steps[i].label}

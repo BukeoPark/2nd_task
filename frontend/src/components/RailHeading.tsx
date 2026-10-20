@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 export function RailHeading({ fg, bg, title, hint }: { fg: string; bg: string; title: ReactNode; hint?: ReactNode }) {
   return (
     <div style={{ marginTop: 6, padding: "6px 10px", background: bg, borderLeft: `4px solid ${fg}`, borderRadius: 6, color: fg }}>
-      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.4 }}>{title}</div>
-      {hint && <div style={{ fontSize: 12, fontWeight: 500 }}>{hint}</div>}
+      <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.4 }}>{title}</div>
+      {hint && <div style={{ fontSize: 12.5, fontWeight: 500 }}>{hint}</div>}
     </div>
   );
 }

@@ -9,6 +9,7 @@ export type BlockId =
   | "basic" // 주소·영업 상태·업력·외부 링크
   | "google"
   | "history"
+  | "competitors" // 반경 안 같은 업종 가게 목록(거리순·세부 업종별) → 지도 위치 → 운영이력·상세
   | "competition" // ⑤ 반경 동일 업종 인허가 개폐업
   | "radius" // 반경 입지 지표 — ① 상업·경쟁 ② 주요 집객시설 ③ 교통 접근성 ④ 교통 이용 수요(반경 토글은 여기)
   | "radius-basis" // ⑥ 분석 기준 자세히 보기(접힘)
@@ -26,6 +27,7 @@ export const BLOCKS: { id: BlockId; group: GroupId }[] = [
   { id: "google", group: "store" },
   { id: "history", group: "store" },
   { id: "radius", group: "radius" },
+  { id: "competitors", group: "radius" },
   { id: "competition", group: "radius" },
   { id: "radius-basis", group: "radius" },
   { id: "area-links", group: "area" },

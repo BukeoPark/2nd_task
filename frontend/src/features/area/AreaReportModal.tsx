@@ -1,4 +1,7 @@
 import { useMemo } from "react";
+import { ReportTriad } from "../stores/report/ReportTriad";
+import { buildTriad } from "../../lib/reportTriad";
+import { sampleNote } from "../../lib/insightReport";
 import { buildAreaReport, type AreaReport, type PeerPoint } from "../../lib/areaReport";
 import type { Mode } from "../../lib/mode";
 import type { FoodBubble } from "../../lib/apiClient";
@@ -58,6 +61,7 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
           <h1 style={{ fontSize: "clamp(26px,5vw,38px)", lineHeight: 1.25, fontWeight: 900, margin: 0, letterSpacing: "-.02em", textWrap: "balance" }}>{r.headline}</h1>
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
+        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: r.lens.caution.map((c) => c.title), checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <div>
           {r.findings.map((f, i) => (

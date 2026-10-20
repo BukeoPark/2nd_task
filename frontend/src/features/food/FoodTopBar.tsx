@@ -1,6 +1,7 @@
 import type { FoodCategoriesResponse, FoodMetric, SearchResult } from "../../lib/apiClient";
 import { MODES, MODE_HINT, MODE_LABEL, type Mode } from "../../lib/mode";
 import { useNarrow } from "../../lib/useNarrow";
+import { useEffect, useState } from "react";
 import { SearchBox } from "./SearchBox";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 
@@ -38,12 +39,27 @@ interface FoodTopBarProps {
   favCount: number;
   favOpen: boolean;
   onToggleFav: () => void;
+  /** 모드별 주요 메뉴 — 예비 창업자: 후보지 검토함, 자영업자: 우리 가게 월간 점검 */
+  modeMenu: { label: string; count: number | null; onClick: () => void };
+}
+
+function useWide(min: number): boolean {
+  const q = `(min-width: ${min}px)`;
+  const [on, setOn] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const f = () => setOn(m.matches);
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, [q]);
+  return on;
 }
 
 /** 요식업·카페 전용 GNB — 업종(서울시 외식 10개) → 세부 업종(소상공인 소분류), 지표. */
 export function FoodTopBar(p: FoodTopBarProps) {
   const group = p.categories?.groups.find((g) => g.svc_cd === p.svc);
   const narrow = useNarrow();
+  const wide = useWide(1600);   // 아주 넓은 화면에서만 '지도 단위' 글자를 보인다 — 좁으면 모드별 주요 메뉴가 잘리지 않게 비운다
   return (
     <div
       style={{
@@ -53,7 +69,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
         overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none",
       }}
     >
-      <strong style={{ fontSize: narrow ? 14 : 16, color: "#111827", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow ? "상권분석" : "상권분석 · 요식업"}</strong>
+      <strong style={{ fontSize: narrow ? 15 : 17, color: "#111827", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</strong>
       <ModeSwitch mode={p.mode} onChange={p.onModeChange} />
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
       <Select
@@ -76,11 +92,14 @@ export function FoodTopBar(p: FoodTopBarProps) {
         options={[{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))]}
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
-      <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>
-      <button type="button" data-tour="favorites" onClick={p.onToggleFav} aria-expanded={p.favOpen} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: p.favOpen ? "#FEF3C7" : "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+      {wide && <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
+      <button type="button" data-tour="mode-menu" onClick={p.modeMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+        {p.modeMenu.label}{p.modeMenu.count !== null ? ` ${p.modeMenu.count}` : ""}
+      </button>
+      <button type="button" data-tour="favorites" onClick={p.onToggleFav} aria-expanded={p.favOpen} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: p.favOpen ? "#FEF3C7" : "white", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">★ </span>관심 지역 {p.favCount}
       </button>
-      <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+      <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">? </span>도움말
       </button>
     </div>
@@ -99,7 +118,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
           aria-checked={m === mode}
           title={MODE_HINT[m]}
           onClick={() => onChange(m)}
-          style={{ padding: "6px 10px", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
+          style={{ padding: "6px 10px", border: "none", cursor: "pointer", fontSize: 14, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
         >
           {MODE_LABEL[m]}
         </button>
@@ -128,8 +147,8 @@ function Select({ label, value, onChange, options, disabled, title, tour }: {
       title={title}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        maxWidth: 220, flexShrink: 0, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb",
-        background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 13,
+        maxWidth: 160, flexShrink: 0, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb",
+        background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 14,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >

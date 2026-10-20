@@ -55,7 +55,7 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
           if (pinned) hide();
           else { show(); setPinned(true); }
         }}
-        style={{ width: 14, height: 14, padding: 0, border: "1px solid #9CA3AF", borderRadius: "50%", background: open ? "#E5E7EB" : "#fff", color: "#6B7280", fontSize: 9, lineHeight: "12px", cursor: "help" }}
+        style={{ width: 14, height: 14, padding: 0, border: "1px solid #9CA3AF", borderRadius: "50%", background: open ? "#E5E7EB" : "#fff", color: "#6B7280", fontSize: 10, lineHeight: "12px", cursor: "help" }}
       >
         ?
       </button>
@@ -63,7 +63,7 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
         <span
           id={id}
           role="tooltip"
-          style={{ position: "fixed", left: pos.left, top: pos.top, width: TIP_WIDTH, zIndex: OVERLAY_Z_INDEX + 5, background: "#111827", color: "#F9FAFB", fontSize: 11, lineHeight: 1.5, fontWeight: 400, textAlign: "left", padding: "6px 9px", borderRadius: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.3)", pointerEvents: "none" }}
+          style={{ position: "fixed", left: pos.left, top: pos.top, width: TIP_WIDTH, zIndex: OVERLAY_Z_INDEX + 5, background: "#111827", color: "#F9FAFB", fontSize: 12.5, lineHeight: 1.55, fontWeight: 400, textAlign: "left", padding: "6px 9px", borderRadius: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.3)", pointerEvents: "none" }}
         >
           {children}
         </span>

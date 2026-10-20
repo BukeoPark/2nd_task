@@ -66,11 +66,11 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
       return { name: t?.name ?? c, color: color(c), values: quarters.map((qt) => { const r = t?.trend.find((x) => x.quarter === qt); return r ? pick(r) : null; }) };
     });
   return (
-    <div role="dialog" aria-label="지역 비교" style={{ position: "fixed", inset: 0, zIndex: 100, background: "#F3F4F6", overflowY: "auto", fontSize: 13 }}>
+    <div role="dialog" aria-label="지역 비교" style={{ position: "fixed", inset: 0, zIndex: 100, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
       <div style={{ position: "sticky", top: 0, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", zIndex: 1 }}>
         <button type="button" onClick={onClose} style={{ border: "1px solid #3B82F6", background: "white", color: "#3B82F6", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}>← 지도로 돌아가기</button>
-        <strong style={{ fontSize: 17 }}>{UNIT_NOUN[level]} 비교</strong>
-        <span style={{ color: "#6B7280", fontSize: 12 }}>선택 업종: {filterName}</span>
+        <strong style={{ fontSize: 22 }}>{UNIT_NOUN[level]} 비교</strong>
+        <span style={{ color: "#6B7280", fontSize: 13 }}>선택 업종: {filterName}</span>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto", alignItems: "center" }}>
           {codes.map((c, i) => (
             <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, border: `1px solid ${color(c)}`, color: color(c), fontWeight: 600 }}>
@@ -78,10 +78,10 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
               {onShowOnMap && (() => {
                 const b = list.data?.bubbles.find((x) => x.code === c);
                 return b ? (
-                  <button type="button" onClick={() => onShowOnMap({ level, code: c, lon: b.lon, lat: b.lat })} aria-label={`${b.name} 지도에서 보기`} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>지도에서 보기</button>
+                  <button type="button" onClick={() => onShowOnMap({ level, code: c, lon: b.lon, lat: b.lat })} aria-label={`${b.name} 지도에서 보기`} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 13, textDecoration: "underline", padding: "6px 4px", minHeight: 32 }}>지도에서 보기</button>
                 ) : null;
               })()}
-              <button type="button" onClick={() => onRemove(c)} aria-label="비교에서 삭제" style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 14 }}>×</button>
+              <button type="button" onClick={() => onRemove(c)} aria-label="비교에서 삭제" style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 18, padding: "4px 8px", minHeight: 32 }}>×</button>
             </span>
           ))}
           <select value="" disabled={codes.length >= MAX_COMPARE || options.length === 0} onChange={(e) => e.target.value && onAdd(e.target.value)} aria-label={`${UNIT_NOUN[level]} 추가`} style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #D1D5DB" }}>
@@ -93,10 +93,10 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
 
       <div style={{ maxWidth: 1760, margin: "0 auto", padding: "16px 24px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
         {canAddMore && suggestions.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: 13 }}>
             <span style={{ color: "#4B5563" }}>최근 본 {UNIT_NOUN[level]}:</span>
             {suggestions.slice(0, MAX_COMPARE - codes.length).map((r) => (
-              <button key={r.code} type="button" onClick={() => onAdd(r.code)} style={{ padding: "3px 10px", border: "1px solid #93C5FD", borderRadius: 999, background: "white", color: "#1D4ED8", cursor: "pointer", fontSize: 12 }}>
+              <button key={r.code} type="button" onClick={() => onAdd(r.code)} style={{ padding: "3px 10px", border: "1px solid #93C5FD", borderRadius: 999, background: "white", color: "#1D4ED8", cursor: "pointer", fontSize: 13 }}>
                 + {r.name}{r.type ? ` (${r.type})` : ""}
               </button>
             ))}
@@ -115,24 +115,24 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
               </Card>
               {highlights.length > 0 ? (
                 <section aria-label="눈여겨볼 차이" style={cardStyle}>
-                  <strong style={{ fontSize: 15 }}>눈여겨볼 차이 {highlights.length}가지</strong>
-                  <div style={{ fontSize: 12, color: "#4B5563", margin: "2px 0 8px" }}>
+                  <strong style={{ fontSize: 17 }}>눈여겨볼 차이 {highlights.length}가지</strong>
+                  <div style={{ fontSize: 13, color: "#4B5563", margin: "2px 0 8px" }}>
                     담은 {data.units.length}곳 사이에서 값이 가장 크게 벌어진 지표예요(비율은 3%p, 금액·인원은 25% 이상 차이만 뽑아요). 어느 지역이 낫다는 뜻은 아닙니다.
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
                     {highlights.map((h) => (
                       <li key={h.key} style={{ background: "#F9FAFB", borderRadius: 10, padding: "10px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13 }}>{h.label}</span>
-                          <span style={{ fontWeight: 800, fontSize: 15, color: "#B45309" }}>{h.gap}</span>
+                          <span style={{ fontWeight: 700, fontSize: 15 }}>{h.label}</span>
+                          <span style={{ fontWeight: 800, fontSize: 17, color: "#B45309" }}>{h.gap}</span>
                         </div>
-                        <div style={{ display: "flex", gap: "2px 12px", flexWrap: "wrap", marginTop: 4, fontSize: 13 }}>
+                        <div style={{ display: "flex", gap: "2px 12px", flexWrap: "wrap", marginTop: 4, fontSize: 15 }}>
                           {h.values.map((v) => {
                             const u = data.units.find((x) => x.name === v.name);
                             return <span key={v.name}><span aria-hidden="true" style={{ color: u ? color(u.code) : "#6B7280" }}>● </span>{v.name} <strong>{v.text}</strong></span>;
                           })}
                         </div>
-                        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+                        <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 4 }}>
                           차이 = {h.basis} · {h.scope ? `${h.scope} · ` : ""}{h.asOf ?? "기준 시점 없음"}
                         </div>
                       </li>
@@ -141,8 +141,8 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
                 </section>
               ) : (
                 <section aria-label="눈여겨볼 차이" style={cardStyle}>
-                  <strong style={{ fontSize: 15 }}>눈여겨볼 차이</strong>
-                  <div style={{ fontSize: 12, color: "#4B5563", marginTop: 4 }}>
+                  <strong style={{ fontSize: 17 }}>눈여겨볼 차이</strong>
+                  <div style={{ fontSize: 13, color: "#4B5563", marginTop: 4 }}>
                     {data.units.length < 2 ? "2곳 이상 담으면 값이 크게 벌어진 지표를 보여 드려요." : "뚜렷하게 벌어진 지표가 없습니다(비율은 3%p, 금액·인원은 25% 이상 차이만 뽑아요)."}
                   </div>
                 </section>
@@ -150,7 +150,7 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
             </div>
             {data.scope.notice && <Notice tone="warn">{data.scope.notice}</Notice>}
 
-            <h2 style={{ fontSize: 15, margin: "6px 0 -4px" }}>상세 차트 — 같은 업종·같은 단위·표시된 기간끼리</h2>
+            <h2 style={{ fontSize: 17, margin: "6px 0 -4px" }}>상세 차트 — 같은 업종·같은 단위·표시된 기간끼리</h2>
             {trendable && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 14 }}>
                 <Card title="점포당 월평균 추정매출 추이" sub={`서울시 추정 · ${data.scope.sales_label} 기준`}>
@@ -169,8 +169,8 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
                     if (!row) return null;
                     return (
                       <div key={k} style={{ marginBottom: 12 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{row.label}</div>
-                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{row.scope ? `${row.scope} · ` : ""}{row.source} · {row.as_of ?? "기준 시점 없음"}</div>
+                        <div style={{ fontWeight: 600, fontSize: 15 }}>{row.label}</div>
+                        <div style={{ fontSize: 12.5, color: "#6B7280", marginBottom: 4 }}>{row.scope ? `${row.scope} · ` : ""}{row.source} · {row.as_of ?? "기준 시점 없음"}</div>
                         <BarList items={data.units.map((u, i) => ({ label: u.name, value: row.cells[i]?.value ?? null, color: color(u.code), note: row.cells[i]?.note }))} fmt={(v) => formatMetric(row.kind, v)} />
                       </div>
                     );
@@ -194,12 +194,36 @@ const cardStyle: CSSProperties = { background: "white", borderRadius: 12, paddin
 function KeyTable({ data, color }: { data: NonNullable<ReturnType<typeof useFoodCompare>["data"]>; color: (code: string) => string }) {
   const narrow = useNarrow();
   const rows = KEY_ROWS.map((k) => data.rows.find((r) => r.key === k)).filter((r): r is NonNullable<typeof r> => r !== undefined);
+  // 좁은 화면에서 3곳 이상이면 열이 잘려 옆으로 밀어야 하므로, 지표마다 지역 값을 2열 목록으로 풀어 보인다(값·단위·기간은 그대로)
+  if (narrow && data.units.length >= 3) {
+    return (
+      <div role="list" aria-label="지역별 핵심 지표">
+        {rows.map((r) => (
+          <div key={r.key} role="listitem" style={{ borderTop: "1px solid #F3F4F6", padding: "8px 0" }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{r.label} <span style={{ fontWeight: 400, color: "#6B7280", fontSize: 12.5 }}>· {r.as_of ? compactPeriod(r.as_of) : "기준 시점 없음"}</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 10px", marginTop: 3 }}>
+              {data.units.map((u, i) => {
+                const c = r.cells[i];
+                return (
+                  <div key={u.code} style={{ fontSize: 13, minWidth: 0 }}>
+                    <span aria-hidden="true" style={{ color: color(u.code) }}>● </span>{u.name}
+                    <div style={{ fontWeight: 800, fontSize: 17, whiteSpace: "nowrap", color: c?.value == null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c?.value ?? null)}</div>
+                    {c?.note && <div style={{ fontSize: 12, color: c.partial || c.caution ? "#B45309" : "#6B7280" }}>{c.note}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
         <thead>
           <tr>
-            <th scope="col" style={{ textAlign: "left", padding: "4px 8px 6px 0", fontWeight: 600, color: "#4B5563", fontSize: 12 }}>지표 (기준 기간)</th>
+            <th scope="col" style={{ textAlign: "left", padding: "4px 8px 6px 0", fontWeight: 600, color: "#4B5563", fontSize: 13 }}>지표 (기준 기간)</th>
             {data.units.map((u) => (
               <th key={u.code} scope="col" style={{ textAlign: "right", padding: "4px 0 6px 10px", whiteSpace: "nowrap" }}>
                 <span aria-hidden="true" style={{ color: color(u.code) }}>● </span>{u.name}
@@ -212,14 +236,14 @@ function KeyTable({ data, color }: { data: NonNullable<ReturnType<typeof useFood
             <tr key={r.key} style={{ borderTop: "1px solid #F3F4F6" }}>
               <th scope="row" style={{ textAlign: "left", padding: narrow ? "5px 6px 5px 0" : "7px 8px 7px 0", fontWeight: 500, verticalAlign: "top", fontSize: narrow ? 12 : 13 }}>
                 {r.label}
-                <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 400, whiteSpace: narrow ? "nowrap" : undefined }}>{r.as_of ? (narrow ? compactPeriod(r.as_of) : r.as_of) : "기준 시점 없음"}</div>
+                <div style={{ fontSize: 12.5, color: "#6B7280", fontWeight: 400, whiteSpace: narrow ? "nowrap" : undefined }}>{r.as_of ? (narrow ? compactPeriod(r.as_of) : r.as_of) : "기준 시점 없음"}</div>
               </th>
               {data.units.map((u, i) => {
                 const c = r.cells[i];
                 return (
                   <td key={u.code} style={{ textAlign: "right", padding: narrow ? "5px 0 5px 6px" : "7px 0 7px 10px", verticalAlign: "top" }}>
                     <div style={{ fontWeight: 800, fontSize: narrow ? 14 : 16, whiteSpace: "nowrap", color: c?.value == null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c?.value ?? null)}</div>
-                    {c?.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#6B7280" }}>{c.note}</div>}
+                    {c?.note && <div style={{ fontSize: 12, color: c.partial || c.caution ? "#B45309" : "#6B7280" }}>{c.note}</div>}
                   </td>
                 );
               })}
@@ -234,8 +258,8 @@ function KeyTable({ data, color }: { data: NonNullable<ReturnType<typeof useFood
 function Card({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
     <section style={cardStyle}>
-      <strong style={{ fontSize: 15 }}>{title}</strong>
-      {sub && <div style={{ fontSize: 12, color: "#1D4ED8", marginBottom: 6 }}>{sub}</div>}
+      <strong style={{ fontSize: 17 }}>{title}</strong>
+      {sub && <div style={{ fontSize: 13, color: "#1D4ED8", marginBottom: 6 }}>{sub}</div>}
       <div style={{ marginTop: 8 }}>{children}</div>
     </section>
   );

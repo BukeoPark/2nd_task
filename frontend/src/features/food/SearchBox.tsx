@@ -31,6 +31,7 @@ function saveRecent(list: string[]) {
  * 비어 있을 때는 최근 검색어와 예시를 보여 주고, 위·아래 화살표·Enter·Esc 로 키보드만으로도 고를 수 있다. */
 export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps) {
   const narrow = useNarrow();
+  const wideBar = typeof window !== "undefined" && window.matchMedia("(min-width: 1600px)").matches;   // 좁은 PC 화면에서는 검색창을 줄여 상단 메뉴가 잘리지 않게 한다
   const listId = useId();
   const [text, setText] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -119,7 +120,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
   const moreStores = (q.data?.counts.store ?? 0) - results.filter((r) => r.kind === "store").length;
 
   return (
-    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: narrow ? 190 : 280, flexShrink: 0 }}>
+    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: narrow ? 190 : wideBar ? 280 : 210, flexShrink: 0 }}>
       <span aria-hidden style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, opacity: 0.55, pointerEvents: "none" }}>🔍</span>
       <input
         ref={inputRef}

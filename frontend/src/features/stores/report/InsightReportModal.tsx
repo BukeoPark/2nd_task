@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiClient } from "../../../lib/apiClient";
-import { buildInsightReport, type InsightReport } from "../../../lib/insightReport";
+import { buildInsightReport, sampleNote, type InsightReport } from "../../../lib/insightReport";
+import { buildTriad } from "../../../lib/reportTriad";
+import { ReportTriad } from "./ReportTriad";
 import { useLocationInfluence, useNearbyAnalysis, useStoreDetail } from "../useStores";
 import { AgeChart, ChurnChart, ForestChart, HistogramChart, RateBullets, SlotsChart, TrendChart } from "./ReportCharts";
 import { C } from "./reportColors";
@@ -26,6 +28,7 @@ function ReportPages({ r, today: date }: { r: InsightReport; today: string }) {
           <h1 style={{ fontSize: "clamp(26px,5vw,38px)", lineHeight: 1.25, fontWeight: 900, margin: 0, letterSpacing: "-.02em", textWrap: "balance" }}>{r.headline}</h1>
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
+        <ReportTriad triad={buildTriad({ mode: "owner", tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <div>
           {r.findings.map((f, i) => (

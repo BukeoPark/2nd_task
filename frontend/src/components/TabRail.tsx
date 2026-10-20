@@ -59,7 +59,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(it.id)}
             style={{
-              width: vertical ? 46 : undefined, flex: "0 0 auto", minWidth: vertical ? undefined : 64, whiteSpace: "nowrap", padding: vertical ? "6px 0" : "6px 10px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: on ? 700 : 500, lineHeight: 1.3,
+              width: vertical ? 46 : undefined, flex: "0 0 auto", minWidth: vertical ? undefined : 64, whiteSpace: "nowrap", padding: vertical ? "6px 0" : "8px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: vertical ? 11.5 : 14, fontWeight: on ? 700 : 500, lineHeight: 1.3,
               background: on ? it.bg : "transparent", color: on ? it.fg : "#4B5563", boxShadow: on ? `inset 3px 0 0 ${it.fg}` : "none",
               display: "flex", flexDirection: vertical ? "column" : "row", alignItems: "center", justifyContent: "center", gap: vertical ? 2 : 4,
             }}

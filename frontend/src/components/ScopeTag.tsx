@@ -6,7 +6,7 @@ export function ScopeTag({ kind, label }: { kind: ScopeKind; label: string }) {
   return (
     <span
       aria-label={`범위: ${label}`}
-      style={{ background: s.bg, color: s.fg, borderRadius: 4, padding: "1px 6px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1.5 }}
+      style={{ background: s.bg, color: s.fg, borderRadius: 4, padding: "1px 7px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1.5 }}
     >
       {label}
     </span>
