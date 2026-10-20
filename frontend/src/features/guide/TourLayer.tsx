@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { MODE_LABEL, type Mode } from "../../lib/mode";
 import { placeTip, TOURS, type Rect } from "../../lib/tour";
+import { expandForTour, restoreFolds, type FoldLog } from "../../lib/tourFolds";
 import { useNarrow } from "../../lib/useNarrow";
 import type { Tour } from "./useTour";
 
@@ -53,9 +54,12 @@ function Welcome({ mode, tour }: { mode: Mode; tour: Tour }) {
   );
 }
 
-function findTarget(name: string): HTMLElement | null {
+function findTarget(name: string, folds: FoldLog): HTMLElement | null {
   const el = document.querySelector<HTMLElement>(`[data-tour="${name}"]`);
   if (!el) return null;
+  // '그 밖의 작업' 같은 접힌 영역 안의 버튼을 가리킬 때는 펼쳐서 사용자가 눈으로 찾을 수 있게 한다(단계가 끝나면 원래대로, 사용자가 만진 영역은 그대로)
+  const fold = el.closest("details");
+  if (fold) expandForTour(fold, folds);
   const r = el.getBoundingClientRect();
   return r.width > 0 && r.height > 0 ? el : null;
 }
@@ -84,23 +88,25 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [size, setSize] = useState({ width: 320, height: 170 });
   const card = useRef<HTMLDivElement>(null);
+  const folds = useRef<FoldLog>(new Map());
   const last = tour.index === steps.length - 1;
   const hasRect = rect !== null;
 
   // 대상 위치를 따라간다(패널이 열리거나 창 크기가 바뀌면 달라지므로 가볍게 주기적으로 다시 잰다)
   useEffect(() => {
     const measure = () => {
-      const el = findTarget(step.target);
+      const el = findTarget(step.target, folds.current);
       if (!el) { setRect((r) => (r === null ? r : null)); return; }
       const b = el.getBoundingClientRect();
       setRect((r) => (r && r.left === b.left && r.top === b.top && r.width === b.width && r.height === b.height ? r : { left: b.left, top: b.top, width: b.width, height: b.height }));
     };
-    findTarget(step.target)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const foldLog = folds.current;
+    findTarget(step.target, foldLog)?.scrollIntoView({ block: "nearest", inline: "nearest" });
     measure();
     const id = window.setInterval(measure, 250);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
-    return () => { window.clearInterval(id); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
+    return () => { window.clearInterval(id); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); restoreFolds(foldLog); };
   }, [step.target]);
 
   useLayoutEffect(() => {

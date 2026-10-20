@@ -182,6 +182,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
       overview: ov.data ?? null,
       character: ch.data ?? null,
       peers: { perStore: peers(bPer.data?.bubbles), close: peers(bClose.data?.bubbles), open: peers(bOpen.data?.bubbles), frc: peers(bFrc.data?.bubbles) },
+      peerQuarter: bClose.data?.quarter ?? null,
       mode,
       today: today(),
     });

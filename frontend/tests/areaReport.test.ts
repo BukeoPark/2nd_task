@@ -74,7 +74,7 @@ test("안정성·입지: 폐업률은 비교 중앙값과 함께, 임대료가 �
   assert.equal(c.closeRate, 0.1967);
   assert.equal(c.medClose, 0.127);
   assert.match(r.stability!.text, /최근 분기 폐업률은 19\.7%\(비교 지역 중앙값 12\.7%/);
-  assert.match(r.stability!.text, /최근 1년 연 폐업률은 19\.7%입니다/);
+  assert.match(r.stability!.text, /최근 1년\(.+\) 연 폐업률은 19\.7%입니다/);
   assert.match(r.stability!.take, /폐업률이 비교 지역 중앙값보다 높습니다/);
   const rent = r.location!.facts.find((f) => f.label.startsWith("소규모상가 임대료"));
   assert.equal(rent?.value, "자료 없음");
@@ -297,4 +297,13 @@ test("핵심 발견 제목은 서로 되풀이하지 않는다 — 제목이 점
     const t = buildAreaReport({ ...base, mode: m }).findings.map((f) => f.title);
     assert.equal(new Set(t).size, t.length);
   }
+});
+
+test("분기 폐업률 문구는 기준 분기를 밝히고, 연 폐업률은 기간이 다른 값이라 직접 견주지 않는다고 말한다", () => {
+  const rep = buildAreaReport({ ...input, peerQuarter: "20262" });
+  assert.match(rep.stability!.text, /최근 분기\(2026년 2분기\) 폐업률은/);
+  assert.match(rep.stability!.text, /최근 1년.*연 폐업률은 .*한 분기 값과는 기간이 달라 직접 견주지 않습니다/);
+  assert.ok(rep.tiles.some((t) => t.label.includes("최근 분기 2026년 2분기")));
+  const none = buildAreaReport({ ...input });   // 기준 분기를 모르면 '최근 분기'로만 쓴다(없는 기간을 지어내지 않음)
+  assert.match(none.stability!.text, /최근 분기 폐업률은/);
 });

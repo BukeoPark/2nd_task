@@ -35,6 +35,8 @@ export interface AreaReportInput {
   overview: OverviewIn | null;
   character: CharacterIn | null;
   peers: { perStore: PeerPoint[]; close: PeerPoint[]; open: PeerPoint[]; frc: PeerPoint[] };
+  /** 지도 지표(개업·폐업률, 분기 값)의 기준 분기 — '20262' 형식. 없으면 '최근 분기'로만 쓴다 */
+  peerQuarter?: string | null;
   /** 읽는 사람 — 자영업자(매출 증대·기회 포착) / 예비 창업자(창업 전 점검). 같은 자료를 다른 관점으로 짚는다 */
   mode: Mode;
   /** 작성일 YYYY-MM-DD */
@@ -44,7 +46,7 @@ export interface AreaReportInput {
 // ── 출력 ──
 export interface AreaSlots { rows: { label: string; sales: number; pilot: number | null; flpop: number | null }[]; hasPilot: boolean; pilotLabel: string; hasFloating: boolean; text: string; facts: { label: string; value: string; note: string }[]; take: string }
 export interface AreaStability {
-  churn: { openRate: number | null; closeRate: number | null; medOpen: number | null; p75Open: number | null; medClose: number | null; p75Close: number | null; peers: number | null } | null;
+  churn: { openRate: number | null; closeRate: number | null; medOpen: number | null; p75Open: number | null; medClose: number | null; p75Close: number | null; peers: number | null; quarterLabel?: string | null } | null;
   frc: { share: number; median: number | null } | null;
   facts: { label: string; value: string; note: string }[];
   /** 약 2년 점포 수 증감(%)·분기 평균 변동폭(%) — 신호 판단용 숫자 */
@@ -178,6 +180,12 @@ function slotsSection(inp: AreaReportInput): AreaSlots | null {
   return { rows, hasPilot, pilotLabel, hasFloating, text, facts, take };
 }
 
+/** '20262' → '2026년 2분기'(형식이 다르면 null) */
+function quarterText(q: string | null | undefined): string | null {
+  const m = /^(\d{4})([1-4])$/.exec(q ?? "");
+  return m ? `${m[1]}년 ${m[2]}분기` : null;
+}
+
 function stabilitySection(inp: AreaReportInput): AreaStability | null {
   // 지도 지표의 개업률·폐업률은 '분기' 값이라, 같은 분기 값끼리(이 지역 vs 비교 지역)만 견준다. 연 값(최근 1년)은 비교 없이 따로 보인다.
   const self = (p: PeerPoint[]) => p.find((x) => x.code === inp.unit.code)?.value ?? null;
@@ -199,6 +207,7 @@ function stabilitySection(inp: AreaReportInput): AreaStability | null {
         medOpen: po.length ? median(po) / 100 : null, p75Open: po.length ? p75(po) / 100 : null,
         medClose: pc.length ? median(pc) / 100 : null, p75Close: pc.length ? p75(pc) / 100 : null,
         peers: pc.length || po.length || null,
+        quarterLabel: quarterText(inp.peerQuarter),
       }
     : null;
   const frcShare = val(inp.rows, "frc_share");
@@ -217,10 +226,10 @@ function stabilitySection(inp: AreaReportInput): AreaStability | null {
   if (stores !== null) facts.push({ label: "같은 업종 점포 수", value: `${fmt(stores)}곳`, note: "소상공인 상가정보 기준" });
   if (!churn && !frc && facts.length === 0) return null;
   const parts: string[] = [];
-  if (churn?.closeRate != null) parts.push(`최근 분기 폐업률은 ${(churn.closeRate * 100).toFixed(1)}%${churn.medClose != null ? `(비교 지역 중앙값 ${(churn.medClose * 100).toFixed(1)}%${churn.p75Close != null ? `, 상위 25% 경계 ${(churn.p75Close * 100).toFixed(1)}%` : ""})` : ""}`);
+  if (churn?.closeRate != null) parts.push(`최근 분기${churn.quarterLabel ? `(${churn.quarterLabel})` : ""} 폐업률은 ${(churn.closeRate * 100).toFixed(1)}%${churn.medClose != null ? `(비교 지역 중앙값 ${(churn.medClose * 100).toFixed(1)}%${churn.p75Close != null ? `, 상위 25% 경계 ${(churn.p75Close * 100).toFixed(1)}%` : ""})` : ""}`);
   if (churn?.openRate != null) parts.push(`개업률은 ${(churn.openRate * 100).toFixed(1)}%${churn.medOpen != null ? `(중앙값 ${(churn.medOpen * 100).toFixed(1)}%)` : ""}`);
   let text = parts.length ? parts.join(", ") + "입니다." : "";
-  if (yClose !== null) text += ` 최근 1년 연 폐업률은 ${yClose.toFixed(1)}%입니다.`;
+  if (yClose !== null) text += ` 최근 1년${asOf(inp.rows, "close_rate_y") ? `(${asOf(inp.rows, "close_rate_y")})` : ""} 연 폐업률은 ${yClose.toFixed(1)}%입니다(한 분기 값과는 기간이 달라 직접 견주지 않습니다).`;
   if (frc) text += ` 프랜차이즈 점포 비중은 ${(frc.share * 100).toFixed(1)}%${frc.median !== null ? `로 비교 중앙값 ${(frc.median * 100).toFixed(0)}%${frc.share > frc.median ? "보다 높습니다" : "와 같거나 낮습니다"}` : "입니다"}.`;
   const higher = churn?.closeRate != null && churn.medClose != null && churn.closeRate > churn.medClose;
   const take = (higher ? "최근 분기 폐업률이 비교 지역 중앙값보다 높습니다. 수요가 부족했을 수도, 고정비 부담이 컸을 수도 있어 원인은 이 자료로 알 수 없으니, 최근 문을 닫은 가게의 사정을 현장에서 확인해 보세요. " : "") + "개폐업에는 업종 변경·이전도 섞여 있어 실제 영업 중단 수와 다를 수 있습니다. 상관관계이며 창업 성공 가능성을 뜻하지 않습니다.";
@@ -288,7 +297,7 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   }
   if (stability?.churn?.closeRate != null && !tooFew) {
     const c = stability.churn;
-    tiles.push({ label: "같은 업종 분기 폐업률(최근 분기)", value: `${((c.closeRate as number) * 100).toFixed(1)}%`, note: c.medClose != null ? `비교 중앙값 ${(c.medClose * 100).toFixed(1)}%` : "", tone: c.medClose != null && (c.closeRate as number) > c.medClose ? "neg" : "plain" });
+    tiles.push({ label: `같은 업종 분기 폐업률(최근 분기${c.quarterLabel ? ` ${c.quarterLabel}` : ""})`, value: `${((c.closeRate as number) * 100).toFixed(1)}%`, note: c.medClose != null ? `비교 중앙값 ${(c.medClose * 100).toFixed(1)}%` : "", tone: c.medClose != null && (c.closeRate as number) > c.medClose ? "neg" : "plain" });
   }
 
   const findings: Finding[] = [];
@@ -300,7 +309,7 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   const headlineIsSlots = (inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8) || (pgap !== null && Math.abs(pgap.gap) >= 8) || (top !== null && top.sales >= 40);
   const slotsTitle = headlineIsSlots ? headline : pgap && Math.abs(pgap.gap) >= 5 ? `${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높" : "낮"}습니다` : "시간대별 매출 비중은 평균과 큰 차이가 없습니다";
   if (slots && !slotsDuplicated) findings.push({ title: slotsTitle, body: `${slots.text} → 3쪽` });
-  if (stability) findings.push({ title: stability.churn?.closeRate != null ? `같은 업종 최근 분기 폐업률은 ${(stability.churn.closeRate * 100).toFixed(1)}%입니다` : "경쟁과 안정성", body: `${stability.text || "점포 수 변화와 프랜차이즈 비중을 봅니다."} → 4쪽` });
+  if (stability) findings.push({ title: stability.churn?.closeRate != null ? `같은 업종 최근 분기${stability.churn.quarterLabel ? `(${stability.churn.quarterLabel})` : ""} 폐업률은 ${(stability.churn.closeRate * 100).toFixed(1)}%입니다` : "경쟁과 안정성", body: `${stability.text || "점포 수 변화와 프랜차이즈 비중을 봅니다."} → 4쪽` });
 
   const profile: { label: string; value: string }[] = [];
   if (inp.character) profile.push({ label: "유형(참고용 분류)", value: `${inp.character.type.headline}${inp.unit.type ? ` · ${inp.unit.type}` : ""}` });

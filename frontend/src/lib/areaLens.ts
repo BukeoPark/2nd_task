@@ -85,6 +85,8 @@ const tooFew = (c: LensContext) => c.sample?.status === "too_few";
 const slotTail = (c: LensContext) => (c.sample?.status === "too_few" ? " (점포가 10곳 미만이라 참고용입니다)" : tail(c));
 /** 중앙값을 조금 넘는 정도는 '높다'고 하지 않는다 — 중앙값의 1.25배 이상일 때만 눈에 띄게 높은 것으로 본다. */
 const CLEAR_MARGIN = 1.25;
+/** '최근 분기' 문구 — 기준 분기를 알면 함께 밝힌다(연 값과 직접 견주지 않도록) */
+const qWord = (ch: { quarterLabel?: string | null } | null | undefined) => (ch?.quarterLabel ? `최근 분기(${ch.quarterLabel})` : "최근 분기");
 const clearlyHigher = (v: number | null | undefined, med: number | null | undefined) => v != null && med != null && med > 0 && v >= med * CLEAR_MARGIN;
 
 function founderSignals(c: LensContext): { positive: Signal[]; caution: Signal[] } {
@@ -105,9 +107,9 @@ function founderSignals(c: LensContext): { positive: Signal[]; caution: Signal[]
   if (lv?.flpopYoy != null && lv.flpopYoy <= -5) caution.push({ title: "유동인구 지수가 줄었습니다", body: `전년 동기 대비 ${sgn(lv.flpopYoy)}입니다(길 위 사람만 센 추정치라 방향만 참고).` });
 
   if (ch?.closeRate != null && ch.medClose != null) {
-    if (clearlyHigher(ch.closeRate, ch.medClose) && ch.p75Close != null && ch.closeRate >= ch.p75Close) caution.push({ title: "문 닫는 비율이 비교 지역 상위 25%에 듭니다", body: `최근 분기 폐업률 ${pct(ch.closeRate * 100)}가 상위 25% 경계(${pct(ch.p75Close * 100)})보다 높습니다. 원인은 이 자료로 알 수 없습니다.${T}` });
-    else if (clearlyHigher(ch.closeRate, ch.medClose)) caution.push({ title: "문 닫는 비율이 비교 지역 중앙값보다 눈에 띄게 높습니다", body: `최근 분기 폐업률 ${pct(ch.closeRate * 100)}, 중앙값 ${pct(ch.medClose * 100)}입니다.${T}` });
-    else if (ch.closeRate <= ch.medClose) positive.push({ title: "문 닫는 비율이 비교 지역 중앙값 이하입니다", body: `최근 분기 폐업률 ${pct(ch.closeRate * 100)}, 중앙값 ${pct(ch.medClose * 100)}입니다.${T}` });
+    if (clearlyHigher(ch.closeRate, ch.medClose) && ch.p75Close != null && ch.closeRate >= ch.p75Close) caution.push({ title: "문 닫는 비율이 비교 지역 상위 25%에 듭니다", body: `${qWord(ch)} 폐업률 ${pct(ch.closeRate * 100)}가 상위 25% 경계(${pct(ch.p75Close * 100)})보다 높습니다. 원인은 이 자료로 알 수 없습니다.${T}` });
+    else if (clearlyHigher(ch.closeRate, ch.medClose)) caution.push({ title: "문 닫는 비율이 비교 지역 중앙값보다 눈에 띄게 높습니다", body: `${qWord(ch)} 폐업률 ${pct(ch.closeRate * 100)}, 중앙값 ${pct(ch.medClose * 100)}입니다.${T}` });
+    else if (ch.closeRate <= ch.medClose) positive.push({ title: "문 닫는 비율이 비교 지역 중앙값 이하입니다", body: `${qWord(ch)} 폐업률 ${pct(ch.closeRate * 100)}, 중앙값 ${pct(ch.medClose * 100)}입니다.${T}` });
     if (ch.openRate != null && ch.medOpen != null && clearlyHigher(ch.openRate, ch.medOpen) && clearlyHigher(ch.closeRate, ch.medClose)) caution.push({ title: "가게가 바뀌는 속도가 빠릅니다", body: "개업률과 폐업률이 모두 비교 지역 중앙값보다 높아, 자리 잡기 전에 교체되는 가게가 많을 수 있습니다." + T });
   }
   if (st?.chg2y != null && st.chg2y <= -5) caution.push({ title: "점포 수가 약 2년간 줄었습니다", body: `${sgn(st.chg2y)}입니다. 수요가 줄었거나 폐업이 이어졌을 수 있어 이유를 현장에서 확인해 보세요.${T}` });
@@ -143,11 +145,11 @@ function ownerSignals(c: LensContext): { positive: Signal[]; caution: Signal[] }
   if (dm && dm.baseOk && dm.type === "업무형" && dm.sharePct !== null) positive.push({ title: `직장인구 비중이 높은 업무형 ${c.unitWord}입니다`, body: `직장인구가 직장+상주 인구의 ${pct(dm.sharePct)}${dm.workers !== null ? `(직장인구 ${fmt(dm.workers)}명)` : ""}입니다. 점심 세트·단체 예약·회식 메뉴로 접근해 볼 수 있습니다. 비중은 업무형 기준(60% 이상)과 견준 값이며 매장 방문객 수가 아닙니다.` });
   if (lv?.flpopYoy != null && lv.flpopYoy >= 5) positive.push({ title: "유동인구 지수가 늘고 있습니다", body: `전년 동기 대비 ${sgn(lv.flpopYoy)}입니다. 늘어난 사람들이 들어오게 할 입구 홍보를 점검해 볼 때입니다.` });
   if (st?.frc && st.frc.median !== null && st.frc.share > Math.max(st.frc.median * 1.5, st.frc.median + 0.05)) positive.push({ title: "개인 가게의 차별화가 눈에 띄기 쉬운 상권입니다", body: `프랜차이즈 비중이 ${pct(st.frc.share * 100)}로 높습니다. 브랜드 가게와 다른 메뉴·분위기·서비스를 한 줄로 정리해 알려 보세요.${T}` });
-  if (ch?.closeRate != null && ch.medClose != null && ch.closeRate <= ch.medClose) positive.push({ title: "문 닫는 이웃 가게의 비율이 비교 지역 중앙값 이하입니다", body: `최근 분기 폐업률 ${pct(ch.closeRate * 100)}로 비교 지역 중앙값(${pct(ch.medClose * 100)}) 이하입니다. 한 분기 값이라 오래 버틴다는 뜻은 아닙니다.${T}` });
+  if (ch?.closeRate != null && ch.medClose != null && ch.closeRate <= ch.medClose) positive.push({ title: "문 닫는 이웃 가게의 비율이 비교 지역 중앙값 이하입니다", body: `${qWord(ch)} 폐업률 ${pct(ch.closeRate * 100)}로 비교 지역 중앙값(${pct(ch.medClose * 100)}) 이하입니다. 한 분기 값이라 오래 버틴다는 뜻은 아닙니다.${T}` });
 
   if (lv?.yoyTotal != null && lv.yoyTotal < 0) caution.push({ title: "상권 전체 매출이 줄고 있습니다", body: `총매출이 전년 동기 대비 ${sgn(lv.yoyTotal)}입니다. 내 매출 변화율이 이보다 작다면 상권 영향이, 더 크다면 내 가게 요인이 클 수 있어 '내 가게 점검'으로 견줘 보세요.${lv.yoyCaution && !T ? SMALL_TAIL : T}` });
   if (lv?.flpopYoy != null && lv.flpopYoy <= -5) caution.push({ title: "유동인구 지수가 줄었습니다", body: `전년 동기 대비 ${sgn(lv.flpopYoy)}입니다(길 위 사람만 센 추정치라 방향만 참고).` });
-  if (clearlyHigher(ch?.closeRate, ch?.medClose) && ch?.closeRate != null && ch.medClose != null) caution.push({ title: "이웃 가게가 문을 닫는 비율이 비교 지역 중앙값보다 눈에 띄게 높습니다", body: `최근 분기 폐업률 ${pct(ch.closeRate * 100)}로 비교 지역 중앙값(${pct(ch.medClose * 100)})보다 높습니다. 닫은 가게의 사정을 알아 두면 같은 어려움을 피하는 데 도움이 됩니다.${T}` });
+  if (clearlyHigher(ch?.closeRate, ch?.medClose) && ch?.closeRate != null && ch.medClose != null) caution.push({ title: "이웃 가게가 문을 닫는 비율이 비교 지역 중앙값보다 눈에 띄게 높습니다", body: `${qWord(ch)} 폐업률 ${pct(ch.closeRate * 100)}로 비교 지역 중앙값(${pct(ch.medClose * 100)})보다 높습니다. 닫은 가게의 사정을 알아 두면 같은 어려움을 피하는 데 도움이 됩니다.${T}` });
   if (st?.chg2y != null && st.chg2y >= 5) caution.push({ title: "같은 업종 점포가 늘고 있습니다", body: `약 2년간 ${sgn(st.chg2y)}입니다. 손님을 나눠 갖는 가게가 늘고 있어 단골 관리와 차별점이 중요해집니다.${T}` });
   return { positive, caution };
 }
