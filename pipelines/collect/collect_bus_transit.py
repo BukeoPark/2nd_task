@@ -49,6 +49,8 @@ USAGE_SIDO_CODE = "11"  # 서울
 TAGO_GRID_STEP_M = 600  # 근접 조회 반경이 약 500m 라 대각선(≈424m)까지 덮이는 간격
 TAGO_PAD_M = 700        # 파일럿 구역 밖으로 이만큼까지 조회(구 경계 근처 정류소 포함)
 TAGO_ROWS = 200
+TAGO_SESSION_RETRIES = 6   # 일시 오류(세션 부족 resultCode 99·게이트웨이 오류) 재시도 횟수
+TAGO_SESSION_WAIT_SEC = 3
 
 
 class ApiError(RuntimeError):
@@ -184,9 +186,17 @@ def tago_grid_points() -> list[tuple[float, float]]:
 
 def _tago_page(client: httpx.Client, key: str, lat: float, lon: float, page: int) -> tuple[list[dict], int]:
     """TAGO 좌표 근접 조회 한 페이지 → (정류소 목록, 원천 totalCount). 결과가 없으면 items 가 빈 문자열로 온다."""
-    resp = _get(client, f"{TAGO}/getCrdntPrxmtSttnList",
-                {"_type": "json", "gpsLati": lat, "gpsLong": lon, "numOfRows": TAGO_ROWS, "pageNo": page}, key).get("response") or {}
-    header = resp.get("header") or {}
+    # 일시 오류는 HTTP 200 으로 온다: resultCode 99("가용한 세션이 존재하지 않습니다") 또는 헤더 없는 게이트웨이 오류 — 잠시 뒤 다시 시도한다.
+    for attempt in range(1, TAGO_SESSION_RETRIES + 1):
+        resp = _get(client, f"{TAGO}/getCrdntPrxmtSttnList",
+                    {"_type": "json", "gpsLati": lat, "gpsLong": lon, "numOfRows": TAGO_ROWS, "pageNo": page}, key).get("response") or {}
+        header = resp.get("header") or {}
+        # 헤더 자체가 없는 응답(게이트웨이 HTTP_ERROR 04 등 OpenAPI_ServiceResponse)도 일시 오류라 같이 재시도한다.
+        transient = header.get("resultCode") is None or str(header.get("resultCode")) == "99"
+        if transient and attempt < TAGO_SESSION_RETRIES:
+            time.sleep(TAGO_SESSION_WAIT_SEC * attempt)
+            continue
+        break
     if header.get("resultCode") != "00":
         raise ApiError(f"TAGO 오류: {header.get('resultCode')} {header.get('resultMsg')}")
     body = resp.get("body")
