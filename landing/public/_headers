@@ -1,0 +1,8 @@
+# Netlify·Cloudflare Pages 가 읽는 응답 헤더 설정(다른 호스팅에서는 무시된다 — 같은 값을 그 호스팅의 헤더 설정에 옮긴다).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
