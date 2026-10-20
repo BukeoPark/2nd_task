@@ -113,7 +113,7 @@ export function MyStoreCheckupSection({
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
         <label style={{ fontSize: 11, color: "#6B7280" }}>
           월
-          <input type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} style={inputStyle} />
+          <input id="my-store-month-input" type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} style={inputStyle} />
         </label>
         <label style={{ fontSize: 11, color: "#6B7280" }}>
           매출 (만원)

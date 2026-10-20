@@ -28,14 +28,19 @@ export interface PointLook {
   zIndex: number;
 }
 
-export function pointLook(role: PointRole, colors: { selectedRing: string; peerRing: string }): PointLook {
+/** 경쟁 매장(peer)을 얼마나 진하게 보일지 — 평소(base)는 약하게, '주변·경쟁' 분석을 보는 중(competition)에는 진하게. 선택 매장은 둘 다 가장 뚜렷하다. */
+export type PeerEmphasis = "base" | "competition";
+
+export function pointLook(role: PointRole, colors: { selectedRing: string; peerRing: string }, emphasis: PeerEmphasis = "competition"): PointLook {
   switch (role) {
     case "selected":
-      return { size: 32, ring: colors.selectedRing, ringWidth: 4, opacity: 1, zIndex: 7 };
+      return { size: 40, ring: colors.selectedRing, ringWidth: 5, opacity: 1, zIndex: 7 };
     case "hovered":
       return { size: 28, ring: colors.selectedRing, ringWidth: 3, opacity: 1, zIndex: 6 };
     case "peer":
-      return { size: 22, ring: colors.peerRing, ringWidth: 3, opacity: 1, zIndex: 4 };
+      return emphasis === "competition"
+        ? { size: 22, ring: colors.peerRing, ringWidth: 3, opacity: 1, zIndex: 4 }
+        : { size: 22, ring: colors.peerRing, ringWidth: 1, opacity: 0.8, zIndex: 4 };
     case "other":
       return { size: 17, ring: null, ringWidth: 0, opacity: 0.3, zIndex: 3 };
     default:

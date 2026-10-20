@@ -2,10 +2,10 @@ import type { FoodAnchorsResponse, FoodBubblesResponse } from "../../lib/apiClie
 import { InfoTip } from "../../components/InfoTip";
 import { scopeLine } from "../../lib/foodText";
 import { LEGEND_GLYPHS } from "../../lib/storeGlyph";
-import { ANCHOR_MARK, NO_DATA_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
+import { ANCHOR_MARK, NO_DATA_COLOR, PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
-export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale = false, rebQuarter = null }: {
+export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale = false, rebQuarter = null, storeRoles = null }: {
   data: FoodBubblesResponse | undefined;
   showStores: boolean;
   rebZonesVisible: boolean;
@@ -14,6 +14,8 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
   stale?: boolean;
   /** R-ONE 임대동향의 실제 기준 분기('2026년 2분기') */
   rebQuarter?: string | null;
+  /** 매장 상세를 보는 중이면 지도 점의 역할(선택·경쟁·그 외)과 경계 표현을 설명한다 — 지도와 같은 vizConfig 값 */
+  storeRoles?: { peers: boolean; boundary: boolean; emphasized: boolean } | null;
 }) {
   return (
     <div style={{ opacity: stale ? 0.55 : 1 }}>
@@ -29,6 +31,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               </span>
             ))}
           </div>
+          {storeRoles && <StoreRoleLegend roles={storeRoles} />}
         </>
       ) : (
         data && (
@@ -76,6 +79,32 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
         </>
       )}
       {rebZonesVisible && <Dot color={REB_ZONE_COLOR} label={`R-ONE 임대동향 상권 (${rebQuarter ?? "기준 분기 기록 없음"})`} />}
+    </div>
+  );
+}
+
+/** 선택한 매장 주변의 점 표현 — 지도의 SelectedStoreMarker·경쟁 매장 링·비교 단위 경계와 같은 색·모양. */
+function StoreRoleLegend({ roles }: { roles: { peers: boolean; boundary: boolean; emphasized: boolean } }) {
+  const dot = (size: number, ring: string | null, ringW: number, opacity = 1) => (
+    <span aria-hidden="true" style={{ width: size, height: size, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, boxShadow: ring ? `0 0 0 ${ringW}px ${ring}` : "none", opacity, flexShrink: 0, display: "inline-block", margin: ringW }} />
+  );
+  return (
+    <div aria-label="선택한 매장 표시" style={{ borderTop: "1px solid #E5E7EB", marginTop: 6, paddingTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ fontWeight: 600, color: "#374151" }}>선택한 매장 주변</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{dot(16, SELECTED_RING_COLOR, 4)} 선택한 매장 — 굵은 검은 링 + 이름표</div>
+      {roles.peers ? (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{dot(14, PEER_RING_COLOR, roles.emphasized ? 3 : 1, roles.emphasized ? 1 : 0.8)} 같은 상권·같은 업종 경쟁 매장 — 파란 링{roles.emphasized ? "" : " (연하게, '주변' 메뉴에서 진하게)"}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{dot(11, null, 0, 0.3)} 그 외 매장 — 흐리게</div>
+        </>
+      ) : (
+        <div style={{ color: "#6B7280", fontSize: 11 }}>경쟁 매장 표시는 비교 대상을 불러오는 중이거나 없습니다.</div>
+      )}
+      {roles.boundary && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span aria-hidden="true" style={{ width: 16, height: 10, border: `${roles.emphasized ? 3 : 2}px solid ${PEER_RING_COLOR}`, opacity: roles.emphasized ? 0.9 : 0.4, borderRadius: 3, flexShrink: 0 }} /> 비교 단위(상권·행정동) 경계
+        </div>
+      )}
     </div>
   );
 }

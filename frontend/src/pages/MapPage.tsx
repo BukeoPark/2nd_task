@@ -149,6 +149,8 @@ export function MapPage() {
   const [compareOpen, setCompareOpen] = useState(false);
   // 좁은 화면: 서랍을 접고 지도를 보는 중인가(다른 매장·지역을 고르면 다시 서랍을 연다)
   const [peekAt, setPeekAt] = useState<string | null>(null);
+  // 매장 상세에서 보고 있는 묶음 — '주변'(경쟁 분석)일 때만 경쟁 매장·상권 경계를 진하게 그린다(매장이 바뀌면 이전 값은 무시)
+  const [groupAt, setGroupAt] = useState<{ id: string; group: string } | null>(null);
   // 관심 지역 — 이 브라우저에만 최대 10곳(계정·서버 없음)
   const [favorites, setFavorites] = useState<FavoriteArea[]>(() => loadFavorites());
   const [favOpen, setFavOpen] = useState(false);
@@ -202,6 +204,9 @@ export function MapPage() {
   const selLat = selectedStore?.lat ?? null;
   const peers = usePeerStores(storeId);
   const peerData = storeId !== null && peers.data?.status === "ok" ? peers.data : null;
+  // 검색으로 연 매장은 검색 핀과 선택 매장 마커가 같은 자리라 이름표가 겹친다 — 선택 매장 마커(가장 뚜렷)만 남긴다
+  const samePlaceAsSelectedStore = place !== null && selLon !== null && selLat !== null && Math.abs(place.lon - selLon) < 1e-4 && Math.abs(place.lat - selLat) < 1e-4;
+  const competitionView = storeId !== null && groupAt?.id === storeId && groupAt.group === "radius";
   const peerIds = useMemo(() => (peerData ? new Set(peerData.store_ids) : null), [peerData]);
 
   // 선택한 매장이 왼쪽 패널·상단 바에 가려지거나 화면 밖이면 보이는 영역 가운데로 지도를 옮긴다(잘 보이면 그대로).
@@ -388,10 +393,10 @@ export function MapPage() {
         {mapKakao && points.data && unit === "stores" && (
           <StorePointLayer
             map={mapKakao.map} kakao={mapKakao.kakao} stores={points.data.stores} onSelect={onStore} stale={pointsStale}
-            selectedId={storeId} hoveredId={hoveredId} peerIds={peerIds}
+            selectedId={storeId} hoveredId={hoveredId} peerIds={peerIds} emphasizePeers={competitionView}
           />
         )}
-        {mapKakao && peerData?.boundary && <UnitBoundaryLayer map={mapKakao.map} kakao={mapKakao.kakao} geometry={peerData.boundary} />}
+        {mapKakao && peerData?.boundary && <UnitBoundaryLayer map={mapKakao.map} kakao={mapKakao.kakao} geometry={peerData.boundary} strong={competitionView} />}
         {mapKakao && brand !== null && brandStores.data && (
           <SearchStoresLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={brandStores.data.stores} selectedId={storeId} onSelect={onStore} fit />
         )}
@@ -399,7 +404,7 @@ export function MapPage() {
         {mapKakao && showAnchors && anchors.data && (
           <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
         )}
-        {mapKakao && <SearchMarker map={mapKakao.map} kakao={mapKakao.kakao} place={place} />}
+        {mapKakao && <SearchMarker map={mapKakao.map} kakao={mapKakao.kakao} place={samePlaceAsSelectedStore ? null : place} />}
         {mapKakao && heatData && <HeatmapLayer map={mapKakao.map} kakao={mapKakao.kakao} data={heatData} />}
         {mapKakao && rebZonesVisible && rebZones.data && (
           <RebZoneLayer map={mapKakao.map} kakao={mapKakao.kakao} zones={rebZones.data.records} onSelect={onZone} />
@@ -473,6 +478,7 @@ export function MapPage() {
               anchors={showAnchors ? anchors.data : undefined}
               stale={bubblesStale}
               rebQuarter={rebQuarters?.rent_small_shop ?? null}
+              storeRoles={storeId !== null ? { peers: peerIds !== null, boundary: Boolean(peerData?.boundary), emphasized: competitionView } : null}
             />
           }
           ranking={
@@ -492,6 +498,7 @@ export function MapPage() {
             mode={mode}
             onProgress={mark}
             mapView={mapKakao}
+            onGroupChange={(g) => setGroupAt({ id: storeId, group: g })}
             onBack={() => setStoreId(null)}
             onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }}
             onOpenArea={({ level, store }) => {

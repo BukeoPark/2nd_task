@@ -18,10 +18,12 @@ interface StorePointLayerProps {
   hoveredId?: string | null;
   /** 선택한 매장과 같은 비교 단위·업종의 매장 id. 모르면 null */
   peerIds?: ReadonlySet<string> | null;
+  /** 경쟁 매장(peer)을 진하게 보일지 — '주변·경쟁' 분석을 보는 중에만 true */
+  emphasizePeers?: boolean;
 }
 
 /** 가장 확대했을 때 개별 외식 매장을 점으로 그린다. 선택·비교 대상에 따른 모양 변화는 점을 다시 만들지 않고 스타일만 바꾼다. */
-export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, selectedId = null, hoveredId = null, peerIds = null }: StorePointLayerProps) {
+export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, selectedId = null, hoveredId = null, peerIds = null, emphasizePeers = true }: StorePointLayerProps) {
   const overlaysRef = useRef<any[]>([]);
   const itemsRef = useRef<Map<string, { el: HTMLElement; overlay: any }>>(new Map());
 
@@ -60,7 +62,7 @@ export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, s
   useEffect(() => {
     const colors = { selectedRing: SELECTED_RING_COLOR, peerRing: PEER_RING_COLOR };
     itemsRef.current.forEach(({ el, overlay }, id) => {
-      const look = pointLook(pointRole(id, { selectedId, hoveredId, peerIds }), colors);
+      const look = pointLook(pointRole(id, { selectedId, hoveredId, peerIds }), colors, emphasizePeers ? "competition" : "base");
       overlay.setZIndex(look.zIndex);
       el.style.width = el.style.height = `${look.size}px`;
       el.style.fontSize = `${glyphFontSize(look.size)}px`;
@@ -68,7 +70,7 @@ export function StorePointLayer({ map, kakao, stores, onSelect, stale = false, s
       el.style.opacity = stale ? "0.3" : String(look.opacity);
       el.style.boxShadow = look.ring ? `0 0 0 ${look.ringWidth}px ${look.ring}, 0 1px 4px rgba(0,0,0,0.45)` : "0 1px 3px rgba(0,0,0,0.4)";
     });
-  }, [stores, stale, selectedId, hoveredId, peerIds]);
+  }, [stores, stale, selectedId, hoveredId, peerIds, emphasizePeers]);
 
   return null;
 }

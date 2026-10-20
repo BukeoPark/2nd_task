@@ -24,6 +24,7 @@ import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
 import { AreaCharacterLine } from "../area/AreaCharacterSection";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
+import { MineStatusBar } from "./MineStatusBar";
 import { StoreBriefCard } from "./StoreBriefCard";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
@@ -47,6 +48,8 @@ interface StoreDetailPanelProps {
   mode: Mode;
   /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
   onProgress: (k: ProgressKey) => void;
+  /** 보고 있는 묶음이 바뀌면 알린다 — 지도가 '주변·경쟁' 분석일 때 경쟁 매장·상권 경계를 진하게 그린다 */
+  onGroupChange?: (g: GroupId) => void;
 }
 
 /** 매장 상세 — 왼쪽 레일의 네 묶음(이 매장 / 주변 / 상권 / 내 가게)으로 나눠 한 번에 한 묶음만 보인다.
@@ -58,10 +61,11 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
-  const [group, setGroup] = useState<GroupId>("store");
+  const [group, setGroupState] = useState<GroupId>("store");
+  const setGroup = (g: GroupId) => { setGroupState(g); onGroupChange?.(g); };
   const [reportOpen, setReportOpen] = useState(false);
   // 주변 묶음의 반경(250·500·1km)은 여기서 한 번만 들고 입지 지표·개폐업·분석 기준이 같은 값을 쓴다.
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
@@ -202,6 +206,9 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                     })}
                     onAction={(t: StoreBriefTarget) => setGroup(t)}
                   />
+                )}
+                {g === "mine" && (
+                  <MineStatusBar months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
                 )}
                 <NoteHost>
                   {blocksOf(g).map((id) => (

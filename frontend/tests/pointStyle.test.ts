@@ -34,3 +34,13 @@ test("모양: 선택 > 올림 > peer = plain > other 순으로 크고, other 만
   assert.equal(l("selected").ring, "#111");
   assert.ok(l("selected").zIndex > l("hovered").zIndex && l("hovered").zIndex > l("peer").zIndex && l("peer").zIndex > l("other").zIndex - 1);
 });
+
+test("경쟁 매장은 평소(base)에는 약하게, '주변·경쟁' 분석 중(competition)에는 진하게 — 선택 매장은 어느 쪽이든 가장 뚜렷", () => {
+  const base = pointLook("peer", colors, "base");
+  const comp = pointLook("peer", colors, "competition");
+  assert.ok(base.ringWidth < comp.ringWidth && base.opacity < comp.opacity);
+  assert.equal(pointLook("peer", colors).ringWidth, comp.ringWidth);                 // 기본값은 진한 쪽(기존 동작)
+  assert.equal(pointLook("selected", colors, "base").size, pointLook("selected", colors, "competition").size);
+  assert.ok(pointLook("selected", colors, "base").ringWidth > comp.ringWidth);
+  assert.ok(pointLook("selected", colors).size >= 2 * comp.size - 6);                // 선택은 경쟁 매장의 거의 두 배 크기
+});
