@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { MapPeekContext } from "./MapPeekContext";
 import { useNarrow } from "../lib/useNarrow";
 import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX } from "../lib/vizConfig";
 
@@ -18,6 +19,7 @@ interface DrawerProps {
 /** 좁은 화면에서는 레일 옆 남는 폭까지 꽉 채우고 지도 조작 단추(확대·축소)보다 위에 둔다. */
 export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
   const narrow = useNarrow();
+  const showMap = useContext(MapPeekContext);
   return (
     <div
       style={{
@@ -45,6 +47,12 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
           <strong style={{ fontSize: 16, display: "block" }}>{title}</strong>
           {subtitle && <span style={{ fontSize: 12, color: "#6B7280" }}>{subtitle}</span>}
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+        {narrow && showMap && (
+          <button type="button" onClick={showMap} style={{ border: "1px solid #3B82F6", background: "white", color: "#1D4ED8", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>
+            지도 보기
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -53,6 +61,7 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
         >
           ×
         </button>
+        </div>
       </div>
       {children}
     </div>

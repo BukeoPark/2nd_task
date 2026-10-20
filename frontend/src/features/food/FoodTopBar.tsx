@@ -34,6 +34,10 @@ interface FoodTopBarProps {
   onModeChange: (m: Mode) => void;
   /** 도움말 — 튜토리얼 다시 보기 */
   onHelp: () => void;
+  /** 관심 지역 — 저장한 곳 수와 목록 열기 */
+  favCount: number;
+  favOpen: boolean;
+  onToggleFav: () => void;
 }
 
 /** 요식업·카페 전용 GNB — 업종(서울시 외식 10개) → 세부 업종(소상공인 소분류), 지표. */
@@ -73,7 +77,10 @@ export function FoodTopBar(p: FoodTopBarProps) {
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>
-      <button type="button" data-tour="help" onClick={p.onHelp} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+      <button type="button" data-tour="favorites" onClick={p.onToggleFav} aria-expanded={p.favOpen} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: p.favOpen ? "#FEF3C7" : "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+        <span aria-hidden="true">★ </span>관심 지역 {p.favCount}
+      </button>
+      <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">? </span>도움말
       </button>
     </div>
