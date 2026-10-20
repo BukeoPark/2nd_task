@@ -10,7 +10,7 @@ const DIM = "rgba(15,23,42,0.58)";
 
 const WELCOME: Record<Mode, { title: string; lines: string[] }> = {
   owner: {
-    title: "내 가게가 있는 상권, 어느 수준일까요?",
+    title: "내 가게 상권, 어느 수준일까요?",
     lines: ["내 가게를 찾고 → 내 상권을 주변과 비교하고 → 내 업종과 내 가게를 견줘 본 뒤 → 인사이트 리포트로 정리하는 순서로 안내해 드려요.", "1분이면 끝나요. 언제든 위쪽 '도움말'에서 다시 볼 수 있어요."],
   },
   founder: {
@@ -123,7 +123,7 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
   let cardStyle: CSSProperties;
   if (narrow) cardStyle = { left: 8, right: 8, bottom: 8 };
   else if (rect) {
-    const p = placeTip({ left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }, size, view, step.placement);
+    const p = placeTip({ left: rect.left - PAD, top: rect.top - PAD, width: Math.max(rect.width, step.avoid?.width ?? 0) + PAD * 2, height: rect.height + (step.avoid?.height ?? 0) + PAD * 2 }, size, view, step.placement);
     cardStyle = { left: p.left, top: p.top, width: 320 };
   } else cardStyle = { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "min(360px, calc(100vw - 24px))" };
 

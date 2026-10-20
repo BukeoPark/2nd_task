@@ -11,7 +11,7 @@ from datetime import date
 
 import pandas as pd
 
-from app.services import data_store, taxonomy
+from app.services import data_store, food_map, taxonomy
 
 
 class StoreNotFound(KeyError):
@@ -78,7 +78,8 @@ def basic_info(store: dict) -> dict:
     return {
         "store_id": store["bizesId"], "name": store["bizesNm"], "branch": store["brchNm"],
         "category": {"lcls": store["indsLclsNm"], "mcls": store["indsMclsNm"], "scls": store["indsSclsNm"],
-                     "scls_code": store["indsSclsCd"]},
+                     "scls_code": store["indsSclsCd"],
+                     "svc": food_map._scls_to_svc().get(store["indsSclsCd"])},  # 지도 점 모양(업종 이모티콘)을 정하는 서울시 업종 — 대응 없으면 None
         "address": store["rdnmAdr"] or store["lnoAdr"], "building": store["bldNm"],
         "dong": store["adongNm"], "adong_cd": store["adongCd"], "trdar": _trdar_of(store["bizesId"]), "sigungu": store["signguNm"], "lon": store["lon"], "lat": store["lat"],
         "source": {"title": "소상공인시장진흥공단 상가(상권)정보", "reference": f"{ref.get('stdrYm', '')[:4]}-{ref.get('stdrYm', '')[4:]} 기준"},

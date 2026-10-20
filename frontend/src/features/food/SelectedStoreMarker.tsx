@@ -1,26 +1,34 @@
 import { useEffect } from "react";
 import { toKakaoLatLng } from "../../lib/geo";
 import { pointLook } from "../../lib/pointStyle";
+import { glyphFontSize, glyphFor } from "../../lib/storeGlyph";
 import { PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR } from "../../lib/vizConfig";
 
 interface SelectedStoreMarkerProps {
   map: any;
   kakao: typeof window.kakao;
   store: { name: string; branch: string | null; lon: number; lat: number };
+  /** 서울시 외식 업종 코드 — 점과 같은 업종 이모티콘을 그대로 보인다 */
+  svc?: string | null;
 }
 
 /** 지금 상세를 보고 있는 매장 — 어느 확대 단계에서도 크게(링) 표시하고 이름을 붙인다. 지도 이벤트를 가로채지 않는다. */
-export function SelectedStoreMarker({ map, kakao, store }: SelectedStoreMarkerProps) {
+export function SelectedStoreMarker({ map, kakao, store, svc = null }: SelectedStoreMarkerProps) {
   const { name, branch, lon, lat } = store;
   useEffect(() => {
     const look = pointLook("selected", { selectedRing: SELECTED_RING_COLOR, peerRing: PEER_RING_COLOR });
     const wrap = document.createElement("div");
     Object.assign(wrap.style, { position: "relative", width: `${look.size}px`, height: `${look.size}px`, pointerEvents: "none" });
+    // 선택해도 점과 같은 업종 이모티콘(치킨 🍗·커피 ☕ …)을 그대로 둔다 — 크기와 링으로만 강조한다.
+    const g = glyphFor(svc);
     const dot = document.createElement("div");
     Object.assign(dot.style, {
-      boxSizing: "border-box", width: "100%", height: "100%", borderRadius: "50%", background: STORE_POINT_COLOR, border: "3px solid white",
+      boxSizing: "border-box", width: "100%", height: "100%", borderRadius: "50%", background: "white", border: `3px solid ${STORE_POINT_COLOR}`,
+      display: "flex", alignItems: "center", justifyContent: "center", lineHeight: "1", fontSize: `${glyphFontSize(look.size)}px`,
+      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
       boxShadow: `0 0 0 ${look.ringWidth}px ${look.ring}, 0 2px 8px rgba(0,0,0,0.5)`,
     });
+    dot.textContent = g.glyph;
     const label = document.createElement("div");
     label.textContent = `${name}${branch ? ` ${branch}` : ""}`;
     Object.assign(label.style, {
@@ -30,7 +38,7 @@ export function SelectedStoreMarker({ map, kakao, store }: SelectedStoreMarkerPr
     wrap.append(dot, label);
     const overlay = new kakao.maps.CustomOverlay({ position: toKakaoLatLng(kakao, { lon, lat }), content: wrap, map, zIndex: look.zIndex + 2, xAnchor: 0.5, yAnchor: 0.5 });
     return () => overlay.setMap(null);
-  }, [map, kakao, name, branch, lon, lat]);
+  }, [map, kakao, name, branch, lon, lat, svc]);
 
   return null;
 }

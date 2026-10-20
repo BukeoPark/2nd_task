@@ -4,7 +4,7 @@
   - 역: 상권 이름에서 뽑은 역 이름(예: '영등포역 2번' → 영등포역)과 그 상권들의 중심 — 공식 역 좌표가 아니라 '역 주변 상권'의 위치다.
   - 상권·행정동: 서울시 상권분석서비스의 영역 이름과 중심.
   - 주소: 소상공인 상가정보의 도로명·지번 주소(그 주소에 등록된 외식 매장 위치).
-  - 매장: 외식 매장 상호.
+  - 매장: 외식 매장 상호. 같은 이름이 2곳 이상이면(프랜차이즈) '브랜드' 결과를 맨 위에 더해 지도에서 모두 보게 한다(`stores_by_name`).
 공백·괄호·가운뎃점을 무시하고 대소문자를 구분하지 않으며, 앞부분이 일치하는 결과를 먼저 보여준다.
 """
 from __future__ import annotations
@@ -18,7 +18,8 @@ from app.services import data_store, food_map
 
 MIN_QUERY_CHARS = 2
 PER_KIND_LIMIT = 5
-KIND_ORDER = ("station", "trdar", "dong", "address", "store")
+KIND_ORDER = ("station", "trdar", "dong", "brand", "address", "store")
+MAP_STORE_LIMIT = 300  # 지도에 한 번에 보여 줄 검색 매장 수 상한
 STATION_RE = re.compile(r"([가-힣A-Za-z0-9]{1,12}역)")
 _STRIP = re.compile(r"[\s()·\-,]+")
 
@@ -91,10 +92,29 @@ def search(query: str, limit: int = 20) -> dict:
 
     nm = _pick(stores, _rank(stores["name_key"], q), ["bizesNm", "bizesId"])
     counts["store"] = len(nm)
+    svc_of = food_map._scls_to_svc()
     out["store"] = [{"kind": "store", "store_id": r.bizesId, "name": r.bizesNm + (f" {r.brchNm}" if r.brchNm else ""),
-                     "subtitle": f"매장 · {r.indsSclsNm} · {r.rdnmAdr}", "lon": round(float(r.lon), 6), "lat": round(float(r.lat), 6)}
+                     "subtitle": f"매장 · {r.indsSclsNm} · {r.rdnmAdr}", "svc": svc_of.get(r.indsSclsCd),
+                     "lon": round(float(r.lon), 6), "lat": round(float(r.lat), 6)}
                     for r in nm.head(PER_KIND_LIMIT).itertuples()]
+    if len(nm) >= 2:  # 같은 글자가 들어간 매장이 여러 곳 — 한꺼번에 지도에 올려 볼 수 있게 한다(위치는 그 매장들의 중심)
+        out["brand"] = [{"kind": "brand", "name": query.strip(), "count": int(len(nm)),
+                         "subtitle": f"'{query.strip()}'이(가) 들어간 매장 {len(nm):,}곳 · 지도에 모두 보기",
+                         "lon": round(float(nm["lon"].mean()), 6), "lat": round(float(nm["lat"].mean()), 6)}]
 
     results = [x for k in KIND_ORDER for x in out[k]][:limit]
     return {"query": query, "too_short": False, "min_chars": MIN_QUERY_CHARS, "results": results, "counts": counts,
             "note": "역·상권·행정동·주소·외식 매장 이름을 서비스가 가진 자료로 찾습니다. 역 위치는 그 이름이 붙은 상권의 중심이며 공식 역 좌표가 아닙니다."}
+
+
+def stores_by_name(query: str, limit: int = MAP_STORE_LIMIT) -> dict:
+    """이름에 검색어가 들어간 외식 매장 전부(상한까지) — 지도에 한꺼번에 올려 보이는 용도. 이름이 앞부분부터 일치하는 순서, 그다음 상호순."""
+    q = normalize(query)
+    if len(q) < MIN_QUERY_CHARS:
+        return {"query": query, "too_short": True, "min_chars": MIN_QUERY_CHARS, "total": 0, "truncated": False, "stores": []}
+    stores = _index()["stores"]
+    hit = _pick(stores, _rank(stores["name_key"], q), ["bizesNm", "bizesId"])
+    svc_of = food_map._scls_to_svc()
+    rows = [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category": r.indsSclsNm, "svc": svc_of.get(r.indsSclsCd),
+             "address": r.rdnmAdr or r.lnoAdr or None, "lon": float(r.lon), "lat": float(r.lat)} for r in hit.head(limit).itertuples()]
+    return {"query": query, "too_short": False, "min_chars": MIN_QUERY_CHARS, "total": int(len(hit)), "truncated": len(hit) > limit, "stores": rows}

@@ -106,3 +106,14 @@ export function useSearch(query: string) {
     retry: false,
   });
 }
+
+/** 이름에 검색어가 들어간 매장 전부(상한 300곳) — 지도에 한꺼번에 올려 보이는 용도. 검색어가 없으면 부르지 않는다. */
+export function useSearchStores(query: string | null) {
+  return useQuery({
+    queryKey: ["search-stores", query],
+    queryFn: () => apiClient.searchStores(query ?? ""),
+    enabled: query !== null && query.trim().length >= 2,
+    staleTime: LONG,
+    retry: false,
+  });
+}

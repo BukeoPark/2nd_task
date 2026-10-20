@@ -69,7 +69,8 @@ export interface StoreBasic {
   store_id: string;
   name: string;
   branch: string | null;
-  category: { lcls: string; mcls: string; scls: string; scls_code: string };
+  /** svc: 서울시 외식 업종 코드(지도 점 모양). 대응이 없으면 null */
+  category: { lcls: string; mcls: string; scls: string; scls_code: string; svc?: string | null };
   address: string | null;
   building: string | null;
   dong: string;
@@ -946,7 +947,7 @@ export interface FoodUnitStoresResponse {
   records: FoodUnitStore[];
 }
 
-export type SearchKind = "station" | "trdar" | "dong" | "address" | "store";
+export type SearchKind = "station" | "trdar" | "dong" | "brand" | "address" | "store";
 
 export interface SearchResult {
   kind: SearchKind;
@@ -957,6 +958,19 @@ export interface SearchResult {
   level?: FoodLevel;
   code?: string;
   store_id?: string;
+  /** 매장 결과의 서울시 외식 업종 코드(점 모양을 정한다) */
+  svc?: string | null;
+  /** 브랜드 결과: 이름에 검색어가 들어간 매장 수 */
+  count?: number;
+}
+
+export interface SearchStoresResponse {
+  query: string;
+  too_short: boolean;
+  total: number;
+  /** 상한(300곳)을 넘어 일부만 담았는가 */
+  truncated: boolean;
+  stores: (FoodStorePoint & { address: string | null })[];
 }
 
 export interface SearchResponse {
@@ -997,6 +1011,7 @@ export const apiClient = {
     if (scls) q.set("scls", scls);
     return request<FoodStoresResponse>(`/api/food/stores?${q}`);
   },
+  searchStores: (query: string) => request<SearchStoresResponse>(`/api/search/stores?${new URLSearchParams({ q: query })}`),
   searchPlaces: (query: string) => request<SearchResponse>(`/api/search?${new URLSearchParams({ q: query })}`),
   getFoodUnitStores: (level: FoodLevel, code: string, svc: string | null, scls: string | null, offset = 0, sort: UnitStoreSort = "distance", limit = 50) => {
     const q = new URLSearchParams({ limit: String(limit), offset: String(offset), sort });

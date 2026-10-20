@@ -56,3 +56,28 @@ def test_prefix_matches_come_before_substring_matches():
 def test_search_never_matches_non_food_stores():
     stores = search._index()["stores"]
     assert (stores["indsLclsCd"] == "I2").all()
+
+
+def test_same_name_stores_add_a_brand_result_and_can_all_be_listed(client):
+    res = client.get("/api/search", params={"q": "본죽"}).json()
+    brand = [r for r in res["results"] if r["kind"] == "brand"]
+    assert len(brand) == 1 and brand[0]["count"] >= 2 and "모두 보기" in brand[0]["subtitle"]
+    assert all("svc" in r for r in res["results"] if r["kind"] == "store")  # 점 모양(업종 이모티콘)용
+
+    all_ = client.get("/api/search/stores", params={"q": "본죽"}).json()
+    assert all_["total"] == brand[0]["count"] and not all_["truncated"]
+    assert all("본죽" in s["name"] for s in all_["stores"]) and {"store_id", "lon", "lat", "svc"} <= set(all_["stores"][0])
+    assert client.get("/api/search/stores", params={"q": "본"}).json()["too_short"] is True
+
+
+def test_a_single_store_name_has_no_brand_result(client):
+    stores = data_store.load_parquet("stores.parquet")
+    name = stores.loc[stores["indsLclsCd"] == "I2", "bizesNm"].value_counts().index[-1]
+    assert not [r for r in client.get("/api/search", params={"q": name}).json()["results"] if r["kind"] == "brand"] or \
+        client.get("/api/search/stores", params={"q": name}).json()["total"] >= 2
+
+
+def test_store_detail_carries_the_map_glyph_service_code(client):
+    store = data_store.load_parquet("stores.parquet").query("indsLclsCd == 'I2'").iloc[0]
+    cat = client.get(f"/api/stores/{store['bizesId']}").json()["store"]["category"]
+    assert "svc" in cat

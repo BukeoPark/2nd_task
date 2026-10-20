@@ -7,6 +7,7 @@ import { useRegions, useRebZones } from "../features/map/useMapData";
 import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
 import { SearchMarker } from "../features/food/SearchMarker";
+import { SearchResultChip, SearchStoresLayer } from "../features/food/SearchStoresLayer";
 import { FlowGuide } from "../features/food/FlowGuide";
 import { TourLayer } from "../features/guide/TourLayer";
 import { useMode } from "../features/guide/useMode";
@@ -19,7 +20,7 @@ import { MapLayerToolbar } from "../features/food/MapLayerToolbar";
 import { FoodLegend } from "../features/food/FoodLegend";
 import { MapDock } from "../features/food/MapDock";
 import { RankingTable } from "../features/food/RankingTable";
-import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodHeat, useFoodStores, type Bounds } from "../features/food/useFood";
+import { useFoodAnchors, useFoodBubbles, useFoodCategories, useFoodHeat, useFoodStores, useSearchStores, type Bounds } from "../features/food/useFood";
 import { HeatmapLayer } from "../features/food/HeatmapLayer";
 import type { HeatMetric } from "../lib/heatmap";
 import { UnitStoreList } from "../features/food/UnitStoreList";
@@ -130,6 +131,9 @@ export function MapPage() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
+  // 이름 검색('본죽')에서 '모두 보기'를 고른 검색어 — 그 이름의 매장 전부를 지도에 올려 둔다.
+  const [brand, setBrand] = useState<string | null>(null);
+  const brandStores = useSearchStores(brand);
   // 입지 비교 목록 — 같은 지도 단위끼리만, 최대 MAX_COMPARE 곳
   const [basket, setBasket] = useState<{ level: FoodLevel; codes: string[] } | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -234,7 +238,20 @@ export function MapPage() {
     mapKakao.map.setLevel(target.level);
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, r));
   }, [mapKakao]);
-  const onPickPlace = useCallback((r: SearchResult) => { mark("place"); openPlace(r); }, [mark, openPlace]);
+  const onPickPlace = useCallback((r: SearchResult, typed: string) => {
+    mark("place");
+    if (r.kind === "brand") {
+      // 같은 이름의 매장 전부 — 하나를 열지 않고 지도에 모두 올린다(위치 핀·열린 패널은 닫는다).
+      setBrand(typed);
+      setPlace(null);
+      setSelection(null);
+      setStoreId(null);
+      setPendingOpen(null);
+      return;
+    }
+    setBrand(null);
+    openPlace(r);
+  }, [mark, openPlace]);
   const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
 
   // 처음 접속하면 기본 행정동(영등포동)을 열어 둔다. 사용자가 먼저 무언가를 고르면 건드리지 않고, 찾지 못하면 조용히 넘어간다.
@@ -298,7 +315,10 @@ export function MapPage() {
           />
         )}
         {mapKakao && peerData?.boundary && <UnitBoundaryLayer map={mapKakao.map} kakao={mapKakao.kakao} geometry={peerData.boundary} />}
-        {mapKakao && selectedStore && <SelectedStoreMarker map={mapKakao.map} kakao={mapKakao.kakao} store={selectedStore} />}
+        {mapKakao && brand !== null && brandStores.data && (
+          <SearchStoresLayer map={mapKakao.map} kakao={mapKakao.kakao} stores={brandStores.data.stores} selectedId={storeId} onSelect={onStore} fit />
+        )}
+        {mapKakao && selectedStore && <SelectedStoreMarker map={mapKakao.map} kakao={mapKakao.kakao} store={selectedStore} svc={selectedStore.category.svc ?? null} />}
         {mapKakao && showAnchors && anchors.data && (
           <AnchorLayer map={mapKakao.map} kakao={mapKakao.kakao} data={anchors.data} showWalkCircles={unit === "trdar" || unit === "stores"} />
         )}
@@ -324,6 +344,9 @@ export function MapPage() {
           onModeChange={setMode}
           onHelp={tour.openHelp}
         />
+        {brand !== null && !hideOverlays && (
+          <SearchResultChip query={brand} total={brandStores.data?.total ?? null} truncated={brandStores.data?.truncated ?? false} loading={brandStores.isPending} failed={brandStores.isError} onClose={() => setBrand(null)} />
+        )}
         <TourLayer mode={mode} tour={tour} />
         {!hideOverlays && <MapLayerToolbar
           anchorsOn={showAnchors}

@@ -27,7 +27,7 @@ interface FoodTopBarProps {
   metric: FoodMetric;
   onMetricChange: (m: FoodMetric) => void;
   unitLabel: string;
-  onPickPlace: (r: SearchResult) => void;
+  onPickPlace: (r: SearchResult, typed: string) => void;
   pickedPlaceName: string | null;
   onClearPlace: () => void;
   mode: Mode;

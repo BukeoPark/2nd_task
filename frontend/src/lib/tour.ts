@@ -13,6 +13,8 @@ export interface TourStep {
   placement: Placement;
   /** 대상이 지금 화면에 없을 때 가운데 카드에 덧붙이는 말(없으면 body 만) */
   fallback?: string;
+  /** 대상 아래로 펼쳐지는 것(검색 후보 목록 등)의 크기 — 말풍선이 그 위를 덮지 않게 자리 계산에만 더한다(밝게 보이는 영역은 그대로) */
+  avoid?: Size;
 }
 
 export const TOUR_VERSION = 1;
@@ -23,10 +25,13 @@ export function shouldWelcome(stored: string | null): boolean {
   return stored !== "done";
 }
 
+/** 검색창 아래로 펼쳐지는 후보 목록의 대략적인 크기(SearchBox) */
+const SEARCH_DROPDOWN = { width: 400, height: 440 };
+
 export const TOURS: Record<Mode, TourStep[]> = {
   owner: [
     { id: "mode", target: "mode", placement: "bottom", title: "나에게 맞는 모드", body: "운영 중인 가게가 있으면 '자영업자', 창업을 준비 중이면 '예비 창업자'를 고르세요. 모드에 따라 안내와 화면 구성이 달라져요." },
-    { id: "search", target: "search", placement: "bottom", title: "① 내 가게 찾기", body: "내 가게 이름이나 주소를 검색하세요. 결과를 누르면 지도가 그 위치로 가고 매장 정보가 열려요." },
+    { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "① 내 가게 찾기", body: "내 가게 이름이나 주소를 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 매장 정보가 열려요. 같은 이름의 매장이 여러 곳이면 '모두 보기'로 지도에 한꺼번에 볼 수 있어요." },
     { id: "svc", target: "svc", placement: "bottom", title: "② 내 업종 고르기", body: "업종과 세부 업종을 고르면 그 업종 기준으로 상권과 점포를 볼 수 있어요. 세부 업종은 점포 수·매장 위치에만 적용돼요." },
     { id: "metric", target: "metric", placement: "bottom", title: "③ 주변 상권과 비교", body: "지도 지표를 매출·점포 수·개업률·폐업률 등으로 바꾸면 지도의 원 크기와 색이 달라져요. 내 상권이 주변과 비교해 어느 정도인지 살펴보세요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표와 범례", body: "순위표 탭에서는 지금 지표의 순위를, 범례 탭에서는 색·크기의 뜻과 업종 범위를 볼 수 있어요." },
@@ -35,7 +40,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
   ],
   founder: [
     { id: "mode", target: "mode", placement: "bottom", title: "나에게 맞는 모드", body: "창업을 준비 중이면 '예비 창업자', 운영 중인 가게가 있으면 '자영업자'를 고르세요. 모드에 따라 안내와 화면 구성이 달라져요." },
-    { id: "search", target: "search", placement: "bottom", title: "① 관심 지역 찾기", body: "관심 있는 지역·역·상권 이름을 검색하세요. 결과를 누르면 지도가 그 위치로 가고 요약이 열려요." },
+    { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "① 관심 지역 찾기", body: "관심 있는 지역·역·상권 이름을 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 요약이 열려요." },
     { id: "svc", target: "svc", placement: "bottom", title: "② 창업 업종 고르기", body: "창업하려는 업종을 고르면 그 업종 기준으로 후보 지역이 보여요." },
     { id: "metric", target: "metric", placement: "bottom", title: "③ 후보 지역 훑어보기", body: "지표를 바꿔 가며 어느 지역이 눈에 띄는지 보세요. 점포 수·폐업률·점포당 월평균 추정매출 등을 볼 수 있어요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표로 후보 찾기", body: "순위표 탭에서 지금 지표의 순위를 확인하고, 행을 누르면 그 지역 요약이 열려요." },
@@ -45,9 +50,8 @@ export const TOURS: Record<Mode, TourStep[]> = {
   ],
 };
 
-export interface Rect { left: number; top: number; width: number; height: number }
 export interface Size { width: number; height: number }
-
+export interface Rect { left: number; top: number; width: number; height: number }
 const GAP = 12;
 const EDGE = 8;
 
