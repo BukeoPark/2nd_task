@@ -28,7 +28,7 @@ export default function Page() {
           <div className="wrap">
             <div>
               <span className="badge">{HERO.eyebrow}</span>
-              <h1>{HERO.title[0]}<br /><em>{HERO.title[1]}</em></h1>
+              <h1><span>{HERO.title[0]}</span><span><em>{HERO.title[1]}</em></span></h1>
               <p className="lead">{HERO.sub}</p>
               <ModeCards appUrl={APP_URL} />
             </div>
