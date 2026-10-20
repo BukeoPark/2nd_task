@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { BarList, LineChart } from "../../components/MiniCharts";
-import { Notice } from "../../components/Notice";
+import { Fold, Notice } from "../../components/Notice";
 import { Caveat, NoteHost, NoteSlot } from "../../components/NoteHost";
 import { InfoTip } from "../../components/InfoTip";
 import type { ProgressKey } from "../../lib/flow";
@@ -17,6 +17,11 @@ import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useFoodCompare, useUnitOverview } from "../food/useFood";
 import { AreaReportModal } from "./AreaReportModal";
+import { AreaBriefCard } from "./AreaBriefCard";
+import { CostCheckSection } from "./CostCheckSection";
+import { VisitChecklistSection } from "./VisitChecklistSection";
+import { unitSampleStores } from "../../lib/interpretRules";
+import { buildAreaBrief, type BriefTarget } from "../../lib/areaBrief";
 import { UnitStoreList } from "../food/UnitStoreList";
 import { AreaTraitsSection, AreaTypeSection } from "./AreaCharacterSection";
 
@@ -34,6 +39,8 @@ interface Props {
   parentName?: string;
   /** 지도에서 이 단위 중심으로 확대·비교 담기 같은 버튼(MapPage 가 만든다) */
   actions?: ReactNode;
+  /** 지도 단위와 요약 단위가 다를 때의 안내 — 접지 않고 맨 위에 둔다 */
+  notice?: ReactNode;
   onBack?: () => void;
   onClose: () => void;
   onSelectTrdar: (t: OverviewTrdar) => void;
@@ -44,6 +51,12 @@ interface Props {
   mode: Mode;
   /** 매장 목록 항목에 마우스·초점이 올라가면 그 id, 벗어나면 null — 지도의 같은 점 강조용 */
   onHoverStore?: (id: string | null) => void;
+  /** 비교 목록에 이미 담긴 곳이 있는가 — '다음 확인사항'의 비교 문구가 달라진다 */
+  basketHas?: boolean;
+  /** 이 단위를 비교 목록에 담아(이미 있으면 그대로) 비교 화면을 연다. 없으면 비교 이동 항목을 보이지 않는다 */
+  onCompare?: () => void;
+  /** 검색창으로 초점을 옮긴다(자영업자: 내 매장 찾기). 없으면 해당 항목을 보이지 않는다 */
+  onFocusSearch?: () => void;
 }
 
 const RAIL_PREFIX = "area-";
@@ -60,6 +73,8 @@ const ICON: Record<AreaTabId, ReactNode> = {
       <path d="M2 16c0-3 2-5 5-5s5 2 5 5M12 16c0-2 1-3 3-3s3 1 3 3" />
     </>
   ),
+  cost: <path d="M4 16V8M10 16V4M16 16v-6M3 16h14" />,
+  visit: <path d="M5 3h10v14H5zM8 7l1.5 1.5L12 6M8 12h4" />,
   location: <path d="M10 18s6-5 6-9a6 6 0 10-12 0c0 4 6 9 6 9zM10 11a2 2 0 100-4 2 2 0 000 4z" />,
   trdars: <path d="M3 4h6v6H3zM11 4h6v6h-6zM3 12h6v4H3zM11 12h6v4h-6z" />,
   stores: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
@@ -74,9 +89,26 @@ export function AreaOverviewPanel(p: Props) {
   const row = (key: string): Row | undefined => cmp.data?.rows.find((r) => r.key === key);
   const unitKind = LEVEL_NOUN[p.level];
   const narrow = useNarrow();
-  const [tab, setTab] = useState<AreaTabId>("summary");
+  const [tabState, setTab] = useState<AreaTabId>("summary");
   const [reportOpen, setReportOpen] = useState(false);
-  const tabIds = areaTabsFor(p.level);
+  const goTab = (id: AreaTabId) => { setTab(id); };
+  const unitWord = p.level === "trdar" ? "상권" : "행정동";
+  const sampleStores = unitSampleStores(ov.data?.trend ?? [], row("stores_sbiz")?.cells[0]?.value ?? null);
+  const brief = cmp.data
+    ? buildAreaBrief({ mode: p.mode, unitWord, scope: p.filterName, rows: cmp.data.rows, sampleStores, basketHas: p.basketHas ?? false })
+    : null;
+  if (brief) {
+    // 연결되지 않은 이동(비교·검색)은 눌러도 아무 일이 없으므로 항목에서 뺀다
+    brief.next = brief.next.filter((n) => (n.target === "compare" ? Boolean(p.onCompare) : n.target === "search" ? Boolean(p.onFocusSearch) : true));
+  }
+  const onBriefAction = (t: BriefTarget) => {
+    if (t === "compare") p.onCompare?.();
+    else if (t === "search") p.onFocusSearch?.();
+    else if (t === "report") { setReportOpen(true); p.onProgress?.("report"); }
+    else goTab(t.slice(4) as AreaTabId);
+  };
+  const tabIds = areaTabsFor(p.level, p.mode);
+  const tab: AreaTabId = tabIds.includes(tabState) ? tabState : "summary"; // 모드를 바꿔 없어진 항목에 머물지 않게
   const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...AREA_TAB_STYLE[id] }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
   /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
@@ -103,27 +135,33 @@ export function AreaOverviewPanel(p: Props) {
 
       {pane("summary", "요약", (
         <>
-          {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
-          {p.actions && <div style={{ marginTop: 10 }}>{p.actions}</div>}
+          {brief && <AreaBriefCard brief={brief} onAction={onBriefAction} />}
+          {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
+          <Fold title="그 밖의 작업 — 지도에서 보기 · 관심 지역 · 비교 · 리포트">
+            {p.actions}
+            <button
+              type="button"
+              data-tour="area-report-button"
+              onClick={() => { setReportOpen(true); p.onProgress?.("report"); }}
+              style={{ width: "100%", marginTop: 4, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" }}
+            >
+              {unitKind} 인사이트 리포트 뽑기
+              <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{p.mode === "owner" ? "자영업자용" : "예비 창업자용"} 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+            </button>
+          </Fold>
+          <Fold title="지표 카드·기준 안내 자세히">
+            {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+            <div style={{ marginTop: 10 }}>
+              <Notice tone="info">
+                {p.level === "trdar"
+                  ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
+                  : "행정동 전체 기준 값입니다. '세부 상권' 항목에서 상권을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
+                선택 업종: <strong>{p.filterName}</strong>
+              </Notice>
+            </div>
+            {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
+          </Fold>
           <NoteSlot />
-          <div style={{ marginTop: 10 }}>
-            <Notice tone="info">
-              {p.level === "trdar"
-                ? "이 상권 경계 안 점포·매출·유동인구로 계산한 값입니다. 행정동 통계를 가져다 쓰지 않았어요."
-                : "행정동 전체 기준 값입니다. '세부 상권' 항목에서 상권을 누르면 그 상권 경계 기준으로 따로 분석합니다."}{" "}
-              선택 업종: <strong>{p.filterName}</strong>
-            </Notice>
-          </div>
-          {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
-          <button
-            type="button"
-            data-tour="area-report-button"
-            onClick={() => { setReportOpen(true); p.onProgress?.("report"); }}
-            style={{ width: "100%", marginTop: 12, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" }}
-          >
-            {unitKind} 인사이트 리포트 뽑기
-            <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{p.mode === "owner" ? "자영업자용" : "예비 창업자용"} 4쪽 요약 · 인쇄·PDF 저장 가능</span>
-          </button>
           {reportOpen && <AreaReportModal level={p.level} code={p.code} name={plainName(p.title, p.type)} type={p.type} svc={p.svc} scls={p.scls} mode={p.mode} onClose={() => setReportOpen(false)} />}
         </>
       ), { manualNotes: true })}
@@ -146,6 +184,11 @@ export function AreaOverviewPanel(p: Props) {
           <div style={{ marginTop: 8 }}><Notice tone="warn">임대료·공실률은 이 {unitKind}의 실제 값이 아니라, 가까운(1km 이내) R-ONE 조사상권의 <strong>참고값</strong>입니다.</Notice></div>
           <Rows rows={["rent_small_shop", "vacancy_small_shop_pct"].map(row)} />
         </>, { scoped: true })}
+
+      {p.mode === "founder" && pane("cost", "창업 비용 점검 — 내가 넣은 값으로 계산",
+        <CostCheckSection unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} />)}
+      {p.mode === "founder" && pane("visit", "현장 확인 — 답사 체크리스트",
+        <VisitChecklistSection level={p.level} code={p.code} unitWord={unitWord} onShowStores={() => goTab("stores")} />)}
 
       {p.level === "dong" && pane("trdars", `세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`,
         ov.data?.trdars ? (

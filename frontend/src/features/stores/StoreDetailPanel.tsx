@@ -24,6 +24,8 @@ import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
 import { AreaCharacterLine } from "../area/AreaCharacterSection";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
+import { StoreBriefCard } from "./StoreBriefCard";
+import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { RadiusCircleLayer } from "./RadiusCircleLayer";
 import { RailStationLayer } from "./RailStationLayer";
@@ -186,6 +188,21 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                 <div style={{ marginTop: 12 }}>
                   <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />
                 </div>
+                {g === "store" && (
+                  <StoreBriefCard
+                    brief={buildStoreBrief({
+                      mode,
+                      monthsRecorded: Object.keys(mine.record.months).length,
+                      lastMonth,
+                      costsFilled: Object.values(mine.record.costs).filter((v) => v.trim() !== "").length,
+                      statusLabel: data?.operation_history.business_status?.label ?? null,
+                      ageLabel: data?.operation_history.license?.age_label ?? null,
+                      trdarName: store.trdar?.name ?? null,
+                      dongName: store.dong,
+                    })}
+                    onAction={(t: StoreBriefTarget) => setGroup(t)}
+                  />
+                )}
                 <NoteHost>
                   {blocksOf(g).map((id) => (
                     <Fragment key={id}>{blocks[id]}</Fragment>

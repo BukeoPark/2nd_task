@@ -1,8 +1,9 @@
 // 행정동·상권 종합분석 패널의 레일 메뉴 — 어떤 항목이 어떤 순서로 있는지.
 // 요약(핵심 카드·기준 안내·지도 버튼)이 첫 항목이고, 항목은 한 번에 하나씩 보인다. 어느 항목이든 맨 위에 어떤 상권인지가 나온다.
+// 예비 창업자 모드에는 '비용 점검'(내가 입력한 비용으로 손익분기)과 '현장 확인'(답사 체크리스트)이 더 있다.
 // 다른 모듈을 import 하지 않는 순수 데이터(tests/areaTabs.test.ts).
 
-export type AreaTabId = "summary" | "type" | "traits" | "growth" | "stability" | "demand" | "location" | "trdars" | "stores";
+export type AreaTabId = "summary" | "type" | "traits" | "growth" | "stability" | "demand" | "location" | "cost" | "visit" | "trdars" | "stores";
 
 export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   summary: "요약",
@@ -12,6 +13,8 @@ export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   stability: "안정·경쟁",
   demand: "소비 수요",
   location: "입지",
+  cost: "비용 점검",
+  visit: "현장 확인",
   trdars: "세부 상권",
   stores: "매장 목록",
 };
@@ -25,12 +28,14 @@ export const AREA_TAB_STYLE: Record<AreaTabId, { bg: string; fg: string }> = {
   stability: { bg: "#DBEAFE", fg: "#1D4ED8" },
   demand: { bg: "#FEF3C7", fg: "#92400E" },
   location: { bg: "#FFE4E6", fg: "#BE123C" },
+  cost: { bg: "#ECFCCB", fg: "#3F6212" },
+  visit: { bg: "#FAE8FF", fg: "#86198F" },
   trdars: { bg: "#F3E8FF", fg: "#6B21A8" },
   stores: { bg: "#CCFBF1", fg: "#0F766E" },
 };
 
-/** 레일 항목. 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). */
-export function areaTabsFor(level: "dong" | "trdar"): AreaTabId[] {
-  const base: AreaTabId[] = ["summary", "type", "traits", "growth", "stability", "demand", "location"];
+/** 레일 항목. 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). 비용 점검·현장 확인은 예비 창업자 모드에만 있다. */
+export function areaTabsFor(level: "dong" | "trdar", mode: "owner" | "founder" = "owner"): AreaTabId[] {
+  const base: AreaTabId[] = ["summary", "type", "traits", "growth", "stability", "demand", "location", ...(mode === "founder" ? (["cost", "visit"] as AreaTabId[]) : [])];
   return level === "dong" ? [...base, "trdars", "stores"] : [...base, "stores"];
 }
