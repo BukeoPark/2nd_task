@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { Caveat } from "../../components/NoteHost";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
-import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, keyMessages, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
+import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
 import { busUsageLines } from "../../lib/busText";
 import { railUsageLines } from "../../lib/railText";
 import { useAreaCharacter } from "../food/useFood";
@@ -96,7 +96,7 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
                 </>
               )}
             </div>
-            {d.basis.sources.map((src) => <SourceNote key={src.title} title={src.title} reference={src.reference} />)}
+            {d.basis.sources.map((src) => <SourceNote key={src.title} label="유형·특성 자료" title={src.title} reference={src.reference} />)}
           </Fold>
         </div>
       )}
@@ -104,30 +104,29 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
   );
 }
 
-/** '특성' — 교통 접근성·배후 소비 수요·상업·앵커 환경·경쟁 환경. 영역마다 핵심 메시지를 먼저 한두 줄로 보이고 그 아래에 값과 근거를 둔다. */
+/** '특성' — 교통 접근성·배후 소비 수요·상업·앵커 환경·경쟁 환경. 영역마다 값과 근거를 보인다. */
 export function AreaTraitsSection({ level, code, svc, scls, unitKind }: Props) {
   return (
     <WithCharacter level={level} code={code} svc={svc} scls={scls}>
       {(d) => {
         const s = d.sections;
-        const key = keyMessages(s);
         return (
           <div>
-            <Area tone={AREA_TONE.transit} title="① 교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장" message={key.transit}>
+            <Area title="① 교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장">
               <RailPart rail={s.transit.rail} />
               <BusPart bus={s.transit.bus} />
               <Caveat>{s.transit.note}</Caveat>
             </Area>
 
-            <Area tone={AREA_TONE.demand} title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`} message={key.demand}>
+            <Area title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`}>
               <DemandPart demand={s.demand} />
             </Area>
 
-            <Area tone={AREA_TONE.commerce} title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설" message={key.commerce}>
+            <Area title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설">
               <AnchorPart anchor={s.anchor} />
             </Area>
 
-            <Area tone={AREA_TONE.competition} title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`} message={key.competition}>
+            <Area title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`}>
               <CompetitionPart c={s.competition} />
             </Area>
           </div>
@@ -261,24 +260,11 @@ function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] })
   );
 }
 
-/** 영역별 색 — 제목·핵심 메시지 막대·배경이 같은 색 계열이라 영역이 눈에 띈다(글자색은 배경과 대비 4.5:1 이상). */
-const AREA_TONE = {
-  transit: { fg: "#5B21B6", bg: "#F5F3FF", bar: "#7C3AED" },
-  demand: { fg: "#92400E", bg: "#FFFBEB", bar: "#D97706" },
-  commerce: { fg: "#9A3412", bg: "#FFF7ED", bar: "#EA580C" },
-  competition: { fg: "#1E3A8A", bg: "#EFF6FF", bar: "#2563EB" },
-};
-
-function Area({ title, hint, tone, message, children }: { title: string; hint: string; tone: { fg: string; bg: string; bar: string }; message: string | null; children: ReactNode }) {
+function Area({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <div style={{ ...card, marginTop: 10, borderTop: `3px solid ${tone.bar}` }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: tone.fg }}>{title}</div>
+    <div style={{ ...card, marginTop: 10 }}>
+      <div style={{ fontSize: 14, fontWeight: 800 }}>{title}</div>
       <div style={fine}>{hint}</div>
-      {message && (
-        <div style={{ marginTop: 8, padding: "8px 10px", borderLeft: `4px solid ${tone.bar}`, background: tone.bg, borderRadius: 6, color: tone.fg, fontWeight: 700, fontSize: 13.5, lineHeight: 1.55 }}>
-          “{message}”
-        </div>
-      )}
       <div style={{ marginTop: 8 }}>{children}</div>
     </div>
   );

@@ -182,7 +182,7 @@ export function MyStoreCheckupSection({
         상권 값은 서울시 카드 결제 기반 추정이라 현금·배달 매출이 섞인 내 매출과 금액 수준은 다를 수 있어요. 그래서 금액이 아니라 같은 기간의 변화율을 견줍니다.
         차이가 {GAP_PP}%p 이상일 때만 더 낮아짐·높아짐으로 말하며, 원인이나 개선 방향을 뜻하지는 않습니다.
       </Caveat>
-      {bench && <SourceNote title={bench.source.title} reference={bench.source.reference ?? "-"} />}
+      {bench && <SourceNote label="비교 기준 자료" title={bench.source.title} reference={bench.source.reference ?? "-"} />}
 
       <Fold title="간이 손익분기 계산 펼치기">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>

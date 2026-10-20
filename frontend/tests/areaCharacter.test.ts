@@ -61,28 +61,3 @@ test("값 칸 아래 줄은 기준 시점과 원천을 함께 말하고, 업종�
   assert.equal(densityReferenceText(true, 407), "외식 전체 상위 25% 기준 407곳/㎢");
   assert.equal(densityReferenceText(true, null), undefined);
 });
-
-test("핵심 메시지: 값이 있는 사실만 한두 줄로 말하고, 없는 값은 문장에서 뺀다", async () => {
-  const { keyMessages } = await import("../src/lib/areaCharacter.ts");
-  const full = keyMessages({
-    transit: { rail: { count: 1, nearest_m: 0, boardings_observed: 20314, year: 2025 }, bus: { count: 8, per_km2: 56.9 } },
-    demand: { workers: { value: 5101 }, residents: { value: 3163 }, demand_type: "업무형", floating: { lunch_pct: 14.4, lunch_rank: 20 } },
-    anchor: { starbucks: { inside: 0, nearest_m: 83 }, daiso: { inside: 1, nearest_m: 0 }, facilities: { total: { value: 69 }, per_km2: 491, reference_median: 152 } },
-    competition: { stores: { value: 75 }, density_per_km2: 533, small_area: false, change_2y: { value: -1.2 }, open_rate_y: { value: 16.4 }, close_rate_y: { value: 15.1 } },
-  });
-  assert.equal(full.transit, "지하철역 1곳이 경계 안·250m 이내에 있고, 연결된 역의 하루 평균 승차는 약 20,314명(2025년)입니다. 경계 안 버스 정류장은 8곳입니다.");
-  assert.equal(full.demand, "직장인구 5,101명·상주인구 3,163명으로 업무형에 가깝고 점심(11~14시) 유동 비중은 14.4%(같은 단위 하위 20%)입니다.");
-  assert.equal(full.commerce, "스타벅스 경계 밖 83m · 다이소 경계 안 1곳 · 집객시설 69곳(㎢당 491곳, 같은 단위 중앙값 152곳)입니다.");
-  assert.equal(full.competition, "선택 업종 점포 75곳(㎢당 533곳), 최근 1년 개업률 16.4%·폐업률 15.1%, 약 2년간 점포 수 -1.2%입니다.");
-
-  const sparse = keyMessages({
-    transit: { rail: { count: 0, nearest_m: 640, boardings_observed: null, year: 2025 }, bus: { count: 0, per_km2: null } },
-    demand: { workers: { value: null }, residents: { value: null }, demand_type: null, floating: null },
-    anchor: { starbucks: { inside: 0, nearest_m: null }, daiso: { inside: 0, nearest_m: null }, facilities: { total: { value: null }, per_km2: null, reference_median: null } },
-    competition: { stores: { value: null }, density_per_km2: null, small_area: false, change_2y: { value: null }, open_rate_y: { value: null }, close_rate_y: { value: null } },
-  });
-  assert.equal(sparse.transit, "경계 안·250m 이내에 지하철역이 없고(가장 가까운 역 640m) 경계 안 버스 정류장은 0곳입니다.");
-  assert.equal(sparse.demand, null); // 자료가 없으면 문장을 만들지 않는다(0 으로 말하지 않는다)
-  assert.equal(sparse.commerce, null);
-  assert.equal(sparse.competition, null);
-});

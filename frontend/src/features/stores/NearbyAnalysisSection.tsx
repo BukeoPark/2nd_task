@@ -82,7 +82,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
           </div>
         ))}
       </Fold>
-      {data.source && <SourceNote title={data.source.title} reference={data.source.reference} />}
+      {data.source && <SourceNote label="인허가 개폐업 자료" title={data.source.title} reference={data.source.reference} />}
     </div>
   );
 }

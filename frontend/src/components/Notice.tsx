@@ -20,12 +20,14 @@ export function Notice({ tone, children }: { tone: NoticeTone; children: ReactNo
   );
 }
 
-/** 출처·기준일 — 항상 펼쳐 두지 않고 '출처 ?' 에 마우스를 올리면(휴대폰은 누르면) 말풍선으로 보인다. */
-export function SourceNote({ title, reference }: { title: string; reference: string }) {
+/** 출처·기준일 — 항상 펼쳐 두지 않고 '?' 에 마우스를 올리면(휴대폰은 누르면) 말풍선으로 보인다.
+ * '출처'라는 글자는 쓰지 않고 해당 데이터 이름(`label`) 바로 옆, 또는 값 글줄 끝에 이어 붙인다(`label` 없으면 '?' 만). */
+export function SourceNote({ title, reference, label }: { title: string; reference: string; label?: string }) {
   return (
-    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
-      출처 <InfoTip label={`출처: ${title}`}><b>출처</b> {title}{reference ? <><br /><b>기준</b> {reference}</> : null}</InfoTip>
-    </div>
+    <span style={{ fontSize: 11, color: "#6B7280", marginLeft: label ? 0 : 4, display: label ? "block" : "inline", marginTop: label ? 4 : 0 }}>
+      {label ? `${label} ` : null}
+      <InfoTip label={`${label ?? "데이터"} 출처: ${title}`}><b>출처</b> {title}{reference ? <><br /><b>기준</b> {reference}</> : null}</InfoTip>
+    </span>
   );
 }
 

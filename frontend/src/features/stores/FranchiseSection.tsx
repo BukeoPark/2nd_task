@@ -62,7 +62,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
       })()}
       {fr.data && (
         <>
-          {fr.data.brand && <SourceNote title={fr.data.source.title} reference={fr.data.source.reference} />}
+          {fr.data.brand && <SourceNote label="프랜차이즈 참고 자료" title={fr.data.source.title} reference={fr.data.source.reference} />}
           {fr.data.brand && fr.data.caveats.map((c) => (
             <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>· {c}</div>
           ))}

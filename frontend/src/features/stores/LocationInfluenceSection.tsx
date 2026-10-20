@@ -128,7 +128,7 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
           )}
           {facilities && facilities.status !== "ok" && <li>{facilities.message}</li>}
         </ul>
-        <SourceNote title={data.source.title} reference={data.source.reference} />
+        <SourceNote label="반경 입지 지표 자료" title={data.source.title} reference={data.source.reference} />
       </Fold>
     </Section>
   );
@@ -159,7 +159,7 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
               {data.caveats.map((c) => <li key={c}>{c}</li>)}
             </ul>
           </Fold>
-          <SourceNote title={data.source.title} reference={data.source.reference} />
+          <SourceNote label="상권 수요·입지 요인 자료" title={data.source.title} reference={data.source.reference} />
         </div>
       )}
     </Section>
@@ -274,7 +274,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
           </Fold>
         </>
       )}
-      <SourceNote title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 ⑥ 분석 기준에서 확인" />
+      <SourceNote label="주요 집객시설 자료" title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 ⑥ 분석 기준에서 확인" />
     </div>
   );
 }

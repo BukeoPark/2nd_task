@@ -30,7 +30,6 @@ import { RailStationLayer } from "./RailStationLayer";
 import { NearbyAnalysisSection } from "./NearbyAnalysisSection";
 import { LicenseSummary, OperationHistorySection } from "./OperationHistorySection";
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
-import { SummaryChips } from "./SummaryChips";
 import { useMyStoreRecord } from "./useMyStoreRecord";
 import { useLocationInfluence, useStoreDetail } from "./useStores";
 
@@ -98,8 +97,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
               <div style={{ fontSize: 12, color: "#374151" }}>
                 {store.address ?? "주소 정보 없음"}
                 {store.building ? ` (${store.building})` : ""}
+                <SourceNote title={store.source.title} reference={store.source.reference} />
               </div>
-              <SourceNote title={store.source.title} reference={store.source.reference} />
               <div style={{ marginTop: 10 }}>
                 <LicenseSummary history={data.operation_history} />
               </div>
@@ -181,11 +180,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
               <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />
             )}
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" groups={groups} />}
-            <SummaryChips storeId={storeId} store={store} onJump={setGroup} />
-            <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
-              상권 인사이트 리포트 뽑기
-              <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>공개 통계로 만든 4쪽 요약 · 인쇄·PDF 저장 가능</span>
-            </button>
             {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
             {groups.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
@@ -197,6 +191,10 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                     <Fragment key={id}>{blocks[id]}</Fragment>
                   ))}
                 </NoteHost>
+                <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
+                  상권 인사이트 리포트 뽑기
+                  <span style={{ display: "block", fontSize: 11, fontWeight: 500, opacity: 0.85 }}>공개 통계로 만든 4쪽 요약 · 인쇄·PDF 저장 가능</span>
+                </button>
               </div>
             ))}
           </>
@@ -221,6 +219,6 @@ function naverSearches(store: StoreBasic): { primary: string | null; nameOnly: s
 
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
-const reportButtonStyle: React.CSSProperties = { width: "100%", marginTop: 10, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" };
+const reportButtonStyle: React.CSSProperties = { width: "100%", marginTop: 16, padding: "9px 12px", border: "none", borderRadius: 8, background: "#C2410C", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left" };
 const naverLinkStyle: React.CSSProperties = { display: "inline-block", marginTop: 6, padding: "4px 10px", border: "1px solid #03C75A", borderRadius: 6, color: "#02A94C", fontSize: 12, fontWeight: 600, textDecoration: "none" };
 const subLinkStyle: React.CSSProperties = { color: "#02A94C", textDecoration: "underline" };

@@ -76,12 +76,12 @@ export function OperationHistorySection({ history }: { history: OperationHistory
           <div key={c.name} style={{ fontSize: 12 }}>
             <strong>{c.name}</strong>{" "}
             {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : c.label}
-            <SourceNote title={c.source.title} reference={c.source.reference} />
+            <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />
           </div>
         ))}
       </div>
       {sources.map((s) => (
-        <SourceNote key={s.title} title={s.title} reference={s.reference} />
+        <SourceNote key={s.title} label="인허가 이력 자료" title={s.title} reference={s.reference} />
       ))}
     </Section>
   );

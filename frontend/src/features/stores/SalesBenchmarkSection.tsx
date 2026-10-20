@@ -35,7 +35,7 @@ export function SalesBenchmarkSection({
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && data.status !== "ok" && <Notice tone="muted">{data.message}</Notice>}
       {data && data.status === "ok" && <Body data={data} peerCount={peerCount} manwon={manwon} latestMonth={latestMonth} />}
-      {data && data.status !== "ok" && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
+      {data && data.status !== "ok" && <SourceNote label="매출 비교 자료" title={data.source.title} reference={data.source.reference ?? "-"} />}
     </Section>
   );
 }
@@ -114,7 +114,7 @@ function Body({
             이 매장의 세부 업종은 '{data.scls_nm}'이지만 서울시는 '{data.svc_nm}' 단위로만 매출을 제공해, 위 매출 숫자는 '{data.svc_nm}' 전체 평균입니다('{data.scls_nm}'만의 값이 아님).
           </div>
         )}
-        <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />
+        <SourceNote label="매출 비교 자료" title={data.source.title} reference={data.source.reference ?? "-"} />
         {data.caveats.map((c) => (
           <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
             · {c}

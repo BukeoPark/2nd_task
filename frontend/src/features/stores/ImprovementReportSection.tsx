@@ -100,7 +100,7 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
               ))}
             </ol>
           )}
-          {data.source && <SourceNote title={data.source.title} reference={data.source.reference ?? "-"} />}
+          {data.source && <SourceNote label="개선 제안 근거 자료" title={data.source.title} reference={data.source.reference ?? "-"} />}
         </div>
       )}
       {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>관측된 차이와 가능한 해석이며, 원인이나 개별 매장 진단이 아닙니다.</div>}
