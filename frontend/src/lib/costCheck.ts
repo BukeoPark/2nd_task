@@ -36,9 +36,23 @@ export function sanitizeDraft(value: unknown): CostCheckDraft {
   return d;
 }
 
-export const loadDraft = (): CostCheckDraft => sanitizeDraft(readJson(COST_CHECK_KEY));
-export const saveDraft = (d: CostCheckDraft): boolean => writeJson(COST_CHECK_KEY, d);
-export const clearDraft = (): boolean => removeKey(COST_CHECK_KEY);
+// 후보 지역별 저장: 같은 입력이라도 지역마다 임대료·매출 가정이 다르니 `founderCostCheck:v1:<단위>:<코드>` 에 따로 둔다.
+// 기존 전역 키(`founderCostCheck:v1`)는 그대로 두고 '가장 최근 입력'으로 새 지역의 기본값이 된다(기존 기록 유지).
+const unitStoreKey = (unitKey: string) => `${COST_CHECK_KEY}:${unitKey}`;
+
+/** 그 지역에 저장된 입력(없으면 null). 지웠다면 '비어 있는 입력'이 저장돼 있다. */
+export function loadUnitDraft(unitKey: string): CostCheckDraft | null {
+  const raw = readJson(unitStoreKey(unitKey));
+  return raw === null || raw === undefined ? null : sanitizeDraft(raw);
+}
+/** 지역 키가 있으면 그 지역 입력, 없으면 전역(가장 최근) 입력. */
+export const loadDraft = (unitKey?: string): CostCheckDraft => (unitKey ? loadUnitDraft(unitKey) : null) ?? sanitizeDraft(readJson(COST_CHECK_KEY));
+export function saveDraft(d: CostCheckDraft, unitKey?: string): boolean {
+  const okUnit = unitKey ? writeJson(unitStoreKey(unitKey), d) : true;
+  return writeJson(COST_CHECK_KEY, d) && okUnit;
+}
+/** 지역 키가 있으면 그 지역 입력만 비운다(전역 값은 그대로 — 다른 지역의 기본값). 없으면 전역을 지운다. */
+export const clearDraft = (unitKey?: string): boolean => (unitKey ? writeJson(unitStoreKey(unitKey), emptyDraft()) : removeKey(COST_CHECK_KEY));
 
 export type CostCheckStatus = "empty" | "invalid" | "no_margin" | "no_revenue" | "ok";
 

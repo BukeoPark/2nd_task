@@ -1,16 +1,30 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AREA_TAB_LABEL, AREA_TAB_STYLE, areaTabsFor } from "../src/lib/areaTabs.ts";
+import { AREA_QUESTION, AREA_TAB_LABEL, AREA_TAB_STYLE, areaTabsFor } from "../src/lib/areaTabs.ts";
 
 test("요약이 첫 항목이고 행정동에만 세부 상권이 있으며 매장 목록은 항상 마지막이다", () => {
-  assert.deepEqual(areaTabsFor("dong"), ["summary", "type", "traits", "growth", "stability", "demand", "location", "trdars", "stores"]);
-  assert.deepEqual(areaTabsFor("trdar"), ["summary", "type", "traits", "growth", "stability", "demand", "location", "stores"]);
+  for (const mode of ["owner", "founder"] as const) {
+    const dong = areaTabsFor("dong", mode), trdar = areaTabsFor("trdar", mode);
+    assert.equal(dong[0], "summary"); assert.equal(trdar[0], "summary");
+    assert.equal(dong.at(-1), "stores"); assert.equal(trdar.at(-1), "stores");
+    assert.ok(dong.includes("trdars") && !trdar.includes("trdars" as never));
+  }
 });
 
-test("예비 창업자 모드에만 비용 점검·현장 확인이 있고, 위치는 입지 다음이다", () => {
-  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "type", "traits", "growth", "stability", "demand", "location", "cost", "visit", "stores"]);
-  assert.deepEqual(areaTabsFor("dong", "founder").slice(-3), ["visit", "trdars", "stores"]);
+test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 성장성·경쟁·수요·입지 → 비용 → 답사", () => {
+  assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "traits", "type", "stores"]);
+  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "visit", "traits", "type", "stores"]);
+});
+
+test("예비 창업자 모드에만 비용 점검·현장 확인이 있다", () => {
   assert.ok(!areaTabsFor("dong", "owner").includes("cost" as never) && !areaTabsFor("dong").includes("visit" as never));
+  assert.ok(areaTabsFor("dong", "founder").includes("cost") && areaTabsFor("dong", "founder").includes("visit"));
+});
+
+test("모든 항목에 질문형 제목이 있고(물음표가 있음) 두 모드의 관점이 다른 항목이 있다", () => {
+  const ids = Object.keys(AREA_TAB_LABEL) as (keyof typeof AREA_QUESTION)[];
+  for (const id of ids) for (const m of ["owner", "founder"] as const) assert.ok(AREA_QUESTION[id][m].includes("?"), `${id}/${m}`);
+  assert.ok(ids.some((id) => AREA_QUESTION[id].owner !== AREA_QUESTION[id].founder));
 });
 
 test("모든 항목에 레일 이름이 있다", () => {

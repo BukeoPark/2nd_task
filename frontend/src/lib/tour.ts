@@ -32,6 +32,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
   owner: [
     { id: "mode", target: "mode", placement: "bottom", title: "나에게 맞는 모드", body: "운영 중인 가게가 있으면 '자영업자', 창업을 준비 중이면 '예비 창업자'를 고르세요. 모드에 따라 안내와 화면 구성이 달라져요." },
     { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "① 내 가게 찾기", body: "내 가게 이름이나 주소를 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 매장 정보가 열려요. 같은 이름의 매장이 여러 곳이면 '모두 보기'로 지도에 한꺼번에 볼 수 있어요." },
+    { id: "monthly", target: "mode-menu", placement: "bottom", title: "이번 달 점검", body: "내 가게를 연 뒤 '월간 점검'을 누르면 내 기록·주변 경쟁 변화·상권 변화·이번 달 확인사항을 한 화면에서 차례로 돌아볼 수 있어요. 체크와 메모는 이 브라우저에만 저장돼요." },
     { id: "svc", target: "svc", placement: "bottom", title: "② 내 업종 고르기", body: "업종과 세부 업종을 고르면 그 업종 기준으로 상권과 점포를 볼 수 있어요. 세부 업종은 점포 수·매장 위치에만 적용돼요." },
     { id: "metric", target: "metric", placement: "bottom", title: "③ 주변 상권과 비교", body: "지도 지표를 매출·점포 수·개업률·폐업률 등으로 바꾸면 지도의 원 크기와 색이 달라져요. 내 상권이 주변과 비교해 어느 정도인지 살펴보세요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표와 범례", body: "순위표 탭에서는 지금 지표의 순위를, 범례 탭에서는 색·크기의 뜻과 업종 범위를 볼 수 있어요." },
@@ -41,6 +42,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
   founder: [
     { id: "mode", target: "mode", placement: "bottom", title: "나에게 맞는 모드", body: "창업을 준비 중이면 '예비 창업자', 운영 중인 가게가 있으면 '자영업자'를 고르세요. 모드에 따라 안내와 화면 구성이 달라져요." },
     { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "① 관심 지역 찾기", body: "관심 있는 지역·역·상권 이름을 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 요약이 열려요." },
+    { id: "review", target: "mode-menu", placement: "bottom", title: "후보지 검토함", body: "관심 후보를 담아 두면 업종·비용 시뮬레이션·현장 답사 체크·메모를 후보별로 한곳에서 볼 수 있어요. 점수나 순위는 없고 이 브라우저에만 저장돼요." },
     { id: "svc", target: "svc", placement: "bottom", title: "② 창업 업종 고르기", body: "창업하려는 업종을 고르면 그 업종 기준으로 후보 지역이 보여요." },
     { id: "metric", target: "metric", placement: "bottom", title: "③ 후보 지역 훑어보기", body: "지표를 바꿔 가며 어느 지역이 눈에 띄는지 보세요. 점포 수·폐업률·점포당 월평균 추정매출 등을 볼 수 있어요." },
     { id: "favorites", target: "favorites", placement: "bottom", title: "관심 지역 모아 두기", body: "마음에 둔 상권·행정동을 최대 10곳까지 담아 두고 다시 열거나 비교에 담을 수 있어요. 이 브라우저에만 저장돼요." },

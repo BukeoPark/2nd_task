@@ -55,7 +55,7 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
   }
   const has = inp.monthsRecorded > 0;
   const reading: string[] = [];
-  if (!has) reading.push("매출을 기록하기 전이라 상권 평균과 견줄 수 없습니다. 기록이 없는 것이지 매출이 0원이라는 뜻이 아닙니다.");
+  if (!has) reading.push("아직 기록이 없어 상권 평균과 견줄 수 없습니다(0원이라는 뜻이 아닙니다). 주변 경쟁과 상권 변화부터 보고, 매출 기록은 원할 때 남기세요.");
   else {
     reading.push(`가장 최근 기록(${inp.lastMonth})을 기준으로 같은 업종 상권 평균과 금액이 아닌 변화율로 견줍니다.`);
     if (inp.costsFilled === 0) reading.push("비용을 입력하지 않아 손익분기는 아직 계산하지 않았습니다.");
@@ -68,10 +68,17 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
       area,
     ],
     reading,
-    next: [
-      { target: "mine", label: has ? "내 가게 점검·손익분기 보기" : "내 매출·비용 기록하기", why: "이 브라우저에만 저장" },
-      { target: "radius", label: "주변 경쟁·접근성 확인", why: "반경 안 경쟁 점포·교통·집객시설" },
-      { target: "area", label: "상권 흐름·경쟁 변화 보기", why: "소속 상권·행정동 종합분석" },
-    ],
+    // 기록이 있으면 내 숫자(기록·손익분기)부터, 없으면 경쟁 환경·상권 변화부터 — 매출 입력은 선택으로 안내한다
+    next: has
+      ? [
+          { target: "mine", label: "내 가게 점검·손익분기 보기", why: "이전 기록과 상권 변화율 견주기" },
+          { target: "radius", label: "주변 경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
+          { target: "area", label: "상권 흐름·시간대 수요 보기", why: "소속 상권·행정동 종합분석" },
+        ]
+      : [
+          { target: "radius", label: "주변 경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
+          { target: "area", label: "상권 흐름·시간대 수요 보기", why: "소속 상권·행정동 종합분석" },
+          { target: "mine", label: "매출·비용 기록하기(선택)", why: "이 브라우저에만 저장" },
+        ],
   };
 }

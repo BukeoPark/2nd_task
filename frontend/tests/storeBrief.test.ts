@@ -8,12 +8,14 @@ test("자영업자: 기록이 없으면 '기록 없음'이고 0원이 아니라�
   const b = buildStoreBrief(base);
   assert.equal(b.facts[0].value, "기록 없음");
   assert.match(b.reading[0], /0원이라는 뜻이 아닙니다/);
-  assert.equal(b.next[0].label, "내 매출·비용 기록하기");
+  assert.deepEqual(b.next.map((n) => n.target), ["radius", "area", "mine"]);       // 기록이 없으면 경쟁·상권부터, 매출 입력은 맨 뒤 선택
+  assert.match(b.next[2].label, /선택/);
 });
 
 test("자영업자: 기록이 있고 비용이 없으면 손익분기를 아직 계산하지 않았다고 말한다", () => {
   const b = buildStoreBrief({ ...base, monthsRecorded: 4, lastMonth: "2026-09" });
   assert.equal(b.facts[0].value, "4개월");
+  assert.deepEqual(b.next.map((n) => n.target), ["mine", "radius", "area"]);       // 기록이 있으면 내 기록·손익분기부터
   assert.ok(b.reading.some((t) => t.includes("손익분기는 아직 계산하지 않았습니다")));
   assert.ok(b.reading.length <= 2);
 });
