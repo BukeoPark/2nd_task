@@ -52,7 +52,7 @@ export const AREA_QUESTION: Record<AreaTabId, { owner: string; founder: string }
  * 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). 매장 목록은 항상 마지막, 요약은 항상 첫 항목. */
 export function areaTabsFor(level: "dong" | "trdar", mode: "owner" | "founder" = "owner"): AreaTabId[] {
   const body: AreaTabId[] = mode === "founder"
-    ? ["growth", "stability", "demand", "location", "cost", "traits", "type"]
-    : ["stability", "demand", "growth", "location", "traits", "type"];
+    ? ["growth", "stability", "demand", "location", "cost", "traits"]
+    : ["stability", "demand", "growth", "location", "traits"];
   return level === "dong" ? ["summary", ...body, "trdars", "stores"] : ["summary", ...body, "stores"];
 }

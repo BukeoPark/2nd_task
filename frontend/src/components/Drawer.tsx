@@ -7,6 +7,7 @@ import { FS } from "../lib/typography";
 interface DrawerProps {
   title: string;
   subtitle?: string;
+  titleAside?: ReactNode;
   onClose: () => void;
   onBack?: () => void;
   /** 뒤로 가기 버튼 문구(기본 '← 목록으로') */
@@ -18,7 +19,7 @@ interface DrawerProps {
 
 /** 지도 왼쪽에서 열리는 상세 서랍의 공용 틀(GNB 아래 전체 높이). */
 /** 좁은 화면에서는 레일 옆 남는 폭까지 꽉 채우고 지도 조작 단추(확대·축소)보다 위에 둔다. */
-export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
+export function Drawer({ title, subtitle, titleAside, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
   const narrow = useNarrow();
   const showMap = useContext(MapPeekContext);
   return (
@@ -45,7 +46,7 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
               {backLabel}
             </button>
           )}
-          <strong style={{ fontSize: FS.screenTitle, lineHeight: 1.3, fontWeight: 800, display: "block", wordBreak: "keep-all" }}>{title}</strong>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "4px 0" }}><strong style={{ fontSize: FS.screenTitle, lineHeight: 1.3, fontWeight: 800, display: "block", wordBreak: "keep-all" }}>{title}</strong>{titleAside}</div>
           {subtitle && <span style={{ fontSize: FS.warn, color: "#6B7280" }}>{subtitle}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>

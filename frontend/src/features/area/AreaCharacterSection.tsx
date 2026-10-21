@@ -1,5 +1,7 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Caveat } from "../../components/NoteHost";
+import { Block, Caption, Stat, SubHead } from "../../components/PanelKit";
+import { PK, grid2, grid3 } from "../../lib/panelStyle";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
 import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
@@ -48,28 +50,31 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
             ? "상주인구보다 직장인구가 많은 지역입니다."
             : demandStructureNote(d.type);
         return (
-        <div style={{ display: "grid", gap: 18 }}>
-          <section style={{ background: "#F5F3FF", border: "1px solid #EDE9FE", borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{unitKind} 유형 · 외식 전체 기준</div>
+        <div>
+          <section style={{ background: "#F5F3FF", border: "1px solid #EDE9FE", borderRadius: 12, padding: "16px 18px" }}>
+            <Caption style={{ marginTop: 0 }}>{unitKind} 유형 · 외식 전체 기준</Caption>
             <h3 style={{ fontSize: FS.metric, lineHeight: 1.35, color: "#5B21B6", margin: "8px 0 0", wordBreak: "keep-all" }}>{d.type.traits.length > 0 ? d.type.traits.map((t) => t.label).join(" · ") : d.type.headline}</h3>
             {demand && <p style={{ margin: "10px 0 0", fontSize: FS.body, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{demand}</p>}
-            <p style={{ margin: "10px 0 0", fontSize: FS.caption, lineHeight: 1.6, color: "#6B7280" }}>인구·입지 통계에 따른 참고용 분류이며, 실제 고객 구성이나 창업 성공 가능성을 뜻하지 않습니다.</p>
-            {typeNotice(d.type) && <p style={{ margin: "10px 0 0", fontSize: FS.warn, lineHeight: 1.7, color: "#92400E" }}>{typeNotice(d.type)}</p>}
+            <Caption style={{ marginTop: 10 }}>인구·입지 통계에 따른 참고용 분류이며, 실제 고객 구성이나 창업 성공 가능성을 뜻하지 않습니다.</Caption>
+            {typeNotice(d.type) && <Caption tone="warn" style={{ marginTop: 10 }}>{typeNotice(d.type)}</Caption>}
           </section>
-          {d.type.traits.length > 0 && <section aria-label="유형 판정 근거">
-            <h4 style={{ margin: "0 0 10px", fontSize: FS.cardTitle }}>판정 근거</h4>
-            <div style={{ display: "grid", gap: 10 }}>
-              {d.type.traits.map((t) => <div key={t.key} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "14px 16px" }}>
-                <strong style={{ fontSize: FS.ui, color: TRAIT_STYLE[t.key].fg }}>{t.label}</strong>
-                <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: FS.ui, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{t.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
-              </div>)}
-            </div>
-          </section>}
-          {d.type.held.length > 0 && d.type.kind !== "hold" && <Notice tone="muted">{d.type.held.map((h) => h.reason).join(" ")}</Notice>}
+          {d.type.traits.length > 0 && (
+            <Block title="판정 근거">
+              <div style={{ display: "grid", gap: 10 }}>
+                {d.type.traits.map((t) => (
+                  <div key={t.key} style={{ background: "#fff", border: `1px solid ${PK.line}`, borderRadius: 10, padding: "12px 14px" }}>
+                    <div style={{ fontSize: FS.ui, fontWeight: 700, color: TRAIT_STYLE[t.key].fg }}>{t.label}</div>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: FS.body, lineHeight: 1.7, color: PK.sub, wordBreak: "keep-all" }}>{t.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+            </Block>
+          )}
+          {d.type.held.length > 0 && d.type.kind !== "hold" && <div style={{ marginTop: 16 }}><Notice tone="muted">{d.type.held.map((h) => h.reason).join(" ")}</Notice></div>}
           {d.strengths.length > 0 && <Points title="함께 볼 지역 특징" tone="#475569" items={d.strengths} empty="" />}
           {cautions.length > 0 && <Points title="추가 확인사항" tone="#92400E" items={cautions} empty="" />}
           <Fold title="계산 기준·출처 자세히 보기">
-            <div style={{ fontSize: FS.warn, color: "#4B5563", lineHeight: 1.75 }}>
+            <div style={{ fontSize: FS.warn, color: PK.sub, lineHeight: 1.75 }}>
               <div>{d.basis.label}</div><div>{d.basis.unit}</div>
               {dataCautions.map((t) => <p key={t}>{t}</p>)}
               <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{d.basis.rules.map((r) => <li key={r}>{r}</li>)}</ul>
@@ -130,8 +135,8 @@ export function AreaTraitsSection({ level, code, svc, scls, unitKind }: Props) {
 /** 매장 상세용 한 줄 요약 — 유형 헤드라인과 이동 링크만(상세는 상권 분석에서). 보류·혼합도 그대로 말한다. */
 export function AreaCharacterLine({ level, code, label }: { level: "dong" | "trdar"; code: string; label: string }) {
   const q = useAreaCharacter(level, code, null, null);
-  if (q.isPending) return <div style={fine}>{label}: 유형을 계산하는 중...</div>;
-  if (q.isError) return <div style={fine}>{label}: 유형을 불러오지 못했습니다.</div>;
+  if (q.isPending) return <Caption>{label}: 유형을 계산하는 중...</Caption>;
+  if (q.isError) return <Caption>{label}: 유형을 불러오지 못했습니다.</Caption>;
   const t = q.data.type;
   return (
     <div style={{ fontSize: FS.caption, color: "#4B5563", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
@@ -147,16 +152,16 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
   const list = [...rail.inside, ...rail.within_250m];
   return (
     <div style={{ marginTop: 6 }}>
-      <div style={sub}>지하철 — {rail.count === 0 ? `경계 안·250m 이내 역 없음(가장 가까운 역 경계에서 ${rail.nearest_m?.toLocaleString("ko-KR") ?? "-"}m)` : `경계 안 ${rail.inside.length}곳 · 경계 밖 250m 이내 ${rail.within_250m.length}곳`}</div>
+      <SubHead>지하철 — {rail.count === 0 ? `경계 안·250m 이내 역 없음(가장 가까운 역 경계에서 ${rail.nearest_m?.toLocaleString("ko-KR") ?? "-"}m)` : `경계 안 ${rail.inside.length}곳 · 경계 밖 250m 이내 ${rail.within_250m.length}곳`}</SubHead>
       {rail.count > 0 && (
         <>
           <div style={grid2}>
             <Mini label="하루 평균 승차 합계" value={usage.partial && rail.boardings_observed !== null ? peopleText(rail.boardings_observed) : usage.boardings} />
             <Mini label="하루 평균 하차 합계" value={usage.partial && rail.alightings_observed !== null ? peopleText(rail.alightings_observed) : usage.alightings} />
           </div>
-          <div style={fine}>
+          <Caption>
             {rail.year}년 · {rail.linked > 0 ? `인근 ${rail.count}개 역 중 이용량이 확인된 ${rail.linked}개 역의 합계${usage.partial ? "(일부 역·노선만 포함)" : ""}. 이 상권 방문객 수가 아닙니다.` : "인근 역의 이용량 자료가 연결되지 않았습니다(0명이 아님)."}
-          </div>
+          </Caption>
           <Fold title={`역 ${rail.count}곳 보기`}>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
           </Fold>
@@ -180,14 +185,14 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
   const usage = busUsageLines({ usage_state: bus.usage_state, boardings_observed: bus.boardings_observed, alightings_observed: bus.alightings_observed });
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={sub}>버스 — 경계 안 정류장 {bus.count === 0 ? "0곳" : `${bus.count}곳(㎢당 ${bus.per_km2 ?? "-"}곳)`}</div>
+      <SubHead>버스 — 경계 안 정류장 {bus.count === 0 ? "0곳" : `${bus.count}곳(㎢당 ${bus.per_km2 ?? "-"}곳)`}</SubHead>
       {bus.count > 0 && (
         <>
           <div style={grid2}>
             <Mini label="하루 평균 승차 합계" value={usage.partial && bus.boardings_observed !== null ? peopleText(bus.boardings_observed) : usage.boardings} />
             <Mini label="하루 평균 하차 합계" value={usage.partial && bus.alightings_observed !== null ? peopleText(bus.alightings_observed) : usage.alightings} />
           </div>
-          <div style={fine}>{bus.year}년 · {bus.linked > 0 ? `전체 ${bus.count}곳 중 이용량이 확인된 ${bus.linked}곳 합계` : "정류장 이용량 자료가 연결되지 않았습니다(0명이 아님)."}</div>
+          <Caption>{bus.year}년 · {bus.linked > 0 ? `전체 ${bus.count}곳 중 이용량이 확인된 ${bus.linked}곳 합계` : "정류장 이용량 자료가 연결되지 않았습니다(0명이 아님)."}</Caption>
         </>
       )}
       {bus.caution && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.caution}</Notice></div>}
@@ -207,22 +212,22 @@ function DemandPart({ demand, unitKind }: { demand: AreaCharacter["sections"]["d
         <Mini label="직장인구" value={cellText(demand.workers, peopleText)} sub={sharedSource ? undefined : workersSource} />
         <Mini label="상주인구" value={cellText(demand.residents, peopleText)} sub={sharedSource ? undefined : residentsSource} />
       </div>
-      {sharedSource && <div style={fine}>{sharedSource}</div>}
-      <div style={{ ...sub, marginTop: 8 }}>
+      {sharedSource && <Caption>{sharedSource}</Caption>}
+      <SubHead>
         직장인구 비율 {demand.worker_share_pct === null ? "자료 없음" : pctText(demand.worker_share_pct)}{demand.demand_type ? ` · ${demand.demand_type}` : ""}
-      </div>
+      </SubHead>
       {!demand.base_ok && <div style={{ marginTop: 6 }}><Notice tone="warn">직장·상주 인구 합이 1,000명 미만이거나 자료가 없어 업무·주거 판정은 보류했습니다.</Notice></div>}
       {f ? (
         <div style={{ marginTop: 8 }}>
-          <div style={sub}>분기 누적 추정 유동인구({f.label}) {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString("ko-KR")}명(분기 합)`}</div>
-          <div style={fine}>길 단위로 배분한 인구 추정치로, 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</div>
+          <SubHead>분기 누적 추정 유동인구({f.label}) {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString("ko-KR")}명(분기 합)`}</SubHead>
+          <Caption>길 단위로 배분한 인구 추정치로, 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</Caption>
           <div style={{ ...grid3, marginTop: 6 }}>
             <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, `비교 ${unitKind} 중`)} />
             <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, `비교 ${unitKind} 중`)} />
             <Mini label="주말 비중" value={f.weekend_pct === null ? "자료 없음" : pctText(f.weekend_pct)} />
           </div>
           <Fold title="비교 범위·집계 기준">
-            <div style={fine}>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`} 기준입니다. 각 지역의 최신 분기 값을 사용하며, 자료가 없는 지역은 제외합니다. 높은 순위가 매출이나 방문객이 많다는 뜻은 아닙니다.</div>
+            <Caption>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`} 기준입니다. 각 지역의 최신 분기 값을 사용하며, 자료가 없는 지역은 제외합니다. 높은 순위가 매출이나 방문객이 많다는 뜻은 아닙니다.</Caption>
           </Fold>
         </div>
       ) : (
@@ -236,7 +241,7 @@ function DemandPart({ demand, unitKind }: { demand: AreaCharacter["sections"]["d
 function AnchorPart({ anchor, scope }: { anchor: AreaCharacter["sections"]["anchor"]; scope: string }) {
   return (
     <>
-      <div style={fine}>아래 비율은 이 지역의 {scope} 매장 기준입니다. 좌표 간 직선거리로 계산하며 실제 도보 거리가 아닙니다.</div>
+      <Caption>아래 비율은 이 지역의 {scope} 매장 기준입니다. 좌표 간 직선거리로 계산하며 실제 도보 거리가 아닙니다.</Caption>
       <div style={{ ...grid2, marginTop: 6 }}>
         <Mini label="스타벅스" value={anchorText(anchor.starbucks)} sub={`스타벅스 250m 이내에 있는 매장 비율 ${cellText(anchor.starbucks.zone_share, pctText)}`} />
         <Mini label="다이소" value={anchorText(anchor.daiso)} sub={`다이소 250m 이내에 있는 매장 비율 ${cellText(anchor.daiso.zone_share, pctText)}`} />
@@ -256,19 +261,19 @@ function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] })
   const sharedSource = openSource && openSource === closeSource ? openSource : undefined;
   return (
     <>
-      <div style={sub}>현재 점포 현황</div>
+      <SubHead>현재 점포 현황</SubHead>
       <div style={grid2}>
         <Mini label="점포 수(현재)" value={cellText(c.stores, countText)} sub={cellSub(c.stores)} />
         <Mini label="점포 밀도" value={densityText(c.density_per_km2, c.small_area)} sub={densityReferenceText(c.reference_applies, c.reference_density_p75)} />
       </div>
-      <div style={{ ...sub, marginTop: 14 }}>점포 변화·개폐업 흐름</div>
-      <div style={fine}>서울시 {c.scope.sales_label} 기준 · 현재 점포 현황과 출처·기준 기간이 다릅니다.</div>
+      <SubHead>점포 변화·개폐업 흐름</SubHead>
+      <Caption>서울시 {c.scope.sales_label} 기준 · 현재 점포 현황과 출처·기준 기간이 다릅니다.</Caption>
       <div style={{ marginTop: 6 }}><Mini label="점포 수 증감(약 2년)" value={cellText(c.change_2y, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`)} sub={cellSub(c.change_2y)} /></div>
       <div style={{ ...grid2, marginTop: 8 }}>
         <Mini label="연 개업률(최근 1년)" value={cellText(c.open_rate_y, pctText)} sub={sharedSource ? undefined : openSource} />
         <Mini label="연 폐업률(최근 1년)" value={cellText(c.close_rate_y, pctText)} sub={sharedSource ? undefined : closeSource} />
       </div>
-      {sharedSource && <div style={fine}>{sharedSource}</div>}
+      {sharedSource && <Caption>{sharedSource}</Caption>}
       {c.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{c.scope.notice}</Notice></div>}
       <Caveat>{c.note}</Caveat>
     </>
@@ -276,32 +281,24 @@ function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] })
 }
 
 function Area({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
-  return (
-    <div style={{ ...card, marginTop: 10 }}>
-      <div style={{ fontSize: FS.ui, fontWeight: 800 }}>{title}</div>
-      <div style={fine}>{hint}</div>
-      <div style={{ marginTop: 8 }}>{children}</div>
-    </div>
-  );
+  const m = /^([①②③④⑤⑥])\s*(.*)$/.exec(title);
+  return <Block no={m?.[1]} title={m ? m[2] : title} hint={hint}>{children}</Block>;
 }
 
 function Points({ title, tone, items, empty }: { title: string; tone: string; items: string[]; empty: string }) {
   return (
-    <div style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderLeft: `3px solid ${tone}`, borderRadius: 10, padding: "16px 18px" }}>
-      <div style={{ fontSize: FS.cardTitle, fontWeight: 700, color: tone }}>{title}</div>
-      {items.length === 0 ? <div style={fine}>{empty}</div> : items.map((t) => <div key={t} style={{ fontSize: FS.ui, color: "#374151", marginTop: 10, lineHeight: 1.8, wordBreak: "keep-all" }}>· {t}</div>)}
-    </div>
+    <Block title={title} accent={tone}>
+      {items.length === 0 ? <Caption>{empty}</Caption> : (
+        <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8, fontSize: FS.body, lineHeight: 1.7, color: PK.sub, wordBreak: "keep-all" }}>
+          {items.map((t) => <li key={t}>{t}</li>)}
+        </ul>
+      )}
+    </Block>
   );
 }
 
 function Mini({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", border: "1px solid #E5E7EB" }}>
-      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: FS.ui, color: "#111827" }}>{value}</div>
-      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
-    </div>
-  );
+  return <Stat onGray label={label} value={value} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />;
 }
 
 function Chip({ text, style, small }: { text: string; style: { bg: string; fg: string }; small?: boolean }) {
@@ -309,9 +306,3 @@ function Chip({ text, style, small }: { text: string; style: { bg: string; fg: s
     <span style={{ background: style.bg, color: style.fg, borderRadius: 999, padding: small ? "1px 7px" : "3px 10px", fontSize: small ? FS.caption : FS.warn, fontWeight: 700 }}>{text}</span>
   );
 }
-
-const card: CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" };
-const fine: CSSProperties = { fontSize: FS.caption, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
-const sub: CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#374151", marginBottom: 4 };
-const grid2: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 8 };
-const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 };

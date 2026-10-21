@@ -10,6 +10,8 @@ import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, rai
 import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence, useStoreAnchors } from "./useStores";
+import { Stat as KitStat } from "../../components/PanelKit";
+import { BLOCK_GAP, PK } from "../../lib/panelStyle";
 import { FS } from "../../lib/typography";
 
 export const DEFAULT_RADIUS_M = 500;
@@ -304,7 +306,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
   );
 }
 
-const subTitle: React.CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#6D28D9", margin: "8px 0 2px" };
+const subTitle: React.CSSProperties = { fontSize: FS.ui, fontWeight: 700, color: PK.ink, lineHeight: 1.4, margin: "14px 0 6px" };
 
 function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAccess; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   if (!rail) return null;      // 구버전 응답(철도 필드 없음)
@@ -534,20 +536,19 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
   );
 }
 
-function Stat({ label, value, sub, accent, big }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
+/** 숫자 칸 — 공통 조각(Stat)을 쓰고, 브랜드 색 띠(accent)만 겉에 덧댄다. */
+function Stat({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", borderLeft: accent ? `3px solid ${accent}` : "3px solid #E5E7EB" }}>
-      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: big ? FS.cardTitle : FS.body }}>{value}</div>
-      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
+    <div style={accent ? { borderLeft: `3px solid ${accent}`, borderRadius: 10 } : undefined}>
+      <KitStat onGray label={label} value={value} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />
     </div>
   );
 }
 
-const card: React.CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 };
-const cardTitle: React.CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#374151" };
-const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: "1px solid #F3F4F6", alignItems: "baseline" };
-const fine: React.CSSProperties = { fontSize: FS.caption, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
+const card: React.CSSProperties = { background: PK.soft, borderRadius: 12, padding: "14px 16px", marginBottom: BLOCK_GAP };
+const cardTitle: React.CSSProperties = { fontSize: FS.cardTitle, fontWeight: 800, color: PK.ink, lineHeight: 1.4, marginBottom: 6 };
+const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: `1px solid ${PK.line}`, alignItems: "baseline" };
+const fine: React.CSSProperties = { fontSize: FS.caption, color: PK.mute, marginTop: 4, lineHeight: 1.5 };
 const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: FS.caption, cursor: "pointer", border: "1px solid #D1D5DB" };
 const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8", fontWeight: 700 };
 const radiusOff: React.CSSProperties = { ...radiusBase, background: "#fff", color: "#374151" };

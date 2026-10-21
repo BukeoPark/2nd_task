@@ -12,8 +12,8 @@ test("요약이 첫 항목이고 행정동에만 세부 상권이 있으며 매�
 });
 
 test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 성장성·경쟁·수요·입지 → 비용", () => {
-  assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "traits", "type", "stores"]);
-  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "traits", "type", "stores"]);
+  assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "traits", "stores"]);
+  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "traits", "stores"]);
 });
 
 test("예비 창업자 모드에만 비용 점검이 있고, 현장 확인 메뉴는 없다", () => {
@@ -41,4 +41,8 @@ test("항목마다 다른 색을 쓰고, 글자색은 배경과 대비 4.5:1 이
   const ids = areaTabsFor("dong", "founder");
   assert.equal(new Set(ids.map((id) => AREA_TAB_STYLE[id].fg)).size, ids.length);
   for (const id of ids) assert.ok(contrast(AREA_TAB_STYLE[id].fg, AREA_TAB_STYLE[id].bg) >= 4.5, id);
+});
+
+test("유형은 요약에 통합되어 별도 메뉴가 없다", () => {
+  for (const mode of ["owner", "founder"] as const) for (const level of ["dong", "trdar"] as const) assert.ok(!areaTabsFor(level, mode).includes("type"));
 });

@@ -3,6 +3,7 @@ import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { useNearbyAnalysis } from "./useStores";
+import { Stat as KitStat } from "../../components/PanelKit";
 import { FS } from "../../lib/typography";
 
 /** '주변 상권 분석' — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율. 매장 개별 평가가 아니다. */
@@ -110,12 +111,7 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
-    </div>
-  );
+  return <KitStat label={label} value={value} />;
 }
 
 function Bar({ h, color }: { h: number; color: string }) {

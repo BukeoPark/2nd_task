@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import type { AreaBrief, BriefAction, BriefTarget, FactState } from "../../lib/areaBrief";
 import { FS } from "../../lib/typography";
 
 const FACT_COLOR: Record<FactState, string> = { value: "#111827", missing: "#9CA3AF", hold: "#92400E" };
 
 /** 종합분석 요약 맨 위의 3단 구성 — ① 확인된 사실 ② 어떻게 읽을까? ③ 다음 확인사항(눌러서 이동). 계산은 lib/areaBrief 가 한다. */
-export function AreaBriefCard({ brief, onAction }: { brief: AreaBrief; onAction: (t: BriefTarget) => void }) {
+export function AreaBriefCard({ brief, onAction, insights }: { brief: AreaBrief; onAction: (t: BriefTarget) => void; insights?: ReactNode }) {
   return (
     <section data-tour="area-brief" aria-label="핵심 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px", background: "#FFFFFF" }}>
       {/* 모드·'핵심 요약' 이름은 위 질문 제목과 겹쳐 빼고, 어느 단위·업종 기준인지 한 줄만 둔다 */}
@@ -31,6 +32,7 @@ export function AreaBriefCard({ brief, onAction }: { brief: AreaBrief; onAction:
         <div style={{ fontSize: FS.warn, color: "#92400E", marginTop: 6 }}>{brief.hold}</div>
       )}
 
+      {insights}
       <div style={{ ...stepTitle, marginTop: 20 }}>③ 다음 확인사항</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
         {brief.next.map((n, i) => <NextLink key={n.target} action={n} primary={i === 0} onClick={() => onAction(n.target)} />)}
