@@ -37,7 +37,7 @@ interface FoodTopBarProps {
   onModeChange: (m: Mode) => void;
   /** 도움말 — 튜토리얼 다시 보기 */
   onHelp: () => void;
-  /** 내 관심 지역 — 저장한 곳 수와 작업 화면 열기(저장 목록·지역 비교·보고서·비용 점검·답사 메모를 한곳에서) */
+  /** 내 관심 지역 — 저장한 곳 수와 작업 화면 열기(저장 목록·지역 비교·보고서·비용 점검·메모를 한곳에서) */
   interestCount: number;
   onOpenInterest: () => void;
   /** 자영업자 전용 메뉴 — 우리 가게 월간 점검(예비 창업자에게는 없다) */

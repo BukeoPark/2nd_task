@@ -91,8 +91,8 @@ function FounderStart(p: Props) {
         </button>
       </div>
       <ReportCta onClick={p.onReportFirst} who="후보 지역 상권" />
-      {p.interestCount > 0 && <button type="button" onClick={p.onOpenInterest} style={{ ...linkBtn, marginTop: 14 }}>내 관심 지역 {p.interestCount}곳 이어서 보기(비교·보고서·비용·답사) ›</button>}
-      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: 후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검 → 현장 답사. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
+      {p.interestCount > 0 && <button type="button" onClick={p.onOpenInterest} style={{ ...linkBtn, marginTop: 14 }}>내 관심 지역 {p.interestCount}곳 이어서 보기(비교·보고서·비용) ›</button>}
+      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: 후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
     </Drawer>
   );
 }

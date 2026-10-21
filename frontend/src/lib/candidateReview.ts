@@ -1,10 +1,9 @@
-// 예비 창업자 '창업 후보지 검토함' — 관심 후보(favorites)마다 업종·분석으로 가는 길·비용 시뮬레이션·답사 체크·짧은 메모를 한 줄로 묶어 보여 준다.
+// 예비 창업자 '창업 후보지 검토함' — 관심 후보(favorites)마다 업종·분석으로 가는 길·비용 시뮬레이션·짧은 메모를 한 줄로 묶어 보여 준다.
 // 새 점수·순위·추천은 만들지 않는다(후보를 '정렬'하지도 않고 담은 순서 그대로). 모든 입력은 이 브라우저에만 저장되고 서버·공유 주소로 나가지 않는다.
 // 비용은 후보 지역별로 저장된 시뮬레이션만 읽는다(없으면 '아직 안 함'). 다른 모듈은 같은 폴더의 순수 함수와 localState 만 쓴다(tests/candidateReview.test.ts).
 import { computeCostCheck, loadUnitDraft, type CostCheckResult } from "./costCheck.ts";
 import { favKey, type FavoriteArea } from "./favorites.ts";
 import { readJson, writeJson } from "./localState.ts";
-import { VISIT_ITEMS, doneCount, loadVisit } from "./visitChecklist.ts";
 
 export const NOTES_KEY = "candidateNotes:v1";
 export const NOTE_MAX = 200;
@@ -31,8 +30,6 @@ export function saveNote(key: string, text: string): boolean {
 export interface ReviewRow {
   key: string;
   fav: FavoriteArea;
-  /** 답사 체크 진행 */
-  visit: { done: number; total: number };
   /** 이 후보에 저장된 비용 시뮬레이션 요약(없으면 null) */
   cost: { status: CostCheckResult["status"]; bepMan: number | null; profitMan: number | null } | null;
   note: string;
@@ -44,7 +41,7 @@ export function buildReviewRow(fav: FavoriteArea, notes: Record<string, string>)
   const draft = loadUnitDraft(key);
   const res = draft ? computeCostCheck(draft) : null;
   const cost = res && res.status !== "empty" ? { status: res.status, bepMan: res.bep, profitMan: res.profit } : null;
-  return { key, fav, visit: { done: doneCount(loadVisit(fav.level, fav.code)), total: VISIT_ITEMS.length }, cost, note: notes[key] ?? "" };
+  return { key, fav, cost, note: notes[key] ?? "" };
 }
 
 export function buildReviewRows(favs: FavoriteArea[]): ReviewRow[] {

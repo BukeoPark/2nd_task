@@ -3,7 +3,6 @@ import { test } from "node:test";
 import { NOTE_MAX, buildReviewRows, loadNotes, saveNote } from "../src/lib/candidateReview.ts";
 import { clearDraft, emptyDraft, loadDraft, saveDraft } from "../src/lib/costCheck.ts";
 import type { FavoriteArea } from "../src/lib/favorites.ts";
-import { saveVisit } from "../src/lib/visitChecklist.ts";
 import { installFakeStorage } from "./_fakeStorage.ts";
 
 const fav = (code: string, name = code): FavoriteArea => ({ level: "dong", code, name, type: null, lon: null, lat: null, svc: null, scls: null });
@@ -29,18 +28,14 @@ test("지역 입력을 지워도 다른 지역·전역 값은 그대로이고, �
   assert.equal(loadDraft().revenue, "2000");
 });
 
-test("검토함 한 줄: 저장된 비용 요약·답사 진행·메모만 읽고, 없으면 null·0", () => {
+test("검토함 한 줄: 저장된 비용 요약·메모만 읽고, 없으면 null·빈 문자열", () => {
   installFakeStorage();
   saveDraft(draft("3000"), "dong:A");
-  saveVisit("dong", "A", { checked: { walk: true, view: true }, memo: {} });
   assert.ok(saveNote("dong:A", "역에서 가깝다"));
   const [a, b] = buildReviewRows([fav("A"), fav("B")]);
-  assert.equal(a.visit.done, 2);
-  assert.equal(a.visit.total, 6);
   assert.ok(a.cost && Math.round(a.cost.bepMan as number) === 1339 && Math.round(a.cost.profitMan as number) === 1030);
   assert.equal(a.note, "역에서 가깝다");
   assert.equal(b.cost, null);              // 저장한 적 없는 후보에는 계산을 지어내지 않는다
-  assert.deepEqual(b.visit, { done: 0, total: 6 });
   assert.equal(b.note, "");
 });
 

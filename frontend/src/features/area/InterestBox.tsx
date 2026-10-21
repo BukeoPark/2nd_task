@@ -6,7 +6,6 @@ import type { Mode } from "../../lib/mode";
 import { ModalNav } from "../nav/ModalNav";
 import { useOverlayBack } from "../nav/useOverlayBack";
 import { CostCheckModal } from "./CostCheckModal";
-import { VisitChecklistSection } from "./VisitChecklistSection";
 
 const MAX_COMPARE = 4;
 
@@ -30,8 +29,8 @@ interface Props {
 
 const manwon = (v: number) => `${Math.round(v).toLocaleString("ko-KR")}만원`;
 
-/** 내 관심 지역 — 저장한 지역 목록 하나로 ① 최대 4곳 골라 나란히 비교 ② 지역별 상권분석 보고서 ③ 종합분석 다시 열기 ④ (예비 창업자) 비용 점검·현장 답사 ⑤ 짧은 메모 ⑥ 공유 주소를 모두 한다.
- * 예전의 '관심 지역 목록'·'지역 비교 담기'·'후보지 검토함'을 하나로 합쳤다. 저장 데이터(관심 지역·비용·답사·메모)와 공유 주소 형식은 그대로다.
+/** 내 관심 지역 — 저장한 지역 목록 하나로 ① 최대 4곳 골라 나란히 비교 ② 지역별 상권분석 보고서 ③ 종합분석 다시 열기 ④ (예비 창업자) 비용 점검 ⑤ 짧은 메모 ⑥ 공유 주소를 모두 한다.
+ * 예전의 '관심 지역 목록'·'지역 비교 담기'·'후보지 검토함'을 하나로 합쳤다. 저장 데이터(관심 지역·비용·메모)와 공유 주소 형식은 그대로다.
  * 후보는 담은 순서 그대로이고 점수·순위·추천은 없다. 모두 이 브라우저에만 저장된다. */
 export function InterestBox({ mode, favorites, industryName, onOpenArea, onReport, onCompare, onRemove, shareUrl, initialPicked = [], onClose }: Props) {
   const founder = mode === "founder";
@@ -39,7 +38,6 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
   const [tick, setTick] = useState(0);
   const [picked, setPicked] = useState<string[]>(() => initialPicked.slice(0, MAX_COMPARE));
   const [costFor, setCostFor] = useState<FavoriteArea | null>(null);
-  const [visitFor, setVisitFor] = useState<string | null>(null);
   const rows = useMemo(() => buildReviewRows(favorites), [favorites, tick]);   // eslint-disable-line react-hooks/exhaustive-deps -- tick 은 저장 뒤 다시 읽기용
   const back = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -83,7 +81,7 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 14, alignItems: "start" }}>
               {rows.map((r) => (
                 <Card key={r.key} row={r} founder={founder} industry={industryName(r.fav.svc, r.fav.scls)} checked={picked.includes(r.key)} block={blockFor(r.fav)}
-                  showVisit={visitFor === r.key} onToggleVisit={() => setVisitFor(visitFor === r.key ? null : r.key)} onToggle={() => toggle(r.fav)} onCost={() => setCostFor(r.fav)}
+                  onToggle={() => toggle(r.fav)} onCost={() => setCostFor(r.fav)}
                   onOpenArea={() => onOpenArea(r.fav)} onReport={() => onReport(r.fav)} onRemove={() => { setPicked((p) => p.filter((x) => x !== r.key)); onRemove(r.fav); }}
                   shareUrl={shareUrl(r.fav)} onSaved={() => setTick((t) => t + 1)} />
               ))}
@@ -97,9 +95,9 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
   );
 }
 
-function Card({ row, founder, industry, checked, block, showVisit, onToggleVisit, onToggle, onCost, onOpenArea, onReport, onRemove, shareUrl, onSaved }: {
-  row: ReviewRow; founder: boolean; industry: string; checked: boolean; block: string | null; showVisit: boolean; shareUrl: string;
-  onToggleVisit: () => void; onToggle: () => void; onCost: () => void; onOpenArea: () => void; onReport: () => void; onRemove: () => void; onSaved: () => void;
+function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpenArea, onReport, onRemove, shareUrl, onSaved }: {
+  row: ReviewRow; founder: boolean; industry: string; checked: boolean; block: string | null; shareUrl: string;
+  onToggle: () => void; onCost: () => void; onOpenArea: () => void; onReport: () => void; onRemove: () => void; onSaved: () => void;
 }) {
   const f = row.fav;
   const unitWord = f.level === "dong" ? "행정동" : "상권";
@@ -134,8 +132,6 @@ function Card({ row, founder, industry, checked, block, showVisit, onToggleVisit
           <Line label="비용 시뮬레이션"
             value={c === null ? "아직 안 했어요" : c.bepMan === null ? "입력은 있지만 계산을 보류했어요" : `손익분기 ${manwon(c.bepMan)}${c.profitMan !== null ? ` · 예상 영업손익 ${c.profitMan < 0 ? "-" : ""}${manwon(Math.abs(c.profitMan))}` : ""}`}
             action={c === null ? "시작 ›" : "이어서 ›"} onClick={onCost} />
-          <Line label="현장 답사" value={`${row.visit.done}/${row.visit.total}개 확인`} action={showVisit ? "접기" : "열기 ›"} onClick={onToggleVisit} />
-          {showVisit && <div style={{ marginTop: 8 }}><VisitChecklistSection level={f.level} code={f.code} unitWord={unitWord} onChange={onSaved} /></div>}
         </>
       )}
 

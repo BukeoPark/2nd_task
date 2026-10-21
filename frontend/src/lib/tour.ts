@@ -44,7 +44,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
     { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "① 관심 지역 찾기", body: "관심 있는 지역·역·상권 이름을 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 요약이 열려요." },
     { id: "svc", target: "svc", placement: "bottom", title: "② 창업 업종 고르기", body: "창업하려는 업종을 고르면 그 업종 기준으로 후보 지역이 보여요." },
     { id: "metric", target: "metric", placement: "bottom", title: "③ 후보 지역 훑어보기", body: "지표를 바꿔 가며 어느 지역이 눈에 띄는지 보세요. 점포 수·폐업률·점포당 월평균 추정매출 등을 볼 수 있어요." },
-    { id: "favorites", target: "favorites", placement: "bottom", title: "내 관심 지역", body: "마음에 둔 상권·행정동을 최대 10곳까지 담아 두세요. 한곳에서 2~4곳을 골라 나란히 비교하고, 지역별 상권분석 보고서·비용 점검·현장 답사 메모로 이어져요. 이 브라우저에만 저장돼요." },
+    { id: "favorites", target: "favorites", placement: "bottom", title: "내 관심 지역", body: "마음에 둔 상권·행정동을 최대 10곳까지 담아 두세요. 한곳에서 2~4곳을 골라 나란히 비교하고, 지역별 상권분석 보고서·비용 점검·메모로 이어져요. 이 브라우저에만 저장돼요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표로 후보 찾기", body: "순위표 탭에서 지금 지표의 순위를 확인하고, 행을 누르면 그 지역 요약이 열려요." },
     { id: "compare-add", target: "compare-add", placement: "right", title: "④ 담고 비교하기", body: "후보 상권·행정동의 요약에서 '내 관심 지역에 담고 비교하기'를 누르면 담은 뒤 바로 비교할 지역을 고를 수 있어요.", fallback: "후보 상권·행정동을 눌러 열린 요약에서 '내 관심 지역에 담고 비교하기'를 눌러 보세요." },
     { id: "cost", target: "area-rail", placement: "right", title: "⑥ 비용 점검", body: "왼쪽 메뉴의 '창업 비용 점검'에서 내가 넣은 비용으로 손익분기를 계산할 수 있어요. 입력은 이 브라우저에만 저장돼요.", fallback: "후보 상권·행정동을 열면 왼쪽 메뉴에 '창업 비용 점검'(내가 넣은 비용으로 손익분기 계산)이 나와요. 입력은 이 브라우저에만 저장돼요." },
