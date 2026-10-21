@@ -17,15 +17,21 @@ export interface Preset {
   order: "desc" | "asc";
   /** 이 조건이 무엇을 보는지 한 줄 */
   what: string;
-  /** 읽을 때 주의할 점 */
+  /** 읽을 때 주의할 점(자세히 보기에 둔다) */
   caveat: string;
+  /** 결과 제목의 조건 부분 — "○○ 행정동 8곳"의 ○○ */
+  titleCondition: string;
+  /** 결과 위에 한 줄로 보이는 핵심 경고(쉬운 문장 1개) */
+  warn: string;
+  /** 값 기준을 넘는 곳만 고르는 조건인가(true: 조건에 맞는 곳 수가 의미 있음, false: 값 순서만 매김) */
+  threshold: boolean;
 }
 
 export const PRESETS: Preset[] = [
-  { id: "growing", question: "매출이 늘고 있는 곳은 어디일까?", metric: "sales_yoy_pct", order: "desc", what: "전년 같은 분기보다 총매출이 늘어난 지역(0% 초과)을 늘어난 폭이 큰 순으로 나열해요.", caveat: "총매출은 점포 수 변화가 섞인 값이고 물가는 보정하지 않았어요. 늘었다고 앞으로도 늘어난다는 뜻은 아니에요." },
-  { id: "big_sales", question: "매출 규모가 큰 곳은 어디일까?", metric: "per_store_month", order: "desc", what: "같은 업종 점포 한 곳의 월평균 추정매출이 큰 지역을 큰 순으로 나열해요.", caveat: "카드 결제 기반 추정 평균이에요. 개별 가게의 실제 매출이 아니고, 매출이 큰 곳은 임대료도 높을 수 있어요." },
-  { id: "low_competition", question: "같은 업종 가게가 상대적으로 적은 곳은 어디일까?", metric: "stores", order: "asc", what: "같은 업종 점포 수가 적은 지역을 적은 순으로 나열해요(점포 10곳 이상인 곳만).", caveat: "점포 수는 지역 크기에 따라 달라요. 적다고 손님이 많다는 뜻은 아니고, 수요가 적어서 적을 수도 있어요." },
-  { id: "stable_count", question: "가게 수 변화가 작은 곳은 어디일까?", metric: "stores_volatility", order: "asc", what: "분기마다 점포 수가 바뀐 정도(변동성)가 작은 지역을 작은 순으로 나열해요.", caveat: "변화가 작다고 장사가 잘 된다는 뜻은 아니에요. 점포 수가 평균 10곳 미만이면 계산하지 않아요." },
+  { id: "growing", question: "매출이 늘고 있는 곳은 어디일까?", metric: "sales_yoy_pct", order: "desc", what: "전년 같은 분기보다 총매출이 늘어난 지역(0% 초과)을 늘어난 폭이 큰 순으로 나열해요.", caveat: "총매출은 점포 수 변화가 섞인 값이고 물가는 보정하지 않았어요. 늘었다고 앞으로도 늘어난다는 뜻은 아니에요.", titleCondition: "총매출이 늘어난", warn: "늘었다고 앞으로도 늘어난다는 뜻은 아니에요.", threshold: true },
+  { id: "big_sales", question: "매출 규모가 큰 곳은 어디일까?", metric: "per_store_month", order: "desc", what: "같은 업종 점포 한 곳의 월평균 추정매출이 큰 지역을 큰 순으로 나열해요.", caveat: "카드 결제 기반 추정 평균이에요. 개별 가게의 실제 매출이 아니고, 매출이 큰 곳은 임대료도 높을 수 있어요.", titleCondition: "가게 한 곳 월평균 추정매출이 큰", warn: "추정 평균이라 실제 매출과 다르고, 임대료도 높을 수 있어요.", threshold: false },
+  { id: "low_competition", question: "같은 업종 가게가 상대적으로 적은 곳은 어디일까?", metric: "stores", order: "asc", what: "같은 업종 점포 수가 적은 지역을 적은 순으로 나열해요(점포 10곳 이상인 곳만).", caveat: "점포 수는 지역 크기에 따라 달라요. 적다고 손님이 많다는 뜻은 아니고, 수요가 적어서 적을 수도 있어요.", titleCondition: "같은 업종 가게가 적은", warn: "가게 수가 적다고 창업에 유리하다는 뜻은 아니에요.", threshold: false },
+  { id: "stable_count", question: "가게 수 변화가 작은 곳은 어디일까?", metric: "stores_volatility", order: "asc", what: "분기마다 점포 수가 바뀐 정도(변동성)가 작은 지역을 작은 순으로 나열해요.", caveat: "변화가 작다고 장사가 잘 된다는 뜻은 아니에요. 점포 수가 평균 10곳 미만이면 계산하지 않아요.", titleCondition: "가게 수 변화가 작은", warn: "변화가 작다고 장사가 잘 된다는 뜻은 아니에요.", threshold: false },
 ];
 
 export const presetById = (id: string): Preset | undefined => PRESETS.find((p) => p.id === id);
@@ -69,4 +75,21 @@ export function candidatesFor(preset: Preset, bubbles: BubbleLike[], limit = 8):
   const dir = preset.order === "desc" ? -1 : 1;
   ok.sort((a, b) => dir * (a.value - b.value) || a.code.localeCompare(b.code));   // 같은 값은 코드 순(결정적)
   return { candidates: ok.slice(0, limit), more: Math.max(0, ok.length - limit), excludedSmall, excludedMissing, notMatching };
+}
+
+/** 결과 제목 — 선택한 조건과 보여 주는 개수를 하나로("같은 업종 가게가 적은 행정동 8곳"). 분석 대상 전체 수가 아니라 아래 카드 수다. */
+export function resultTitle(preset: Preset, unitWord: string, shown: number): string {
+  return `${preset.titleCondition} ${unitWord} ${shown}곳`;
+}
+
+/** 전체 후보 수와 보여 주는 수를 혼동하지 않게 하는 보충 문구(더 있을 때만). 조건으로 고르는 경우는 '조건에 맞는', 순서만 매기는 경우는 '분석 대상'. */
+export function resultScopeNote(preset: Preset, res: Pick<CandidateResult, "candidates" | "more">): string | null {
+  if (res.more <= 0) return null;
+  const total = res.candidates.length + res.more;
+  return `${preset.threshold ? "조건에 맞는" : "분석 대상"} ${total}곳 중 ${preset.order === "asc" ? "작은" : "큰"} 순 ${res.candidates.length}곳만 보여 드려요`;
+}
+
+/** 표본이 적은(10~19곳) 곳의 쉬운 해석 한 문장. 값이 점포 수 자체인 조건은 숫자를 되풀이하지 않는다. */
+export function cautionText(preset: Preset, stores: number): string {
+  return preset.metric === "stores" ? "가게가 적어 값이 크게 흔들릴 수 있어요." : `같은 업종 가게가 ${stores.toLocaleString("ko-KR")}곳뿐이라 값이 크게 흔들릴 수 있어요.`;
 }

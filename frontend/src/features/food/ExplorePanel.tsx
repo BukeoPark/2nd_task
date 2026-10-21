@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Notice } from "../../components/Notice";
 import type { FoodBubble, FoodBubblesResponse } from "../../lib/apiClient";
-import { candidatesFor, PRESETS, presetById, type PresetId } from "../../lib/explorePresets";
+import { candidatesFor, cautionText, PRESETS, presetById, resultScopeNote, resultTitle, type PresetId } from "../../lib/explorePresets";
 import { formatMetric } from "../../lib/format";
 import { SAMPLE_MIN } from "../../lib/insightReport";
 import { useFoodBubbles } from "./useFood";
@@ -34,6 +34,7 @@ export function ExplorePanel(p: Props) {
   const fresh = data && data.level === p.level && data.metric === preset.metric && data.svc === p.svc && data.scls === p.scls ? data : null;
   const res = fresh ? candidatesFor(preset, fresh.bubbles) : null;
   const unitWord = p.level === "dong" ? "행정동" : "상권";
+  const scopeNote = res ? resultScopeNote(preset, res) : null;
   // 조건은 고른 뒤에는 한 줄 칩으로 접어 결과가 첫 화면에 보이게 한다('변경'을 누르면 네 질문이 다시 펼쳐진다)
   const [choosing, setChoosing] = useState(false);
   return (
@@ -60,34 +61,32 @@ export function ExplorePanel(p: Props) {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "12px 0 4px", fontSize: 13 }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "8px 0 0", fontSize: 13 }}>
         <span style={{ color: "#4B5563" }}>보는 단위</span>
         {(["dong", "trdar"] as const).map((l) => (
           <button key={l} type="button" aria-pressed={p.level === l} onClick={() => p.onLevel(l)}
-            style={{ padding: "3px 10px", borderRadius: 999, border: p.level === l ? "1px solid #1D4ED8" : "1px solid #D1D5DB", background: p.level === l ? "#1D4ED8" : "white", color: p.level === l ? "white" : "#374151", cursor: "pointer", fontSize: 13 }}>
+            style={{ minHeight: 32, padding: "3px 12px", borderRadius: 999, border: p.level === l ? "1px solid #1D4ED8" : "1px solid #D1D5DB", background: p.level === l ? "#1D4ED8" : "white", color: p.level === l ? "white" : "#374151", cursor: "pointer", fontSize: 13 }}>
             {l === "dong" ? "행정동" : "상권"}
           </button>
         ))}
       </div>
-      <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6 }}>{preset.what}</div>
-      <div style={{ fontSize: 13, color: "#92400E", lineHeight: 1.6, marginTop: 4 }}>※ {preset.caveat}</div>
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 10 }}>
         {q.isError && <Notice tone="error">후보를 불러오지 못했어요: {q.error.message} <button type="button" onClick={() => void q.refetch()}>다시 시도</button></Notice>}
         {!q.isError && !fresh && <Notice tone="muted">조건에 맞는 {unitWord}를 찾는 중...</Notice>}
         {fresh && res && (
           <>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>조건에 맞는 {unitWord} {res.candidates.length + res.more}곳{res.more > 0 ? ` 중 ${res.candidates.length}곳` : ""}</div>
-            <div style={{ fontSize: 12.5, color: "#6B7280", margin: "2px 0 6px" }}>
-              {p.filterName} · {fresh.scope.metric_scope} · {fresh.as_of} · 영등포구·양천구 안에서만 찾아요. 조건 값 순으로 나열한 것이며 창업 추천 순위가 아닙니다. 지역을 누르면 종합분석이 열려요.
-            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.35 }}>{resultTitle(preset, unitWord, res.candidates.length)}</div>
+            <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 2 }}>{p.filterName} · {fresh.as_of} · 영등포구·양천구</div>
+            {scopeNote && <div style={{ fontSize: 12.5, color: "#6B7280" }}>{scopeNote}</div>}
+            <div style={{ fontSize: 13.5, color: "#92400E", lineHeight: 1.5, marginTop: 4 }}>※ {preset.warn}</div>
             {res.candidates.length === 0 && <Notice tone="muted">이 조건에 맞는 {unitWord}가 없어요(자료가 없는 것이 아니라 조건에 맞는 곳이 없는 경우예요).</Notice>}
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
               {res.candidates.map((c) => {
                 const b = fresh.bubbles.find((x) => x.code === c.code) as FoodBubble;
                 const fav = p.isFavorite(c.code);
                 return (
-                  <li key={c.code} onClick={() => p.onPick(b, fresh)} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 8px 8px 10px", background: "white", cursor: "pointer" }}>
+                  <li key={c.code} onClick={() => p.onPick(b, fresh)} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "6px 8px 8px 10px", background: "white", cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                       {/* 카드 어디를 눌러도 종합분석이 열리고, 키보드·화면낭독은 이 이름 단추로 같은 일을 한다 */}
                       <button type="button" aria-label={`${c.name} 종합분석 보기`} onClick={(e) => { e.stopPropagation(); p.onPick(b, fresh); }}
@@ -101,21 +100,28 @@ export function ExplorePanel(p: Props) {
                         {fav ? "★" : "☆"}
                       </button>
                     </div>
-                    <div style={{ fontSize: 12.5, color: "#6B7280" }}>
-                      {fresh.label} · 같은 업종 점포 {c.stores.toLocaleString()}곳{c.caution ? ` · 점포 ${SAMPLE_MIN}~19곳이라 값이 크게 흔들릴 수 있어요` : ""}
-                    </div>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ ...btn(true), width: "100%", marginTop: 6 }}>상권분석 보고서 보기 ›</button>
+                    {c.caution && <div style={{ fontSize: 12.5, color: "#6B7280", margin: "0 0 4px" }}>{cautionText(preset, c.stores)}</div>}
+                    <button type="button" onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ ...btn(true), width: "100%", marginTop: c.caution ? 0 : 4 }}>상권분석 보고서 보기 ›</button>
                   </li>
                 );
               })}
             </ul>
-            {res.more > 0 && <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 6 }}>조건에 맞는 곳이 {res.more}곳 더 있어요. 지도에서 원을 눌러 볼 수 있어요.</div>}
-            <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 8, lineHeight: 1.6 }}>
-              {res.excludedSmall > 0 && <>점포가 {SAMPLE_MIN}곳 미만이라 해석을 보류한 {unitWord} {res.excludedSmall}곳, </>}
-              {res.excludedMissing > 0 && <>자료가 없는 {unitWord} {res.excludedMissing}곳{res.notMatching > 0 ? ", " : ""}</>}
-              {res.notMatching > 0 && <>조건에 맞지 않는 {unitWord} {res.notMatching}곳</>}
-              {res.excludedSmall + res.excludedMissing + res.notMatching > 0 ? "은 후보에서 뺐어요." : ""}
-            </div>
+            {res.more > 0 && <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 6 }}>지도에서 원을 눌러 나머지 {res.more}곳도 볼 수 있어요.</div>}
+            <details style={{ marginTop: 10, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 32, display: "flex", alignItems: "center" }}>분석 기준 자세히 보기</summary>
+              <ul style={{ margin: "4px 0 0", paddingLeft: 18, color: "#4B5563" }}>
+                <li>{preset.what}</li>
+                <li>{preset.caveat}</li>
+                <li>{p.filterName} · {fresh.scope.metric_scope} · {fresh.label} · {fresh.as_of} · 영등포구·양천구 안에서만 찾아요.</li>
+                <li>조건 값 순으로 나열한 것이며 창업 추천 순위가 아닙니다. 같은 업종 점포가 {SAMPLE_MIN}곳 미만인 {unitWord}는 해석을 보류해 뺐고, {SAMPLE_MIN}~19곳은 값이 크게 흔들릴 수 있다고 표시해요.</li>
+                {(res.excludedSmall + res.excludedMissing + res.notMatching) > 0 && (
+                  <li>
+                    뺀 {unitWord}:{" "}
+                    {[res.excludedSmall > 0 ? `점포 ${SAMPLE_MIN}곳 미만 ${res.excludedSmall}곳` : "", res.excludedMissing > 0 ? `자료 없음 ${res.excludedMissing}곳` : "", res.notMatching > 0 ? `조건에 맞지 않음 ${res.notMatching}곳` : ""].filter(Boolean).join(" · ")}
+                  </li>
+                )}
+              </ul>
+            </details>
           </>
         )}
       </div>

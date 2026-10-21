@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { candidatesFor, presetById, PRESETS, type BubbleLike } from "../src/lib/explorePresets.ts";
+import { candidatesFor, cautionText, presetById, PRESETS, resultScopeNote, resultTitle, type BubbleLike } from "../src/lib/explorePresets.ts";
 
 const b = (code: string, value: number | null, size: number | null, name = code): BubbleLike => ({ code, name, type: null, value, size });
 const growing = presetById("growing")!;
@@ -41,4 +41,27 @@ test("표시 개수를 넘는 후보는 '더 있음'으로만 센다", () => {
   const r = candidatesFor(growing, many, 8);
   assert.equal(r.candidates.length, 8);
   assert.equal(r.more, 4);
+});
+
+test("결과 제목은 조건과 카드 수를 하나로 말하고, 경쟁·유리함으로 단정하지 않는다", () => {
+  assert.equal(resultTitle(presetById("low_competition")!, "행정동", 8), "같은 업종 가게가 적은 행정동 8곳");
+  assert.equal(resultTitle(presetById("growing")!, "상권", 5), "총매출이 늘어난 상권 5곳");
+  assert.equal(resultTitle(presetById("big_sales")!, "행정동", 8), "가게 한 곳 월평균 추정매출이 큰 행정동 8곳");
+  assert.equal(resultTitle(presetById("stable_count")!, "행정동", 3), "가게 수 변화가 작은 행정동 3곳");
+  for (const p of PRESETS) {
+    assert.ok(p.warn.endsWith("요.") && !/경쟁 밀도|유리합니다|성공/.test(`${p.titleCondition}${p.warn}`));
+  }
+  assert.match(presetById("low_competition")!.warn, /창업에 유리하다는 뜻은 아니에요/);
+});
+
+test("전체 수와 보여 주는 수를 구분한다: 조건으로 고르는 경우는 '조건에 맞는', 순서만 매기는 경우는 '분석 대상'", () => {
+  const eight = Array.from({ length: 8 }, (_, i) => ({ code: `c${i}`, name: "", type: null, value: i, stores: 30, caution: false }));
+  assert.equal(resultScopeNote(presetById("growing")!, { candidates: eight, more: 0 }), null);
+  assert.equal(resultScopeNote(presetById("growing")!, { candidates: eight, more: 16 }), "조건에 맞는 24곳 중 큰 순 8곳만 보여 드려요");
+  assert.equal(resultScopeNote(presetById("low_competition")!, { candidates: eight, more: 16 }), "분석 대상 24곳 중 작은 순 8곳만 보여 드려요");
+});
+
+test("표본이 적은 곳의 한 문장 — 점포 수가 값인 조건은 숫자를 되풀이하지 않는다", () => {
+  assert.equal(cautionText(presetById("growing")!, 14), "같은 업종 가게가 14곳뿐이라 값이 크게 흔들릴 수 있어요.");
+  assert.equal(cautionText(presetById("low_competition")!, 14), "가게가 적어 값이 크게 흔들릴 수 있어요.");
 });
