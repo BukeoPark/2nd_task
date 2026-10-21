@@ -8,8 +8,6 @@ const FACT_COLOR: Record<FactState, string> = { value: "#111827", missing: "#9CA
 export function AreaBriefCard({ brief, onAction, insights }: { brief: AreaBrief; onAction: (t: BriefTarget) => void; insights?: ReactNode }) {
   return (
     <section data-tour="area-brief" aria-label="핵심 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px", background: "#FFFFFF" }}>
-      {/* 모드·'핵심 요약' 이름은 위 질문 제목과 겹쳐 빼고, 어느 단위·업종 기준인지 한 줄만 둔다 */}
-      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{brief.scopeLine}</div>
 
       <div style={{ ...stepTitle, marginTop: 20 }}>핵심 숫자</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 10 }}>

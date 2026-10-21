@@ -16,6 +16,7 @@ import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useAreaCharacter, useFoodCompare, useUnitOverview } from "../food/useFood";
 import { AreaReportModal } from "./AreaReportModal";
+import { glyphFor } from "../../lib/storeGlyph";
 import { SummaryTypeBadge, SummaryTypeContext, SummaryTypeInsights } from "./SummaryType";
 import { AreaBriefCard } from "./AreaBriefCard";
 import { Block, Caption, ListRow, Stat, StatRow } from "../../components/PanelKit";
@@ -116,11 +117,10 @@ export function AreaOverviewPanel(p: Props) {
   const items: RailItem[] = tabIds.map((id) => ({ id, label: AREA_TAB_LABEL[id], icon: ICON[id], ...AREA_TAB_STYLE[id] }));
   const railProps = { items, active: tab, onChange: (id: string) => setTab(id as AreaTabId), ariaLabel: `${unitKind} 분석 항목`, idPrefix: RAIL_PREFIX };
   /** 레일 항목 하나의 내용 — 선택하지 않은 항목도 그려 두고 가리기만 해서 하위 컴포넌트의 상태·조회가 유지된다. */
-  const pane = (id: AreaTabId, title: string, children: ReactNode, opts: { scoped?: boolean; manualNotes?: boolean } = {}) => (
+  const pane = (id: AreaTabId, _title: string, children: ReactNode, opts: { scoped?: boolean; manualNotes?: boolean } = {}) => (
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
       <div style={{ marginTop: 12, marginBottom: 8 }}>
-        <RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={AREA_QUESTION[id][p.mode]} hint={opts.scoped ? `업종 범위: ${p.filterName}` : undefined} />
-        {id !== "summary" && <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>자세히: {title}</div>}
+        <RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={AREA_QUESTION[id][p.mode]} />
       </div>
       <NoteHost manual={opts.manualNotes}>{children}</NoteHost>
     </div>
@@ -128,7 +128,12 @@ export function AreaOverviewPanel(p: Props) {
   return (
     <>
     {!narrow && <TabRail {...railProps} orientation="vertical" />}
-    <Drawer title={p.title} titleAside={character.data ? <SummaryTypeBadge data={character.data} /> : undefined} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={p.backLabel ?? `← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
+    <Drawer title={p.title} titleAside={<>
+      {character.data && <SummaryTypeBadge data={character.data} />}
+      <span aria-label={`선택 업종: ${p.svc ? p.filterName : "업종 전체"}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "6px 13px", background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#334155", fontSize: FS.cardTitle, fontWeight: 700, lineHeight: 1.4, wordBreak: "keep-all" }}>
+        {p.svc && <span aria-hidden="true">{glyphFor(p.svc).glyph}</span>}{p.svc ? p.filterName : "업종 전체"}
+      </span>
+    </>} subtitle={`${p.type ? `${p.type} · ` : ""}${unitKind} 종합분석`} onBack={p.onBack} backLabel={p.backLabel ?? `← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
       {cmp.isPending && <div style={{ marginTop: 10 }}><Notice tone="muted">종합분석을 불러오는 중...</Notice></div>}
       {cmp.isError && (
         <div style={{ marginTop: 10 }}>
