@@ -1,6 +1,7 @@
 import type { FoodCategoriesResponse, FoodMetric, SearchResult } from "../../lib/apiClient";
 import { MODES, MODE_HINT, MODE_LABEL, type Mode } from "../../lib/mode";
-import { HOME_HREF } from "../../lib/homeLink";
+import { AppLink } from "../../components/AppLink";
+import { HOME_PATH } from "../../lib/route";
 import { useNarrow } from "../../lib/useNarrow";
 import { useEffect, useState } from "react";
 import { SearchBox } from "./SearchBox";
@@ -74,7 +75,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
       {p.onBack && (
         <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>← 뒤로</button>
       )}
-      <a href={HOME_HREF} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: narrow ? 15 : 17, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</a>
+      <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: narrow ? 15 : 17, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</AppLink>
       <ModeSwitch mode={p.mode} onChange={p.onModeChange} />
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
       <Select

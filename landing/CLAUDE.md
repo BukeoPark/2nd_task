@@ -1,5 +1,11 @@
 # landing/ — 랜딩페이지 (Next.js) 규칙
 
+> **상태: 보존용(서비스 화면은 `frontend` 가 낸다).** 사용자에게 보이는 랜딩('/')은 이제 `frontend/src/features/landing/` 이 5173 에서 낸다. 이 폴더는 삭제하지 않고 남기지만 서비스 실행에는 필요 없다(3000 서버를 띄우지 않는다).
+> **중복·유지보수 방안**: 문구·그림·스타일이 두 곳(`landing/lib/content.ts`·`components/Art.tsx`·`app/globals.css` ↔ `frontend/src/features/landing/{content.ts,Art.tsx,landing.css}`)에 같은 내용으로 있다.
+> ① 랜딩을 고칠 때는 **`frontend` 쪽이 기준**이다. ② 이 폴더를 계속 쓸 일(별도 홍보 도메인·정적 호스팅)이 있으면 같은 변경을 두 곳에 옮기고, 없으면 단계적으로 줄인다 — 한동안 쓰지 않은 것을 확인한 뒤 폴더 삭제를 팀에서 결정한다(그때까지 이 폴더의 테스트·빌드는 그대로 통과해야 한다).
+> ③ 정적 호스팅용 랜딩을 따로 두기로 하면 `content.ts` 를 한 곳(공용 패키지나 JSON)으로 합치는 일을 먼저 한다.
+> 아래 규칙은 이 폴더를 계속 고칠 때만 적용한다. 시작 버튼은 `NEXT_PUBLIC_APP_URL` 의 `/?mode=` 로 보내며, `frontend` 가 그 예전 주소를 `/map?mode=` 로 받아 준다.
+
 루트 `CLAUDE.md`의 전역 규칙 위에 다음을 더한다.
 
 ## 스택·실행

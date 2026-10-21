@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { HOME_HREF } from "../../../lib/homeLink";
+import { AppLink } from "../../../components/AppLink";
+import { HOME_PATH } from "../../../lib/route";
 import { useOverlayBack } from "../../nav/useOverlayBack";
 import { C } from "./reportColors";
 import { capS, eyebrow, h2, reportCss, takeS } from "./reportStyles";
@@ -58,7 +59,7 @@ export function ReportFrame({ title, canPrint, onClose, children }: { title: str
       <div className="irp-bar">
         <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0, flexWrap: "wrap" }}>
           <button type="button" onClick={requestClose} style={{ background: "#fff", color: C.ink }}>← 뒤로</button>
-          <a href={HOME_HREF} aria-label="홈(랜딩페이지)으로" style={{ background: "#3A4656", color: "#fff", borderRadius: 6, padding: "7px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>홈</a>
+          <AppLink to={HOME_PATH} aria-label="홈(랜딩페이지)으로" style={{ background: "#3A4656", color: "#fff", borderRadius: 6, padding: "7px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>홈</AppLink>
           <strong style={{ fontSize: 14 }}>{title}</strong>
         </span>
         <button type="button" onClick={() => window.print()} disabled={!canPrint} style={{ background: "#fff", color: C.ink }}>인쇄 / PDF로 저장</button>

@@ -347,9 +347,10 @@ export function MapPage() {
     setStoreId(n.storeId); setSelection(n.selection); setPendingOpen(null); setExplore(n.explore); setStartOpen(n.startOpen);
   }, []);
   useEffect(() => {
-    const st = (window.history.state && typeof window.history.state === "object" ? window.history.state : {}) as { seq?: number; pos?: number };
-    if (lastKey.current === null) {   // 첫 화면 — 이 기록 칸을 '화면 0'으로 표시한다
-      window.history.replaceState({ ...st, seq: 0, pos: 0 }, "", window.location.href);
+    const st = (window.history.state && typeof window.history.state === "object" ? window.history.state : {}) as { seq?: number; pos?: number; ov?: number };
+    if (lastKey.current === null) {   // 첫 화면 — 이 기록 칸을 '화면 0'으로 표시한다(홈에 다녀와 이 칸으로 돌아온 경우 이전 작업창 표시 ov 는 지운다)
+      const { ov: _ov, ...rest } = st;
+      window.history.replaceState({ ...rest, seq: 0, pos: 0 }, "", window.location.href);
       snaps.current.set(0, nowSnap);
       lastKey.current = viewKey;
       return;

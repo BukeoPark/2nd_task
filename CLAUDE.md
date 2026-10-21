@@ -28,7 +28,7 @@ backend/       FastAPI 서버.                         → backend/CLAUDE.md
   tests/
 frontend/      React + 카카오맵 대시보드.            → frontend/CLAUDE.md
   src/{features/{map,food,stores},components,lib,pages}
-landing/       Next.js 랜딩페이지(정적 내보내기).    → landing/CLAUDE.md
+landing/       (보존) 예전 Next.js 랜딩. 서비스 화면은 frontend 가 낸다 → landing/CLAUDE.md
 data/
   raw/           API/다운로드 원본. 수정·덮어쓰기 금지.
   external/       경계 GeoJSON, 코드 매핑 등 외부 참조자료.
