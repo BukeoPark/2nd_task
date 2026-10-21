@@ -78,7 +78,7 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
       : [
           { target: "radius", label: "주변 경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
           { target: "area", label: "상권 흐름·시간대 수요 보기", why: "소속 상권·행정동 종합분석" },
-          { target: "mine", label: "매출·비용 기록하기(선택)", why: "이 브라우저에만 저장" },
+          { target: "mine", label: "매출·비용 기록하기(선택)", why: "상권 평균과 변화율로 견줘 보기" },
         ],
   };
 }

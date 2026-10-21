@@ -115,7 +115,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
         </Card>
 
         {/* ④ 이번 달 확인사항 */}
-        <Card title="④ 이번 달에 확인할 것" sub={`${done}/${MONTHLY_ITEMS.length}개 확인함 · 체크와 메모는 이 브라우저에만 저장돼요`}>
+        <Card title="④ 이번 달에 확인할 것" sub={`${done}/${MONTHLY_ITEMS.length}개 확인함`}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             {MONTHLY_ITEMS.map((it) => {
               const checked = it.id === "record" ? sum.hasThisMonth : state.done[it.id] === true;

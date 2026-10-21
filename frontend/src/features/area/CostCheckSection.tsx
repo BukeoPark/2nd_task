@@ -127,7 +127,7 @@ export function CostCheckLauncher({ unitKey, unitWord, benchWon, onOpen }: { uni
       )}
       <button type="button" onClick={onOpen} style={{ width: "100%", marginTop: 12, padding: "10px 12px", border: "none", borderRadius: 8, background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
         {has ? "비용 점검 이어서 하기" : "비용 점검 작업 화면 열기"} ›
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>이 {unitWord} 기준 참고값과 함께 · 입력값은 이 브라우저에만 저장</span>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>이 {unitWord} 기준 참고값과 함께</span>
       </button>
     </div>
   );

@@ -15,7 +15,7 @@ export function MineStatusBar({ months, lastMonth, costsFilled, storeName, onOpe
       </div>
       <button type="button" onClick={go} style={{ width: "100%", padding: "9px 12px", border: "none", borderRadius: 8, background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
         {has ? "이번 달 매출 기록 추가하기" : "월 매출 기록 시작하기"} ›
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>이 브라우저에만 저장 · 상권 평균과 변화율로 견줍니다</span>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>상권 평균과 변화율로 견줍니다</span>
       </button>
       {onOpenMonthly && <button type="button" onClick={onOpenMonthly} style={{ marginTop: 6, padding: "7px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left", width: "100%" }}>이번 달 점검 한 번에 보기 ›</button>}
     </section>
