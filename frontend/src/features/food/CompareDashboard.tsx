@@ -2,6 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BarList, LineChart } from "../../components/MiniCharts";
+import { InfoTip } from "../../components/InfoTip";
 import { Notice } from "../../components/Notice";
 import { apiClient, type FoodLevel, type UnitOverviewResponse } from "../../lib/apiClient";
 import { compareHighlights } from "../../lib/compareHighlights";
@@ -110,8 +111,8 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
               {highlights.length > 0 ? (
                 <section aria-label="눈여겨볼 차이" style={cardStyle}>
                   <strong style={{ fontSize: 17 }}>눈여겨볼 차이 {highlights.length}가지</strong>
-                  <div style={{ fontSize: 13, color: "#4B5563", margin: "2px 0 8px" }}>
-                    담은 {data.units.length}곳 사이에서 값이 가장 크게 벌어진 지표예요(비율은 3%p, 금액·인원은 25% 이상 차이만 뽑아요). 어느 지역이 낫다는 뜻은 아닙니다.
+                  <div style={{ fontSize: 13.5, color: "#4B5563", margin: "2px 0 8px" }}>
+                    담은 {data.units.length}곳 사이에서 값이 가장 크게 벌어진 지표예요. 어느 지역이 낫다는 뜻은 아니에요.
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
                     {highlights.map((h) => (
@@ -126,12 +127,18 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
                             return <span key={v.name}><span aria-hidden="true" style={{ color: u ? color(u.code) : "#6B7280" }}>● </span>{v.name} <strong>{v.text}</strong></span>;
                           })}
                         </div>
-                        <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 4 }}>
-                          차이 = {h.basis} · {h.scope ? `${h.scope} · ` : ""}{h.asOf ?? "기준 시점 없음"}
-                        </div>
                       </li>
                     ))}
                   </ul>
+                  <details style={{ marginTop: 8, fontSize: 13, color: "#4B5563" }}>
+                    <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 32, display: "flex", alignItems: "center" }}>계산 기준 보기</summary>
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 18, lineHeight: 1.6, color: "#6B7280", fontSize: 12.5 }}>
+                      <li>비율 지표는 3%p, 금액·인원은 25% 이상 차이 나는 것만 뽑아요.</li>
+                      {highlights.map((h) => (
+                        <li key={h.key}>{h.label}: 차이 = {h.basis} · {h.scope ? `${h.scope} · ` : ""}{h.asOf ?? "기준 시점 없음"}</li>
+                      ))}
+                    </ul>
+                  </details>
                 </section>
               ) : (
                 <section aria-label="눈여겨볼 차이" style={cardStyle}>
@@ -156,20 +163,21 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
               </div>
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 14 }}>
-              {CHART_GROUPS.map((g) => (
-                <Card key={g.title} title={g.title}>
+              {/* 상세 차트 묶음은 '매출'만 펼쳐 두고 나머지는 접어 둔다(길이를 줄이고, 필요한 묶음만 펼쳐 보게) */}
+              {CHART_GROUPS.map((g, gi) => (
+                <FoldCard key={g.title} title={g.title} open={gi === 0}>
                   {g.keys.map((k) => {
                     const row = data.rows.find((r) => r.key === k);
                     if (!row) return null;
                     return (
                       <div key={k} style={{ marginBottom: 12 }}>
-                        <div style={{ fontWeight: 600, fontSize: 15 }}>{row.label}</div>
-                        <div style={{ fontSize: 12.5, color: "#6B7280", marginBottom: 4 }}>{row.scope ? `${row.scope} · ` : ""}{row.source} · {row.as_of ?? "기준 시점 없음"}</div>
+                        <div style={{ fontWeight: 600, fontSize: 15 }}>{row.label} <InfoTip label={`${row.label} 출처 보기`}><b>출처</b> {row.source}</InfoTip></div>
+                        <div style={{ fontSize: 12.5, color: "#6B7280", marginBottom: 4 }}>{row.scope ? `${row.scope} · ` : ""}{row.as_of ?? "기준 시점 없음"}</div>
                         <BarList items={data.units.map((u, i) => ({ label: u.name, value: row.cells[i]?.value ?? null, color: color(u.code), note: row.cells[i]?.note }))} fmt={(v) => formatMetric(row.kind, v)} />
                       </div>
                     );
                   })}
-                </Card>
+                </FoldCard>
               ))}
             </div>
             {/* 위 핵심 지표·상세 차트의 값을 모두 한 표로 모은 것 — 같은 값을 되풀이해 길어지므로 접어 둔다 */}
@@ -249,6 +257,15 @@ function KeyTable({ data, color }: { data: NonNullable<ReturnType<typeof useFood
         </tbody>
       </table>
     </div>
+  );
+}
+
+function FoldCard({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details open={open} style={cardStyle}>
+      <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 17, minHeight: 36, display: "flex", alignItems: "center" }}>{title}</summary>
+      <div style={{ marginTop: 8 }}>{children}</div>
+    </details>
   );
 }
 
