@@ -3,6 +3,7 @@ import { Drawer } from "../../components/Drawer";
 import type { FoodCategoriesResponse } from "../../lib/apiClient";
 import type { Mode } from "../../lib/mode";
 import type { MyStoreEntry } from "../../lib/monthlyCheck";
+import { START_STEPS, stepsLine } from "../../lib/flow";
 
 interface Props {
   mode: Mode;
@@ -30,7 +31,7 @@ export function StartPanel(p: Props) {
 }
 
 function OwnerStart(p: Props) {
-  const steps = ["내 가게 찾기", "매출·비용 점검", "주변 경쟁 변화", "시간대별 상권 수요", "이번 달 확인사항"];
+  const steps = START_STEPS.owner;
   return (
     <Drawer title="우리 가게 장사 점검" subtitle="자영업자 · 5단계로 이번 달 장사를 돌아봐요" onClose={p.onClose}>
       <ol style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -92,7 +93,7 @@ function FounderStart(p: Props) {
       </div>
       <ReportCta onClick={p.onReportFirst} who="후보 지역 상권" />
       {p.interestCount > 0 && <button type="button" onClick={p.onOpenInterest} style={{ ...linkBtn, marginTop: 14 }}>내 관심 지역 {p.interestCount}곳 이어서 보기(비교·보고서·비용) ›</button>}
-      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: 후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
+      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 12, lineHeight: 1.6 }}>이어서: {stepsLine("founder")}. 후보는 조건에 맞는 곳이지 창업 추천이 아니에요.</div>
     </Drawer>
   );
 }

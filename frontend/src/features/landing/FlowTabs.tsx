@@ -20,7 +20,7 @@ export function FlowTabs() {
         <div>
           <p className="eyebrow">이용 흐름</p>
           <h2 className="h2" style={{ marginTop: 8 }}>
-            {mode === "owner" ? "다섯 걸음이면, 내 가게의 자리가 보여요" : "다섯 걸음이면, 후보가 한눈에 정리돼요"}
+            {mode === "owner" ? "다섯 걸음이면, 내 가게의 자리가 보여요" : "네 걸음이면, 후보가 한눈에 정리돼요"}
           </h2>
         </div>
         <div className="tabs" role="tablist" aria-label="이용 대상" onKeyDown={onKey}>

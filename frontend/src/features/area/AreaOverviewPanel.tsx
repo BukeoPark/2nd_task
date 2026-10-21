@@ -4,7 +4,6 @@ import { BarList, LineChart } from "../../components/MiniCharts";
 import { Fold, Notice } from "../../components/Notice";
 import { Caveat, NoteHost, NoteSlot } from "../../components/NoteHost";
 import { InfoTip } from "../../components/InfoTip";
-import type { ProgressKey } from "../../lib/flow";
 import type { Mode } from "../../lib/mode";
 import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
@@ -48,7 +47,6 @@ interface Props {
   onSelectTrdar: (t: OverviewTrdar) => void;
   onSelectStore: (id: string) => void;
   /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
-  onProgress?: (k: ProgressKey) => void;
   /** 이용 모드 — 인사이트 리포트의 관점(자영업자: 매출 증대·기회 / 예비 창업자: 창업 전 점검)을 정한다 */
   mode: Mode;
   /** 매장 목록 항목에 마우스·초점이 올라가면 그 id, 벗어나면 null — 지도의 같은 점 강조용 */
@@ -106,7 +104,7 @@ export function AreaOverviewPanel(p: Props) {
   const onBriefAction = (t: BriefTarget) => {
     if (t === "compare") p.onCompare?.();
     else if (t === "search") p.onFocusSearch?.();
-    else if (t === "report") { setReportOpen(true); p.onProgress?.("report"); }
+    else if (t === "report") setReportOpen(true);
     else goTab(t.slice(4) as AreaTabId);
   };
   const tabIds = areaTabsFor(p.level, p.mode);
@@ -143,7 +141,7 @@ export function AreaOverviewPanel(p: Props) {
             <button
               type="button"
               data-tour="area-report-button"
-              onClick={() => { setReportOpen(true); p.onProgress?.("report"); }}
+              onClick={() => setReportOpen(true)}
               style={{ width: "100%", marginTop: 12, minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" }}
             >
               상권분석 보고서 보기 ›

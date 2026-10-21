@@ -4,6 +4,7 @@ import { placeTip, TOURS, type Rect } from "../../lib/tour";
 import { expandForTour, restoreFolds, type FoldLog } from "../../lib/tourFolds";
 import { useNarrow } from "../../lib/useNarrow";
 import type { Tour } from "./useTour";
+import { stepsLine } from "../../lib/flow";
 
 const Z = 2000;
 const PAD = 5;
@@ -12,11 +13,11 @@ const DIM = "rgba(15,23,42,0.58)";
 const WELCOME: Record<Mode, { title: string; lines: string[] }> = {
   owner: {
     title: "내 가게 상권, 어느 수준일까요?",
-    lines: ["내 가게를 찾고 → 매출·비용을 점검하고 → 주변 경쟁과 상권 변화를 보고 → 이번 달 확인사항을 챙기는 순서로 안내해 드려요.", "1분이면 끝나요. 언제든 위쪽 '도움말'에서 다시 볼 수 있어요."],
+    lines: [`${stepsLine("owner")} 순서로 안내해 드려요.`, "1분이면 끝나요. 언제든 위쪽 '도움말'에서 다시 볼 수 있어요."],
   },
   founder: {
     title: "어디에서 시작하면 좋을까요?",
-    lines: ["어디까지 정하셨는지 고르면 → 조건에 맞는 후보를 찾고 → 비교·비용 점검으로 이어지는 순서로 안내해 드려요.", "1분이면 끝나요. 언제든 위쪽 '도움말'에서 다시 볼 수 있어요."],
+    lines: [`어디까지 정하셨는지 고른 뒤 ${stepsLine("founder")} 순서로 안내해 드려요.`, "1분이면 끝나요. 언제든 위쪽 '도움말'에서 다시 볼 수 있어요."],
   },
 };
 

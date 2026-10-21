@@ -8,11 +8,9 @@ import { AreaBubbleLayer } from "../features/food/AreaBubbleLayer";
 import { StorePointLayer } from "../features/food/StorePointLayer";
 import { SearchMarker } from "../features/food/SearchMarker";
 import { SearchResultChip, SearchStoresLayer } from "../features/food/SearchStoresLayer";
-import { FlowGuide } from "../features/food/FlowGuide";
 import { TourLayer } from "../features/guide/TourLayer";
 import { useMode } from "../features/guide/useMode";
 import { useTour } from "../features/guide/useTour";
-import { useProgress } from "../features/guide/useProgress";
 import { useNarrow } from "../lib/useNarrow";
 import { AnchorLayer } from "../features/food/AnchorLayer";
 import { FoodTopBar } from "../features/food/FoodTopBar";
@@ -132,7 +130,6 @@ const HOME_SNAP: NavSnap = { storeId: null, selection: null, explore: null, star
 
 export function MapPage() {
   const [mode, setMode] = useMode();
-  const { seen, mark } = useProgress();
   const tour = useTour(mode);
   const narrow = useNarrow();
   // 공유 주소(?unit=…&svc=…)로 들어왔으면 그 지역·업종으로 연다 — 주소에는 모드·지역·업종 코드만 있다
@@ -292,7 +289,6 @@ export function MapPage() {
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, r));
   }, [mapKakao]);
   const onPickPlace = useCallback((r: SearchResult, typed: string) => {
-    mark("place");
     if (r.kind === "brand") {
       // 같은 이름의 매장 전부 — 하나를 열지 않고 지도에 모두 올린다(위치 핀·열린 패널은 닫는다).
       setBrand(typed);
@@ -304,7 +300,7 @@ export function MapPage() {
     }
     setBrand(null);
     openPlace(r);
-  }, [mark, openPlace]);
+  }, [openPlace]);
   const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
 
   useEffect(() => {
@@ -387,7 +383,6 @@ export function MapPage() {
   // 이용 순서 표시용: 화면에서 일어난 일을 기록한다(한 번 일어나면 이 방문 동안 유지).
   const shownUnitLevel = shownSelection?.unit?.level ?? null;
   const shownUnitCode = shownSelection?.unit?.code ?? null;
-  useEffect(() => { if (storeId !== null) mark("store"); }, [storeId, mark]);
   const shownTitle = shownSelection?.title ?? null;
   const shownType = shownSelection?.type ?? null;
   useEffect(() => {
@@ -395,14 +390,7 @@ export function MapPage() {
     const name = shownType && shownTitle.endsWith(`(${shownType})`) ? shownTitle.slice(0, -(shownType.length + 2)).trim() : shownTitle;
     setRecent((r) => { const next = pushRecent(r, { level: shownUnitLevel, code: shownUnitCode, name, type: shownType }); saveRecent(next); return next; });
   }, [shownUnitLevel, shownUnitCode, shownTitle, shownType]);
-  useEffect(() => {
-    if (shownUnitCode === null) { autoCode.current = null; return; }
-    if ((shownUnitLevel === "dong" || shownUnitLevel === "trdar") && shownUnitCode !== autoCode.current) mark("area");
-  }, [shownUnitLevel, shownUnitCode, mark]);
-  useEffect(() => { if (metric !== "stores") mark("metric"); }, [metric, mark]);
-  useEffect(() => { if (svc !== null) mark("svc"); }, [svc, mark]);
-  useEffect(() => { if (favorites.length >= 2) mark("basket2"); }, [favorites.length, mark]);
-  useEffect(() => { if (compareOpen) mark("compare"); }, [compareOpen, mark]);
+  useEffect(() => { if (shownUnitCode === null) autoCode.current = null; }, [shownUnitCode]);
   const openFavorite = (f: FavoriteArea) => {
     if (!mapKakao) return;
     setBrand(null); setPlace(null); setStoreId(null); setSelection(null);
@@ -534,7 +522,6 @@ export function MapPage() {
           onRebChange={setRebZonesVisible}
           heat={{ metric: heatMetric, onChange: setHeatMetric, data: heatData, loading: heatMetric !== null && heat.isPending, failed: heatMetric !== null && heat.isError }}
         />}
-        {!hideOverlays && <FlowGuide mode={mode} seen={seen} />}
         {!hideOverlays && <MapDock
           legend={
             <FoodLegend
@@ -562,7 +549,6 @@ export function MapPage() {
           <StoreDetailPanel
             storeId={storeId}
             mode={mode}
-            onProgress={mark}
             mapView={mapKakao}
             onGroupChange={(g) => setGroupAt({ id: storeId, group: g })}
             onSelectStore={(id) => { setHoveredId(null); setRivalId(id); setStoreId(id); }}
@@ -637,7 +623,6 @@ export function MapPage() {
               return (
                 <AreaOverviewPanel
                   key={`${sel.unit.level}:${sel.unit.code}`}
-                  onProgress={mark}
                   mode={mode}
                   level={sel.unit.level}
                   code={sel.unit.code}

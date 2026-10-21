@@ -9,7 +9,6 @@ import { latestMonth } from "../../lib/checkup";
 import { facilityMapPlan } from "../../lib/facilityText";
 import { overlayRadius, validCenter } from "../../lib/radiusOverlay";
 import { railMapPlan } from "../../lib/railText";
-import type { ProgressKey } from "../../lib/flow";
 import type { Mode } from "../../lib/mode";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
 import { railPanelId, railTabId } from "../../lib/railIds";
@@ -51,7 +50,6 @@ interface StoreDetailPanelProps {
   /** 이용 모드 — 예비 창업자에게는 '내 가게' 묶음(내 매출 기록)을 보이지 않는다. */
   mode: Mode;
   /** 화면에서 일어난 일을 알린다(이용 순서 표시) */
-  onProgress: (k: ProgressKey) => void;
   /** 보고 있는 묶음이 바뀌면 알린다 — 지도가 '주변·경쟁' 분석일 때 경쟁 매장·상권 경계를 진하게 그린다 */
   onGroupChange?: (g: GroupId) => void;
   /** 경쟁 매장 목록에서 다른 매장의 상세·운영이력으로 넘어간다 */
@@ -76,7 +74,7 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onProgress, onGroupChange, onSelectStore, onHoverStore, asRival = false, onOpenAreaReport, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGroupChange, onSelectStore, onHoverStore, asRival = false, onOpenAreaReport, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroupState] = useState<GroupId>("store");
@@ -92,8 +90,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
   // 기록한 가장 최근 달의 월 매출(만원)을 읽는다. 브라우저(localStorage)에만 저장하고 서버로 보내지 않는다.
   const mine = useMyStoreRecord(storeId);
   const lastMonth = latestMonth(mine.record.months);
-  const hasRecord = lastMonth !== null;
-  useEffect(() => { if (hasRecord) onProgress("record"); }, [hasRecord, onProgress]);
   // 예비 창업자는 운영 중인 가게가 없어 '내 가게' 묶음을 빼고 세 묶음만 보인다.
   // 자영업자: 내 가게 찾기(이 매장) → 매출·비용 점검(내 가게) → 주변 경쟁 변화(주변) → 상권 수요(상권) 순서. 예비 창업자는 운영 중인 가게 전용 '내 가게'를 숨긴다.
   const groups: GroupId[] = mode === "founder" ? GROUP_IDS.filter((g) => g !== "mine") : ["store", "mine", "radius", "area"];
@@ -229,13 +225,13 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                 {g === "store" && (
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                     {mode === "owner" && (
-                      <button type="button" data-tour="report-button" onClick={() => { setReportOpen(true); onProgress("report"); }} style={reportButtonStyle}>
+                      <button type="button" data-tour="report-button" onClick={() => setReportOpen(true)} style={reportButtonStyle}>
                         내 매장 보고서 보기 ›
                         <span style={reportSubStyle}>이 매장 기준 · 주변 경쟁·상권 변화·고객 수요·확인사항 · 매장 보고서</span>
                       </button>
                     )}
                     {onOpenAreaReport && (
-                      <button type="button" data-tour={mode === "founder" ? "report-button" : undefined} onClick={() => { areaReport(); onProgress("report"); }} style={mode === "owner" ? reportSecondaryStyle : reportButtonStyle}>
+                      <button type="button" data-tour={mode === "founder" ? "report-button" : undefined} onClick={areaReport} style={mode === "owner" ? reportSecondaryStyle : reportButtonStyle}>
                         소속 {store.trdar ? "상권" : "행정동"} 보고서 보기 ›
                         <span style={mode === "owner" ? { ...reportSubStyle, color: "#7C2D12" } : reportSubStyle}>{store.trdar ? store.trdar.name : store.dong} 전체 · {mode === "owner" ? "지역 보고서" : "후보지 매출 흐름·경쟁·입지·확인사항 · 지역 보고서"}</span>
                       </button>
@@ -267,7 +263,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
                   ))}
                 </NoteHost>
                 {g !== "store" && (
-                  <button type="button" onClick={() => (mode === "owner" ? (setReportOpen(true), onProgress("report")) : areaReport())} style={{ ...reportLinkStyle }}>
+                  <button type="button" onClick={() => (mode === "owner" ? setReportOpen(true) : areaReport())} style={{ ...reportLinkStyle }}>
                     {mode === "owner" ? "내 매장 보고서 보기 ›" : "소속 상권 보고서 보기 ›"}
                   </button>
                 )}
