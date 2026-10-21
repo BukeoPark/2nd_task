@@ -159,7 +159,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                     <button type="button" onClick={() => onOpenArea({ level: "trdar", store })} style={linkStyle}>{store.trdar.name}({store.trdar.type}) 상권 분석 ›</button>
                   </>
                 ) : (
-                  <Notice tone="muted">이 매장은 서울시 지정 상권 경계 밖에 있어 세부 상권 분석이 없습니다.</Notice>
+                  <Notice tone="muted">이 매장은 서울시가 정한 상권 밖에 있어 상권 단위 분석 대신 행정동 기준으로 보여 드려요.</Notice>
                 )}
               </div>
             </Section>

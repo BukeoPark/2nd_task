@@ -33,7 +33,7 @@ export interface StoreBrief {
 const COST_TOTAL = 5;
 
 export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
-  const area = { label: "소속 상권", value: inp.trdarName ?? `${inp.dongName} (행정동 기준)`, note: inp.trdarName ? "서울시 지정 상권 경계" : "지정 상권 경계 밖" };
+  const area = { label: "소속 상권", value: inp.trdarName ?? `${inp.dongName} (행정동 기준)`, note: inp.trdarName ? "서울시 지정 상권" : "서울시 지정 상권 밖(행정동으로 봄)" };
   if (inp.mode === "founder") {
     const known = inp.statusLabel !== null;
     return {

@@ -70,7 +70,7 @@ test("0·자료 없음·분석 보류를 서로 다른 말로 구분한다", () 
   const hold = briefFact([r("sales_yoy_pct", "growth", null, { note: "점포가 너무 적어(표본 작음) 비율·증감률을 계산하지 않음" })], "sales_yoy_pct", "증감");
   assert.equal(hold.state, "hold");
   assert.equal(hold.value, "분석 보류");
-  const missing = briefFact([r("sales_yoy_pct", "growth", null, { note: "이 조건의 매출 행이 원천에 없음" })], "sales_yoy_pct", "증감");
+  const missing = briefFact([r("sales_yoy_pct", "growth", null, { note: "이 업종·조건의 매출 자료가 없어요" })], "sales_yoy_pct", "증감");
   assert.equal(missing.state, "missing");
   assert.equal(missing.value, "자료 없음");
   assert.equal(briefFact([], "x", "라벨").state, "missing");

@@ -312,7 +312,7 @@ function DemandBlock({ ov }: { ov: NonNullable<ReturnType<typeof useUnitOverview
           <div style={{ fontSize: 13, fontWeight: 600, margin: "10px 0 4px" }}><Term id="floatingIndex" label="유동인구" /> {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}{f.yoy_pct !== null && ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%`} <InfoTip label="유동인구 출처 보기"><b>출처</b> 서울시 상권분석서비스(유동인구) · 시간대별 비중<br /><b>기준</b> {f.label}</InfoTip></div>
           <BarList items={f.slots.map((s) => ({ label: s.label, value: s.pct, color: "#6366F1" }))} fmt={(v) => `${v}%`} />
         </>
-      ) : <div style={{ marginTop: 8 }}><Notice tone="muted">이 단위의 유동인구 자료가 원천에 없습니다(0 이 아님).</Notice></div>}
+      ) : <div style={{ marginTop: 8 }}><Notice tone="muted">이 지역의 유동인구 자료가 없어요(0이 아니라 자료가 없는 것이에요).</Notice></div>}
       <div style={{ fontSize: 13, fontWeight: 600, margin: "12px 0 4px" }}>시간대별 소비(매출 비중) <InfoTip label="시간대 소비 출처 보기"><b>출처</b> 서울시 상권분석서비스(추정매출) · {ov.trend_scope}<br /><b>기준</b> {sales.label} · 업종 {sales.total}개 중 {sales.used}개 반영(매출액 가중)</InfoTip></div>
       {sales.slots.every((s) => s.pct === null)
         ? <Notice tone="muted">시간대 비중이 모두 확인되는 업종 행이 없어 계산하지 않았습니다(자료 없음).</Notice>

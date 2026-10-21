@@ -50,11 +50,11 @@ FLOATING_CAVEATS = [
 UNITS = {
     "trdar": {"table": "trdar_industry_sales.parquet", "floating": "trdar_floating_pop.parquet", "hinterland": "trdar_hinterland.parquet",
               "cd": "trdar_cd",
-              "nm": "trdar_nm", "label": "상권", "peer_label": "파일럿 구 상권",
+              "nm": "trdar_nm", "label": "상권", "peer_label": "양천·영등포 상권",
               "source": "서울시 상권분석서비스(추정매출·점포·길단위인구-상권)"},
     "dong": {"table": "dong_industry_sales.parquet", "floating": "dong_floating_pop.parquet", "hinterland": "dong_hinterland.parquet",
              "cd": "adongCd",
-             "nm": "adongNm", "label": "행정동", "peer_label": "파일럿 행정동",
+             "nm": "adongNm", "label": "행정동", "peer_label": "양천·영등포 행정동",
              "source": "서울시 상권분석서비스(추정매출·점포·길단위인구-행정동)"},
 }
 

@@ -27,7 +27,7 @@ TOO_FEW_STORES = "too_few_stores"
 SHORT_PERIOD = "short_period"
 NO_COMPARE = "no_compare"
 REASON_TEXT = {
-    NO_ROWS: "이 조건의 매출 행이 원천에 없음",
+    NO_ROWS: "이 업종·조건의 매출 자료가 없어요",
     MISSING_INPUTS: "필요한 값(매출·점포 수 등)이 원천에서 비어 있어 계산하지 않음(0 이 아니라 자료 없음)",
     ZERO_STORES: "점포 수가 0 이라 점포당·비율 값을 계산할 수 없음",
     TOO_FEW_STORES: "점포가 너무 적어(표본 작음) 비율·증감률을 계산하지 않음",

@@ -84,12 +84,12 @@ function Body({
         dongAvg={avg}
         peers={data.peers ?? []}
         unitLabel={data.unit?.label ?? "상권"}
-        peerLabel={data.unit?.peer_label ?? "파일럿"}
+        peerLabel={data.unit?.peer_label ?? "양천·영등포"}
       />
 
       <Fold title="상권 평균의 순위·증감 보기">
         <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>
-          {data.unit?.peer_label ?? "파일럿"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
+          {data.unit?.peer_label ?? "양천·영등포"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
         </div>
         {data.growth ? (
           <>

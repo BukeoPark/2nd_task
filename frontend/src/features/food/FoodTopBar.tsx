@@ -7,18 +7,29 @@ import { useEffect, useState } from "react";
 import { SearchBox } from "./SearchBox";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 
-const METRIC_OPTIONS: { value: FoodMetric; label: string }[] = [
-  { value: "stores", label: "점포 수" },
-  { value: "per_store_month", label: "점포당 월평균 추정매출" },
-  { value: "sales_yoy_pct", label: "총매출 증감률(전년 동기·명목)" },
-  { value: "sales_per_10k_flpop", label: "유동인구 대비 매출" },
-  { value: "open_rate", label: "개업률" },
-  { value: "close_rate", label: "폐업률" },
-  { value: "frc_share", label: "프랜차이즈 비율" },
-  { value: "starbucks_zone_share", label: "스세권 매장 비율" },
-  { value: "daiso_zone_share", label: "다세권 매장 비율" },
-  { value: "stores_change_2y", label: "점포 수 증감률(약 2년·7분기)" },
-  { value: "stores_volatility", label: "점포 수 변동성" },
+// 지도 지표 — 처음 보는 사람이 고르기 쉽게 '자주 쓰는 지표' 4개를 위에 두고 나머지는 '자세히 보는 지표'로 묶는다(이름은 범례·비교 화면과 같다).
+const METRIC_GROUPS: { label: string; options: { value: FoodMetric; label: string }[] }[] = [
+  {
+    label: "자주 쓰는 지표",
+    options: [
+      { value: "stores", label: "점포 수" },
+      { value: "per_store_month", label: "점포당 월평균 추정매출" },
+      { value: "sales_yoy_pct", label: "총매출 증감률(전년 동기·명목)" },
+      { value: "close_rate", label: "폐업률" },
+    ],
+  },
+  {
+    label: "자세히 보는 지표",
+    options: [
+      { value: "sales_per_10k_flpop", label: "유동인구 대비 매출" },
+      { value: "open_rate", label: "개업률" },
+      { value: "frc_share", label: "프랜차이즈 비율" },
+      { value: "starbucks_zone_share", label: "스세권 매장 비율(스타벅스 250m)" },
+      { value: "daiso_zone_share", label: "다세권 매장 비율(다이소 250m)" },
+      { value: "stores_change_2y", label: "점포 수 증감률(약 2년·7분기)" },
+      { value: "stores_volatility", label: "점포 수 변동성(분기별 등락)" },
+    ],
+  },
 ];
 
 interface FoodTopBarProps {
@@ -95,7 +106,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
           <div style={{ fontSize: 13, fontWeight: 700, color: "#4B5563", marginTop: 6 }}>지도에서 보기</div>
           <SheetSelect tour="svc" label="업종" value={p.svc ?? ""} onChange={changeSvc} options={svcOptions} />
           <SheetSelect tour="scls" label="세부 업종" value={p.scls ?? ""} disabled={!group} onChange={(v) => p.onSclsChange(v || null)} options={sclsOptions} />
-          <SheetSelect tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
+          <SheetSelect tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} groups={METRIC_GROUPS} />
           {p.ownerMenu && (
             <button type="button" data-tour="mode-menu" onClick={() => { setMenuOpen(false); p.ownerMenu?.onClick(); }} style={{ ...sheetBtn, marginTop: 6, border: "1px solid #1D4ED8", background: "#EFF6FF", color: "#1E3A8A" }}>{p.ownerMenu.label}</button>
           )}
@@ -136,7 +147,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
         onChange={(v) => p.onSclsChange(v || null)}
         options={sclsOptions}
       />
-      <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
+      <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} groups={METRIC_GROUPS} />
       {wide && <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
       {p.ownerMenu && (
         <button type="button" data-tour="mode-menu" onClick={p.ownerMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -174,14 +185,22 @@ function ModeSwitch({ mode, onChange, stretch }: { mode: Mode; onChange: (m: Mod
   );
 }
 
-function Select({ label, value, onChange, options, disabled, title, tour }: {
+type OptionGroup = { label: string; options: { value: string; label: string }[] };
+const renderOptions = (options: { value: string; label: string }[] | undefined, groups: OptionGroup[] | undefined) =>
+  groups
+    ? groups.map((g) => <optgroup key={g.label} label={g.label}>{g.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>)
+    : (options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>);
+
+function Select({ label, value, onChange, options, groups, disabled, title, tour }: {
   /** 튜토리얼이 이 칸을 가리킬 때 쓰는 이름(data-tour) */
   tour?: string;
   /** 화면에는 보이지 않지만 스크린리더가 '무엇을 고르는 칸인지' 읽는 이름 — 이게 없으면 현재 선택값만 읽힌다 */
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options?: { value: string; label: string }[];
+  /** 묶어서 보일 때(지도 지표) — options 대신 */
+  groups?: OptionGroup[];
   disabled?: boolean;
   title?: string;
 }) {
@@ -199,9 +218,7 @@ function Select({ label, value, onChange, options, disabled, title, tour }: {
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
+      {renderOptions(options, groups)}
     </select>
   );
 }
@@ -225,13 +242,13 @@ function MenuSheet({ onClose, children }: { onClose: () => void; children: React
   );
 }
 
-function SheetSelect({ label, value, onChange, options, disabled, tour }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; disabled?: boolean; tour?: string }) {
+function SheetSelect({ label, value, onChange, options, groups, disabled, tour }: { label: string; value: string; onChange: (v: string) => void; options?: { value: string; label: string }[]; groups?: OptionGroup[]; disabled?: boolean; tour?: string }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "#4B5563" }}>
       {label}
       <select data-tour={tour} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
         style={{ width: "100%", minHeight: 44, padding: "8px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 16 }}>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {renderOptions(options, groups)}
       </select>
     </label>
   );

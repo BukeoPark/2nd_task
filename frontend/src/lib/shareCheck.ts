@@ -32,7 +32,7 @@ export function checkShare(i: ShareCheckInput): ShareIssue {
 /** 사용자에게 보일 한 문장(문제가 없으면 null) */
 export function shareIssueText(x: ShareIssue): string | null {
   const parts: string[] = [];
-  if (x.unitMissing) parts.push("주소에 담긴 지역을 이 지도에서 찾지 못했어요(파일럿 범위는 양천구·영등포구입니다).");
+  if (x.unitMissing) parts.push("주소에 담긴 지역을 이 지도에서 찾지 못했어요(지금은 양천구·영등포구만 볼 수 있어요).");
   if (x.svcInvalid) parts.push("주소에 담긴 업종을 지원하지 않아 '외식 전체'로 열었어요.");
   else if (x.sclsInvalid) parts.push("주소에 담긴 세부 업종을 찾지 못해 업종 전체로 열었어요.");
   return parts.length ? parts.join(" ") : null;

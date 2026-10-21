@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { InfoTip } from "../../components/InfoTip";
 import type { FoodHeatResponse } from "../../lib/apiClient";
 import { HEAT_CSS_GRADIENT, HEAT_METRICS, heatLegendText, type HeatMetric } from "../../lib/heatmap";
@@ -16,26 +17,37 @@ interface MapLayerToolbarProps {
 
 /** 지도 오른쪽 레이어 도구 묶음 — 지도 위에 얹는 표시(앵커 마커·임대료)를 켜고 끈다. 상단바에는 업종·지표 선택만 둔다. */
 export function MapLayerToolbar({ anchorsOn, anchorsForced, onAnchorsChange, rebOn, onRebChange, heat }: MapLayerToolbarProps) {
+  // 평소에는 접어 두고(지도를 덜 가리게) 켜 둔 레이어 개수만 보인다. 펼쳐서 켜고 끈다.
+  const [open, setOpen] = useState(false);
+  const activeCount = (anchorsOn || anchorsForced ? 1 : 0) + (rebOn ? 1 : 0) + (heat.metric ? 1 : 0);
   return (
     <div
       role="group"
       data-tour="layers"
       aria-label="지도 레이어"
       style={{
-        position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 200, right: 16, width: 160, background: "rgba(255,255,255,0.96)", borderRadius: 8,
+        position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 200, right: 16, width: open ? 160 : "auto", background: "rgba(255,255,255,0.96)", borderRadius: 8,
         boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden", fontSize: 13,
       }}
     >
-      <div style={{ padding: "5px 10px", color: "#4B5563", fontWeight: 600, borderBottom: "1px solid #E5E7EB" }}>지도 레이어</div>
-      <LayerButton
-        label="스타벅스·다이소"
-        on={anchorsOn}
-        locked={anchorsForced}
-        title={anchorsForced ? "스세권·다세권 지표를 보는 동안은 매장 위치를 항상 표시합니다" : "스타벅스·다이소 매장 위치 표시"}
-        onToggle={() => onAnchorsChange(!anchorsOn)}
-      />
-      <LayerButton label="임대료(R-ONE)" on={rebOn} locked={false} title="R-ONE 임대동향 상권 표시" onToggle={() => onRebChange(!rebOn)} />
-      <HeatControls heat={heat} />
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", minHeight: 36, padding: "5px 10px", border: "none", background: "transparent", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", borderBottom: open ? "1px solid #E5E7EB" : "none" }}>
+        <span>지도 레이어{activeCount > 0 ? ` · ${activeCount}개 켜짐` : ""}</span>
+        <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <>
+          <LayerButton
+            label="스타벅스·다이소"
+            on={anchorsOn}
+            locked={anchorsForced}
+            title={anchorsForced ? "스세권·다세권 지표를 보는 동안은 매장 위치를 항상 표시합니다" : "스타벅스·다이소 매장 위치 표시"}
+            onToggle={() => onAnchorsChange(!anchorsOn)}
+          />
+          <LayerButton label="임대료(R-ONE)" on={rebOn} locked={false} title="R-ONE 임대동향 상권 표시" onToggle={() => onRebChange(!rebOn)} />
+          <HeatControls heat={heat} />
+        </>
+      )}
     </div>
   );
 }

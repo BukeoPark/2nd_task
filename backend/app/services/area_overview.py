@@ -104,7 +104,7 @@ def _consumption_hours(df: pd.DataFrame, latest: str, level: str = "trdar", svc:
     pilot, pilot_units = _pilot_hours(level, svc, latest)
     return {"quarter": latest, "label": store_churn.quarter_label(latest), "used": used, "total": int(len(g)),
             "slots": [{"label": lb, "pct": None if shares is None else _num(shares[i], 1)} for i, (_, lb) in enumerate(TIME_COLS)],
-            "pilot": {"label": "파일럿 구 " + ("상권" if level == "trdar" else "행정동"), "units": pilot_units,
+            "pilot": {"label": "양천·영등포 " + ("상권" if level == "trdar" else "행정동"), "units": pilot_units,
                       "slots": [{"label": lb, "pct": None if pilot is None else _num(pilot[i], 1)} for i, (_, lb) in enumerate(TIME_COLS)]}}
 
 

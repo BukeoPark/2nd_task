@@ -82,7 +82,7 @@ export function railUsageLines(s: Pick<RailSliceInput, "usage_state" | "boarding
   if (s.usage_state === "no_stations") return { boardings: "해당 없음", alightings: "해당 없음", partial: false };
   if (s.usage_state === "none_linked" || s.boardings_observed === null || s.alightings_observed === null) return { boardings: "이용량 자료 없음", alightings: "이용량 자료 없음", partial: false };
   const partial = s.usage_state === "partial" || s.partial_line_stations > 0;
-  const tail = partial ? " (관측된 부분 합계)" : "";
+  const tail = partial ? " (이용량이 확인된 역만 더한 값)" : "";
   return { boardings: `${num(s.boardings_observed)}명${tail}`, alightings: `${num(s.alightings_observed)}명${tail}`, partial };
 }
 

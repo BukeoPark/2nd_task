@@ -8,7 +8,7 @@ const slotItems = (me: number[], pilot: number[]) =>
 
 const bench: BenchIn = {
   status: "ok", svc_nm: "한식음식점", quarter_label: "2026년 2분기",
-  unit: { label: "상권", name: "문래역", type: "발달상권", peer_label: "파일럿 구 상권" },
+  unit: { label: "상권", name: "문래역", type: "발달상권", peer_label: "양천·영등포 상권" },
   per_store_month: 39_000_000, stores: 31, rank: 10, peer_count: 5,
   growth: { yoy: { compare_label: "2025년 2분기", total_sales: { value: -5.6 }, per_store: { value: -2.6 } }, qoq: { compare_label: "2026년 1분기", per_store: { value: -2.9 } } },
   peers: [
@@ -48,7 +48,7 @@ test("값은 API 그대로, 문장은 규칙으로 만든다", () => {
   assert.match(r.level!.text, /정점보다 13% 낮습니다/);
   assert.match(r.level!.text, /점포당 -2\.6%, 총매출 -5\.6%/);
   assert.equal(r.headline, "문래역 한식음식점은 17~21시 매출 비중이 평균보다 높다");
-  assert.match(r.slots!.text, /17~21시 매출 비중 55\.3%는 파일럿 구 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
+  assert.match(r.slots!.text, /17~21시 매출 비중 55\.3%는 양천·영등포 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
   assert.match(r.slots!.text, /직장인구는 2,644명으로 .*중앙값\(475명\)의 5\.6배입니다/);
 });
 

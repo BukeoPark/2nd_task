@@ -161,7 +161,7 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
         <>
           <div style={grid2}>
             <Mini label="연결된 역 하루 평균 승차" value={usage.boardings} sub={usage.partial ? `연결 ${rail.linked}/${rail.count}역 · ${rail.year}년` : `${rail.year}년`} />
-            <Mini label="연결된 역 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "관측된 부분 합계" : `${rail.year}년`} />
+            <Mini label="연결된 역 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "이용량이 확인된 역만 더한 값" : `${rail.year}년`} />
           </div>
           <Fold title={`역 ${rail.count}곳 보기`}>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
@@ -190,7 +190,7 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
       {bus.count > 0 && (
         <div style={grid2}>
           <Mini label="연결된 정류장 하루 평균 승차" value={usage.boardings} sub={bus.linked_ratio === null ? undefined : `이용량 연결 ${bus.linked}/${bus.count}곳(${Math.round(bus.linked_ratio * 100)}%)`} />
-          <Mini label="연결된 정류장 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "관측된 부분 합계" : `${bus.year}년`} />
+          <Mini label="연결된 정류장 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "이용량이 확인된 정류장만 더한 값" : `${bus.year}년`} />
         </div>
       )}
       {bus.caution && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.caution}</Notice></div>}

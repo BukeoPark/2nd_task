@@ -18,10 +18,10 @@ test("연결 비율: 정류장이 없으면 만들지 않는다", () => {
   assert.equal(busLinkedText({ count: 0, linked: 0, linked_ratio: null }), "");
 });
 
-test("이용량: 승차·하차를 따로, 일부 연결이면 관측된 부분 합계, 연결 0이면 0명이 아니라 자료 없음", () => {
+test("이용량: 승차·하차를 따로, 일부 연결이면 확인된 정류장만 더한 값, 연결 0이면 0명이 아니라 자료 없음", () => {
   const partial = busUsageLines({ usage_state: "partial", boardings_observed: 16904, alightings_observed: 15777 });
-  assert.equal(partial.boardings, "16,904명 (관측된 부분 합계)");
-  assert.equal(partial.alightings, "15,777명 (관측된 부분 합계)");
+  assert.equal(partial.boardings, "16,904명 (이용량이 확인된 정류장만 더한 값)");
+  assert.equal(partial.alightings, "15,777명 (이용량이 확인된 정류장만 더한 값)");
   assert.equal(partial.partial, true);
   const full = busUsageLines({ usage_state: "all_linked", boardings_observed: 100, alightings_observed: 0 });
   assert.deepEqual(full, { boardings: "100명", alightings: "0명", partial: false });   // 실제 0명은 0명

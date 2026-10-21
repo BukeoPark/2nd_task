@@ -126,7 +126,7 @@ function levelSection(inp: AreaReportInput): LevelSection | null {
     me: meMan, median: med, ratio, hist: peers.map(man), rank, peerCount: peers.length, bigRank: big.rank, bigCount: big.count,
     trend: trend.map((t) => ({ q: t.q, v: t.v })), yoyPerStore: null, yoyTotal, qoqPerStore: null, flpopYoy: ov.floating?.yoy_pct ?? null,
     storesFrom: stores.length ? (stores[0].stores as number) : null, storesNow: stores.length ? (stores.at(-1)?.stores as number) : null,
-    unitName: inp.unit.name, peerLabel: `파일럿 구 ${label}`, quarterLabel: asOf(inp.rows, "per_store_month") || ov.latest_quarter, text,
+    unitName: inp.unit.name, peerLabel: `양천·영등포 ${label}`, quarterLabel: asOf(inp.rows, "per_store_month") || ov.latest_quarter, text,
     sampleStores, sampleStatus: sampleStatus(sampleStores), yoyCaution: caution(inp.rows, "sales_yoy_pct"),
   };
 }

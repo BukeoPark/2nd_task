@@ -22,7 +22,7 @@ const input: AreaReportInput = {
     ],
     hours: {
       slots: [{ label: "00~06시", pct: 1 }, { label: "06~11시", pct: 0.2 }, { label: "11~14시", pct: 19.5 }, { label: "14~17시", pct: 5.5 }, { label: "17~21시", pct: 55.3 }, { label: "21~24시", pct: 18.5 }],
-      pilot: { label: "파일럿 구 상권", units: 127, slots: [{ label: "00~06시", pct: 2.5 }, { label: "06~11시", pct: 1.6 }, { label: "11~14시", pct: 32.6 }, { label: "14~17시", pct: 8.5 }, { label: "17~21시", pct: 40.7 }, { label: "21~24시", pct: 14.2 }] },
+      pilot: { label: "양천·영등포 상권", units: 127, slots: [{ label: "00~06시", pct: 2.5 }, { label: "06~11시", pct: 1.6 }, { label: "11~14시", pct: 32.6 }, { label: "14~17시", pct: 8.5 }, { label: "17~21시", pct: 40.7 }, { label: "21~24시", pct: 14.2 }] },
     },
     floating: { label: "2026년 2분기", flpop: 30639, yoy_pct: -15.51, weekend_pct: 25.7, slots: [{ label: "00~06시", pct: 20.3 }, { label: "06~11시", pct: 21.1 }, { label: "11~14시", pct: 15.3 }, { label: "14~17시", pct: 14.7 }, { label: "17~21시", pct: 17.5 }, { label: "21~24시", pct: 11.1 }] },
   },
@@ -60,10 +60,10 @@ test("상권 단위 리포트: 값은 API 그대로, 순위는 점포 20곳 이�
 test("시간대: 매출과 유동인구 비중을 나란히 말하고, 한 시간대에 쏠리면 다른 시간대 확인을 권한다", () => {
   const s = buildAreaReport(input).slots!;
   assert.equal(s.hasFloating, true);
-  assert.match(s.text, /17~21시 매출 비중 55\.3%는 파일럿 구 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
+  assert.match(s.text, /17~21시 매출 비중 55\.3%는 양천·영등포 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
   assert.match(s.text, /가장 매출이 몰린 17~21시의 유동인구 비중은 17\.5%/);
   assert.equal(s.hasPilot, true);
-  assert.match(s.take, /11~14시의 매출 비중이 파일럿 구 상권 평균보다 낮다는 것은/);
+  assert.match(s.take, /11~14시의 매출 비중이 양천·영등포 상권 평균보다 낮다는 것은/);
   assert.match(s.take, /다른 시간대/);
   assert.deepEqual(s.facts.find((f) => f.label === "상주인구"), { label: "상주인구", value: "자료 없음", note: "원천에 값이 없음(0이 아님)" });
 });

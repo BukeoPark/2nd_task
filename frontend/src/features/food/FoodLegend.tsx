@@ -53,21 +53,28 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               <div style={{ color: "#6B7280", fontSize: 12.5 }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
             )}
             <div style={{ color: "#6B7280" }}>원 크기 = 점포 수</div>
+            {/* 업종 범위는 지금 보는 지표의 것 한 줄만 항상 보이고, 점포 수 범위·범위 차이 안내·계산·출처는 '기준 자세히'에 둔다 */}
             <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 4, paddingTop: 4 }}>
-              <div style={{ fontWeight: 600, color: "#374151" }}>업종 범위</div>
+              <span style={{ fontWeight: 600, color: "#374151" }}>업종 범위 </span>
+              {data.metric === "stores" ? `${data.scope.stores_label} 기준` : data.scope.metric_scope}
+            </div>
+            <details style={{ color: "#6B7280", fontSize: 12.5 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 600, color: "#374151", minHeight: 28, display: "flex", alignItems: "center" }}>
+                기준 자세히{data.scope.notice ? " (범위 차이 있음)" : ""}
+              </summary>
               <div>{scopeLine("점포 수", `${data.scope.stores_label} 기준`)}</div>
               {data.metric !== "stores" && <div>{scopeLine(data.label, data.scope.metric_scope)}</div>}
               {data.scope.notice && (
-                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "4px 6px", fontSize: 12.5, marginTop: 2 }}>{data.scope.notice}</div>
+                <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "4px 6px", marginTop: 2 }}>{data.scope.notice}</div>
               )}
-            </div>
-            <div style={{ color: "#6B7280", fontSize: 12.5 }}>계산: {data.basis}</div>
-            <div style={{ color: "#6B7280", fontSize: 12.5 }}>
-              출처 <InfoTip label="출처 보기">
-                <b>점포 수</b> {data.size_source}
-                {data.metric_source && <><br /><b>{data.label}</b> {data.metric_source} · {data.as_of}</>}
-              </InfoTip>
-            </div>
+              <div style={{ marginTop: 2 }}>계산: {data.basis}</div>
+              <div>
+                출처 <InfoTip label="출처 보기">
+                  <b>점포 수</b> {data.size_source}
+                  {data.metric_source && <><br /><b>{data.label}</b> {data.metric_source} · {data.as_of}</>}
+                </InfoTip>
+              </div>
+            </details>
           </>
         )
       )}

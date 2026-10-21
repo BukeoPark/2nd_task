@@ -65,6 +65,6 @@ export function busUsageLines(s: Pick<BusSliceInput, "usage_state" | "boardings_
     return { boardings: "이용량 자료 없음", alightings: "이용량 자료 없음", partial: false };
   }
   const partial = s.usage_state === "partial";
-  const tail = partial ? " (관측된 부분 합계)" : "";
+  const tail = partial ? " (이용량이 확인된 정류장만 더한 값)" : "";
   return { boardings: `${num(s.boardings_observed)}명${tail}`, alightings: `${num(s.alightings_observed)}명${tail}`, partial };
 }

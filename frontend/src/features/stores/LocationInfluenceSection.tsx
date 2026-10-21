@@ -57,10 +57,14 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
       {data && (
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
-          <CommerceBlock data={data} storeId={storeId} />
-          <FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} />
-          <TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
-          <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} />
+          <GlanceBlock data={data} />
+          {/* 상업·집객시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 세 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
+          <Fold title="자세한 숫자 보기 — 상업·집객시설·교통">
+            <CommerceBlock data={data} storeId={storeId} />
+            <FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} />
+            <TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
+            <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} />
+          </Fold>
         </div>
       )}
     </Section>
@@ -121,7 +125,7 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
               <li>주요 집객시설: 공식 자료(건강보험심사평가원 병원정보 · 행정안전부 대규모점포·영화상영관 인허가 · 서울시 LOCALDATA·문화공간 · 소상공인 상가정보)와 이용 권한이 확인된 시설만 셉니다. 권한이 확인되지 않은 지도 업체 검색 결과는 쓰지 않았습니다.</li>
               <li>자료 기준일: {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.reference_date).map((v) => `${v.label} ${facilityReferenceText(v).replace("기준일 ", "")}`).join(" · ")}. 출처: {facilities.attributions.join(" / ") || "해당 반경 시설 없음"}.</li>
               {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.count_state !== "no_official_source" && v.coord_coverage?.pilot_coord_rate != null).map((v) => (
-                <li key={v.type}>{v.label}: 파일럿 지역 공식 목록의 좌표 보유율 {Math.round((v.coord_coverage?.pilot_coord_rate ?? 0) * 100)}% (좌표 없는 {v.coord_coverage?.pilot_unlocated}곳은 위치를 추정하지 않아 빠져 있음).</li>
+                <li key={v.type}>{v.label}: 양천·영등포 공식 목록의 좌표 보유율 {Math.round((v.coord_coverage?.pilot_coord_rate ?? 0) * 100)}% (좌표 없는 {v.coord_coverage?.pilot_unlocated}곳은 위치를 추정하지 않아 빠져 있음).</li>
               ))}
               {facilities.caveats.map((c) => <li key={c}>{c}</li>)}
             </>
@@ -153,7 +157,10 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
             상권 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
           </div>
           <AreaBlock data={data} />
-          <ModelBlock data={data} />
+          {/* 통계 모델(표준편차·95% 구간 등)은 초보자에게 어려워 접어 둔다 — 위 한 줄이 핵심 경고(예측 아님)를 먼저 말한다 */}
+          <Fold title="입지 요인과 점포당 추정매출의 관계 — 통계 분석 보기">
+            <ModelBlock data={data} />
+          </Fold>
           <Fold title="해석 한계 보기">
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
               {data.caveats.map((c) => <li key={c}>{c}</li>)}
@@ -167,6 +174,23 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
 }
 
 /** ① 상업·경쟁 환경 */
+/** 반경 주변 한눈에 — 같은 업종 가게 수 · 가장 가까운 지하철역 · 반경 안 전체 업소. 아래 '자세한 숫자'와 같은 값을 끌어 쓴다(새 계산 없음). */
+function GlanceBlock({ data }: { data: LocationInfluenceResponse }) {
+  const { competitors, rail } = data.radius_metrics;
+  const same = competitors.same_category;
+  const nearest = rail && rail.status === "ok" ? railNearestText(rail.nearest_station) : null;
+  return (
+    <div style={card}>
+      <div style={cardTitle}>반경 {radiusLabel(data.radius_m)} 한눈에</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 6 }}>
+        <Stat big label="같은 업종 가게" value={`${same.count}곳`} sub={`같은 ${same.level}(${same.label})`} />
+        <Stat big label="가장 가까운 지하철역" value={nearest ? nearest.value : "자료 없음"} sub={nearest?.sub} />
+        <Stat big label="반경 안 전체 업소" value={`${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} sub="업종 구분 없이" />
+      </div>
+    </div>
+  );
+}
+
 function CommerceBlock({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
   const { anchors, competitors } = data.radius_metrics;
   // 스세권·다세권(도보권) 판정은 반경과 무관한 매장 기준 값이라 같은 칸에 덧붙인다. 조회 전·실패면 덧붙이지 않는다.
@@ -424,15 +448,17 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
             <Stat label="직장인구" value={a.workers === null || a.workers === undefined ? "자료 없음" : `${a.workers.toLocaleString("ko-KR")}명`} />
             <Stat label="상주인구" value={a.residents === null || a.residents === undefined ? "자료 없음" : `${a.residents.toLocaleString("ko-KR")}명`} />
           </div>
-          <div style={fine}>
-            {a.rule} · 지하철역 {a.has_subway === null || a.has_subway === undefined ? "자료 없음" : a.has_subway ? "영역 안에 있음" : "영역 안에 없음"} ·
-            같은 단위 분포 {Object.entries(a.type_counts).map(([t, n]) => `${t} ${n}곳`).join(" · ")}
-          </div>
+          <Fold title="유형 판정 기준 보기">
+            <div style={fine}>
+              {a.rule} · 지하철역 {a.has_subway === null || a.has_subway === undefined ? "자료 없음" : a.has_subway ? "영역 안에 있음" : "영역 안에 없음"} ·
+              같은 단위 분포 {Object.entries(a.type_counts).map(([t, n]) => `${t} ${n}곳`).join(" · ")}
+            </div>
+          </Fold>
           {a.time_pattern && (
             <Fold title="유동인구 시간대 패턴 보기(유형이 맞는지 확인용)">
               <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ color: "#6B7280", textAlign: "left" }}><th scope="col">시간대</th><th scope="col">이 {a.level_label}</th><th scope="col">파일럿 중앙값</th></tr>
+                  <tr style={{ color: "#6B7280", textAlign: "left" }}><th scope="col">시간대</th><th scope="col">이 {a.level_label}</th><th scope="col">양천·영등포 중앙값</th></tr>
                 </thead>
                 <tbody>
                   {a.time_pattern.items.map((it) => (

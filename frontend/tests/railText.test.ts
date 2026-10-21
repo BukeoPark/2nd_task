@@ -24,10 +24,10 @@ test("출입구·최근접: 수집 범위 밖이면 일부만 확인됨, 없으�
 
 test("이용량: 승차·하차 분리, 부분 합계 표기, 연결 0이면 0명이 아니라 자료 없음", () => {
   const partial = railUsageLines({ usage_state: "partial", boardings_observed: 16904.4, alightings_observed: 15777.2, partial_line_stations: 1 });
-  assert.equal(partial.boardings, "16,904명 (관측된 부분 합계)");
-  assert.equal(partial.alightings, "15,777명 (관측된 부분 합계)");
+  assert.equal(partial.boardings, "16,904명 (이용량이 확인된 역만 더한 값)");
+  assert.equal(partial.alightings, "15,777명 (이용량이 확인된 역만 더한 값)");
   const lines = railUsageLines({ usage_state: "all_linked", boardings_observed: 100, alightings_observed: 0, partial_line_stations: 1 });
-  assert.equal(lines.boardings, "100명 (관측된 부분 합계)");                      // 일부 노선만 연결된 역이 있으면 all_linked 여도 부분
+  assert.equal(lines.boardings, "100명 (이용량이 확인된 역만 더한 값)");                      // 일부 노선만 연결된 역이 있으면 all_linked 여도 부분
   assert.equal(railUsageLines({ usage_state: "all_linked", boardings_observed: 100, alightings_observed: 0, partial_line_stations: 0 }).alightings, "0명");   // 실제 0명은 0명
   assert.equal(railUsageLines({ usage_state: "none_linked", boardings_observed: null, alightings_observed: null, partial_line_stations: 0 }).boardings, "이용량 자료 없음");
   assert.equal(railUsageLines({ usage_state: "no_stations", boardings_observed: null, alightings_observed: null, partial_line_stations: 0 }).boardings, "해당 없음");
