@@ -113,7 +113,11 @@ export function LandingPage() {
           <div className="wrap">
             <h2 className="h2">지금 우리 상권을 열어 볼까요?</h2>
             <p className="lead" style={{ margin: "14px auto 0" }}>{SCOPE_NOTE}</p>
-            <ModeCards />
+            {/* 위쪽 시작 카드와 같은 내용을 되풀이하지 않고 버튼 둘로 마무리한다 */}
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 24 }}>
+              <AppLink className="btn primary" to={mapHref("owner")}>자영업자로 시작하기 →</AppLink>
+              <AppLink className="btn" to={mapHref("founder")}>예비 창업자로 시작하기 →</AppLink>
+            </div>
           </div>
         </section>
       </main>

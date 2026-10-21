@@ -116,7 +116,7 @@ export function AreaOverviewPanel(p: Props) {
     <div key={id} role="tabpanel" id={railPanelId(id, RAIL_PREFIX)} aria-labelledby={railTabId(id, RAIL_PREFIX)} hidden={tab !== id}>
       <div style={{ marginTop: 12, marginBottom: 8 }}>
         <RailHeading fg={AREA_TAB_STYLE[id].fg} bg={AREA_TAB_STYLE[id].bg} title={AREA_QUESTION[id][p.mode]} hint={opts.scoped ? `업종 범위: ${p.filterName}` : undefined} />
-        <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 4 }}>자세히: {title}</div>
+        {id !== "summary" && <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 4 }}>자세히: {title}</div>}
       </div>
       <NoteHost manual={opts.manualNotes}>{children}</NoteHost>
     </div>
@@ -154,7 +154,8 @@ export function AreaOverviewPanel(p: Props) {
           <Fold title="그 밖의 작업 — 지도에서 보기 · 내 관심 지역">
             {p.actions}
           </Fold>
-          <Fold title="지표 카드·기준 안내 자세히">
+          {/* 지표 카드·기준 안내와 읽는 법·유의사항은 접이식 하나로 모은다(요약에 접이식이 셋이던 것을 둘로) */}
+          <NoteSlot label="기준·읽는 법 자세히">
             {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
             <div style={{ marginTop: 10 }}>
               <Notice tone="info">
@@ -165,8 +166,7 @@ export function AreaOverviewPanel(p: Props) {
               </Notice>
             </div>
             {cmp.data?.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{cmp.data.scope.notice}</Notice></div>}
-          </Fold>
-          <NoteSlot />
+          </NoteSlot>
           {reportOpen && <AreaReportModal level={p.level} code={p.code} name={plainName(p.title, p.type)} type={p.type} svc={p.svc} scls={p.scls} mode={p.mode} onClose={() => setReportOpen(false)} />}
         </>
       ), { manualNotes: true })}

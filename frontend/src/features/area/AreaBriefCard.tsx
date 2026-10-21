@@ -6,7 +6,7 @@ const FACT_COLOR: Record<FactState, string> = { value: "#111827", missing: "#9CA
 export function AreaBriefCard({ brief, onAction }: { brief: AreaBrief; onAction: (t: BriefTarget) => void }) {
   return (
     <section data-tour="area-brief" aria-label="핵심 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 12, padding: "14px 14px 12px", background: "#FFFFFF" }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#3730A3" }}>{brief.eyebrow}</div>
+      {/* 모드·'핵심 요약' 이름은 위 질문 제목과 겹쳐 빼고, 어느 단위·업종 기준인지 한 줄만 둔다 */}
       <div style={{ fontSize: 12.5, color: "#6B7280" }}>{brief.scopeLine}</div>
 
       <div style={{ ...stepTitle, marginTop: 10 }}>① 확인된 사실</div>

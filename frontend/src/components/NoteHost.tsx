@@ -34,14 +34,16 @@ export function NoteHost({ children, label = "읽는 법·유의사항", manual 
   );
 }
 
-/** 접이식이 그려질 자리 — `NoteHost manual` 안에서 한 번만 쓴다. */
-export function NoteSlot({ label = "읽는 법·유의사항" }: { label?: string }) {
+/** 접이식이 그려질 자리 — `NoteHost manual` 안에서 한 번만 쓴다. `children` 을 주면 그 내용(기준 안내·지표 카드 등)을 같은 접이식 맨 앞에 함께 담아 접이식이 하나로 보이게 한다. */
+export function NoteSlot({ label = "읽는 법·유의사항", children }: { label?: string; children?: ReactNode }) {
   const ctx = useContext(Ctx);
   if (!ctx) return null;
   const { count, attach } = ctx;
+  const hasExtra = children !== undefined && children !== null && children !== false;
   return (
-    <details data-notes style={{ display: count > 0 ? "block" : "none", marginTop: 8, fontSize: 12, color: "#4B5563", background: "#F3F4F6", borderRadius: 8, padding: "6px 10px" }}>
-      <summary style={{ cursor: "pointer", fontWeight: 600 }}>{label} ({count})</summary>
+    <details data-notes style={{ display: count > 0 || hasExtra ? "block" : "none", marginTop: 8, fontSize: 12, color: "#4B5563", background: "#F3F4F6", borderRadius: 8, padding: "6px 10px" }}>
+      <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 28, display: "flex", alignItems: "center" }}>{label}{count > 0 ? ` (${count})` : ""}</summary>
+      {hasExtra && <div style={{ marginTop: 6 }}>{children}</div>}
       <div ref={attach} style={{ display: "grid", gap: 6, marginTop: 6, lineHeight: 1.55 }} />
     </details>
   );

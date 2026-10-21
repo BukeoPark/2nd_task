@@ -108,7 +108,10 @@ export default function Page() {
           <div className="wrap">
             <h2 className="h2">지금 우리 상권을 열어 볼까요?</h2>
             <p className="lead" style={{ margin: "14px auto 0" }}>{SCOPE_NOTE}</p>
-            <ModeCards appUrl={APP_URL} />
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 24 }}>
+              <a className="btn primary" href={appLink(APP_URL, "owner")}>자영업자로 시작하기 →</a>
+              <a className="btn" href={appLink(APP_URL, "founder")}>예비 창업자로 시작하기 →</a>
+            </div>
           </div>
         </section>
       </main>

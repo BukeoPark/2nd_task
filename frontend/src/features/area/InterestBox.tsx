@@ -60,7 +60,7 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <ModalNav onBack={requestClose} backRef={back} />
         <strong style={{ fontSize: 22 }}>내 관심 지역</strong>
-        <span style={{ color: "#6B7280", fontSize: 13 }}>{favorites.length}/{MAX_FAVORITES}곳 · 담은 순서대로 · 점수·순위·추천은 없어요 · 이 브라우저에만 저장돼요</span>
+        <span style={{ color: "#6B7280", fontSize: 13 }}>{favorites.length}/{MAX_FAVORITES}곳 · 담은 순서대로 · 이 브라우저에만 저장돼요</span>
       </div>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px 32px" }}>
         {rows.length === 0 ? (
@@ -102,6 +102,7 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
   const f = row.fav;
   const unitWord = f.level === "dong" ? "행정동" : "상권";
   const [note, setNote] = useState(row.note);
+  const [memoOpen, setMemoOpen] = useState(() => note.trim() !== "");
   const [failed, setFailed] = useState(false);
   const [share, setShare] = useState<{ copied: boolean } | null>(null);
   const c = row.cost;
@@ -135,12 +136,13 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
         </>
       )}
 
-      <label style={{ display: "block", fontSize: 13.5, fontWeight: 600, marginTop: 10 }}>
-        메모
-        <textarea value={note} maxLength={NOTE_MAX} rows={2} placeholder={founder ? "예: 역에서 도보 3분, 임대 조건 재확인" : "예: 우리 가게와 같은 동"}
+      {/* 메모칸은 메모가 있을 때만 펼쳐 두고, 없으면 '메모 쓰기'로 접어 카드를 짧게 한다(타이핑 중에 접히지 않게 열림 상태를 따로 든다) */}
+      <details open={memoOpen} onToggle={(e) => setMemoOpen(e.currentTarget.open)} style={{ marginTop: 10 }}>
+        <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600, minHeight: 32, display: "flex", alignItems: "center" }}>{note.trim() !== "" ? "메모" : "메모 쓰기"}</summary>
+        <textarea value={note} aria-label="메모" maxLength={NOTE_MAX} rows={2} placeholder={founder ? "예: 역에서 도보 3분, 임대 조건 재확인" : "예: 우리 가게와 같은 동"}
           onChange={(e) => { const v = e.target.value.slice(0, NOTE_MAX); setNote(v); setFailed(!saveNote(favKey(f), v)); onSaved(); }}
           style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 16, resize: "vertical" }} />
-      </label>
+      </details>
       {failed && <div style={{ fontSize: 12.5, color: "#92400E" }}>이 브라우저가 저장을 막아 메모가 새로고침하면 사라집니다.</div>}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
