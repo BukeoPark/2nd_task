@@ -63,6 +63,48 @@ export function FoodTopBar(p: FoodTopBarProps) {
   const group = p.categories?.groups.find((g) => g.svc_cd === p.svc);
   const narrow = useNarrow();
   const wide = useWide(1600);   // 아주 넓은 화면에서만 '지도 단위' 글자를 보인다 — 좁으면 모드별 주요 메뉴가 잘리지 않게 비운다
+  const [menuOpen, setMenuOpen] = useState(false);
+  const svcOptions = [{ value: "", label: "외식 전체" }, ...(p.categories?.groups ?? []).map((g) => ({ value: g.svc_cd, label: `${g.svc_nm} (${g.store_count.toLocaleString()})` }))];
+  const sclsOptions = [{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))];
+  const changeSvc = (v: string) => { p.onSvcChange(v || null); p.onSclsChange(null); };
+  // 휴대폰 폭: 한 줄에 다 담으면 업종·지표·월간 점검·내 관심 지역·도움말이 화면 밖으로 밀려 보이지 않는다 →
+  // 바에는 로고·검색·내 관심 지역·'메뉴'만 두고, 모드·업종·지표·월간 점검·도움말은 '메뉴' 시트에 모은다.
+  if (narrow) {
+    const sheetBtn: React.CSSProperties = { width: "100%", minHeight: 44, padding: "10px 12px", borderRadius: 10, border: "1px solid #D1D5DB", background: "white", color: "#111827", fontSize: 15, fontWeight: 700, cursor: "pointer", textAlign: "left" };
+    return (
+      <>
+        <div
+          style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX + 1, top: 0, left: 0, right: 0, height: 56, background: "white", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", overflow: "hidden" }}
+        >
+          {p.onBack && (
+            <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ width: 40, height: 40, flexShrink: 0, border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>←</button>
+          )}
+          <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: 15, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>상권분석</AppLink>
+          <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
+          <button type="button" data-tour="favorites" onClick={p.onOpenInterest} aria-label={`내 관심 지역 ${p.interestCount}곳`} style={{ ...barBtn, background: "#EFF6FF", color: "#1E3A8A", border: "1px solid #1D4ED8" }}>
+            <span aria-hidden="true">★</span> {p.interestCount}
+          </button>
+          <button type="button" data-tour="menu" aria-expanded={menuOpen} aria-controls="topbar-menu" aria-label={`메뉴 — 현재 모드 ${MODE_LABEL[p.mode]}`} onClick={() => setMenuOpen((o) => !o)} style={{ ...barBtn, background: menuOpen ? "#1D4ED8" : "white", color: menuOpen ? "white" : "#374151" }}>
+            <span aria-hidden="true">☰</span> 메뉴
+          </button>
+        </div>
+        {menuOpen && <MenuSheet onClose={() => setMenuOpen(false)}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>이용 모드</div>
+          <ModeSwitch mode={p.mode} onChange={p.onModeChange} stretch />
+          <div style={{ fontSize: 13, color: "#6B7280", marginTop: -4 }}>{MODE_HINT[p.mode]}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#4B5563", marginTop: 6 }}>지도에서 보기</div>
+          <SheetSelect tour="svc" label="업종" value={p.svc ?? ""} onChange={changeSvc} options={svcOptions} />
+          <SheetSelect tour="scls" label="세부 업종" value={p.scls ?? ""} disabled={!group} onChange={(v) => p.onSclsChange(v || null)} options={sclsOptions} />
+          <SheetSelect tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
+          {p.ownerMenu && (
+            <button type="button" data-tour="mode-menu" onClick={() => { setMenuOpen(false); p.ownerMenu?.onClick(); }} style={{ ...sheetBtn, marginTop: 6, border: "1px solid #1D4ED8", background: "#EFF6FF", color: "#1E3A8A" }}>{p.ownerMenu.label}</button>
+          )}
+          <button type="button" data-tour="help" onClick={() => { setMenuOpen(false); p.onHelp(); }} style={{ ...sheetBtn, fontWeight: 600 }}><span aria-hidden="true">? </span>도움말 (튜토리얼 다시 보기)</button>
+          <button type="button" onClick={() => setMenuOpen(false)} style={{ ...sheetBtn, textAlign: "center", background: "#1D4ED8", color: "white", border: "1px solid #1D4ED8" }}>닫고 지도 보기</button>
+        </MenuSheet>}
+      </>
+    );
+  }
   return (
     <div
       style={{
@@ -82,11 +124,8 @@ export function FoodTopBar(p: FoodTopBarProps) {
         tour="svc"
         label="업종"
         value={p.svc ?? ""}
-        onChange={(v) => {
-          p.onSvcChange(v || null);
-          p.onSclsChange(null);
-        }}
-        options={[{ value: "", label: "외식 전체" }, ...(p.categories?.groups ?? []).map((g) => ({ value: g.svc_cd, label: `${g.svc_nm} (${g.store_count.toLocaleString()})` }))]}
+        onChange={changeSvc}
+        options={svcOptions}
       />
       <Select
         tour="scls"
@@ -95,7 +134,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
         disabled={!group}
         title={group ? "세부 업종은 점포 수·매장 위치에만 적용됩니다. 매출 지표가 어느 업종 기준인지는 범례와 요약 패널에 항상 표시됩니다." : "업종을 먼저 고르세요"}
         onChange={(v) => p.onSclsChange(v || null)}
-        options={[{ value: "", label: group ? `${group.svc_nm} 전체` : "세부 업종" }, ...(group?.details ?? []).map((d) => ({ value: d.code, label: `${d.name} (${d.store_count})` }))]}
+        options={sclsOptions}
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} options={METRIC_OPTIONS} />
       {wide && <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
@@ -115,9 +154,9 @@ export function FoodTopBar(p: FoodTopBarProps) {
 }
 
 /** 자영업자 / 예비 창업자 — 모드에 따라 이용 순서 안내와 매장 상세의 구성이 달라진다. */
-function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+function ModeSwitch({ mode, onChange, stretch }: { mode: Mode; onChange: (m: Mode) => void; stretch?: boolean }) {
   return (
-    <div data-tour="mode" role="radiogroup" aria-label="이용 모드" style={{ display: "inline-flex", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+    <div data-tour="mode" role="radiogroup" aria-label="이용 모드" style={{ display: stretch ? "flex" : "inline-flex", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
       {MODES.map((m) => (
         <button
           key={m}
@@ -126,7 +165,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
           aria-checked={m === mode}
           title={MODE_HINT[m]}
           onClick={() => onChange(m)}
-          style={{ padding: "6px 10px", border: "none", cursor: "pointer", fontSize: 14, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
+          style={{ flex: stretch ? 1 : undefined, minHeight: stretch ? 44 : undefined, padding: "6px 10px", border: "none", cursor: "pointer", fontSize: stretch ? 15 : 14, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
         >
           {MODE_LABEL[m]}
         </button>
@@ -164,5 +203,36 @@ function Select({ label, value, onChange, options, disabled, title, tour }: {
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
+  );
+}
+
+const barBtn: React.CSSProperties = { height: 40, padding: "0 10px", flexShrink: 0, border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" };
+
+/** 휴대폰 폭의 '메뉴' 시트 — 바 아래로 내려오고, 바깥(어두운 곳)·Esc·'닫고 지도 보기'로 닫는다. 고른 업종·지표는 바로 지도에 적용된다. */
+function MenuSheet({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div onClick={onClose} aria-hidden="true" style={{ position: "fixed", inset: "56px 0 0 0", zIndex: OVERLAY_Z_INDEX + 6, background: "rgba(17,24,39,0.35)" }} />
+      <div id="topbar-menu" role="dialog" aria-label="메뉴" style={{ position: "fixed", top: 56, left: 0, right: 0, zIndex: OVERLAY_Z_INDEX + 7, maxHeight: "calc(100dvh - 56px)", overflowY: "auto", background: "white", padding: "12px 14px 16px", boxShadow: "0 8px 16px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: 8 }}>
+        {children}
+      </div>
+    </>
+  );
+}
+
+function SheetSelect({ label, value, onChange, options, disabled, tour }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; disabled?: boolean; tour?: string }) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "#4B5563" }}>
+      {label}
+      <select data-tour={tour} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
+        style={{ width: "100%", minHeight: 44, padding: "8px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 16 }}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
   );
 }

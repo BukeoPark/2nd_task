@@ -54,8 +54,11 @@ function Welcome({ mode, tour }: { mode: Mode; tour: Tour }) {
   );
 }
 
+const TOP_MENU_TARGETS = ["mode", "svc", "scls", "metric", "mode-menu", "help"];
+
 function findTarget(name: string, folds: FoldLog): HTMLElement | null {
-  const el = document.querySelector<HTMLElement>(`[data-tour="${name}"]`);
+  // 휴대폰 폭에서는 모드·업종·지표·월간 점검·도움말이 '메뉴' 시트 안에 있어, 시트가 닫혀 있으면 '메뉴' 단추를 가리킨다
+  const el = document.querySelector<HTMLElement>(`[data-tour="${name}"]`) ?? (TOP_MENU_TARGETS.includes(name) ? document.querySelector<HTMLElement>('[data-tour="menu"]') : null);
   if (!el) return null;
   // '그 밖의 작업' 같은 접힌 영역 안의 버튼을 가리킬 때는 펼쳐서 사용자가 눈으로 찾을 수 있게 한다(단계가 끝나면 원래대로, 사용자가 만진 영역은 그대로)
   const fold = el.closest("details");

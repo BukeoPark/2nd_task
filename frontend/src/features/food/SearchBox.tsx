@@ -120,7 +120,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
   const moreStores = (q.data?.counts.store ?? 0) - results.filter((r) => r.kind === "store").length;
 
   return (
-    <div data-tour="search" ref={boxRef} style={{ position: "relative", width: narrow ? 190 : wideBar ? 280 : 210, flexShrink: 0 }}>
+    <div data-tour="search" ref={boxRef} style={narrow ? { position: "relative", flex: "1 1 0", minWidth: 0 } : { position: "relative", width: wideBar ? 280 : 210, flexShrink: 0 }}>
       <span aria-hidden style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, opacity: 0.55, pointerEvents: "none" }}>🔍</span>
       <input
         ref={inputRef}
