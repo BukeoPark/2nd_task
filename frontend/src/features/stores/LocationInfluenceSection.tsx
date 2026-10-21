@@ -10,6 +10,7 @@ import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, rai
 import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence, useStoreAnchors } from "./useStores";
+import { FS } from "../../lib/typography";
 
 export const DEFAULT_RADIUS_M = 500;
 const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
@@ -56,7 +57,7 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
       )}
       {data && (
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
-          {isPlaceholderData && <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
+          {isPlaceholderData && <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
           <GlanceBlock data={data} />
           {/* 상업·집객시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 세 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
           <Fold title="자세한 숫자 보기 — 상업·집객시설·교통">
@@ -79,7 +80,7 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
   return (
     <Section title="⑥ 분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
       <Fold title="원천자료·기준일·한계 펼치기">
-        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
+        <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#4B5563", lineHeight: 1.6 }}>
           <li>거리는 모두 직선거리입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.</li>
           <li>{competitors.basis}. 선택 매장은 제외했습니다. 밀도는 점포 수 ÷ 원의 넓이(π·반경²) 단순 환산입니다.</li>
           <li>상가정보 기반 점포 수는 위 ① 입니다. 인허가 기반 영업·폐업 현황은 아래 '개폐업' 블록에서 따로 봅니다(서로 다른 자료라 수가 다를 수 있음).</li>
@@ -153,7 +154,7 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
       )}
       {data && (
         <div>
-          <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
+          <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 8 }}>
             상권 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
           </div>
           <AreaBlock data={data} />
@@ -162,7 +163,7 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
             <ModelBlock data={data} />
           </Fold>
           <Fold title="해석 한계 보기">
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#6B7280", lineHeight: 1.6 }}>
               {data.caveats.map((c) => <li key={c}>{c}</li>)}
             </ul>
           </Fold>
@@ -256,38 +257,38 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
             const staleNote = facilityStaleNote(v);
             return (
               <div key={t} style={facilityRow}>
-                <div style={{ fontWeight: 600, fontSize: 12 }}>
+                <div style={{ fontWeight: 600, fontSize: FS.caption }}>
                   <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: FACILITY_MARK[t].color, marginRight: 5 }} />
                   {v.label}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: v.count_state === "no_official_source" || v.count_state === "incomplete_zero" ? "#6B7280" : "#111827" }}>{facilityCountText(v)}</div>
-                <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#6B7280" }}>
+                <div style={{ fontWeight: 700, fontSize: FS.ui, color: v.count_state === "no_official_source" || v.count_state === "incomplete_zero" ? "#6B7280" : "#111827" }}>{facilityCountText(v)}</div>
+                <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#6B7280" }}>
                   가장 가까운 곳: {facilityNearestText(v, radius)}
                   {sub && ` · ${sub}`}
                   {statusNote && ` · ${statusNote}`}
                 </div>
-                {neighborNote && <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#92400E" }}>{neighborNote}</div>}
-                {staleNote && <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#6B7280" }}>{staleNote}</div>}
+                {neighborNote && <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#92400E" }}>{neighborNote}</div>}
+                {staleNote && <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#6B7280" }}>{staleNote}</div>}
                 {(v.count_state === "no_official_source" || v.count_state === "incomplete_zero" || v.count_state === "lower_bound") && (
-                  <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#92400E" }}>{facilityCountNote(v)}</div>
+                  <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#92400E" }}>{facilityCountNote(v)}</div>
                 )}
               </div>
             );
           })}
           {g.id === "commerce" && facilityUnclassifiedNote(facilities.unclassified_retail) && (
-            <div style={{ fontSize: 11, color: "#92400E", paddingTop: 4 }}>{facilityUnclassifiedNote(facilities.unclassified_retail)}</div>
+            <div style={{ fontSize: FS.caption, color: "#92400E", paddingTop: 4 }}>{facilityUnclassifiedNote(facilities.unclassified_retail)}</div>
           )}
         </div>
       ))}
       <Caveat>개수는 공식 목록에 있는 시설 기준이며 이용객·방문객 수가 아닙니다. 점포 유형은 인허가 등록 구분, '영업'은 인허가상 상태입니다. 자세한 기준·출처는 ⑥에서 봅니다.</Caveat>
       {facilities.facilities.length > 0 && (
         <>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
             <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />
             지도에 집객시설 위치 표시(기본 꺼짐)
           </label>
           <Fold title={`반경 안 시설 ${facilities.facilities.length}곳 보기`}>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
               {shown.map((f) => (
                 <li key={f.facility_id}>
                   <strong title={f.display_name && f.display_name !== f.name ? `공식 명칭: ${f.name}` : undefined}>{f.display_name ?? f.name}</strong>({FACILITY_GROUPS.flatMap((g) => g.types).includes(f.type) ? byType[f.type]?.label : f.type}{f.subtype && f.subtype !== byType[f.type]?.label ? ` · ${f.subtype}` : ""}) {f.distance_m.toLocaleString("ko-KR")}m · {f.status_label}{f.reference_stale ? " · 기록 5년 넘게 갱신 안 됨" : ""}
@@ -303,7 +304,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
   );
 }
 
-const subTitle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#6D28D9", margin: "8px 0 2px" };
+const subTitle: React.CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#6D28D9", margin: "8px 0 2px" };
 
 function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAccess; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   if (!rail) return null;      // 구버전 응답(철도 필드 없음)
@@ -332,7 +333,7 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
       {exitsOn && mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
       {exitsOn && !mixed && s.count > 0 && s.stations_by_basis.center === s.count && <div style={fine}>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</div>}
       {exitsOn && s.count > 0 && (
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={showExits} onChange={(e) => onShowExitsChange(e.target.checked)} />
           지도에 출입구 위치 표시(기본 꺼짐)
         </label>
@@ -341,7 +342,7 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
       {s.count > 0 && !exitsOn && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다.</div>}
       {rail.stations.length > 0 && (
         <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
-          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
             {rail.stations.map((st) => (
               <li key={st.complex_id}>
                 <strong>{st.name}</strong>({st.lines}) {st.distance_m.toLocaleString("ko-KR")}m · {st.basis === "entrance" ? `출입구 ${st.entrances.length}곳 확인(최근접 출구 기준)` : "공식 중심점 기준"}
@@ -439,8 +440,8 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-            <span style={{ ...TYPE_STYLE[a.demand_type], borderRadius: 12, padding: "2px 10px", fontWeight: 700, fontSize: 13 }}>{a.demand_type}</span>
-            <span style={{ fontSize: 12, color: "#374151" }}>{a.basis}</span>
+            <span style={{ ...TYPE_STYLE[a.demand_type], borderRadius: 12, padding: "2px 10px", fontWeight: 700, fontSize: FS.warn }}>{a.demand_type}</span>
+            <span style={{ fontSize: FS.caption, color: "#374151" }}>{a.basis}</span>
             <Term id="demandType" label="" />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 }}>
@@ -456,7 +457,7 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
           </Fold>
           {a.time_pattern && (
             <Fold title="유동인구 시간대 패턴 보기(유형이 맞는지 확인용)">
-              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", fontSize: FS.caption, borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ color: "#6B7280", textAlign: "left" }}><th scope="col">시간대</th><th scope="col">이 {a.level_label}</th><th scope="col">양천·영등포 중앙값</th></tr>
                 </thead>
@@ -500,8 +501,8 @@ function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
             {m.factors.map((f) => <FactorRow key={f.key} f={f} dim={!m.useful} />)}
           </ul>
           <Fold title="모델 기준·검증 보기">
-            {m.cv && <div style={{ fontSize: 11, color: "#374151" }}>{m.cv.text}</div>}
-            <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+            {m.cv && <div style={{ fontSize: FS.caption, color: "#374151" }}>{m.cv.text}</div>}
+            <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: FS.caption, color: "#6B7280", lineHeight: 1.6 }}>
               {m.factors.map((f) => <li key={f.key}>{f.label}: {f.definition}(출처 {f.source})</li>)}
               <li>비교 대상: 서울시 음식 업종 상권×업종 {m.rows}개(상권 {m.clusters}곳). 목표값은 최근 분기 점포당 추정매출(로그)이고 업종 차이는 통제했어요.</li>
               {m.high_vif && m.high_vif.length > 0 && <li>요인끼리 값이 비슷하게 움직이는 항목: {m.high_vif.join(", ")} — 개별 계수를 조심해서 보세요.</li>}
@@ -518,14 +519,14 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
   return (
     <li style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", opacity: dim ? 0.75 : 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-        <strong style={{ fontSize: 13 }}>{f.label}</strong>
-        <span style={{ fontSize: 12, fontWeight: 700, color: f.significant ? (f.direction === "positive" ? "#166534" : "#991B1B") : "#6B7280" }}>
+        <strong style={{ fontSize: FS.warn }}>{f.label}</strong>
+        <span style={{ fontSize: FS.caption, fontWeight: 700, color: f.significant ? (f.direction === "positive" ? "#166534" : "#991B1B") : "#6B7280" }}>
           {f.significant ? `${f.direction === "positive" ? "▲" : "▼"} ${f.tendency}` : f.tendency}
         </span>
       </div>
-      <div style={{ fontSize: 12, color: "#374151", marginTop: 2 }}>{effectSentence(f)}</div>
+      <div style={{ fontSize: FS.caption, color: "#374151", marginTop: 2 }}>{effectSentence(f)}</div>
       {mine !== null && (
-        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
+        <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 2 }}>
           이 상권의 값 {mine}{f.binary ? "" : ` · 같은 업종 상권 중 ${percentileText(f.store_percentile)}`}
         </div>
       )}
@@ -536,17 +537,17 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
 function Stat({ label, value, sub, accent, big }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
   return (
     <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", borderLeft: accent ? `3px solid ${accent}` : "3px solid #E5E7EB" }}>
-      <div style={{ fontSize: 11, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: big ? 18 : 15 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: big ? FS.cardTitle : FS.body }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }
 
 const card: React.CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 };
-const cardTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#374151" };
+const cardTitle: React.CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#374151" };
 const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: "1px solid #F3F4F6", alignItems: "baseline" };
-const fine: React.CSSProperties = { fontSize: 11, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
-const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: 11, cursor: "pointer", border: "1px solid #D1D5DB" };
+const fine: React.CSSProperties = { fontSize: FS.caption, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
+const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: FS.caption, cursor: "pointer", border: "1px solid #D1D5DB" };
 const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8", fontWeight: 700 };
 const radiusOff: React.CSSProperties = { ...radiusBase, background: "#fff", color: "#374151" };

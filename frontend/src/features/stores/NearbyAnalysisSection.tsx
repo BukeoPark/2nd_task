@@ -3,6 +3,7 @@ import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { useNearbyAnalysis } from "./useStores";
+import { FS } from "../../lib/typography";
 
 /** '주변 상권 분석' — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율. 매장 개별 평가가 아니다. */
 export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; radius: number }) {
@@ -26,7 +27,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
   const otherWarnings = (data.warnings ?? []).filter((w) => !w.includes("좌표가 없"));
   return (
     <div>
-      <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
+      <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 8 }}>
         반경 {data.radius_m}m · {data.scope?.license_names.join("·")}
         {data.scope?.uptae ? `(${data.scope.uptae.join("·")})` : ""} · 현재 영업 중 인허가 {data.active_count?.toLocaleString()}건
       </div>
@@ -34,12 +35,12 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
       {data.competitors && <CompetitorBlock c={data.competitors} />}
 
       <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-        <div style={{ fontSize: 11, color: "#6b7280" }}>{c.status === "ok" && c.rate !== null && c.horizon_years !== undefined ? `주변 동일 업종의 과거 ${c.horizon_years}년 이내 폐업 비율` : (c.name ?? "영업 지속 지표")}</div>
+        <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{c.status === "ok" && c.rate !== null && c.horizon_years !== undefined ? `주변 동일 업종의 과거 ${c.horizon_years}년 이내 폐업 비율` : (c.name ?? "영업 지속 지표")}</div>
         {c.status === "ok" && c.rate !== null ? (
           <>
-            <div style={{ fontWeight: 700, fontSize: 18 }}>{(c.rate * 100).toFixed(1)}%</div>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>분자 {c.numerator} / 분모 {c.denominator}</div>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>선택 매장의 미래 폐업 확률이 아니라, 주변 동일 업종 인허가의 과거 통계입니다.</div>
+            <div style={{ fontWeight: 700, fontSize: FS.cardTitle }}>{(c.rate * 100).toFixed(1)}%</div>
+            <div style={{ fontSize: FS.caption, color: "#6B7280" }}>분자 {c.numerator} / 분모 {c.denominator}</div>
+            <div style={{ fontSize: FS.caption, color: "#6B7280" }}>선택 매장의 미래 폐업 확률이 아니라, 주변 동일 업종 인허가의 과거 통계입니다.</div>
           </>
         ) : (
           <Notice tone="warn">{c.message ?? "분석 자료 부족"}</Notice>
@@ -47,7 +48,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
       </div>
 
       <Fold title="연도별 개업(인허가)·폐업 건수 보기">
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+      <div style={{ fontSize: FS.caption, color: "#6b7280", marginBottom: 4 }}>
         연도별 개업(인허가)·폐업 건수 <Legend color="#3B82F6" label="개업" /> <Legend color="#EF4444" label="폐업" />
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 70 }}>
@@ -55,9 +56,9 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
           <div key={t.year} style={{ flex: 1, textAlign: "center" }} title={`${t.year}${t.partial_year ? "(진행 중)" : ""} 개업 ${t.opened} / 폐업 ${t.closed ?? "알 수 없음"}`}>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 1, height: 56 }}>
               <Bar h={(t.opened / maxVal) * 56} color="#3B82F6" />
-              {t.closed === null ? <span style={{ fontSize: 9, color: "#9CA3AF" }}>?</span> : <Bar h={(t.closed / maxVal) * 56} color="#EF4444" />}
+              {t.closed === null ? <span style={{ fontSize: FS.caption, color: "#9CA3AF" }}>?</span> : <Bar h={(t.closed / maxVal) * 56} color="#EF4444" />}
             </div>
-            <div style={{ fontSize: 9, color: t.partial_year ? "#9CA3AF" : "#6B7280" }}>{String(t.year).slice(2)}</div>
+            <div style={{ fontSize: FS.caption, color: t.partial_year ? "#9CA3AF" : "#6B7280" }}>{String(t.year).slice(2)}</div>
           </div>
         ))}
       </div>
@@ -75,9 +76,9 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
         </div>
       ))}
       <Fold title="분석 기준 보기">
-        {c.definition && <div style={{ fontSize: 11, color: "#6B7280" }}>{c.definition}</div>}
+        {c.definition && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{c.definition}</div>}
         {coordWarnings.map((w) => (
-          <div key={w} style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+          <div key={w} style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>
             · {w}
           </div>
         ))}
@@ -92,13 +93,13 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
   const hasAdjust = c.adjusted_count !== null && c.excluded_closed_count !== null;
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>반경 {c.radius_m}m 같은 소분류 점포(선택 매장 제외 · 상가정보 기준)</div>
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>반경 {c.radius_m}m 같은 소분류 점포(선택 매장 제외 · 상가정보 기준)</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
         <Stat label="원본" value={`${c.raw_count}곳`} />
         <Stat label="폐업 기록 확인 제외" value={c.excluded_closed_count === null ? "자료 없음" : `${c.excluded_closed_count}곳`} />
         <Stat label="참고 보정" value={hasAdjust ? `${c.adjusted_count}곳` : "자료 없음"} />
       </div>
-      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+      <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>
         인허가상 영업 확인 {c.open_confirmed_count}곳 · 영업 여부 미확인 {c.unconfirmed_count}곳(제외하지 않음)
       </div>
       <Caveat>
@@ -111,8 +112,8 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 10, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
+      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
     </div>
   );
 }

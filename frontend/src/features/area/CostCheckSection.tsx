@@ -5,6 +5,7 @@ import { Term } from "../../components/Term";
 import { COST_CHECK_EXCLUDED, COST_CHECK_FIELDS, clearDraft, computeCostCheck, loadDraft, saveDraft, type CostCheckDraft, type CostCheckKey } from "../../lib/costCheck";
 import { formatKrw } from "../../lib/format";
 import { useNarrow } from "../../lib/useNarrow";
+import { FS } from "../../lib/typography";
 
 const manwon = (v: number) => `${Math.round(v).toLocaleString("ko-KR")}만원`;
 const signedManwon = (v: number) => `${v < 0 ? "-" : v > 0 ? "+" : ""}${manwon(Math.abs(v))}`;
@@ -47,7 +48,7 @@ export function CostCheckSection({ unitKey, unitWord, scopeLabel, benchWon }: Pr
               <Mini label="손익분기 월매출" value={manwon(res.bep)} color="#1D4ED8" />
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: res.status === "invalid" || res.status === "no_margin" ? "#92400E" : "#4B5563" }}>
+            <div style={{ fontSize: FS.warn, color: res.status === "invalid" || res.status === "no_margin" ? "#92400E" : "#4B5563" }}>
               {res.status === "invalid" ? "입력값을 확인해 주세요(금액은 0 이상, 비율은 0~100%). 계산을 보류합니다." : res.status === "no_margin" ? "원가율+수수료율이 100% 이상이라 손익분기가 없습니다." : "값을 넣으면 영업손익과 손익분기 월매출이 여기에 바로 나와요."}
             </div>
           )}
@@ -56,24 +57,24 @@ export function CostCheckSection({ unitKey, unitWord, scopeLabel, benchWon }: Pr
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 14, alignItems: "start" }}>
         {/* 입력 */}
         <section aria-label="입력" style={card}>
-          <strong style={{ fontSize: 17 }}>내가 넣는 값</strong>
+          <strong style={{ fontSize: FS.cardTitle }}>내가 넣는 값</strong>
           {benchMan !== null && (
-            <div style={{ fontSize: 13, color: "#4B5563", margin: "4px 0 0" }}>
+            <div style={{ fontSize: FS.warn, color: "#4B5563", margin: "4px 0 0" }}>
               참고: 이 {unitWord} {scopeLabel} 점포당 월평균 추정매출은 <strong>{formatKrw(benchWon)}</strong>입니다(카드 결제 기반 추정 평균 — 내 매출의 예측이 아닙니다).
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 136px), 1fr))", gap: 10, marginTop: 12 }}>
             {COST_CHECK_FIELDS.map((f) => (
-              <label key={f.key} style={{ fontSize: 13, color: "#374151", fontWeight: 600, gridColumn: f.key === "revenue" ? "1 / -1" : undefined }}>
+              <label key={f.key} style={{ fontSize: FS.warn, color: "#374151", fontWeight: 600, gridColumn: f.key === "revenue" ? "1 / -1" : undefined }}>
                 {f.label} <span style={{ fontWeight: 400, color: "#6B7280" }}>({f.unit})</span>{narrow && <> <InfoTip label={`${f.label} 설명`}>{f.help}</InfoTip></>}
                 <input type="text" inputMode="decimal" value={draft[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder={`예: ${f.placeholder}`} aria-describedby={`cc-help-${f.key}`} style={inputStyle} />
-                <span id={`cc-help-${f.key}`} style={narrow ? srOnly : { display: "block", fontSize: 12.5, color: "#6B7280", fontWeight: 400, lineHeight: 1.4 }}>{f.help}</span>
+                <span id={`cc-help-${f.key}`} style={narrow ? srOnly : { display: "block", fontSize: FS.caption, color: "#6B7280", fontWeight: 400, lineHeight: 1.4 }}>{f.help}</span>
               </label>
             ))}
           </div>
           {saveFailed && <div style={{ marginTop: 8 }}><Notice tone="warn">이 브라우저가 저장을 막아 입력값이 새로고침하면 사라집니다.</Notice></div>}
           {hasAny && (
-            <button type="button" onClick={() => { clearDraft(unitKey); setDraft(loadDraft(unitKey)); setSaveFailed(false); }} style={{ marginTop: 12, padding: "6px 12px", border: "1px solid #FCA5A5", borderRadius: 6, background: "white", color: "#991B1B", cursor: "pointer", fontSize: 13 }}>
+            <button type="button" onClick={() => { clearDraft(unitKey); setDraft(loadDraft(unitKey)); setSaveFailed(false); }} style={{ marginTop: 12, padding: "6px 12px", border: "1px solid #FCA5A5", borderRadius: 6, background: "white", color: "#991B1B", cursor: "pointer", fontSize: FS.warn }}>
               입력값 모두 지우기
             </button>
           )}
@@ -81,7 +82,7 @@ export function CostCheckSection({ unitKey, unitWord, scopeLabel, benchWon }: Pr
 
         {/* 결과 — 넓은 화면에서는 스크롤해도 따라온다 */}
         <section aria-label="계산 결과" style={{ ...card, position: narrow ? "static" : "sticky", top: 76 }}>
-          <strong style={{ fontSize: 17 }}>계산 결과</strong>
+          <strong style={{ fontSize: FS.cardTitle }}>계산 결과</strong>
           <div style={{ marginTop: 10 }}>
             {res.status === "empty" && <Notice tone="muted">비용과 예상 월매출을 넣으면 영업손익과 손익분기를 바로 계산해 드려요(아직 입력 없음).</Notice>}
             {res.status === "invalid" && <Notice tone="warn">금액은 0 이상의 숫자로, 비율(%)은 0~100 사이로 입력해 주세요. 계산을 보류합니다.</Notice>}
@@ -101,7 +102,7 @@ export function CostCheckSection({ unitKey, unitWord, scopeLabel, benchWon }: Pr
               </div>
             )}
           </div>
-          <div style={{ marginTop: 14, fontSize: 12.5, color: "#6B7280", lineHeight: 1.6 }}>
+          <div style={{ marginTop: 14, fontSize: FS.caption, color: "#6B7280", lineHeight: 1.6 }}>
             <strong style={{ color: "#374151" }}>포함하지 않은 항목</strong>
             <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>{COST_CHECK_EXCLUDED.map((x) => <li key={x}>{x}</li>)}</ul>
             필요한 항목은 '기타 고정비'에 직접 넣으세요.
@@ -125,9 +126,9 @@ export function CostCheckLauncher({ unitKey, unitWord, benchWon, onOpen }: { uni
           {res.profit !== null && <Small label="예상 영업손익(월)" value={`${res.profit < 0 ? "-" : ""}${manwon(Math.abs(res.profit))}`} />}
         </div>
       )}
-      <button type="button" onClick={onOpen} style={{ width: "100%", marginTop: 12, padding: "10px 12px", border: "none", borderRadius: 8, background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+      <button type="button" onClick={onOpen} style={{ width: "100%", marginTop: 12, padding: "10px 12px", border: "none", borderRadius: 8, background: "#1D4ED8", color: "white", fontWeight: 700, fontSize: FS.body, cursor: "pointer" }}>
         {has ? "비용 점검 이어서 하기" : "비용 점검 작업 화면 열기"} ›
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>이 {unitWord} 기준 참고값과 함께</span>
+        <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.9 }}>이 {unitWord} 기준 참고값과 함께</span>
       </button>
     </div>
   );
@@ -136,9 +137,9 @@ export function CostCheckLauncher({ unitKey, unitWord, benchWon, onOpen }: { uni
 function Big({ label, value, sub, color }: { label: ReactNode; value: string; sub?: string; color: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "12px 14px" }}>
-      <div style={{ fontSize: 13, color: "#4B5563" }}>{label}</div>
-      <div style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.2, color }}>{value}</div>
-      {sub && <div style={{ fontSize: 12.5, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.warn, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: FS.metric, lineHeight: 1.2, color }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }
@@ -146,8 +147,8 @@ function Big({ label, value, sub, color }: { label: ReactNode; value: string; su
 function Mini({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: "#4B5563" }}>{label}</div>
-      <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.3, color }}>{value}</div>
+      <div style={{ fontSize: FS.caption, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: FS.metric, lineHeight: 1.3, color }}>{value}</div>
     </div>
   );
 }
@@ -155,15 +156,15 @@ function Mini({ label, value, color }: { label: string; value: string; color: st
 function Small({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "8px 10px" }}>
-      <div style={{ fontSize: 12.5, color: "#4B5563" }}>{label}</div>
-      <div style={{ fontWeight: 800, fontSize: 20 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: FS.cardTitle }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }
 
 const card: CSSProperties = { background: "white", borderRadius: 12, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" };
-const inputStyle: CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 16 };
+const inputStyle: CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: FS.input };
 
 /** 화면에서는 가리고 스크린리더에는 읽히게(좁은 화면에서는 설명을 '?' 말풍선으로 옮겼다) */
 const srOnly: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" };

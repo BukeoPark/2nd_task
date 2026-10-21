@@ -8,6 +8,7 @@ import { apiClient } from "../../lib/apiClient";
 import { MONTHLY_ITEMS, MEMO_MAX, loadMonth, monthOf, monthlyDone, recordSummary, saveMonth, type MonthState } from "../../lib/monthlyCheck";
 import type { StoreRecord } from "../../lib/myStoreStorage";
 import { useNearbyAnalysis } from "./useStores";
+import { FS } from "../../lib/typography";
 
 interface Props {
   storeId: string;
@@ -48,11 +49,11 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
   const yoy = bench.data?.status === "ok" ? bench.data.growth?.yoy.total_sales : undefined;
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="우리 가게 월간 점검" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
+    <div role="dialog" aria-modal="true" aria-label="우리 가게 월간 점검" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: FS.body }}>
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <ModalNav onBack={requestClose} backRef={back} />
-        <strong style={{ fontSize: 22 }}>우리 가게 월간 점검</strong>
-        <span style={{ color: "#6B7280", fontSize: 13 }}>{storeName} · {month}</span>
+        <strong style={{ fontSize: FS.screenTitle }}>우리 가게 월간 점검</strong>
+        <span style={{ color: "#6B7280", fontSize: FS.warn }}>{storeName} · {month}</span>
       </div>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 24px 32px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 14, alignItems: "start" }}>
         {/* ① 내 기록 */}
@@ -65,7 +66,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
                 <Big label={`최근 기록(${sum.latest?.month})`} value={manwon(sum.latest?.value ?? 0)} />
                 <Big label="직전 달 대비" value={sum.momPct === null ? "비교 불가" : `${sum.momPct > 0 ? "+" : ""}${sum.momPct.toFixed(1)}%`} note={sum.momPct === null ? "연속한 두 달이 기록돼야 비교해요" : undefined} />
               </div>
-              <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 4, fontSize: 13 }}>
+              <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 4, fontSize: FS.warn }}>
                 {sum.months.map((m) => <li key={m.month}><span style={{ color: "#6B7280" }}>{m.month}</span> <strong>{manwon(m.value)}</strong></li>)}
               </ul>
             </>
@@ -73,10 +74,10 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
           {sum.costsFilled > 0 ? (
             sum.bepMan !== null ? (
               <div style={{ marginTop: 10, background: "#F9FAFB", borderRadius: 10, padding: "8px 10px" }}>
-                <div style={{ fontSize: 13, color: "#4B5563" }}>손익분기 월매출 (입력한 비용 기준)</div>
-                <div style={{ fontWeight: 800, fontSize: 26, color: "#1D4ED8" }}>{manwon(sum.bepMan)}</div>
-                {sum.profitMan !== null && sum.latest && <div style={{ fontSize: 13 }}>최근 기록({sum.latest.month}) 기준 예상 영업손익 <strong>{sum.profitMan < 0 ? "-" : ""}{manwon(Math.abs(sum.profitMan))}</strong></div>}
-                <div style={{ fontSize: 12, color: "#6B7280" }}>세금·대출 원리금은 '기타 고정비'에 넣은 만큼만 반영돼요.</div>
+                <div style={{ fontSize: FS.warn, color: "#4B5563" }}>손익분기 월매출 (입력한 비용 기준)</div>
+                <div style={{ fontWeight: 800, fontSize: FS.metric, color: "#1D4ED8" }}>{manwon(sum.bepMan)}</div>
+                {sum.profitMan !== null && sum.latest && <div style={{ fontSize: FS.warn }}>최근 기록({sum.latest.month}) 기준 예상 영업손익 <strong>{sum.profitMan < 0 ? "-" : ""}{manwon(Math.abs(sum.profitMan))}</strong></div>}
+                <div style={{ fontSize: FS.caption, color: "#6B7280" }}>세금·대출 원리금은 '기타 고정비'에 넣은 만큼만 반영돼요.</div>
               </div>
             ) : <Notice tone="warn">입력한 비용으로는 손익분기를 계산하지 못했어요(비율이 100% 이상이거나 값이 올바르지 않아요).</Notice>
           ) : <div style={{ marginTop: 10 }}><Notice tone="muted">비용을 넣으면 손익분기 월매출을 계산해 드려요(비용 입력 없음).</Notice></div>}
@@ -89,13 +90,13 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
             <Notice tone="muted">{nearby.data?.reason ?? "이 매장은 인허가 자료와 연결되지 않아 주변 변화를 보여 드릴 수 없어요(자료 없음)."}</Notice>
           ) : (
             <>
-              <div style={{ fontSize: 15 }}>영업 중으로 확인되는 같은 업종 인허가 <strong style={{ fontSize: 20 }}>{nearby.data.active_count ?? "자료 없음"}{nearby.data.active_count != null ? "곳" : ""}</strong></div>
+              <div style={{ fontSize: FS.body }}>영업 중으로 확인되는 같은 업종 인허가 <strong style={{ fontSize: FS.cardTitle }}>{nearby.data.active_count ?? "자료 없음"}{nearby.data.active_count != null ? "곳" : ""}</strong></div>
               {trend.length > 0 ? (
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.7 }}>
                   {trend.map((t) => <li key={t.year}>{t.year}년: 새로 열린 곳 {t.opened}곳 · 문 닫은 곳 {t.closed}곳</li>)}
                 </ul>
-              ) : <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>연도별 개폐업 기록이 충분하지 않아요.</div>}
-              <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 6 }}>인허가 기록 기준이라 실제 영업과 다를 수 있고, 이유는 이 자료로 알 수 없어요.</div>
+              ) : <div style={{ fontSize: FS.warn, color: "#6B7280", marginTop: 4 }}>연도별 개폐업 기록이 충분하지 않아요.</div>}
+              <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>인허가 기록 기준이라 실제 영업과 다를 수 있고, 이유는 이 자료로 알 수 없어요.</div>
             </>
           )}
           <button type="button" onClick={onGoRadius} style={cta}>가까운 경쟁 가게 목록 보기 ›</button>
@@ -108,7 +109,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
           ) : (
             <>
               <Big label="전년 같은 분기 대비 총매출" value={`${yoy.value > 0 ? "+" : ""}${yoy.value.toFixed(1)}%`} />
-              <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 4 }}>점포 수 변화가 섞인 값이고 물가는 보정하지 않았어요. 카드 결제 기반 추정이라 우리 가게의 실제 매출이 아니에요.{yoy.status === "caution" ? " 소규모 상권이라 값이 크게 흔들릴 수 있어요." : ""}</div>
+              <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>점포 수 변화가 섞인 값이고 물가는 보정하지 않았어요. 카드 결제 기반 추정이라 우리 가게의 실제 매출이 아니에요.{yoy.status === "caution" ? " 소규모 상권이라 값이 크게 흔들릴 수 있어요." : ""}</div>
             </>
           )}
           <button type="button" onClick={onGoArea} style={cta}>시간대별 상권 수요 보기 ›</button>
@@ -123,17 +124,17 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
                 <li key={it.id} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 10px", background: checked ? "#F0FDF4" : "white" }}>
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: it.auto ? "default" : "pointer" }}>
                     <input type="checkbox" checked={checked} disabled={it.auto} onChange={() => update({ ...state, done: { ...state.done, [it.id]: !state.done[it.id] } })} style={{ marginTop: 3 }} />
-                    <span><strong style={{ fontSize: 15 }}>{it.title}</strong><span style={{ display: "block", fontSize: 12.5, color: "#6B7280" }}>{it.hint}{it.auto ? " (이번 달 기록이 있으면 자동으로 확인돼요)" : ""}</span></span>
+                    <span><strong style={{ fontSize: FS.body }}>{it.title}</strong><span style={{ display: "block", fontSize: FS.caption, color: "#6B7280" }}>{it.hint}{it.auto ? " (이번 달 기록이 있으면 자동으로 확인돼요)" : ""}</span></span>
                   </label>
                 </li>
               );
             })}
           </ul>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
+          <label style={{ display: "block", fontSize: FS.warn, fontWeight: 600, marginTop: 10 }}>
             이번 달 메모
-            <textarea value={state.memo} maxLength={MEMO_MAX} rows={2} onChange={(e) => update({ ...state, memo: e.target.value.slice(0, MEMO_MAX) })} placeholder="예: 점심 세트 가격 점검" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 16, resize: "vertical" }} />
+            <textarea value={state.memo} maxLength={MEMO_MAX} rows={2} onChange={(e) => update({ ...state, memo: e.target.value.slice(0, MEMO_MAX) })} placeholder="예: 점심 세트 가격 점검" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: FS.input, resize: "vertical" }} />
           </label>
-          <div style={{ fontSize: 12, color: "#6B7280" }}>{state.memo.length}/{MEMO_MAX}자</div>
+          <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{state.memo.length}/{MEMO_MAX}자</div>
           {saveFailed && <div style={{ marginTop: 6 }}><Notice tone="warn">이 브라우저가 저장을 막아 체크·메모가 새로고침하면 사라집니다.</Notice></div>}
         </Card>
       </div>
@@ -145,8 +146,8 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
 function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
     <section style={{ background: "white", borderRadius: 12, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-      <strong style={{ fontSize: 17 }}>{title}</strong>
-      {sub && <div style={{ fontSize: 12.5, color: "#6B7280", marginBottom: 8 }}>{sub}</div>}
+      <strong style={{ fontSize: FS.cardTitle }}>{title}</strong>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 8 }}>{sub}</div>}
       <div style={{ marginTop: 6 }}>{children}</div>
     </section>
   );
@@ -155,11 +156,11 @@ function Card({ title, sub, children }: { title: string; sub?: string; children:
 function Big({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div>
-      <div style={{ fontSize: 13, color: "#4B5563" }}>{label}</div>
-      <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.3 }}>{value}</div>
-      {note && <div style={{ fontSize: 12, color: "#6B7280" }}>{note}</div>}
+      <div style={{ fontSize: FS.warn, color: "#4B5563" }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: FS.metric, lineHeight: 1.3 }}>{value}</div>
+      {note && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{note}</div>}
     </div>
   );
 }
 
-const cta: React.CSSProperties = { marginTop: 12, padding: "7px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" };
+const cta: React.CSSProperties = { marginTop: 12, padding: "7px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontWeight: 700, fontSize: FS.body, cursor: "pointer", textAlign: "left" };

@@ -4,6 +4,7 @@ import { ScopeTag } from "../../components/ScopeTag";
 import { apiClient, type GoogleViewReservation } from "../../lib/apiClient";
 import { googleBrowserKeyConfigured, GoogleNotConfigured, loadGooglePlacesUiKit } from "../../lib/googleMapsLoader";
 import { useGooglePlaceLink } from "./useStores";
+import { FS } from "../../lib/typography";
 
 /** 'Google 고객평가' — 사용자가 열 때만 이 매장 1곳을 조회한다. 평점·리뷰는 Google 공식 컴포넌트가 그대로 표시하고,
  * 우리 쪽에서 점수화·순위화·저장하지 않는다. */
@@ -23,7 +24,7 @@ export function GoogleReviewSection({ storeId }: { storeId: string }) {
         )
       }
     >
-      {!open && <div style={{ fontSize: 12, color: "#6B7280" }}>눌렀을 때만 이 매장의 Google 장소를 확인합니다.</div>}
+      {!open && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>눌렀을 때만 이 매장의 Google 장소를 확인합니다.</div>}
       {open && link.isLoading && <Notice tone="muted">Google 장소를 확인하는 중...</Notice>}
       {open && link.isError && <Notice tone="error">조회 실패 — 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.</Notice>}
       {open && link.data && <LinkResult storeId={storeId} status={link.data.status} message={link.data.message} placeId={link.data.place_id} />}
@@ -115,6 +116,6 @@ const buttonStyle = {
   border: "1px solid #3B82F6",
   background: "white",
   color: "#3B82F6",
-  fontSize: 12,
+  fontSize: FS.caption,
   cursor: "pointer",
 } as const;

@@ -6,6 +6,7 @@ import { glyphFor } from "../../lib/storeGlyph";
 import { useNarrow } from "../../lib/useNarrow";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 import { useSearch } from "./useFood";
+import { FS } from "../../lib/typography";
 
 const KIND_LABEL: Record<SearchKind, string> = { station: "역", trdar: "상권", dong: "행정동", address: "주소", store: "매장", brand: "여러 지점" };
 const KIND_ICON: Record<Exclude<SearchKind, "store">, string> = { station: "🚇", trdar: "📍", dong: "🏘️", address: "🏠", brand: "🗺️" };
@@ -121,7 +122,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
 
   return (
     <div data-tour="search" ref={boxRef} style={narrow ? { position: "relative", flex: "1 1 0", minWidth: 0 } : { position: "relative", width: wideBar ? 280 : 210, flexShrink: 0 }}>
-      <span aria-hidden style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, opacity: 0.55, pointerEvents: "none" }}>🔍</span>
+      <span aria-hidden style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: FS.warn, opacity: 0.55, pointerEvents: "none" }}>🔍</span>
       <input
         ref={inputRef}
         type="text"
@@ -132,7 +133,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
         aria-activedescendant={showResults ? `${listId}-${active}` : undefined}
         autoComplete="off"
         value={text}
-        placeholder={pickedName ? `검색 위치: ${pickedName}` : mode === "owner" ? "내 가게 이름·주소 검색" : "관심 지역·역·상권 검색"}
+        placeholder={pickedName ? `검색 위치: ${pickedName}` : narrow ? (mode === "owner" ? "가게 이름·주소" : "지역·역·상권") : mode === "owner" ? "내 가게 이름·주소 검색" : "관심 지역·역·상권 검색"}
         aria-label="위치·매장 검색"
         onFocus={() => setOpen(true)}
         onChange={(e) => {
@@ -147,7 +148,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
           else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
           else if (e.key === "Enter" && showResults && results[active]) pick(results[active]);
         }}
-        style={{ width: "100%", boxSizing: "border-box", padding: "7px 28px 7px 28px", borderRadius: 6, border: "1px solid #D1D5DB", fontSize: 13 }}
+        style={{ width: "100%", boxSizing: "border-box", padding: "7px 28px 7px 28px", borderRadius: 6, border: "1px solid #D1D5DB", fontSize: narrow ? FS.input : FS.ui }}
       />
       {text !== "" && (
         <button type="button" aria-label="검색어 지우기" onClick={clearAll} style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent", color: "#6B7280", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "4px 6px" }}>×</button>
@@ -158,7 +159,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
           role="listbox"
           style={{
             position: "fixed", top: pos.top, left: Math.max(8, Math.min(pos.left, window.innerWidth - (narrow ? 340 : 400) - 8)), width: narrow ? "min(340px, calc(100vw - 16px))" : 400, maxHeight: "min(440px, calc(100vh - 120px))", overflowY: "auto", background: "white", borderRadius: 10,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.25)", zIndex: OVERLAY_Z_INDEX + 3, fontSize: 13, color: "#111827",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.25)", zIndex: OVERLAY_Z_INDEX + 3, fontSize: FS.warn, color: "#111827",
           }}
         >
           {typed.length === 0 && (
@@ -169,16 +170,16 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
                   {recent.map((t) => (
                     <div key={t} style={{ display: "flex", alignItems: "center" }}>
                       <button type="button" onClick={() => fill(t)} style={{ ...rowBtn, flex: 1, padding: "6px 8px" }}><span aria-hidden style={{ marginRight: 8, opacity: 0.6 }}>🕘</span>{t}</button>
-                      <button type="button" aria-label={`${t} 최근 검색에서 지우기`} onClick={() => forget(t)} style={{ ...linkBtn, padding: "4px 8px", fontSize: 15 }}>×</button>
+                      <button type="button" aria-label={`${t} 최근 검색에서 지우기`} onClick={() => forget(t)} style={{ ...linkBtn, padding: "4px 8px", fontSize: FS.body }}>×</button>
                     </div>
                   ))}
                 </>
               )}
               <GroupHead>이렇게 찾아 보세요</GroupHead>
-              <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6 }}>가게 이름, 역 이름, 지역(행정동·상권), 도로명 주소로 찾을 수 있어요.</div>
+              <div style={{ fontSize: FS.caption, color: "#4B5563", lineHeight: 1.6 }}>가게 이름, 역 이름, 지역(행정동·상권), 도로명 주소로 찾을 수 있어요.</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                 {EXAMPLES.map((t) => (
-                  <button key={t} type="button" onClick={() => fill(t)} style={{ border: "1px solid #D1D5DB", background: "#F9FAFB", borderRadius: 999, padding: "4px 10px", fontSize: 12, cursor: "pointer", color: "#374151" }}>{t}</button>
+                  <button key={t} type="button" onClick={() => fill(t)} style={{ border: "1px solid #D1D5DB", background: "#F9FAFB", borderRadius: 999, padding: "4px 10px", fontSize: FS.caption, cursor: "pointer", color: "#374151" }}>{t}</button>
                 ))}
               </div>
             </div>
@@ -186,7 +187,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
           {typed.length === 1 && <Hint>한 글자만 더 입력하세요. (2자 이상)</Hint>}
           {typed.length >= 2 && (waiting || q.isFetching) && (
             <div aria-live="polite" style={{ padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>'{typed}' 찾는 중…</div>
+              <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 8 }}>'{typed}' 찾는 중…</div>
               {[70, 55, 62].map((w) => <div key={w} style={{ height: 12, width: `${w}%`, background: "#E5E7EB", borderRadius: 4, margin: "8px 0" }} />)}
             </div>
           )}
@@ -199,7 +200,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
           {typed.length >= 2 && !waiting && !q.isFetching && !q.isError && results.length === 0 && (
             <div style={{ padding: "12px" }}>
               <div style={{ fontWeight: 700 }}>'{typed}'에 맞는 결과가 없어요</div>
-              <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6, marginTop: 4 }}>철자를 확인하거나 더 짧게 입력해 보세요. 가게 이름 대신 도로명(예: 당산로 132)이나 지역 이름으로도 찾을 수 있어요. 찾는 범위는 양천구·영등포구 외식 매장이에요.</div>
+              <div style={{ fontSize: FS.caption, color: "#4B5563", lineHeight: 1.6, marginTop: 4 }}>철자를 확인하거나 더 짧게 입력해 보세요. 가게 이름 대신 도로명(예: 당산로 132)이나 지역 이름으로도 찾을 수 있어요. 찾는 범위는 양천구·영등포구 외식 매장이에요.</div>
             </div>
           )}
           {showResults && groups.map((g) => (
@@ -211,10 +212,10 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
             </div>
           ))}
           {showResults && moreStores > 0 && (
-            <div style={{ padding: "6px 12px", fontSize: 11.5, color: "#4B5563", background: "#F9FAFB" }}>매장 {moreStores.toLocaleString("ko-KR")}곳이 더 있어요 — 지점명이나 지역을 덧붙이면 좁혀져요.</div>
+            <div style={{ padding: "6px 12px", fontSize: FS.caption, color: "#4B5563", background: "#F9FAFB" }}>매장 {moreStores.toLocaleString("ko-KR")}곳이 더 있어요 — 지점명이나 지역을 덧붙이면 좁혀져요.</div>
           )}
           {showResults && !narrow && (
-            <div style={{ padding: "6px 12px", fontSize: 11, color: "#6B7280", borderTop: "1px solid #F3F4F6" }}>↑↓ 이동 · Enter 선택 · Esc 닫기</div>
+            <div style={{ padding: "6px 12px", fontSize: FS.caption, color: "#6B7280", borderTop: "1px solid #F3F4F6" }}>↑↓ 이동 · Enter 선택 · Esc 닫기</div>
           )}
         </div>
       )}
@@ -236,10 +237,10 @@ function ResultRow({ id, r, typed, active, onHover, onPick }: { id: string; r: S
       onClick={onPick}
       style={{ ...rowBtn, display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: active ? "#EFF6FF" : brand ? "#F5F8FF" : "white", borderLeft: active ? "3px solid #1D4ED8" : "3px solid transparent" }}
     >
-      <span aria-hidden style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 8, background: brand ? "#DBEAFE" : "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{icon}</span>
+      <span aria-hidden style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 8, background: brand ? "#DBEAFE" : "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: FS.body, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{icon}</span>
       <span style={{ minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
-        <span style={{ display: "block", fontSize: 11.5, color: "#4B5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.subtitle}</span>
+        <span style={{ display: "block", fontSize: FS.caption, color: "#4B5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.subtitle}</span>
       </span>
     </button>
   );
@@ -251,7 +252,7 @@ function Marked({ text, q }: { text: string; q: string }) {
 
 function GroupHead({ children, right, pad }: { children: ReactNode; right?: ReactNode; pad?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.02em", margin: pad ? 0 : "8px 0 4px", padding: pad ? "8px 12px 2px" : 0 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: FS.caption, fontWeight: 700, color: "#6B7280", letterSpacing: "0.02em", margin: pad ? 0 : "8px 0 4px", padding: pad ? "8px 12px 2px" : 0 }}>
       <span>{children}</span>
       {right}
     </div>
@@ -259,8 +260,8 @@ function GroupHead({ children, right, pad }: { children: ReactNode; right?: Reac
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <div style={{ padding: "10px 12px", color: "#4B5563", fontSize: 12 }}>{children}</div>;
+  return <div style={{ padding: "10px 12px", color: "#4B5563", fontSize: FS.caption }}>{children}</div>;
 }
 
 const rowBtn: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", border: "none", background: "transparent", cursor: "pointer", font: "inherit", color: "inherit" };
-const linkBtn: React.CSSProperties = { border: "none", background: "transparent", color: "#6B7280", cursor: "pointer", fontSize: 11 };
+const linkBtn: React.CSSProperties = { border: "none", background: "transparent", color: "#6B7280", cursor: "pointer", fontSize: FS.caption };

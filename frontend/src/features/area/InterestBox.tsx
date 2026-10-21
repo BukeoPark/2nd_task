@@ -6,6 +6,7 @@ import type { Mode } from "../../lib/mode";
 import { ModalNav } from "../nav/ModalNav";
 import { useOverlayBack } from "../nav/useOverlayBack";
 import { CostCheckModal } from "./CostCheckModal";
+import { FS } from "../../lib/typography";
 
 const MAX_COMPARE = 4;
 
@@ -56,11 +57,11 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
   const toggle = (f: FavoriteArea) => setPicked((p) => (p.includes(favKey(f)) ? p.filter((x) => x !== favKey(f)) : [...p, favKey(f)]));
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="내 관심 지역" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: 15 }}>
+    <div role="dialog" aria-modal="true" aria-label="내 관심 지역" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: FS.body }}>
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <ModalNav onBack={requestClose} backRef={back} />
-        <strong style={{ fontSize: 22 }}>내 관심 지역</strong>
-        <span style={{ color: "#6B7280", fontSize: 13 }}>{favorites.length}/{MAX_FAVORITES}곳 · 담은 순서대로 · 이 브라우저에만 저장돼요</span>
+        <strong style={{ fontSize: FS.screenTitle }}>내 관심 지역</strong>
+        <span style={{ color: "#6B7280", fontSize: FS.warn }}>{favorites.length}/{MAX_FAVORITES}곳 · 담은 순서대로 · 이 브라우저에만 저장돼요</span>
       </div>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px 32px" }}>
         {rows.length === 0 ? (
@@ -71,10 +72,10 @@ export function InterestBox({ mode, favorites, industryName, onOpenArea, onRepor
           <>
             <div style={{ background: "white", borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
               <div style={{ flex: "1 1 260px" }}>
-                <strong style={{ fontSize: 17 }}>지역을 나란히 비교해 볼까요?</strong>
-                <div style={{ fontSize: 13, color: "#4B5563" }}>아래에서 2~{MAX_COMPARE}곳을 고르세요(같은 단위끼리). 같은 업종·기간의 값만 견줘요. 지금 {pickedFavs.length}곳 선택.</div>
+                <strong style={{ fontSize: FS.cardTitle }}>지역을 나란히 비교해 볼까요?</strong>
+                <div style={{ fontSize: FS.warn, color: "#4B5563" }}>아래에서 2~{MAX_COMPARE}곳을 고르세요(같은 단위끼리). 같은 업종·기간의 값만 견줘요. 지금 {pickedFavs.length}곳 선택.</div>
               </div>
-              <button type="button" disabled={pickedFavs.length < 2} onClick={() => onCompare(pickedFavs)} style={{ minHeight: 44, padding: "8px 18px", border: "none", borderRadius: 10, background: pickedFavs.length < 2 ? "#9CA3AF" : "#1D4ED8", color: "white", fontWeight: 800, fontSize: 15, cursor: pickedFavs.length < 2 ? "not-allowed" : "pointer" }}>
+              <button type="button" disabled={pickedFavs.length < 2} onClick={() => onCompare(pickedFavs)} style={{ minHeight: 44, padding: "8px 18px", border: "none", borderRadius: 10, background: pickedFavs.length < 2 ? "#9CA3AF" : "#1D4ED8", color: "white", fontWeight: 800, fontSize: FS.body, cursor: pickedFavs.length < 2 ? "not-allowed" : "pointer" }}>
                 선택한 {pickedFavs.length}곳 비교하기 ›
               </button>
             </div>
@@ -114,18 +115,18 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
   return (
     <section style={{ background: "white", borderRadius: 12, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", outline: checked ? "2px solid #1D4ED8" : "none" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-        <strong style={{ fontSize: 17 }}>{f.name}</strong>
-        <span style={{ fontSize: 13, color: "#6B7280" }}>{f.type ?? unitWord} · {industry}</span>
+        <strong style={{ fontSize: FS.cardTitle }}>{f.name}</strong>
+        <span style={{ fontSize: FS.warn, color: "#6B7280" }}>{f.type ?? unitWord} · {industry}</span>
       </div>
-      <label title={block ?? undefined} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 14.5, fontWeight: 600, color: block && !checked ? "#9CA3AF" : "#1E3A8A", cursor: block && !checked ? "not-allowed" : "pointer" }}>
+      <label title={block ?? undefined} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: FS.ui, fontWeight: 600, color: block && !checked ? "#9CA3AF" : "#1E3A8A", cursor: block && !checked ? "not-allowed" : "pointer" }}>
         <input type="checkbox" checked={checked} disabled={block !== null && !checked} onChange={onToggle} style={{ width: 18, height: 18 }} />
         비교에 넣기
-        {block && !checked && <span style={{ fontWeight: 400, fontSize: 12.5, color: "#B45309" }}>{block}</span>}
+        {block && !checked && <span style={{ fontWeight: 400, fontSize: FS.caption, color: "#B45309" }}>{block}</span>}
       </label>
 
-      <button type="button" onClick={onReport} style={{ width: "100%", marginTop: 10, minHeight: 44, padding: "8px 12px", border: "none", borderRadius: 10, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+      <button type="button" onClick={onReport} style={{ width: "100%", marginTop: 10, minHeight: 44, padding: "8px 12px", border: "none", borderRadius: 10, background: "#C2410C", color: "white", fontWeight: 800, fontSize: FS.body, cursor: "pointer", textAlign: "left" }}>
         상권분석 보고서 보기 ›
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>{unitWord} 전체 · {founder ? "예비 창업자용" : "자영업자용"} · 지역 보고서</span>
+        <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.9 }}>{unitWord} 전체 · {founder ? "예비 창업자용" : "자영업자용"} · 지역 보고서</span>
       </button>
       <Line label="종합분석" value="성장성·경쟁·수요·입지를 지도와 함께" action="열기 ›" onClick={onOpenArea} />
       {founder && (
@@ -138,12 +139,12 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
 
       {/* 메모칸은 메모가 있을 때만 펼쳐 두고, 없으면 '메모 쓰기'로 접어 카드를 짧게 한다(타이핑 중에 접히지 않게 열림 상태를 따로 든다) */}
       <details open={memoOpen} onToggle={(e) => setMemoOpen(e.currentTarget.open)} style={{ marginTop: 10 }}>
-        <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600, minHeight: 32, display: "flex", alignItems: "center" }}>{note.trim() !== "" ? "메모" : "메모 쓰기"}</summary>
+        <summary style={{ cursor: "pointer", fontSize: FS.warn, fontWeight: 600, minHeight: 32, display: "flex", alignItems: "center" }}>{note.trim() !== "" ? "메모" : "메모 쓰기"}</summary>
         <textarea value={note} aria-label="메모" maxLength={NOTE_MAX} rows={2} placeholder={founder ? "예: 역에서 도보 3분, 임대 조건 재확인" : "예: 우리 가게와 같은 동"}
           onChange={(e) => { const v = e.target.value.slice(0, NOTE_MAX); setNote(v); setFailed(!saveNote(favKey(f), v)); onSaved(); }}
-          style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 16, resize: "vertical" }} />
+          style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 3, padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: FS.body, resize: "vertical" }} />
       </details>
-      {failed && <div style={{ fontSize: 12.5, color: "#92400E" }}>이 브라우저가 저장을 막아 메모가 새로고침하면 사라집니다.</div>}
+      {failed && <div style={{ fontSize: FS.caption, color: "#92400E" }}>이 브라우저가 저장을 막아 메모가 새로고침하면 사라집니다.</div>}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
         <button type="button" onClick={() => void copy()} style={mini}>공유 링크 복사</button>
@@ -151,8 +152,8 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
       </div>
       {share && (
         <div style={{ marginTop: 6 }}>
-          <div role="status" style={{ fontSize: 12.5, color: share.copied ? "#047857" : "#92400E" }}>{share.copied ? "링크를 복사했어요. 주소에는 모드·지역·업종만 들어 있고 메모·비용은 없어요." : "자동 복사가 막혀 있어요. 아래 주소를 직접 복사하세요."}</div>
-          <input readOnly value={shareUrl} aria-label="공유 주소" onFocus={(e) => e.currentTarget.select()} style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "4px 6px", border: "1px solid #D1D5DB", borderRadius: 4 }} />
+          <div role="status" style={{ fontSize: FS.caption, color: share.copied ? "#047857" : "#92400E" }}>{share.copied ? "링크를 복사했어요. 주소에는 모드·지역·업종만 들어 있고 메모·비용은 없어요." : "자동 복사가 막혀 있어요. 아래 주소를 직접 복사하세요."}</div>
+          <input readOnly value={shareUrl} aria-label="공유 주소" onFocus={(e) => e.currentTarget.select()} style={{ width: "100%", boxSizing: "border-box", fontSize: FS.caption, padding: "4px 6px", border: "1px solid #D1D5DB", borderRadius: 4 }} />
         </div>
       )}
     </section>
@@ -163,12 +164,12 @@ function Line({ label, value, action, onClick }: { label: string; value: string;
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", borderTop: "1px solid #F3F4F6", padding: "8px 0 0", marginTop: 8 }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, color: "#6B7280" }}>{label}</div>
-        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{value}</div>
+        <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
+        <div style={{ fontSize: FS.ui, fontWeight: 600 }}>{value}</div>
       </div>
-      <button type="button" onClick={onClick} style={{ flexShrink: 0, minHeight: 36, padding: "4px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{action}</button>
+      <button type="button" onClick={onClick} style={{ flexShrink: 0, minHeight: 36, padding: "4px 12px", border: "1px solid #BFDBFE", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: FS.ui, fontWeight: 600, cursor: "pointer" }}>{action}</button>
     </div>
   );
 }
 
-const mini: React.CSSProperties = { minHeight: 36, padding: "4px 12px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 14, cursor: "pointer" };
+const mini: React.CSSProperties = { minHeight: 36, padding: "4px 12px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: FS.ui, cursor: "pointer" };

@@ -9,6 +9,7 @@ import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
 import { assess, buildRows, checkupText, GAP_PP, latestMonth as latestRecordMonth, quarterLabel } from "../../lib/checkup";
 import { formatKrw } from "../../lib/format";
 import type { CostKey, StoreRecord } from "../../lib/myStoreStorage";
+import { FS } from "../../lib/typography";
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -20,8 +21,8 @@ const COST_FIELDS: { key: CostKey; label: string; unit: string; placeholder: str
   { key: "feePct", label: "카드·배달앱 수수료율", unit: "% (매출 대비)", placeholder: "5" },
 ];
 
-const inputStyle = { width: "100%", padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: 13, boxSizing: "border-box" } as const;
-const buttonStyle = { padding: "6px 12px", border: "1px solid #D1D5DB", borderRadius: 6, background: "#fff", fontSize: 12, cursor: "pointer" } as const;
+const inputStyle = { width: "100%", padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: FS.warn, boxSizing: "border-box" } as const;
+const buttonStyle = { padding: "6px 12px", border: "1px solid #D1D5DB", borderRadius: 6, background: "#fff", fontSize: FS.caption, cursor: "pointer" } as const;
 
 function thisMonth(): string {
   const d = new Date();
@@ -99,8 +100,8 @@ export function MyStoreCheckupSection({
   const bep = breakeven(cost, latestRevenue, benchWon === null ? null : benchWon / 1e4);
 
   return (
-    <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: 11, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
-      <div style={{ fontSize: 12, color: "#374151", marginBottom: 6 }}>
+    <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: FS.caption, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
+      <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 6 }}>
         월 매출을 달마다 기록하면 소속 상권 같은 업종의 흐름과 견주고, 가장 최근 달은 '내 매출 비교'에도 쓰입니다. 비용을 넣으면 손익분기 매출을 계산합니다.
       </div>
       {saveFailed && (
@@ -109,13 +110,13 @@ export function MyStoreCheckupSection({
         </div>
       )}
 
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 상권 흐름과 비교</div>
+      <div style={{ fontSize: FS.caption, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 상권 흐름과 비교</div>
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
-        <label style={{ fontSize: 11, color: "#6B7280" }}>
+        <label style={{ fontSize: FS.caption, color: "#6B7280" }}>
           월
           <input id="my-store-month-input" type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} style={inputStyle} />
         </label>
-        <label style={{ fontSize: 11, color: "#6B7280" }}>
+        <label style={{ fontSize: FS.caption, color: "#6B7280" }}>
           매출 (만원)
           <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="예: 3500" style={inputStyle} />
         </label>
@@ -133,19 +134,19 @@ export function MyStoreCheckupSection({
       {monthKeys.length > 0 && (
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
           {monthKeys.slice(0, 12).map((m) => (
-            <span key={m} style={{ fontSize: 11, background: "#F3F4F6", borderRadius: 12, padding: "2px 4px 2px 8px" }}>
+            <span key={m} style={{ fontSize: FS.caption, background: "#F3F4F6", borderRadius: 12, padding: "2px 4px 2px 8px" }}>
               {m} · {manwon(record.months[m])}
               <button
                 type="button"
                 aria-label={`${m} 기록 삭제`}
                 onClick={() => removeMonth(m)}
-                style={{ border: "none", background: "none", cursor: "pointer", color: "#6B7280", fontSize: 12 }}
+                style={{ border: "none", background: "none", cursor: "pointer", color: "#6B7280", fontSize: FS.caption }}
               >
                 ×
               </button>
             </span>
           ))}
-          {monthKeys.length > 12 && <span style={{ fontSize: 11, color: "#6B7280" }}>외 {monthKeys.length - 12}개월</span>}
+          {monthKeys.length > 12 && <span style={{ fontSize: FS.caption, color: "#6B7280" }}>외 {monthKeys.length - 12}개월</span>}
         </div>
       )}
 
@@ -161,7 +162,7 @@ export function MyStoreCheckupSection({
       </div>
 
       {bench && rows.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 11 }}>
+        <div style={{ marginTop: 8, fontSize: FS.caption }}>
           <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 1fr", gap: 4, color: "#6B7280", marginBottom: 2 }}>
             <span>분기</span>
             <span>내 월평균</span>
@@ -187,7 +188,7 @@ export function MyStoreCheckupSection({
       <Fold title="간이 손익분기 계산 펼치기">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
         {COST_FIELDS.map((f) => (
-          <label key={f.key} style={{ fontSize: 11, color: "#6B7280" }}>
+          <label key={f.key} style={{ fontSize: FS.caption, color: "#6B7280" }}>
             {f.label} ({f.unit})
             <input
               type="text"
@@ -200,7 +201,7 @@ export function MyStoreCheckupSection({
           </label>
         ))}
       </div>
-      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+      <div style={{ fontSize: FS.caption, color: "#9CA3AF", marginTop: 4 }}>
         손익분기 매출 = 월 고정비 ÷ (1 − 재료비율 − 수수료율). 세금·대출 원리금은 '기타 고정비'에 넣어야 반영됩니다. 사장님 본인 몫을 인건비에 넣을지는 직접 정하세요.
         상권 평균 비용 자료는 없어 입력한 값만으로 계산한 참고용 숫자입니다.
       </div>
@@ -241,9 +242,9 @@ export function MyStoreCheckupSection({
 function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }

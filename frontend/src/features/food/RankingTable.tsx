@@ -2,6 +2,7 @@ import type { FoodBubble, FoodBubblesResponse } from "../../lib/apiClient";
 import { reasonText } from "../../lib/foodText";
 import { formatMetric } from "../../lib/format";
 import { rankBubbles } from "../../lib/ranking";
+import { FS } from "../../lib/typography";
 
 /** 순위표 — 지도의 버블을 지표 값 순서로 세운 표. 버블을 마우스로 누르지 않아도(키보드·스크린리더) 같은 요약을 열 수 있다.
  * 값이 없으면 0 이 아니라 사유를 말하고, 이전 조건의 결과이거나 조회 실패면 눌러도 진행하지 않는다(지도와 같은 규칙). */
@@ -14,18 +15,18 @@ export function RankingTable({ data, unitLabel, stale, actionable, onPick }: {
   actionable: boolean;
   onPick: (b: FoodBubble) => void;
 }) {
-  if (!data) return <div role="status" style={{ fontSize: 13, color: "#4B5563" }}>순위표를 불러오는 중...</div>;
+  if (!data) return <div role="status" style={{ fontSize: FS.warn, color: "#4B5563" }}>순위표를 불러오는 중...</div>;
   const rows = rankBubbles(data.bubbles);
   const showValue = data.metric !== "stores";
   const scope = showValue ? data.scope.metric_scope : `${data.scope.stores_label} 기준`;
   const noValue = rows.filter((r) => r.rank === null).length;
   return (
     <div style={{ opacity: stale ? 0.55 : 1 }}>
-      {stale && <div role="status" style={{ color: "#B45309", fontWeight: 600, fontSize: 13, marginBottom: 4 }}>새 조건을 불러오는 중 — 아래는 이전 조건의 순위표</div>}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      {stale && <div role="status" style={{ color: "#B45309", fontWeight: 600, fontSize: FS.warn, marginBottom: 4 }}>새 조건을 불러오는 중 — 아래는 이전 조건의 순위표</div>}
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.warn }}>
         <caption style={{ textAlign: "left", fontWeight: 600, paddingBottom: 4 }}>
           {data.label} 높은 순 · {unitLabel} {rows.length}곳
-          <div style={{ fontWeight: 400, color: "#4B5563", fontSize: 12.5 }}>업종 범위: {scope}</div>
+          <div style={{ fontWeight: 400, color: "#4B5563", fontSize: FS.caption }}>업종 범위: {scope}</div>
         </caption>
         <thead>
           <tr style={{ color: "#4B5563", textAlign: "left" }}>
@@ -61,7 +62,7 @@ export function RankingTable({ data, unitLabel, stale, actionable, onPick }: {
           ))}
         </tbody>
       </table>
-      {noValue > 0 && showValue && <div style={{ fontSize: 12.5, color: "#4B5563", marginTop: 4 }}>순위가 없는 {noValue}곳은 값이 0 이 아니라 자료가 없는 곳이에요(사유는 오른쪽 칸).</div>}
+      {noValue > 0 && showValue && <div style={{ fontSize: FS.caption, color: "#4B5563", marginTop: 4 }}>순위가 없는 {noValue}곳은 값이 0 이 아니라 자료가 없는 곳이에요(사유는 오른쪽 칸).</div>}
     </div>
   );
 }

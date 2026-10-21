@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { FS } from "../lib/typography";
 
 interface NoteCtx {
   target: HTMLElement | null;
@@ -41,7 +42,7 @@ export function NoteSlot({ label = "읽는 법·유의사항", children }: { lab
   const { count, attach } = ctx;
   const hasExtra = children !== undefined && children !== null && children !== false;
   return (
-    <details data-notes style={{ display: count > 0 || hasExtra ? "block" : "none", marginTop: 8, fontSize: 12, color: "#4B5563", background: "#F3F4F6", borderRadius: 8, padding: "6px 10px" }}>
+    <details data-notes style={{ display: count > 0 || hasExtra ? "block" : "none", marginTop: 8, fontSize: FS.caption, color: "#4B5563", background: "#F3F4F6", borderRadius: 8, padding: "6px 10px" }}>
       <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 28, display: "flex", alignItems: "center" }}>{label}{count > 0 ? ` (${count})` : ""}</summary>
       {hasExtra && <div style={{ marginTop: 6 }}>{children}</div>}
       <div ref={attach} style={{ display: "grid", gap: 6, marginTop: 6, lineHeight: 1.55 }} />
@@ -52,7 +53,7 @@ export function NoteSlot({ label = "읽는 법·유의사항", children }: { lab
 /** 해석상 유의사항 한 줄 — 가장 가까운 `NoteHost` 의 접이식으로 모인다(없으면 제자리에 작은 글씨로 그린다). 숫자 바로 옆에 있어야 하는 핵심 경고는 여기 말고 눈에 보이는 문구로 둔다. */
 export function Caveat({ children }: { children: ReactNode }) {
   const ctx = useContext(Ctx);
-  const line = <div style={{ fontSize: 11.5, lineHeight: 1.55, color: "#4B5563" }}>{children}</div>;
+  const line = <div style={{ fontSize: FS.caption, lineHeight: 1.55, color: "#4B5563" }}>{children}</div>;
   if (ctx === undefined) return line;
   return ctx.target ? createPortal(line, ctx.target) : null;
 }

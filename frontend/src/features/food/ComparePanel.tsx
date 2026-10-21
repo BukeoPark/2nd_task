@@ -4,6 +4,7 @@ import { formatMetric } from "../../lib/format";
 import { viewState } from "../../lib/queryState";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
 import { useFoodCompare } from "./useFood";
+import { FS } from "../../lib/typography";
 
 const UNIT_NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
 
@@ -32,8 +33,8 @@ export function ComparePanel({ level, codes, svc, scls, filterName, onRemove, on
       }}
     >
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-        <strong style={{ fontSize: 16 }}>입지 비교</strong>
-        <span style={{ fontSize: 12, color: "#6B7280" }}>
+        <strong style={{ fontSize: FS.cardTitle }}>입지 비교</strong>
+        <span style={{ fontSize: FS.caption, color: "#6B7280" }}>
           {UNIT_NOUN[level]} {codes.length}곳 · 선택 업종: {filterName}
         </span>
         <button type="button" onClick={onClose} aria-label="닫기" style={{ marginLeft: "auto", border: "none", background: "none", fontSize: 18, cursor: "pointer" }}>
@@ -51,7 +52,7 @@ export function ComparePanel({ level, codes, svc, scls, filterName, onRemove, on
         </Notice>
       )}
       {state === "refetching" && (
-        <div role="status" style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "6px 10px", fontSize: 12, marginBottom: 6 }}>
+        <div role="status" style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "6px 10px", fontSize: FS.caption, marginBottom: 6 }}>
           새 조건으로 다시 계산하는 중입니다. 아래 표는 <strong>이전 조건의 결과</strong>이니 새 결과가 나올 때까지 참고하지 마세요.
         </div>
       )}
@@ -70,9 +71,9 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
   return (
     <>
       {data.scope.notice && (
-        <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "6px 10px", fontSize: 12, marginTop: 6 }}>{data.scope.notice}</div>
+        <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 6, padding: "6px 10px", fontSize: FS.caption, marginTop: 6 }}>{data.scope.notice}</div>
       )}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 8 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.warn, marginTop: 8 }}>
         <thead>
           <tr>
             <th style={{ ...th, textAlign: "left", width: 230 }}>지표</th>
@@ -81,10 +82,10 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
                   <span>
                     {u.name}
-                    {u.type && <span style={{ fontWeight: 400, color: "#6B7280", fontSize: 11 }}> {u.type}</span>}
+                    {u.type && <span style={{ fontWeight: 400, color: "#6B7280", fontSize: FS.caption }}> {u.type}</span>}
                   </span>
                   <button type="button" onClick={() => onRemove(u.code)} aria-label={`${u.name} 빼기`} title="비교에서 빼기"
-                    style={{ border: "none", background: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 14 }}>
+                    style={{ border: "none", background: "none", color: "#9CA3AF", cursor: "pointer", fontSize: FS.ui }}>
                     ×
                   </button>
                 </div>
@@ -100,7 +101,7 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
             return [
               header && (
                 <tr key={`g-${r.group}`}>
-                  <td colSpan={data.units.length + 1} style={{ padding: "10px 0 4px", fontSize: 11, fontWeight: 700, color: "#6B7280" }}>
+                  <td colSpan={data.units.length + 1} style={{ padding: "10px 0 4px", fontSize: FS.caption, fontWeight: 700, color: "#6B7280" }}>
                     {r.group}
                   </td>
                 </tr>
@@ -109,22 +110,22 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
                 <td style={{ padding: "6px 0" }}>
                   <div>{r.label}</div>
                   {r.scope && (
-                    <div style={{ fontSize: 11, fontWeight: 600, color: data.scope.differs && r.scope !== `${data.scope.stores_label} 기준` ? "#B45309" : "#1D4ED8" }}>
+                    <div style={{ fontSize: FS.caption, fontWeight: 600, color: data.scope.differs && r.scope !== `${data.scope.stores_label} 기준` ? "#B45309" : "#1D4ED8" }}>
                       {r.scope}
                     </div>
                   )}
-                  <div style={{ fontSize: 10, color: "#9CA3AF" }}>
+                  <div style={{ fontSize: FS.caption, color: "#9CA3AF" }}>
                     {r.source}
                     {r.as_of ? ` · ${r.as_of}` : " · 기준 시점 없음"}
                   </div>
-                  {r.basis && <div style={{ fontSize: 10, color: "#9CA3AF" }}>계산: {r.basis}</div>}
+                  {r.basis && <div style={{ fontSize: FS.caption, color: "#9CA3AF" }}>계산: {r.basis}</div>}
                 </td>
                 {r.cells.map((c, j) => (
                   <td key={data.units[j].code} style={{ padding: "6px 0", textAlign: "right", verticalAlign: "top" }}>
                     <div style={{ fontWeight: max !== null && c.value === max ? 700 : 400, color: c.value === null ? "#9CA3AF" : "#111827" }}>
                       {formatMetric(r.kind, c.value)}
                     </div>
-                    {c.note && <div style={{ fontSize: 10, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
+                    {c.note && <div style={{ fontSize: FS.caption, color: c.partial || c.caution ? "#B45309" : "#9CA3AF" }}>{c.note}</div>}
                   </td>
                 ))}
               </tr>,
@@ -132,7 +133,7 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
           })}
         </tbody>
       </table>
-      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 10 }}>
+      <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 10 }}>
         굵은 값 = 그 행에서 가장 높은 값(좋고 나쁨이 아니라 크기만 표시)
         {data.notes.filter((n) => n !== data.scope.notice).map((n) => (
           <div key={n}>· {n}</div>
@@ -142,4 +143,4 @@ export function CompareTable({ data, onRemove }: { data: FoodCompareResponse; on
   );
 }
 
-const th: React.CSSProperties = { padding: "6px 0", textAlign: "right", borderBottom: "2px solid #E5E7EB", fontSize: 13, fontWeight: 700 };
+const th: React.CSSProperties = { padding: "6px 0", textAlign: "right", borderBottom: "2px solid #E5E7EB", fontSize: FS.warn, fontWeight: 700 };

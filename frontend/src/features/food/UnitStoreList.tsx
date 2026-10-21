@@ -3,6 +3,7 @@ import { Notice } from "../../components/Notice";
 import type { FoodLevel, UnitStoreSort } from "../../lib/apiClient";
 import { formatDistance } from "../../lib/format";
 import { useFoodUnitStores, UNIT_STORE_PAGE } from "./useFood";
+import { FS } from "../../lib/typography";
 
 const UNIT_NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
 const SORT_LABEL: Record<UnitStoreSort, string> = { distance: "버블 중심에서 가까운 순", name: "상호 가나다순" };
@@ -31,13 +32,13 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
 
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+      <div style={{ fontSize: FS.caption, color: "#6b7280", marginBottom: 6 }}>
         이 {UNIT_NOUN[level]} 안 매장 ({filterName})
         {q.data && <strong style={{ color: "#374151" }}> — 총 {total.toLocaleString()}곳 중 {records.length.toLocaleString()}곳 표시</strong>}
       </div>
-      <label style={{ fontSize: 11, color: "#6B7280", display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
+      <label style={{ fontSize: FS.caption, color: "#6B7280", display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
         정렬
-        <select value={sort} onChange={(e) => setSort(e.target.value as UnitStoreSort)} style={{ fontSize: 11, padding: "2px 4px" }}>
+        <select value={sort} onChange={(e) => setSort(e.target.value as UnitStoreSort)} style={{ fontSize: FS.caption, padding: "2px 4px" }}>
           {(Object.keys(SORT_LABEL) as UnitStoreSort[]).map((s) => (
             <option key={s} value={s}>
               {SORT_LABEL[s]}
@@ -69,10 +70,10 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
             onBlur={() => onHover?.(null)}
             style={{ textAlign: "left", border: "1px solid #E5E7EB", borderRadius: 6, padding: "6px 8px", background: "white", cursor: "pointer" }}
           >
-            <div style={{ fontWeight: 600, fontSize: 13 }}>
+            <div style={{ fontWeight: 600, fontSize: FS.warn }}>
               {s.name} {s.branch && <span style={{ fontWeight: 400, color: "#6B7280" }}>{s.branch}</span>}
             </div>
-            <div style={{ fontSize: 11, color: "#6B7280" }}>
+            <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
               {s.category_detail} · 중심에서 {formatDistance(s.distance_m)}
             </div>
           </button>
@@ -96,7 +97,7 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
           </button>
         </Notice>
       )}
-      {q.data && !q.hasNextPage && total > 0 && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>마지막 매장입니다.</div>}
+      {q.data && !q.hasNextPage && total > 0 && <div style={{ fontSize: FS.caption, color: "#9CA3AF", marginTop: 4 }}>마지막 매장입니다.</div>}
     </div>
   );
 }

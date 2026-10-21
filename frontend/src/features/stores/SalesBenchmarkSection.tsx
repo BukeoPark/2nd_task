@@ -8,6 +8,7 @@ import { CompareBasisBox } from "./CompareBasisBox";
 import { usePeerStores } from "./useStores";
 import { apiClient, type GrowthCell, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
+import { FS } from "../../lib/typography";
 
 /** '내 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
  * 입력한 매출은 이 화면 안에서만 계산하고 서버로 보내거나 저장하지 않는다. */
@@ -88,14 +89,14 @@ function Body({
       />
 
       <Fold title="상권 평균의 순위·증감 보기">
-        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>
+        <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>
           {data.unit?.peer_label ?? "양천·영등포"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
         </div>
         {data.growth ? (
           <>
             <GrowthRow title="전년 동기 대비" pair={data.growth.yoy} />
             <GrowthRow title="직전 분기 대비(계절 영향 있음)" pair={data.growth.qoq} />
-            <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+            <div style={{ fontSize: FS.caption, color: "#9CA3AF", marginTop: 4 }}>
               총매출 증감은 점포 수 변화가 섞인 값이고, 점포당 평균매출 증감은 점포 수로 나눈 값이라 서로 다른 지표입니다. 둘 다 명목값이며, 비교하는 두 분기의 점포 수 중 작은 쪽이 10곳 미만이면 계산하지 않고 10~19곳이면 변동성 주의를 붙입니다.
             </div>
           </>
@@ -105,18 +106,18 @@ function Body({
       </Fold>
 
       <Fold title="계산 기준 보기">
-        <div style={{ fontSize: 12, color: "#374151" }}>
+        <div style={{ fontSize: FS.caption, color: "#374151" }}>
           비교 단위: <strong>{data.unit?.name}</strong> ({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' 전체 기준 · {data.quarter_label}
           {data.crosswalk_note && <span style={{ color: "#6B7280" }}> ({data.crosswalk_note})</span>}
         </div>
         {mismatch && (
-          <div style={{ fontSize: 11, color: "#92400E", marginTop: 4 }}>
+          <div style={{ fontSize: FS.caption, color: "#92400E", marginTop: 4 }}>
             이 매장의 세부 업종은 '{data.scls_nm}'이지만 서울시는 '{data.svc_nm}' 단위로만 매출을 제공해, 위 매출 숫자는 '{data.svc_nm}' 전체 평균입니다('{data.scls_nm}'만의 값이 아님).
           </div>
         )}
         <SourceNote label="매출 비교 자료" title={data.source.title} reference={data.source.reference ?? "-"} />
         {data.caveats.map((c) => (
-          <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>
+          <div key={c} style={{ fontSize: FS.caption, color: "#6B7280" }}>
             · {c}
           </div>
         ))}
@@ -129,7 +130,7 @@ function Body({
 function GrowthRow({ title, pair }: { title: string; pair: { compare_label: string; total_sales: GrowthCell; per_store: GrowthCell } }) {
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 600 }}>
+      <div style={{ fontSize: FS.caption, fontWeight: 600 }}>
         {title} <span style={{ fontWeight: 400, color: "#6B7280" }}>· 비교 {pair.compare_label}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
@@ -144,9 +145,9 @@ function GrowthCard({ label, cell }: { label: string; cell: GrowthCell }) {
   const shown = cell.value !== null;
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15, color: shown ? "#111827" : "#9CA3AF" }}>{shown ? formatSignedPct(cell.value) : cell.status === "too_few" ? "표본 작음" : "자료 없음"}</div>
-      {cell.message && <div style={{ fontSize: 10, color: cell.status === "caution" ? "#B45309" : "#6B7280" }}>{cell.message}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.body, color: shown ? "#111827" : "#9CA3AF" }}>{shown ? formatSignedPct(cell.value) : cell.status === "too_few" ? "표본 작음" : "자료 없음"}</div>
+      {cell.message && <div style={{ fontSize: FS.caption, color: cell.status === "caution" ? "#B45309" : "#6B7280" }}>{cell.message}</div>}
     </div>
   );
 }
@@ -173,14 +174,14 @@ function RevenueComparison({
 
   return (
     <div style={{ marginTop: 12, background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>내 월 매출과 견주기</div>
+      <div style={{ fontSize: FS.caption, fontWeight: 600, marginBottom: 4 }}>내 월 매출과 견주기</div>
       {value === null ? (
-        <div style={{ fontSize: 12, color: "#6B7280" }}>위 '내 가게 점검'에 월 매출을 기록하면 이 평균과 견줘 드려요. 입력은 한 곳에서만 받고, 가장 최근 달의 값을 씁니다.</div>
+        <div style={{ fontSize: FS.caption, color: "#6B7280" }}>위 '내 가게 점검'에 월 매출을 기록하면 이 평균과 견줘 드려요. 입력은 한 곳에서만 받고, 가장 최근 달의 값을 씁니다.</div>
       ) : (
-        <div style={{ fontSize: 11, color: "#6B7280" }}>기록한 가장 최근 달{latestMonth ? ` ${latestMonth}` : ""} · {formatKrw(value)} 기준</div>
+        <div style={{ fontSize: FS.caption, color: "#6B7280" }}>기록한 가장 최근 달{latestMonth ? ` ${latestMonth}` : ""} · {formatKrw(value)} 기준</div>
       )}
       {value !== null && dongAvg !== null && dongAvg > 0 && (
-        <div style={{ marginTop: 6, fontSize: 12 }}>
+        <div style={{ marginTop: 6, fontSize: FS.caption }}>
           <div>
             이 {unitLabel} 같은 업종 점포당 평균의 <strong>{((value / dongAvg) * 100).toFixed(0)}%</strong> 수준
             ({value >= dongAvg ? "+" : "-"}
@@ -189,7 +190,7 @@ function RevenueComparison({
           <div style={{ color: "#374151" }}>
             {peerLabel} {peerValues.length}곳의 점포당 평균 중 {above}곳보다 높거나 같음
           </div>
-          <div style={{ fontSize: 11, color: "#6B7280" }}>
+          <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
             비교 대상은 개별 매장이 아니라 {unitLabel}별 평균입니다. 카드 결제 외 현금·배달앱 정산 방식에 따라 기준이 다를 수 있습니다.
           </div>
         </div>
@@ -201,9 +202,9 @@ function RevenueComparison({
 function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }

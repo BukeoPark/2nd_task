@@ -47,6 +47,7 @@ import { formatMetric, formatPerArea, formatPercent } from "../lib/format";
 import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { revealDelta } from "../lib/reveal";
 import { NARROW_MAX_PX, OVERLAY_Z_INDEX, RAIL_WIDTH_PX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
+import { FS } from "../lib/typography";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
 const MAX_COMPARE = 4;
@@ -508,7 +509,7 @@ export function MapPage() {
         )}
         <TourLayer mode={mode} tour={tour} />
         {issueText && issueText !== dismissedIssue && (
-          <div role="alert" style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX + 2, top: 62, left: 12, right: 12, maxWidth: 520, background: "#FFFBEB", color: "#92400E", border: "1px solid #FCD34D", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+          <div role="alert" style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX + 2, top: 62, left: 12, right: 12, maxWidth: 520, background: "#FFFBEB", color: "#92400E", border: "1px solid #FCD34D", borderRadius: 10, padding: "10px 12px", fontSize: FS.caption, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
             {issueText}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
               <button type="button" onClick={() => { document.querySelector<HTMLInputElement>('[data-tour="search"] input')?.focus(); setDismissedIssue(issueText); }} style={issueBtn(true)}>직접 검색하기</button>
@@ -587,7 +588,7 @@ export function MapPage() {
           shownSelection ? (() => {
             const sel = shownSelection;
             const unitNotice = sel.compare && sel.compare.level !== unit ? (
-              <div role="status" style={{ background: "#EFF6FF", color: "#1E3A8A", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>
+              <div role="status" style={{ background: "#EFF6FF", color: "#1E3A8A", borderRadius: 8, padding: "8px 10px", fontSize: FS.caption, marginBottom: 12 }}>
                 지도는 지금 {UNIT_LABEL[unit]} 단위로 보여요. 아래 요약은 {UNIT_LABEL[sel.compare.level]} 기준 숫자예요.
               </div>
             ) : null;
@@ -613,7 +614,7 @@ export function MapPage() {
                       <button type="button" aria-pressed={on} onClick={() => toggleFavorite(f)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #D97706", background: on ? "#FEF3C7" : "white", color: "#92400E", cursor: "pointer" }}>
                         {on ? "★ 내 관심 지역에서 빼기" : `☆ 내 관심 지역에 담기 (${favorites.length}/${MAX_FAVORITES})`}
                       </button>
-                      {favNote && <div role="status" style={{ fontSize: 11, color: "#B45309", marginTop: 2 }}>{favNote}</div>}
+                      {favNote && <div role="status" style={{ fontSize: FS.caption, color: "#B45309", marginTop: 2 }}>{favNote}</div>}
                     </div>
                   );
                 })()}
@@ -671,7 +672,7 @@ export function MapPage() {
             return (
               <InfoPanel title={sel.title} brief={sel.brief} rows={sel.rows} onClose={close}>
                 {sel.notice && (
-                  <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 12 }}>{sel.notice}</div>
+                  <div style={{ background: "#FFFBEB", color: "#92400E", borderRadius: 8, padding: "8px 10px", fontSize: FS.caption, marginBottom: 12 }}>{sel.notice}</div>
                 )}
                 {actions}
                 {sel.unit && (
@@ -762,7 +763,7 @@ export function MapPage() {
   );
 }
 
-const issueBtn = (primary: boolean): React.CSSProperties => ({ padding: "4px 10px", borderRadius: 6, border: `1px solid ${primary ? "#B45309" : "#D1D5DB"}`, background: primary ? "#B45309" : "white", color: primary ? "white" : "#374151", cursor: "pointer", fontSize: 12 });
+const issueBtn = (primary: boolean): React.CSSProperties => ({ padding: "4px 10px", borderRadius: 6, border: `1px solid ${primary ? "#B45309" : "#D1D5DB"}`, background: primary ? "#B45309" : "white", color: primary ? "white" : "#374151", cursor: "pointer", fontSize: FS.caption });
 
 function plainTitle(title: string, type?: string | null): string {
   return type && title.endsWith(`(${type})`) ? title.slice(0, -(type.length + 2)).trim() : title;
@@ -816,7 +817,7 @@ function StatusArea(p: {
   return (
     <div style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 100, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", gap: 6, alignItems: "center", maxWidth: "min(720px, calc(100vw - 32px))" }}>
       {banners.map((b) => (
-        <div key={b.key} role={b.tone === "error" ? "alert" : "status"} style={{ background: colors[b.tone].bg, color: colors[b.tone].fg, borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: 13 }}>
+        <div key={b.key} role={b.tone === "error" ? "alert" : "status"} style={{ background: colors[b.tone].bg, color: colors[b.tone].fg, borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: FS.warn }}>
           {b.text}
           {b.retry && (
             <button type="button" onClick={b.retry} style={{ marginLeft: 10, border: "1px solid #B91C1C", background: "white", color: "#B91C1C", borderRadius: 6, padding: "2px 10px", cursor: "pointer", fontWeight: 600 }}>

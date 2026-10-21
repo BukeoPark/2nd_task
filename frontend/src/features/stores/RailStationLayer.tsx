@@ -28,7 +28,7 @@ export function RailStationLayer({ map, kakao, stations, exits }: RailStationLay
       const label = document.createElement("div");
       label.textContent = s.name;
       Object.assign(label.style, {
-        position: "absolute", left: "14px", top: "-9px", whiteSpace: "nowrap", fontSize: "11px", fontWeight: "600", color: RAIL_MARK_COLOR,
+        position: "absolute", left: "14px", top: "-9px", whiteSpace: "nowrap", fontSize: "12px", fontWeight: "600", color: RAIL_MARK_COLOR,
         background: "rgba(255,255,255,0.92)", padding: "1px 5px", borderRadius: "4px", boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
       });
       wrap.append(box, label);

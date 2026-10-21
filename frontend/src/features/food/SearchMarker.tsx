@@ -10,7 +10,7 @@ export function SearchMarker({ map, kakao, place }: { map: any; kakao: typeof wi
     Object.assign(el.style, { transform: "translate(-50%, -100%)", textAlign: "center", pointerEvents: "none" });
     const label = document.createElement("div");
     label.textContent = place.name.length > 14 ? `${place.name.slice(0, 14)}…` : place.name;
-    Object.assign(label.style, { background: "#1D4ED8", color: "white", fontSize: "11px", fontWeight: "600", padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" });
+    Object.assign(label.style, { background: "#1D4ED8", color: "white", fontSize: "12px", fontWeight: "600", padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" });
     const pin = document.createElement("div");
     Object.assign(pin.style, { width: "0", height: "0", margin: "0 auto", borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #1D4ED8" });
     el.append(label, pin);

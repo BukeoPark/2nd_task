@@ -5,6 +5,7 @@ import { expandForTour, restoreFolds, type FoldLog } from "../../lib/tourFolds";
 import { useNarrow } from "../../lib/useNarrow";
 import type { Tour } from "./useTour";
 import { stepsLine } from "../../lib/flow";
+import { FS } from "../../lib/typography";
 
 const Z = 2000;
 const PAD = 5;
@@ -23,7 +24,7 @@ const WELCOME: Record<Mode, { title: string; lines: string[] }> = {
 
 const btn = (primary: boolean): CSSProperties => ({
   padding: "8px 16px", borderRadius: 8, border: primary ? "none" : "1px solid #D1D5DB", background: primary ? "#1D4ED8" : "#fff", color: primary ? "#fff" : "#374151",
-  fontWeight: 700, fontSize: 13, cursor: "pointer",
+  fontWeight: 700, fontSize: FS.warn, cursor: "pointer",
 });
 
 /** 처음 방문 환영 팝업 */
@@ -40,14 +41,14 @@ function Welcome({ mode, tour }: { mode: Mode; tour: Tour }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: Z, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div role="dialog" aria-modal="true" aria-label="이용 안내" style={{ background: "#fff", color: "#111827", borderRadius: 14, padding: "26px 28px 20px", width: "min(440px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.35)" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8", letterSpacing: ".06em" }}>{MODE_LABEL[mode]} 모드</div>
-        <h2 style={{ fontSize: 20, margin: "4px 0 10px", lineHeight: 1.35 }}>{w.title}</h2>
-        {w.lines.map((l) => (<p key={l} style={{ margin: "0 0 8px", fontSize: 13.5, lineHeight: 1.6, color: "#374151" }}>{l}</p>))}
+        <div style={{ fontSize: FS.caption, fontWeight: 700, color: "#1D4ED8", letterSpacing: ".06em" }}>{MODE_LABEL[mode]} 모드</div>
+        <h2 style={{ fontSize: FS.cardTitle, margin: "4px 0 10px", lineHeight: 1.35 }}>{w.title}</h2>
+        {w.lines.map((l) => (<p key={l} style={{ margin: "0 0 8px", fontSize: FS.warn, lineHeight: 1.6, color: "#374151" }}>{l}</p>))}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" style={btn(false)} onClick={() => tour.dismissWelcome(never)}>나중에</button>
           <button ref={primary} type="button" style={btn(true)} onClick={tour.start}>튜토리얼 시작</button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 14, fontSize: 12, color: "#6B7280", cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 14, fontSize: FS.caption, color: "#6B7280", cursor: "pointer" }}>
           <input type="checkbox" checked={never} onChange={(e) => setNever(e.target.checked)} /> 다시 보지 않기
         </label>
       </div>
@@ -148,11 +149,11 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
         style={{ position: "fixed", ...cardStyle, pointerEvents: "auto", background: "#fff", color: "#111827", borderRadius: 12, padding: "14px 16px 12px", boxShadow: "0 8px 30px rgba(0,0,0,0.35)", outline: "none" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8" }}>{tour.index + 1} / {steps.length}</span>
-          <button type="button" onClick={tour.close} aria-label="튜토리얼 건너뛰기" style={{ border: "none", background: "none", color: "#6B7280", fontSize: 12, cursor: "pointer" }}>건너뛰기 ✕</button>
+          <span style={{ fontSize: FS.caption, fontWeight: 700, color: "#1D4ED8" }}>{tour.index + 1} / {steps.length}</span>
+          <button type="button" onClick={tour.close} aria-label="튜토리얼 건너뛰기" style={{ border: "none", background: "none", color: "#6B7280", fontSize: FS.caption, cursor: "pointer" }}>건너뛰기 ✕</button>
         </div>
-        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{step.title}</div>
-        <div role="status" style={{ fontSize: 13, lineHeight: 1.6, color: "#374151" }}>{rect ? step.body : step.fallback ?? step.body}</div>
+        <div style={{ fontWeight: 800, fontSize: FS.body, marginBottom: 4 }}>{step.title}</div>
+        <div role="status" style={{ fontSize: FS.warn, lineHeight: 1.6, color: "#374151" }}>{rect ? step.body : step.fallback ?? step.body}</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
           <span aria-hidden="true" style={{ display: "flex", gap: 4 }}>
             {steps.map((s, i) => (<span key={s.id} style={{ width: 6, height: 6, borderRadius: "50%", background: i === tour.index ? "#1D4ED8" : "#D1D5DB" }} />))}

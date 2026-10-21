@@ -4,6 +4,7 @@ import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { apiClient } from "../../lib/apiClient";
 import { formatKrw, parseManwon } from "../../lib/format";
+import { FS } from "../../lib/typography";
 
 const AREA_COLOR: Record<string, string> = {
   영업시간: "#2563EB",
@@ -43,12 +44,12 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
       {data && !ok && <Notice tone="muted">{data.message}</Notice>}
       {data && ok && (
         <div>
-          <div style={{ fontSize: 12, color: "#374151", marginBottom: 8 }}>
+          <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 8 }}>
             {data.unit?.name}({data.unit?.type ?? data.unit?.label}) · 서울시 업종 '{data.svc_nm}' 전체 기준{data.scls_nm && data.scls_nm !== data.svc_nm ? ` (이 매장 세부 업종 '${data.scls_nm}'만의 값이 아님)` : ""} · {data.quarter_label}
           </div>
 
           {/* ① 내 매출 비교 — 입력한 값으로만 계산(브라우저 안), 아래 ② 점검 항목과는 별개 */}
-          <div style={{ background: "#FFF7ED", borderRadius: 8, padding: "8px 10px", fontSize: 12, marginBottom: 10 }}>
+          <div style={{ background: "#FFF7ED", borderRadius: 8, padding: "8px 10px", fontSize: FS.caption, marginBottom: 10 }}>
             <div style={{ fontWeight: 700, marginBottom: 2 }}>① 내 매출 비교 (입력한 값 기준)</div>
             {mine !== null && avg !== null && avg > 0 ? (
               <div>
@@ -63,9 +64,9 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
           </div>
 
           {/* ② 상권 기반 점검 — 입력 매출과 무관 */}
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 2 }}>② 상권 기반 점검 (입력 매출과 무관)</div>
+          <div style={{ fontWeight: 700, fontSize: FS.caption, marginBottom: 2 }}>② 상권 기반 점검 (입력 매출과 무관)</div>
           {data.peer_basis?.text && (
-            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>
+            <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>
               비교 기준: {data.peer_basis.text} {data.peer_basis.peers}곳
               {data.top_group && (
                 <>
@@ -86,9 +87,9 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
           ) : (
             <ol style={{ margin: "6px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 12 }}>
               {data.recommendations!.map((r) => (
-                <li key={r.title} style={{ fontSize: 12 }}>
+                <li key={r.title} style={{ fontSize: FS.caption }}>
                   <span
-                    style={{ fontSize: 10, color: "white", background: AREA_COLOR[r.area] ?? "#6B7280", borderRadius: 4, padding: "1px 5px", marginRight: 4 }}
+                    style={{ fontSize: FS.caption, color: "white", background: AREA_COLOR[r.area] ?? "#6B7280", borderRadius: 4, padding: "1px 5px", marginRight: 4 }}
                   >
                     {r.area}
                   </span>
@@ -103,7 +104,7 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
           {data.source && <SourceNote label="개선 제안 근거 자료" title={data.source.title} reference={data.source.reference ?? "-"} />}
         </div>
       )}
-      {data && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>관측된 차이와 가능한 해석이며, 원인이나 개별 매장 진단이 아닙니다.</div>}
+      {data && <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>관측된 차이와 가능한 해석이며, 원인이나 개별 매장 진단이 아닙니다.</div>}
       {data && <Caveat>{data.disclaimer}</Caveat>}
     </Section>
   );
@@ -112,9 +113,9 @@ export function ImprovementReportSection({ storeId, manwon }: { storeId: string;
 function Block({ label, color, items }: { label: string; color: string; items: string[] }) {
   return (
     <div style={{ marginTop: 4 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color }}>{label}</div>
+      <div style={{ fontSize: FS.caption, fontWeight: 700, color }}>{label}</div>
       {items.map((e) => (
-        <div key={e} style={{ fontSize: 11, color: "#4B5563" }}>
+        <div key={e} style={{ fontSize: FS.caption, color: "#4B5563" }}>
           · {e}
         </div>
       ))}

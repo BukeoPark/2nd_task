@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { InfoTip } from "./InfoTip";
+import { FS } from "../lib/typography";
 
 export type NoticeTone = "info" | "pending" | "warn" | "error" | "muted";
 
@@ -14,7 +15,7 @@ const TONE: Record<NoticeTone, { bg: string; fg: string }> = {
 /** '연동 준비 중'·'분석 자료 부족'·'매장 연결 확인 필요'·'조회 실패' 같은 상태 안내. 값이 0인 것과 구분되도록 문구로만 표시한다. */
 export function Notice({ tone, children }: { tone: NoticeTone; children: ReactNode }) {
   return (
-    <div style={{ background: TONE[tone].bg, color: TONE[tone].fg, borderRadius: 8, padding: "8px 12px", fontSize: tone === "warn" || tone === "error" ? 13.5 : 13, lineHeight: 1.55 }}>
+    <div style={{ background: TONE[tone].bg, color: TONE[tone].fg, borderRadius: 8, padding: "8px 12px", fontSize: FS.warn, lineHeight: 1.55 }}>
       {children}
     </div>
   );
@@ -24,7 +25,7 @@ export function Notice({ tone, children }: { tone: NoticeTone; children: ReactNo
  * '출처'라는 글자는 쓰지 않고 해당 데이터 이름(`label`) 바로 옆, 또는 값 글줄 끝에 이어 붙인다(`label` 없으면 '?' 만). */
 export function SourceNote({ title, reference, label }: { title: string; reference: string; label?: string }) {
   return (
-    <span style={{ fontSize: 12.5, color: "#6B7280", marginLeft: label ? 0 : 4, display: label ? "block" : "inline", marginTop: label ? 4 : 0 }}>
+    <span style={{ fontSize: FS.caption, color: "#6B7280", marginLeft: label ? 0 : 4, display: label ? "block" : "inline", marginTop: label ? 4 : 0 }}>
       {label ? `${label} ` : null}
       <InfoTip label={`${label ?? "데이터"} 출처: ${title}`}><b>출처</b> {title}{reference ? <><br /><b>기준</b> {reference}</> : null}</InfoTip>
     </span>
@@ -37,7 +38,7 @@ export function Section({ title, children, right, scope }: { title: string; chil
     <section style={{ borderTop: "1px solid #E5E7EB", paddingTop: 12, marginTop: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <strong style={{ fontSize: 16, lineHeight: 1.4 }}>{title}</strong>
+          <strong style={{ fontSize: FS.cardTitle, lineHeight: 1.4 }}>{title}</strong>
           {scope}
         </span>
         {right}
@@ -51,7 +52,7 @@ export function Section({ title, children, right, scope }: { title: string; chil
 export function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
     <details open={open} style={{ marginTop: 10 }}>
-      <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#374151", padding: "4px 0" }}>{title}</summary>
+      <summary style={{ cursor: "pointer", fontSize: FS.ui, fontWeight: 600, color: "#374151", padding: "4px 0" }}>{title}</summary>
       <div style={{ marginTop: 6 }}>{children}</div>
     </details>
   );

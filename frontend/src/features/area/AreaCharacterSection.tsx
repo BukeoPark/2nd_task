@@ -6,6 +6,7 @@ import { anchorText, cellSub, cellText, countText, demandStructureNote, densityR
 import { busUsageLines } from "../../lib/busText";
 import { railUsageLines } from "../../lib/railText";
 import { useAreaCharacter } from "../food/useFood";
+import { FS } from "../../lib/typography";
 
 interface Props {
   level: "dong" | "trdar";
@@ -49,18 +50,18 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
         return (
         <div style={{ display: "grid", gap: 18 }}>
           <section style={{ background: "#F5F3FF", border: "1px solid #EDE9FE", borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: 12.5, color: "#6B7280" }}>{unitKind} 유형 · 외식 전체 기준</div>
-            <h3 style={{ fontSize: 26, lineHeight: 1.35, color: "#5B21B6", margin: "8px 0 0", wordBreak: "keep-all" }}>{d.type.traits.length > 0 ? d.type.traits.map((t) => t.label).join(" · ") : d.type.headline}</h3>
-            {demand && <p style={{ margin: "10px 0 0", fontSize: 15, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{demand}</p>}
-            <p style={{ margin: "10px 0 0", fontSize: 12.5, lineHeight: 1.6, color: "#6B7280" }}>인구·입지 통계에 따른 참고용 분류이며, 실제 고객 구성이나 창업 성공 가능성을 뜻하지 않습니다.</p>
-            {typeNotice(d.type) && <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.7, color: "#92400E" }}>{typeNotice(d.type)}</p>}
+            <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{unitKind} 유형 · 외식 전체 기준</div>
+            <h3 style={{ fontSize: FS.metric, lineHeight: 1.35, color: "#5B21B6", margin: "8px 0 0", wordBreak: "keep-all" }}>{d.type.traits.length > 0 ? d.type.traits.map((t) => t.label).join(" · ") : d.type.headline}</h3>
+            {demand && <p style={{ margin: "10px 0 0", fontSize: FS.body, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{demand}</p>}
+            <p style={{ margin: "10px 0 0", fontSize: FS.caption, lineHeight: 1.6, color: "#6B7280" }}>인구·입지 통계에 따른 참고용 분류이며, 실제 고객 구성이나 창업 성공 가능성을 뜻하지 않습니다.</p>
+            {typeNotice(d.type) && <p style={{ margin: "10px 0 0", fontSize: FS.warn, lineHeight: 1.7, color: "#92400E" }}>{typeNotice(d.type)}</p>}
           </section>
           {d.type.traits.length > 0 && <section aria-label="유형 판정 근거">
-            <h4 style={{ margin: "0 0 10px", fontSize: 16 }}>판정 근거</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: FS.cardTitle }}>판정 근거</h4>
             <div style={{ display: "grid", gap: 10 }}>
               {d.type.traits.map((t) => <div key={t.key} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "14px 16px" }}>
-                <strong style={{ fontSize: 14, color: TRAIT_STYLE[t.key].fg }}>{t.label}</strong>
-                <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: 14, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{t.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
+                <strong style={{ fontSize: FS.ui, color: TRAIT_STYLE[t.key].fg }}>{t.label}</strong>
+                <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: FS.ui, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{t.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
               </div>)}
             </div>
           </section>}
@@ -68,7 +69,7 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
           {d.strengths.length > 0 && <Points title="함께 볼 지역 특징" tone="#475569" items={d.strengths} empty="" />}
           {cautions.length > 0 && <Points title="추가 확인사항" tone="#92400E" items={cautions} empty="" />}
           <Fold title="계산 기준·출처 자세히 보기">
-            <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.75 }}>
+            <div style={{ fontSize: FS.warn, color: "#4B5563", lineHeight: 1.75 }}>
               <div>{d.basis.label}</div><div>{d.basis.unit}</div>
               {dataCautions.map((t) => <p key={t}>{t}</p>)}
               <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{d.basis.rules.map((r) => <li key={r}>{r}</li>)}</ul>
@@ -133,7 +134,7 @@ export function AreaCharacterLine({ level, code, label }: { level: "dong" | "trd
   if (q.isError) return <div style={fine}>{label}: 유형을 불러오지 못했습니다.</div>;
   const t = q.data.type;
   return (
-    <div style={{ fontSize: 11, color: "#4B5563", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+    <div style={{ fontSize: FS.caption, color: "#4B5563", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
       <span>{label}:</span>
       {t.traits.length > 0 ? t.traits.map((x) => <Chip key={x.key} text={x.label} style={TRAIT_STYLE[x.key]} small />) : <Chip text={t.headline} style={NEUTRAL_STYLE} small />}
       <span style={{ color: "#6B7280" }}>(참고용 규칙 분류)</span>
@@ -157,7 +158,7 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
             {rail.year}년 · {rail.linked > 0 ? `인근 ${rail.count}개 역 중 이용량이 확인된 ${rail.linked}개 역의 합계${usage.partial ? "(일부 역·노선만 포함)" : ""}. 이 상권 방문객 수가 아닙니다.` : "인근 역의 이용량 자료가 연결되지 않았습니다(0명이 아님)."}
           </div>
           <Fold title={`역 ${rail.count}곳 보기`}>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
           </Fold>
         </>
       )}
@@ -277,7 +278,7 @@ function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] })
 function Area({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
     <div style={{ ...card, marginTop: 10 }}>
-      <div style={{ fontSize: 14, fontWeight: 800 }}>{title}</div>
+      <div style={{ fontSize: FS.ui, fontWeight: 800 }}>{title}</div>
       <div style={fine}>{hint}</div>
       <div style={{ marginTop: 8 }}>{children}</div>
     </div>
@@ -287,8 +288,8 @@ function Area({ title, hint, children }: { title: string; hint: string; children
 function Points({ title, tone, items, empty }: { title: string; tone: string; items: string[]; empty: string }) {
   return (
     <div style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderLeft: `3px solid ${tone}`, borderRadius: 10, padding: "16px 18px" }}>
-      <div style={{ fontSize: 16, fontWeight: 700, color: tone }}>{title}</div>
-      {items.length === 0 ? <div style={fine}>{empty}</div> : items.map((t) => <div key={t} style={{ fontSize: 14, color: "#374151", marginTop: 10, lineHeight: 1.8, wordBreak: "keep-all" }}>· {t}</div>)}
+      <div style={{ fontSize: FS.cardTitle, fontWeight: 700, color: tone }}>{title}</div>
+      {items.length === 0 ? <div style={fine}>{empty}</div> : items.map((t) => <div key={t} style={{ fontSize: FS.ui, color: "#374151", marginTop: 10, lineHeight: 1.8, wordBreak: "keep-all" }}>· {t}</div>)}
     </div>
   );
 }
@@ -296,21 +297,21 @@ function Points({ title, tone, items, empty }: { title: string; tone: string; it
 function Mini({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", border: "1px solid #E5E7EB" }}>
-      <div style={{ fontSize: 10, color: "#6B7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.ui, color: "#111827" }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }
 
 function Chip({ text, style, small }: { text: string; style: { bg: string; fg: string }; small?: boolean }) {
   return (
-    <span style={{ background: style.bg, color: style.fg, borderRadius: 999, padding: small ? "1px 7px" : "3px 10px", fontSize: small ? 11 : 13, fontWeight: 700 }}>{text}</span>
+    <span style={{ background: style.bg, color: style.fg, borderRadius: 999, padding: small ? "1px 7px" : "3px 10px", fontSize: small ? FS.caption : FS.warn, fontWeight: 700 }}>{text}</span>
   );
 }
 
 const card: CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" };
-const fine: CSSProperties = { fontSize: 11, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
-const sub: CSSProperties = { fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 4 };
+const fine: CSSProperties = { fontSize: FS.caption, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
+const sub: CSSProperties = { fontSize: FS.caption, fontWeight: 700, color: "#374151", marginBottom: 4 };
 const grid2: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 8 };
 const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 };

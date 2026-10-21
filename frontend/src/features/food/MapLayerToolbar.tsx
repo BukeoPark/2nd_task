@@ -3,6 +3,7 @@ import { InfoTip } from "../../components/InfoTip";
 import type { FoodHeatResponse } from "../../lib/apiClient";
 import { HEAT_CSS_GRADIENT, HEAT_METRICS, heatLegendText, type HeatMetric } from "../../lib/heatmap";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
+import { FS } from "../../lib/typography";
 
 interface MapLayerToolbarProps {
   anchorsOn: boolean;
@@ -27,11 +28,11 @@ export function MapLayerToolbar({ anchorsOn, anchorsForced, onAnchorsChange, reb
       aria-label="지도 레이어"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 200, right: 16, width: open ? 160 : "auto", background: "rgba(255,255,255,0.96)", borderRadius: 8,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden", fontSize: 13,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "hidden", fontSize: FS.warn,
       }}
     >
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", minHeight: 36, padding: "5px 10px", border: "none", background: "transparent", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", borderBottom: open ? "1px solid #E5E7EB" : "none" }}>
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", minHeight: 36, padding: "5px 10px", border: "none", background: "transparent", color: "#374151", fontWeight: 600, fontSize: FS.warn, cursor: "pointer", whiteSpace: "nowrap", borderBottom: open ? "1px solid #E5E7EB" : "none" }}>
         <span>지도 레이어{activeCount > 0 ? ` · ${activeCount}개 켜짐` : ""}</span>
         <span aria-hidden="true">{open ? "▾" : "▸"}</span>
       </button>
@@ -79,7 +80,7 @@ function HeatControls({ heat }: { heat: MapLayerToolbarProps["heat"] }) {
               role="radio"
               aria-checked={on}
               onClick={() => heat.onChange(o.value)}
-              style={{ padding: "5px 4px", border: `1px solid ${on ? "#1D4ED8" : "#E5E7EB"}`, borderRadius: 6, background: on ? "#EFF6FF" : "white", color: on ? "#1D4ED8" : "#374151", fontSize: 11.5, fontWeight: on ? 700 : 500, cursor: "pointer" }}
+              style={{ padding: "5px 4px", border: `1px solid ${on ? "#1D4ED8" : "#E5E7EB"}`, borderRadius: 6, background: on ? "#EFF6FF" : "white", color: on ? "#1D4ED8" : "#374151", fontSize: FS.caption, fontWeight: on ? 700 : 500, cursor: "pointer" }}
             >
               {o.label}
             </button>
@@ -89,10 +90,10 @@ function HeatControls({ heat }: { heat: MapLayerToolbarProps["heat"] }) {
       {heat.metric && (
         <div style={{ marginTop: 8 }}>
           <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: HEAT_CSS_GRADIENT }} />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280", marginTop: 2 }}><span>낮음</span><span>높음</span></div>
-          {heat.loading && <div role="status" style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>불러오는 중...</div>}
-          {heat.failed && <div role="alert" style={{ fontSize: 12, color: "#B91C1C", marginTop: 2 }}>조회 실패 — 다시 선택해 주세요.</div>}
-          {d && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, lineHeight: 1.4 }}>상권 단위 · {heatLegendText(d.unit, d.scale.p95)}</div>}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: FS.caption, color: "#6B7280", marginTop: 2 }}><span>낮음</span><span>높음</span></div>
+          {heat.loading && <div role="status" style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 2 }}>불러오는 중...</div>}
+          {heat.failed && <div role="alert" style={{ fontSize: FS.caption, color: "#B91C1C", marginTop: 2 }}>조회 실패 — 다시 선택해 주세요.</div>}
+          {d && <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 2, lineHeight: 1.4 }}>상권 단위 · {heatLegendText(d.unit, d.scale.p95)}</div>}
         </div>
       )}
     </div>
@@ -109,12 +110,12 @@ function LayerButton({ label, on, locked, title, onToggle }: { label: string; on
       onClick={() => { if (!locked) onToggle(); }}
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, width: "100%", padding: "8px 10px", border: "none", borderTop: "1px solid #F3F4F6",
-        background: on ? "#EFF6FF" : "transparent", color: on ? "#1D4ED8" : "#374151", fontWeight: on ? 700 : 500, fontSize: 13, textAlign: "left", whiteSpace: "nowrap",
+        background: on ? "#EFF6FF" : "transparent", color: on ? "#1D4ED8" : "#374151", fontWeight: on ? 700 : 500, fontSize: FS.warn, textAlign: "left", whiteSpace: "nowrap",
         cursor: locked ? "default" : "pointer",
       }}
     >
       <span>{label}</span>
-      <span aria-hidden="true" style={{ fontSize: 12.5 }}>{on ? "켜짐" : "꺼짐"}</span>
+      <span aria-hidden="true" style={{ fontSize: FS.caption }}>{on ? "켜짐" : "꺼짐"}</span>
     </button>
   );
 }

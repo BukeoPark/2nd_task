@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { FS } from "../lib/typography";
 
 
 export interface LineSeries {
@@ -10,9 +11,9 @@ export interface LineSeries {
 
 /** 꺾은선(의존성 없는 SVG). 눈금 라벨은 labels, 값 표기는 fmt. */
 export function LineChart({ labels, series, fmt, height = 150 }: { labels: string[]; series: LineSeries[]; fmt: (v: number) => string; height?: number }) {
-  const W = 320, padL = 6, padR = 6, padT = 10, padB = 18;
+  const W = 320, padL = 6, padR = 6, padT = 10, padB = 4;
   const all = series.flatMap((s) => s.values).filter((v): v is number => v !== null);
-  if (all.length === 0) return <div style={{ fontSize: 12, color: "#6B7280" }}>표시할 값이 없습니다(자료 없음).</div>;
+  if (all.length === 0) return <div style={{ fontSize: FS.caption, color: "#6B7280" }}>표시할 값이 없습니다(자료 없음).</div>;
   const min = Math.min(...all), max = Math.max(...all);
   const span = max - min || Math.abs(max) || 1;
   const x = (i: number) => padL + (labels.length <= 1 ? 0 : (i * (W - padL - padR)) / (labels.length - 1));
@@ -36,13 +37,18 @@ export function LineChart({ labels, series, fmt, height = 150 }: { labels: strin
             </Fragment>
           );
         })}
-        {labels.map((l, i) => i % tick === 0 && <text key={i} x={x(i)} y={height - 4} fontSize={9} textAnchor={i === 0 ? "start" : i === labels.length - 1 ? "end" : "middle"} fill="#6B7280">{l}</text>)}
       </svg>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#6B7280" }}>
+      {/* 가로축 눈금은 SVG 글자가 그림 배율에 따라 작아지므로 HTML 글자(보조 설명 크기)로 그린다 */}
+      <div aria-hidden="true" style={{ position: "relative", height: 20, fontSize: FS.caption, color: "#6B7280" }}>
+        {labels.map((l, i) => i % tick === 0 && (
+          <span key={i} style={{ position: "absolute", top: 2, left: `${(x(i) / W) * 100}%`, transform: i === 0 ? "none" : i === labels.length - 1 ? "translateX(-100%)" : "translateX(-50%)", whiteSpace: "nowrap" }}>{l}</span>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: FS.caption, color: "#6B7280" }}>
         <span>최저 {fmt(min)}</span><span>최고 {fmt(max)}</span>
       </div>
       {series.length > 1 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11, marginTop: 4 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: FS.caption, marginTop: 4 }}>
           {series.map((s) => <span key={s.name} style={{ color: s.color, fontWeight: 600 }}>● {s.name}</span>)}
         </div>
       )}
@@ -65,7 +71,7 @@ export function BarList({ items, fmt }: { items: BarItem[]; fmt: (v: number) => 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {items.map((it) => (
-        <div key={it.label} style={{ display: "grid", gridTemplateColumns: "90px 1fr 84px", alignItems: "center", gap: 6, fontSize: 12 }}>
+        <div key={it.label} style={{ display: "grid", gridTemplateColumns: "90px 1fr 84px", alignItems: "center", gap: 6, fontSize: FS.caption }}>
           <span style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={it.label}>{it.label}</span>
           <div style={{ position: "relative", height: 12, background: "#F3F4F6", borderRadius: 3 }}>
             {it.value !== null && (

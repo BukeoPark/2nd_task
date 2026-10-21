@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GLOSSARY, type GlossaryKey } from "../lib/glossary";
+import { FS } from "../lib/typography";
 
 /** 어려운 말 옆의 '?' 버튼 — 눌러서 한두 문장 풀이를 펼친다(마우스 올리기에만 기대지 않아 휴대폰·키보드에서도 된다). */
 export function Term({ id, label }: { id: GlossaryKey; label?: string }) {
@@ -26,7 +27,7 @@ export function Term({ id, label }: { id: GlossaryKey; label?: string }) {
           borderRadius: "50%",
           background: open ? "#E5E7EB" : "#fff",
           color: "#6B7280",
-          fontSize: 9,
+          fontSize: FS.caption,
           lineHeight: "12px",
           cursor: "pointer",
           verticalAlign: "middle",
@@ -35,7 +36,7 @@ export function Term({ id, label }: { id: GlossaryKey; label?: string }) {
         ?
       </button>
       {open && (
-        <span role="note" style={{ display: "block", marginTop: 2, fontSize: 11, lineHeight: 1.5, color: "#374151", background: "#F3F4F6", borderRadius: 6, padding: "4px 8px" }}>
+        <span role="note" style={{ display: "block", marginTop: 2, fontSize: FS.caption, lineHeight: 1.5, color: "#374151", background: "#F3F4F6", borderRadius: 6, padding: "4px 8px" }}>
           {g.help}
         </span>
       )}

@@ -1,6 +1,7 @@
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { OperationHistory } from "../../lib/apiClient";
+import { FS } from "../../lib/typography";
 
 const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
   matched: "info",
@@ -32,15 +33,15 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
         </div>
       )}
       {part === "core" && (
-        <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}>인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다.</div>
+        <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다.</div>
       )}
       {part === "core" && (
         <Fold title="영업 상태 기준·자료 기준일 보기">
-          <div style={{ fontSize: 11, color: "#6B7280" }}>
+          <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
             {history.business_status?.caveat ?? "인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다."} {license?.age_caveat}
           </div>
           {history.data_dates && (
-            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>
+            <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>
               자료 기준일 — 상가정보 {history.data_dates.store_info.base ?? "자료 없음"} 기준
               {" · "}
               {history.data_dates.license
@@ -73,7 +74,7 @@ export function OperationHistorySection({ history }: { history: OperationHistory
       <LicenseSummary history={history} part="detail" />
       <div style={{ marginTop: 10 }}>
         {certifications.map((c) => (
-          <div key={c.name} style={{ fontSize: 12 }}>
+          <div key={c.name} style={{ fontSize: FS.caption }}>
             <strong>{c.name}</strong>{" "}
             {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : c.label}
             <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />
@@ -90,9 +91,9 @@ export function OperationHistorySection({ history }: { history: OperationHistory
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
       <div style={{ fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }

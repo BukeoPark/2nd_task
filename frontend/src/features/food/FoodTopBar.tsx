@@ -6,6 +6,7 @@ import { useNarrow } from "../../lib/useNarrow";
 import { useEffect, useState } from "react";
 import { SearchBox } from "./SearchBox";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
+import { FS } from "../../lib/typography";
 
 // 지도 지표 — 처음 보는 사람이 고르기 쉽게 '자주 쓰는 지표' 4개를 위에 두고 나머지는 '자세히 보는 지표'로 묶는다(이름은 범례·비교 화면과 같다).
 const METRIC_GROUPS: { label: string; options: { value: FoodMetric; label: string }[] }[] = [
@@ -82,7 +83,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
   // 휴대폰 폭: 한 줄에 다 담으면 업종·지표·월간 점검·내 관심 지역·도움말이 화면 밖으로 밀려 보이지 않는다 →
   // 바에는 로고·검색·내 관심 지역·'메뉴'만 두고, 모드·업종·지표·월간 점검·도움말은 '메뉴' 시트에 모은다.
   if (!fullToolbar) {
-    const sheetBtn: React.CSSProperties = { width: "100%", minHeight: 44, padding: "10px 12px", borderRadius: 10, border: "1px solid #D1D5DB", background: "white", color: "#111827", fontSize: 15, fontWeight: 700, cursor: "pointer", textAlign: "left" };
+    const sheetBtn: React.CSSProperties = { width: "100%", minHeight: 44, padding: "10px 12px", borderRadius: 10, border: "1px solid #D1D5DB", background: "white", color: "#111827", fontSize: FS.body, fontWeight: 700, cursor: "pointer", textAlign: "left" };
     return (
       <>
         <div
@@ -91,7 +92,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
           {p.onBack && (
             <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ width: 40, height: 40, flexShrink: 0, border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>←</button>
           )}
-          <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: 15, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>상권분석</AppLink>
+          <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: FS.body, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>상권분석</AppLink>
           <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
           <button type="button" data-tour="favorites" onClick={p.onOpenInterest} aria-label={`내 관심 지역 ${p.interestCount}곳`} style={{ ...barBtn, background: "#EFF6FF", color: "#1E3A8A", border: "1px solid #1D4ED8" }}>
             <span aria-hidden="true">★</span> {p.interestCount}
@@ -101,10 +102,10 @@ export function FoodTopBar(p: FoodTopBarProps) {
           </button>
         </div>
         {menuOpen && <MenuSheet onClose={() => setMenuOpen(false)}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>이용 모드</div>
+          <div style={{ fontSize: FS.warn, fontWeight: 700, color: "#4B5563" }}>이용 모드</div>
           <ModeSwitch mode={p.mode} onChange={p.onModeChange} stretch />
-          <div style={{ fontSize: 13, color: "#6B7280", marginTop: -4 }}>{MODE_HINT[p.mode]}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#4B5563", marginTop: 6 }}>지도에서 보기</div>
+          <div style={{ fontSize: FS.warn, color: "#6B7280", marginTop: -4 }}>{MODE_HINT[p.mode]}</div>
+          <div style={{ fontSize: FS.warn, fontWeight: 700, color: "#4B5563", marginTop: 6 }}>지도에서 보기</div>
           <SheetSelect tour="svc" label="업종" value={p.svc ?? ""} onChange={changeSvc} options={svcOptions} />
           <SheetSelect tour="scls" label="세부 업종" value={p.scls ?? ""} disabled={!group} onChange={(v) => p.onSclsChange(v || null)} options={sclsOptions} />
           <SheetSelect tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} groups={METRIC_GROUPS} />
@@ -127,9 +128,9 @@ export function FoodTopBar(p: FoodTopBarProps) {
       }}
     >
       {p.onBack && (
-        <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>← 뒤로</button>
+        <button type="button" onClick={p.onBack} aria-label="이전 화면으로" style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#1D4ED8", fontSize: FS.ui, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>← 뒤로</button>
       )}
-      <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: narrow ? 15 : 17, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</AppLink>
+      <AppLink to={HOME_PATH} aria-label="상권분석 홈(랜딩페이지)으로" style={{ fontSize: narrow ? FS.body : FS.cardTitle, fontWeight: 700, color: "#111827", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>{narrow || !wide ? "상권분석" : "상권분석 · 요식업"}</AppLink>
       <ModeSwitch mode={p.mode} onChange={p.onModeChange} />
       <SearchBox onPick={p.onPickPlace} pickedName={p.pickedPlaceName} onClear={p.onClearPlace} mode={p.mode} />
       <Select
@@ -149,16 +150,16 @@ export function FoodTopBar(p: FoodTopBarProps) {
         options={sclsOptions}
       />
       <Select tour="metric" label="지도 지표" value={p.metric} onChange={(v) => p.onMetricChange(v as FoodMetric)} groups={METRIC_GROUPS} />
-      {wide && <span style={{ fontSize: 12, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
+      {wide && <span style={{ fontSize: FS.caption, color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>지도 단위: {p.unitLabel}</span>}
       {p.ownerMenu && (
-        <button type="button" data-tour="mode-menu" onClick={p.ownerMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+        <button type="button" data-tour="mode-menu" onClick={p.ownerMenu.onClick} style={{ marginLeft: "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: FS.ui, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
           {p.ownerMenu.label}
         </button>
       )}
-      <button type="button" data-tour="favorites" onClick={p.onOpenInterest} style={{ marginLeft: p.ownerMenu ? 0 : "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+      <button type="button" data-tour="favorites" onClick={p.onOpenInterest} style={{ marginLeft: p.ownerMenu ? 0 : "auto", padding: "6px 10px", border: "1px solid #1D4ED8", borderRadius: 8, background: "#EFF6FF", color: "#1E3A8A", fontSize: FS.ui, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">★ </span>내 관심 지역 {p.interestCount}
       </button>
-      <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+      <button type="button" data-tour="help" onClick={p.onHelp} style={{ padding: "6px 10px", border: "1px solid #D1D5DB", borderRadius: 8, background: "white", color: "#374151", fontSize: FS.ui, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
         <span aria-hidden="true">? </span>도움말
       </button>
     </div>
@@ -177,7 +178,7 @@ function ModeSwitch({ mode, onChange, stretch }: { mode: Mode; onChange: (m: Mod
           aria-checked={m === mode}
           title={MODE_HINT[m]}
           onClick={() => onChange(m)}
-          style={{ flex: stretch ? 1 : undefined, minHeight: stretch ? 44 : undefined, padding: "6px 10px", border: "none", cursor: "pointer", fontSize: stretch ? 15 : 14, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
+          style={{ flex: stretch ? 1 : undefined, minHeight: stretch ? 44 : undefined, padding: "6px 10px", border: "none", cursor: "pointer", fontSize: stretch ? FS.body : FS.ui, fontWeight: m === mode ? 700 : 500, background: m === mode ? "#1D4ED8" : "white", color: m === mode ? "white" : "#374151", whiteSpace: "nowrap" }}
         >
           {MODE_LABEL[m]}
         </button>
@@ -215,7 +216,7 @@ function Select({ label, value, onChange, options, groups, disabled, title, tour
       onChange={(e) => onChange(e.target.value)}
       style={{
         maxWidth: 160, flexShrink: 0, padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb",
-        background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 14,
+        background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: FS.ui,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
@@ -224,7 +225,7 @@ function Select({ label, value, onChange, options, groups, disabled, title, tour
   );
 }
 
-const barBtn: React.CSSProperties = { height: 40, padding: "0 10px", flexShrink: 0, border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" };
+const barBtn: React.CSSProperties = { height: 40, padding: "0 8px", flexShrink: 0, border: "1px solid #D1D5DB", borderRadius: 8, fontSize: FS.ui, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" };
 
 /** 휴대폰 폭의 '메뉴' 시트 — 바 아래로 내려오고, 바깥(어두운 곳)·Esc·'닫고 지도 보기'로 닫는다. 고른 업종·지표는 바로 지도에 적용된다. */
 function MenuSheet({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -245,10 +246,10 @@ function MenuSheet({ onClose, children }: { onClose: () => void; children: React
 
 function SheetSelect({ label, value, onChange, options, groups, disabled, tour }: { label: string; value: string; onChange: (v: string) => void; options?: { value: string; label: string }[]; groups?: OptionGroup[]; disabled?: boolean; tour?: string }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "#4B5563" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: FS.warn, color: "#4B5563" }}>
       {label}
       <select data-tour={tour} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
-        style={{ width: "100%", minHeight: 44, padding: "8px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: 16 }}>
+        style={{ width: "100%", minHeight: 44, padding: "8px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: disabled ? "#f3f4f6" : "white", color: disabled ? "#9ca3af" : "#111827", fontSize: FS.body }}>
         {renderOptions(options, groups)}
       </select>
     </label>

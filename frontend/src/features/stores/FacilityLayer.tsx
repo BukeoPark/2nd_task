@@ -32,7 +32,7 @@ export function FacilityLayer({ map, kakao, facilities }: FacilityLayerProps) {
         const label = document.createElement("div");
         label.textContent = shown;
         Object.assign(label.style, {
-          position: "absolute", left: "13px", top: "-9px", whiteSpace: "nowrap", fontSize: "11px", fontWeight: "600", color: mark.color,
+          position: "absolute", left: "13px", top: "-9px", whiteSpace: "nowrap", fontSize: "12px", fontWeight: "600", color: mark.color,
           background: "rgba(255,255,255,0.92)", padding: "1px 5px", borderRadius: "4px", boxShadow: "0 1px 2px rgba(0,0,0,0.25)", pointerEvents: "none",
         });
         wrap.append(label);

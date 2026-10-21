@@ -38,6 +38,7 @@ import { LicenseSummary, OperationHistorySection } from "./OperationHistorySecti
 import { SalesBenchmarkSection } from "./SalesBenchmarkSection";
 import { useMyStoreRecord } from "./useMyStoreRecord";
 import { useLocationInfluence, useStoreDetail } from "./useStores";
+import { FS } from "../../lib/typography";
 
 interface StoreDetailPanelProps {
   storeId: string;
@@ -119,8 +120,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       ? {
           basic: (
             <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 2 }}>기본정보 · 이 매장</div>
-              <div style={{ fontSize: 12, color: "#374151" }}>
+              <div style={{ fontSize: FS.caption, fontWeight: 700, color: "#6B7280", marginBottom: 2 }}>기본정보 · 이 매장</div>
+              <div style={{ fontSize: FS.caption, color: "#374151" }}>
                 {store.address ?? "주소 정보 없음"}
                 {store.building ? ` (${store.building})` : ""}
                 <SourceNote title={store.source.title} reference={store.source.reference} />
@@ -149,7 +150,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
             <Section title="소속 상권 — 행정동·발달/골목상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
-              <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>상권 유형·매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균). 유형은 상권 경계 기준의 참고용 규칙 분류이고, 매장 반경 값(주변)과 다릅니다.</div>
+              <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>상권 유형·매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균). 유형은 상권 경계 기준의 참고용 규칙 분류이고, 매장 반경 값(주변)과 다릅니다.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <AreaCharacterLine level="dong" code={store.adong_cd} label={`${store.dong} 행정동`} />
                 <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>
@@ -236,7 +237,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                         <span style={mode === "owner" ? { ...reportSubStyle, color: "#7C2D12" } : reportSubStyle}>{store.trdar ? store.trdar.name : store.dong} 전체 · {mode === "owner" ? "지역 보고서" : "후보지 매출 흐름·경쟁·입지·확인사항 · 지역 보고서"}</span>
                       </button>
                     )}
-                    {mode === "founder" && <div style={{ fontSize: 12.5, color: "#6B7280" }}>매장 한 곳의 보고서는 자영업자용만 제공돼요. 예비 창업자는 이 매장이 속한 지역의 보고서를 볼 수 있어요.</div>}
+                    {mode === "founder" && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>매장 한 곳의 보고서는 자영업자용만 제공돼요. 예비 창업자는 이 매장이 속한 지역의 보고서를 볼 수 있어요.</div>}
                   </div>
                 )}
                 {g === "store" && (
@@ -278,7 +279,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
 
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
-const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "1px solid #D1D5DB", borderRadius: 10, background: "white", color: "#374151", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" };
-const reportSubStyle: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 };
-const reportSecondaryStyle: React.CSSProperties = { width: "100%", minHeight: 48, padding: "10px 14px", border: "2px solid #C2410C", borderRadius: 12, background: "white", color: "#9A3412", fontWeight: 800, fontSize: 15.5, cursor: "pointer", textAlign: "left" };
-const reportLinkStyle: React.CSSProperties = { marginTop: 16, minHeight: 40, padding: "8px 14px", border: "1px solid #C2410C", borderRadius: 10, background: "white", color: "#9A3412", fontWeight: 700, fontSize: 14.5, cursor: "pointer" };
+const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "1px solid #D1D5DB", borderRadius: 10, background: "white", color: "#374151", fontWeight: 700, fontSize: FS.body, cursor: "pointer", textAlign: "left" };
+const reportSubStyle: React.CSSProperties = { display: "block", fontSize: FS.warn, fontWeight: 500, opacity: 0.92, marginTop: 2 };
+const reportSecondaryStyle: React.CSSProperties = { width: "100%", minHeight: 48, padding: "10px 14px", border: "2px solid #C2410C", borderRadius: 12, background: "white", color: "#9A3412", fontWeight: 800, fontSize: FS.body, cursor: "pointer", textAlign: "left" };
+const reportLinkStyle: React.CSSProperties = { marginTop: 16, minHeight: 40, padding: "8px 14px", border: "1px solid #C2410C", borderRadius: 10, background: "white", color: "#9A3412", fontWeight: 700, fontSize: FS.ui, cursor: "pointer" };

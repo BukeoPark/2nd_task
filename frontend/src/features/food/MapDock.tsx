@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { OVERLAY_Z_INDEX } from "../../lib/vizConfig";
+import { FS } from "../../lib/typography";
 
 type Tab = "legend" | "ranking";
 
@@ -17,7 +18,7 @@ export function MapDock({ legend, ranking }: { legend: ReactNode; ranking: React
       aria-controls="dock-panel"
       onClick={() => toggle(t)}
       style={{
-        flex: 1, padding: "7px 10px", border: "none", cursor: "pointer", fontSize: 14, fontWeight: tab === t ? 700 : 500,
+        flex: 1, padding: "7px 10px", border: "none", cursor: "pointer", fontSize: FS.ui, fontWeight: tab === t ? 700 : 500,
         background: tab === t ? "#EFF6FF" : "transparent", color: tab === t ? "#1D4ED8" : "#374151",
         borderBottom: tab === t ? "2px solid #1D4ED8" : "2px solid transparent",
       }}
@@ -42,7 +43,7 @@ export function MapDock({ legend, ranking }: { legend: ReactNode; ranking: React
           id="dock-panel"
           role="tabpanel"
           aria-labelledby={`dock-tab-${tab}`}
-          style={{ padding: "8px 14px 10px", maxHeight: "calc(100vh - 220px)", overflowY: "auto", fontSize: 13, lineHeight: 1.6 }}
+          style={{ padding: "8px 14px 10px", maxHeight: "calc(100vh - 220px)", overflowY: "auto", fontSize: FS.warn, lineHeight: 1.6 }}
         >
           {tab === "legend" ? legend : ranking}
         </div>

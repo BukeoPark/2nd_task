@@ -3,6 +3,7 @@ import { Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import { apiClient } from "../../lib/apiClient";
 import { formatKrw, parseManwon } from "../../lib/format";
+import { FS } from "../../lib/typography";
 
 /** '프랜차이즈 참고' — 이 상권 같은 업종의 프랜차이즈 비율(서울시)과, 상호로 연결된 브랜드의 전국 평균(공정위).
  * 전국·시도 평균은 상권 값이 아니므로 참고치로만 보여준다. */
@@ -15,7 +16,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
   return (
     <Section title="프랜차이즈 참고" scope={<ScopeTag kind="area" label="업종 평균" />}>
       {share && share.share !== null && (
-        <div style={{ fontSize: 12, marginBottom: 8 }}>
+        <div style={{ fontSize: FS.caption, marginBottom: 8 }}>
           이 {bm.data?.unit?.label} 같은 업종 {share.stores}곳 중 프랜차이즈 <strong>{share.frc_stores}곳({(share.share * 100).toFixed(0)}%)</strong>
           {share.peer_median !== null && (
             <span style={{ color: "#6B7280" }}> · {bm.data?.unit?.peer_label} 중앙값 {(share.peer_median * 100).toFixed(0)}%</span>
@@ -30,7 +31,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
         const maxCnt = Math.max(1, ...b.trend.map((t) => t.frcs_cnt ?? 0));
         return (
           <div>
-            <div style={{ fontSize: 12, marginBottom: 6 }}>
+            <div style={{ fontSize: FS.caption, marginBottom: 6 }}>
               <strong>{b.brand}</strong> <span style={{ color: "#6B7280" }}>({b.corp} · {b.industry} · 상호로 추정한 연결)</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -44,16 +45,16 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
                     sub={fr.data.seoul_avg ? `${fr.data.seoul_avg.year}년 · 시도 단위` : undefined} />
             </div>
             {mine !== null && b.avg_sales_month && (
-              <div style={{ marginTop: 6, fontSize: 12 }}>
+              <div style={{ marginTop: 6, fontSize: FS.caption }}>
                 입력한 월 매출은 이 브랜드 전국 평균의 <strong>{((mine / b.avg_sales_month) * 100).toFixed(0)}%</strong>
               </div>
             )}
-            <div style={{ fontSize: 11, color: "#6b7280", margin: "8px 0 2px" }}>가맹점 수 추이</div>
+            <div style={{ fontSize: FS.caption, color: "#6b7280", margin: "8px 0 2px" }}>가맹점 수 추이</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 40 }}>
               {b.trend.map((t) => (
                 <div key={t.year} style={{ flex: 1, textAlign: "center" }} title={`${t.year}: ${t.frcs_cnt ?? "-"}곳 (신규 ${t.new_cnt ?? 0}, 종료·해지 ${t.out_cnt ?? 0})`}>
                   <div style={{ height: Math.max(((t.frcs_cnt ?? 0) / maxCnt) * 30, 1), background: "#8B5CF6", opacity: 0.7, borderRadius: 2 }} />
-                  <div style={{ fontSize: 9, color: "#6B7280" }}>{String(t.year).slice(2)}</div>
+                  <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{String(t.year).slice(2)}</div>
                 </div>
               ))}
             </div>
@@ -64,7 +65,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
         <>
           {fr.data.brand && <SourceNote label="프랜차이즈 참고 자료" title={fr.data.source.title} reference={fr.data.source.reference} />}
           {fr.data.brand && fr.data.caveats.map((c) => (
-            <div key={c} style={{ fontSize: 11, color: "#6B7280" }}>· {c}</div>
+            <div key={c} style={{ fontSize: FS.caption, color: "#6B7280" }}>· {c}</div>
           ))}
         </>
       )}
@@ -75,9 +76,9 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 14 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280" }}>{sub}</div>}
+      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: FS.ui }}>{value}</div>
+      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { InfoTip } from "../../components/InfoTip";
 import { scopeLine } from "../../lib/foodText";
 import { LEGEND_GLYPHS } from "../../lib/storeGlyph";
 import { ANCHOR_MARK, NO_DATA_COLOR, PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR, ZONE_COLORS, REB_ZONE_COLOR, SALES_FLAT_PCT, SEQ_HIGH_CSS, SEQ_LOW_CSS, TREND_COLORS } from "../../lib/vizConfig";
+import { FS } from "../../lib/typography";
 
 /** 외식 지도 범례 — 버블 크기·색 의미와 기준 분기·출처. 지도와 같은 vizConfig 값을 쓴다. */
 export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale = false, rebQuarter = null, storeRoles = null }: {
@@ -26,7 +27,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
           <div aria-label="업종별 점 모양" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px", marginTop: 4 }}>
             {LEGEND_GLYPHS.map((g) => (
               <span key={g.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
-                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, lineHeight: 1 }}>{g.glyph}</span>
+                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", background: "white", border: `1.5px solid ${STORE_POINT_COLOR}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: FS.caption, lineHeight: 1 }}>{g.glyph}</span>
                 {g.label}
               </span>
             ))}
@@ -50,7 +51,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
             )}
             <Dot color={NO_DATA_COLOR} label="자료 없음 (0 아님)" />
             {data.metric === "stores_volatility" && (
-              <div style={{ color: "#6B7280", fontSize: 12.5 }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
+              <div style={{ color: "#6B7280", fontSize: FS.caption }}>분기마다 점포 수가 평균 몇 % 바뀌었는지(높을수록 들쭉날쭉). 평균 10곳 미만은 자료 없음</div>
             )}
             <div style={{ color: "#6B7280" }}>원 크기 = 점포 수</div>
             {/* 업종 범위는 지금 보는 지표의 것 한 줄만 항상 보이고, 점포 수 범위·범위 차이 안내·계산·출처는 '기준 자세히'에 둔다 */}
@@ -58,7 +59,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
               <span style={{ fontWeight: 600, color: "#374151" }}>업종 범위 </span>
               {data.metric === "stores" ? `${data.scope.stores_label} 기준` : data.scope.metric_scope}
             </div>
-            <details style={{ color: "#6B7280", fontSize: 12.5 }}>
+            <details style={{ color: "#6B7280", fontSize: FS.caption }}>
               <summary style={{ cursor: "pointer", fontWeight: 600, color: "#374151", minHeight: 28, display: "flex", alignItems: "center" }}>
                 기준 자세히{data.scope.notice ? " (범위 차이 있음)" : ""}
               </summary>
@@ -82,7 +83,7 @@ export function FoodLegend({ data, showStores, rebZonesVisible, anchors, stale =
         <>
           <Mark brand="starbucks" label={`스타벅스 (${anchors.stores.filter((s) => s.brand === "starbucks").length}곳)`} />
           <Mark brand="daiso" label={`다이소 (${anchors.stores.filter((s) => s.brand === "daiso").length}곳)`} />
-          <div style={{ color: "#6B7280", fontSize: 12.5 }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
+          <div style={{ color: "#6B7280", fontSize: FS.caption }}>확대하면 도보권 {anchors.walk_m}m 원 표시. {anchors.note}</div>
         </>
       )}
       {rebZonesVisible && <Dot color={REB_ZONE_COLOR} label={`R-ONE 임대동향 상권 (${rebQuarter ?? "기준 분기 기록 없음"})`} />}
@@ -105,7 +106,7 @@ function StoreRoleLegend({ roles }: { roles: { peers: boolean; boundary: boolean
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{dot(11, null, 0, 0.3)} 그 외 매장 — 흐리게</div>
         </>
       ) : (
-        <div style={{ color: "#6B7280", fontSize: 12.5 }}>경쟁 매장 표시는 비교 대상을 불러오는 중이거나 없습니다.</div>
+        <div style={{ color: "#6B7280", fontSize: FS.caption }}>경쟁 매장 표시는 비교 대상을 불러오는 중이거나 없습니다.</div>
       )}
       {roles.boundary && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -123,7 +124,7 @@ function Mark({ brand, label }: { brand: "starbucks" | "daiso"; label: string })
       <span
         aria-hidden="true"
         style={{
-          width: 16, height: 16, borderRadius: 4, background: ZONE_COLORS[brand], color: "white", fontSize: 12, fontWeight: 700, flexShrink: 0,
+          width: 16, height: 16, borderRadius: 4, background: ZONE_COLORS[brand], color: "white", fontSize: FS.caption, fontWeight: 700, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid white", boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
         }}
       >

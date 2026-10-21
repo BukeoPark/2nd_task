@@ -1,6 +1,18 @@
 :root {
   color-scheme: light;
-  font: 14px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+  /* 글자 크기 기준은 src/lib/typography.ts(FS) — 크기를 따로 정하지 않은 글은 본문(15), 버튼·요약줄은 14.5, 입력칸은 16 */
+  font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+button,
+summary {
+  font-size: 14.5px;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
 }
 
 * {

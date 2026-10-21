@@ -1,11 +1,12 @@
 import { Caveat } from "../../components/NoteHost";
 import type { CompareBasis } from "../../lib/compareBasis";
 import { PEER_RING_COLOR, SELECTED_RING_COLOR, STORE_POINT_COLOR } from "../../lib/vizConfig";
+import { FS } from "../../lib/typography";
 
 /** 비교 기준 — 어떤 단위·업종과 견준 숫자인지와, 지도에서 무엇이 강조되는지(점 모양 범례 포함). */
 export function CompareBasisBox({ basis, quarter, showLegend }: { basis: CompareBasis; quarter?: string; showLegend: boolean }) {
   return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginTop: 10, fontSize: 12, color: "#374151", lineHeight: 1.6 }}>
+    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", marginTop: 10, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
       <strong>비교 기준</strong>
       {quarter && <span style={{ color: "#6B7280" }}> · {quarter}</span>}
       <div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Drawer } from "./Drawer";
+import { FS } from "../lib/typography";
 
 export interface InfoRow {
   label: string;
@@ -23,7 +24,7 @@ export function InfoPanel({ title, brief, rows, onClose, children }: InfoPanelPr
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
         {rows.map((row) => (
           <div key={row.label} style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-            <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>{row.label}</div>
+            <div style={{ fontSize: FS.caption, color: "#6b7280", marginBottom: 2 }}>{row.label}</div>
             <div style={{ fontWeight: 600, color: "#111827" }}>{row.value}</div>
           </div>
         ))}
@@ -31,7 +32,7 @@ export function InfoPanel({ title, brief, rows, onClose, children }: InfoPanelPr
 
       {children}
 
-      <div style={{ marginTop: 16, fontSize: 12, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ marginTop: 16, fontSize: FS.caption, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
         목록에서 매장을 고르면 '상권 운영 점검'를 볼 수 있어요.
       </div>
     </Drawer>
