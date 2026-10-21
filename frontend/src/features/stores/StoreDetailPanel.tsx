@@ -126,7 +126,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 <SourceNote title={store.source.title} reference={store.source.reference} />
               </div>
               <div style={{ marginTop: 10 }}>
-                <LicenseSummary history={data.operation_history} />
+                {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} /></Fold> : <LicenseSummary history={data.operation_history} />}
               </div>
             </div>
           ),
@@ -278,7 +278,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
 
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
-const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" };
+const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "1px solid #D1D5DB", borderRadius: 10, background: "white", color: "#374151", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" };
 const reportSubStyle: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 };
 const reportSecondaryStyle: React.CSSProperties = { width: "100%", minHeight: 48, padding: "10px 14px", border: "2px solid #C2410C", borderRadius: 12, background: "white", color: "#9A3412", fontWeight: 800, fontSize: 15.5, cursor: "pointer", textAlign: "left" };
 const reportLinkStyle: React.CSSProperties = { marginTop: 16, minHeight: 40, padding: "8px 14px", border: "1px solid #C2410C", borderRadius: 10, background: "white", color: "#9A3412", fontWeight: 700, fontSize: 14.5, cursor: "pointer" };

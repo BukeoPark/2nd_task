@@ -10,7 +10,6 @@ export function ModeCards() {
         <AppLink key={m.mode} className={`mode ${m.mode}`} to={mapHref(m.mode)}>
           <span className="name">{m.name}</span>
           <span className="lead2">{m.lead}</span>
-          <ul>{m.points.map((p) => <li key={p}>{p}</li>)}</ul>
           <span className="go">{m.cta} →</span>
         </AppLink>
       ))}

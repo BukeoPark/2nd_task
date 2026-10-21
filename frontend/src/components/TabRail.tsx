@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { railPanelId, railTabId } from "../lib/railIds";
 import { OVERLAY_Z_INDEX, RAIL_WIDTH_PX, TOP_BAR_HEIGHT_PX } from "../lib/vizConfig";
 
@@ -19,34 +19,34 @@ interface TabRailProps {
   ariaLabel: string;
   /** 같은 화면에 레일이 둘 이상일 때 id 가 겹치지 않게 하는 접두사 */
   idPrefix?: string;
+  secondaryIds?: string[];
 }
 
 /** 패널 메뉴 — 넓은 화면은 패널 왼쪽 세로 레일, 좁은 화면은 패널 위 가로 탭. 방향키·Home·End 로 옮긴다. 매장 상세(GroupRail)·종합분석이 함께 쓴다. */
-export function TabRail({ items, active, onChange, orientation, ariaLabel, idPrefix = "" }: TabRailProps) {
+export function TabRail({ items, active, onChange, orientation, ariaLabel, idPrefix = "", secondaryIds = [] }: TabRailProps) {
   const vertical = orientation === "vertical";
+  const [expanded, setExpanded] = useState(false);
+  const visibleItems = items.filter((it) => expanded || !secondaryIds.includes(it.id) || it.id === active);
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const i = items.findIndex((it) => it.id === active);
-    const next = e.key === (vertical ? "ArrowDown" : "ArrowRight") ? i + 1 : e.key === (vertical ? "ArrowUp" : "ArrowLeft") ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : null;
+    const i = visibleItems.findIndex((it) => it.id === active);
+    const next = e.key === (vertical ? "ArrowDown" : "ArrowRight") ? i + 1 : e.key === (vertical ? "ArrowUp" : "ArrowLeft") ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? visibleItems.length - 1 : null;
     if (next === null) return;
     e.preventDefault();
-    const id = items[(next + items.length) % items.length].id;
+    const id = visibleItems[(next + visibleItems.length) % visibleItems.length].id;
     onChange(id);
     document.getElementById(railTabId(id, idPrefix))?.focus();
   };
   return (
     <div
-      role="tablist"
       data-tour={idPrefix ? `${idPrefix}rail` : "rail"}
-      aria-label={ariaLabel}
-      aria-orientation={orientation}
-      onKeyDown={onKeyDown}
       style={
         vertical
           ? { position: "absolute", zIndex: OVERLAY_Z_INDEX, top: TOP_BAR_HEIGHT_PX, bottom: 0, left: 0, width: RAIL_WIDTH_PX, background: "#F9FAFB", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 0", overflowY: "auto", scrollbarWidth: "none" }
           : { position: "sticky", top: -20, zIndex: 2, display: "flex", gap: 4, background: "white", padding: "4px 0 8px", margin: "0 0 4px", borderBottom: "1px solid #E5E7EB", overflowX: "auto", scrollbarWidth: "none" }
       }
     >
-      {items.map((it) => {
+      <div role="tablist" aria-label={ariaLabel} aria-orientation={orientation} onKeyDown={onKeyDown} style={{ display: "contents" }}>
+      {visibleItems.map((it) => {
         const on = it.id === active;
         return (
           <button
@@ -71,6 +71,8 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
           </button>
         );
       })}
+      </div>
+      {secondaryIds.length > 0 && <button type="button" aria-expanded={expanded} aria-label={expanded ? "추가 분석 항목 접기" : "추가 분석 항목 펼치기"} onClick={() => setExpanded((v) => !v)} style={{ flexShrink: 0, minHeight: 40, border: 0, background: "none", color: "#4B5563", fontSize: 12, cursor: "pointer", padding: "6px 4px", whiteSpace: "nowrap" }}>{expanded ? "접기 ▴" : "더 보기 ▾"}</button>}
     </div>
   );
 }

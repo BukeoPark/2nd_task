@@ -249,8 +249,8 @@ function locationSection(inp: AreaReportInput): AreaLocation | null {
   facts.push({ label: "소규모상가 공실률(R-ONE 참고)", value: vac !== null ? `${vac.toFixed(1)}%` : "자료 없음", note: vac !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "vacancy_small_shop_pct") ?? "가까운 R-ONE 조사상권이 없음") });
   const sb = val(inp.rows, "starbucks_zone_share");
   const ds = val(inp.rows, "daiso_zone_share");
-  if (sb !== null) facts.push({ label: "스세권 매장 비율", value: `${sb.toFixed(0)}%`, note: "스타벅스 도보 250m 이내 매장 비율" });
-  if (ds !== null) facts.push({ label: "다세권 매장 비율", value: `${ds.toFixed(0)}%`, note: "다이소 도보 250m 이내 매장 비율" });
+  if (sb !== null) facts.push({ label: "스세권 매장 비율", value: `${sb.toFixed(0)}%`, note: "스타벅스 직선거리 250m 이내 매장 비율" });
+  if (ds !== null) facts.push({ label: "다세권 매장 비율", value: `${ds.toFixed(0)}%`, note: "다이소 직선거리 250m 이내 매장 비율" });
   const strengths = inp.character?.strengths ?? [];
   const cautions = inp.character?.cautions ?? [];
   if (facts.length === 0 && strengths.length === 0 && cautions.length === 0) return null;

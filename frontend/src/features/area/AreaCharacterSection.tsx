@@ -37,51 +37,40 @@ function WithCharacter({ level, code, svc, scls, children }: Omit<Props, "unitKi
 export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
   return (
     <WithCharacter level={level} code={code} svc={svc} scls={scls}>
-      {(d) => (
-        <div>
-          <Notice tone="info">{d.basis.label}</Notice>
-          <div style={{ ...card, marginTop: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 11, color: "#6B7280" }}>이 {unitKind}의 유형(복수 특성 가능)</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FEF3C7", borderRadius: 4, padding: "1px 6px" }}>참고용 분류</span>
+      {(d) => {
+        const isDataCaution = (text: string) => /이용량.*연결|승하차.*합계/.test(text);
+        const dataCautions = d.cautions.filter(isDataCaution);
+        const cautions = d.cautions.filter((text) => !isDataCaution(text));
+        const demand = d.type.traits.some((t) => t.key === "residential")
+          ? "직장인구보다 상주인구가 많은 지역입니다."
+          : d.type.traits.some((t) => t.key === "business")
+            ? "상주인구보다 직장인구가 많은 지역입니다."
+            : demandStructureNote(d.type);
+        return (
+        <div style={{ display: "grid", gap: 18 }}>
+          <section style={{ background: "#F5F3FF", border: "1px solid #EDE9FE", borderRadius: 12, padding: 20 }}>
+            <div style={{ fontSize: 12.5, color: "#6B7280" }}>{unitKind} 유형 · 외식 전체 기준</div>
+            <h3 style={{ fontSize: 26, lineHeight: 1.35, color: "#5B21B6", margin: "8px 0 0", wordBreak: "keep-all" }}>{d.type.traits.length > 0 ? d.type.traits.map((t) => t.label).join(" · ") : d.type.headline}</h3>
+            {demand && <p style={{ margin: "10px 0 0", fontSize: 15, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{demand}</p>}
+            <p style={{ margin: "10px 0 0", fontSize: 12.5, lineHeight: 1.6, color: "#6B7280" }}>인구·입지 통계에 따른 참고용 분류이며, 실제 고객 구성이나 창업 성공 가능성을 뜻하지 않습니다.</p>
+            {typeNotice(d.type) && <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.7, color: "#92400E" }}>{typeNotice(d.type)}</p>}
+          </section>
+          {d.type.traits.length > 0 && <section aria-label="유형 판정 근거">
+            <h4 style={{ margin: "0 0 10px", fontSize: 16 }}>판정 근거</h4>
+            <div style={{ display: "grid", gap: 10 }}>
+              {d.type.traits.map((t) => <div key={t.key} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "14px 16px" }}>
+                <strong style={{ fontSize: 14, color: TRAIT_STYLE[t.key].fg }}>{t.label}</strong>
+                <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: 14, lineHeight: 1.7, color: "#374151", wordBreak: "keep-all" }}>{t.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
+              </div>)}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-              {d.type.traits.length > 0 ? (
-                d.type.traits.map((t) => <Chip key={t.key} text={t.label} style={TRAIT_STYLE[t.key]} />)
-              ) : (
-                <Chip text={d.type.headline} style={NEUTRAL_STYLE} />
-              )}
-            </div>
-            {typeNotice(d.type) && <div style={{ ...fine, marginTop: 6 }}>{typeNotice(d.type)}</div>}
-            {demandStructureNote(d.type) && <div style={{ ...fine, marginTop: 6 }}>{demandStructureNote(d.type)}</div>}
-            {d.basis.relative_note && <div style={fine}>기준은 양천·영등포 188개 단위(행정동 36·상권 152) 안의 상대 위치입니다.</div>}
-            {d.type.traits.some((t) => t.key === "transit" || t.key === "commercial") && d.basis.success_note && (
-              <div style={{ marginTop: 6 }}><Notice tone="warn">{d.basis.success_note}</Notice></div>
-            )}
-            {d.type.traits.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>판정 근거</div>
-                {d.type.traits.map((t) => (
-                  <div key={t.key} style={{ marginTop: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: TRAIT_STYLE[t.key].fg }}>{t.label}</span>
-                    {t.evidence.map((e) => <div key={e} style={{ fontSize: 11, color: "#4B5563" }}>· {e}</div>)}
-                  </div>
-                ))}
-              </div>
-            )}
-            {d.type.held.length > 0 && d.type.kind !== "hold" && d.type.held.map((h) => <div key={h.key} style={{ ...fine, marginTop: 4 }}>· {h.reason}</div>)}
-          </div>
-
-          {(d.strengths.length > 0 || d.cautions.length > 0) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-              <Points title="강점" tone="#166534" items={d.strengths} empty="뚜렷한 강점 문장을 만들 근거가 부족합니다." />
-              <Points title="주의사항" tone="#92400E" items={d.cautions} empty="특별히 짚을 주의사항이 없습니다(자료가 있는 범위)." />
-            </div>
-          )}
-
+          </section>}
+          {d.type.held.length > 0 && d.type.kind !== "hold" && <Notice tone="muted">{d.type.held.map((h) => h.reason).join(" ")}</Notice>}
+          {d.strengths.length > 0 && <Points title="함께 볼 지역 특징" tone="#475569" items={d.strengths} empty="" />}
+          {cautions.length > 0 && <Points title="추가 확인사항" tone="#92400E" items={cautions} empty="" />}
           <Fold title="계산 기준·출처 자세히 보기">
-            <div style={{ fontSize: 11, color: "#4B5563", lineHeight: 1.6 }}>
-              <div>{d.basis.unit}</div>
+            <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.75 }}>
+              <div>{d.basis.label}</div><div>{d.basis.unit}</div>
+              {dataCautions.map((t) => <p key={t}>{t}</p>)}
               <ul style={{ margin: "6px 0", paddingLeft: 16 }}>{d.basis.rules.map((r) => <li key={r}>{r}</li>)}</ul>
               <div>
                 기준 분포: 같은 단위 {d.basis.reference.units}곳 — 외식 점포 밀도 상위 25% {d.basis.reference.store_density_p75?.toLocaleString("ko-KR")}곳/㎢ · 집객시설 밀도 중앙값 {d.basis.reference.fac_density_median?.toLocaleString("ko-KR")}곳/㎢ · 역 이용량(연결된 역 승차 합) 상위 25% {d.basis.reference.transit_boardings_p75?.toLocaleString("ko-KR")}명. {d.basis.reference.note}
@@ -99,7 +88,8 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
             {d.basis.sources.map((src) => <SourceNote key={src.title} label="유형·특성 자료" title={src.title} reference={src.reference} />)}
           </Fold>
         </div>
-      )}
+        );
+      }}
     </WithCharacter>
   );
 }
@@ -296,9 +286,9 @@ function Area({ title, hint, children }: { title: string; hint: string; children
 
 function Points({ title, tone, items, empty }: { title: string; tone: string; items: string[]; empty: string }) {
   return (
-    <div style={{ ...card, borderLeft: `3px solid ${tone}` }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: tone }}>{title}</div>
-      {items.length === 0 ? <div style={fine}>{empty}</div> : items.map((t) => <div key={t} style={{ fontSize: 11, color: "#374151", marginTop: 3 }}>· {t}</div>)}
+    <div style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderLeft: `3px solid ${tone}`, borderRadius: 10, padding: "16px 18px" }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: tone }}>{title}</div>
+      {items.length === 0 ? <div style={fine}>{empty}</div> : items.map((t) => <div key={t} style={{ fontSize: 14, color: "#374151", marginTop: 10, lineHeight: 1.8, wordBreak: "keep-all" }}>· {t}</div>)}
     </div>
   );
 }

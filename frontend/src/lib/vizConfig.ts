@@ -103,7 +103,7 @@ export const UNIT_BOUNDARY_WEAK = {
 } as const;
 
 /** 지도 왼쪽에 뜨는 상세·요약 패널(Drawer) 너비 — 이 아래 가려지는 점을 찾는 데도 같은 값을 쓴다. */
-export const SIDE_PANEL_WIDTH_PX = 400;
+export const SIDE_PANEL_WIDTH_PX = 540;
 /** 지도 위 상단 바 높이. */
 export const TOP_BAR_HEIGHT_PX = 56;
 

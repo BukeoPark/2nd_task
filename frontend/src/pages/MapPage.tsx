@@ -439,10 +439,10 @@ export function MapPage() {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <KakaoMap onReady={(map, kakao) => setMapKakao({ map, kakao })}>
-        {mapKakao && regions.data && unit !== "gu" && (
+        {mapKakao && regions.data && unit !== "gu" && !competitionView && (
           <RegionOutlineLayer map={mapKakao.map} kakao={mapKakao.kakao} features={regions.data.features} />
         )}
-        {mapKakao && bubbles.data && unit !== "stores" && (
+        {mapKakao && bubbles.data && unit !== "stores" && !competitionView && (
           <AreaBubbleLayer map={mapKakao.map} kakao={mapKakao.kakao} data={bubbles.data} onSelect={onBubble} stale={bubblesStale} />
         )}
         {mapKakao && points.data && unit === "stores" && (
@@ -525,7 +525,7 @@ export function MapPage() {
           onRebChange={setRebZonesVisible}
           heat={{ metric: heatMetric, onChange: setHeatMetric, data: heatData, loading: heatMetric !== null && heat.isPending, failed: heatMetric !== null && heat.isError }}
         />}
-        {!hideOverlays && <MapDock
+        {!hideOverlays && !competitionView && <MapDock
           legend={
             <FoodLegend
               data={bubbles.data}

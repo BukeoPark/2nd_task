@@ -129,7 +129,7 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
   const anchors = useQuery({ queryKey: ["store-anchors", storeId], queryFn: () => apiClient.getStoreAnchors(storeId), staleTime: LONG });
 
   const store = detail.data?.store;
-  const pending = detail.isPending || bench.isPending || nearby.isPending || loc.isPending;
+  const pending = detail.isPending || bench.isPending || nearby.isPending || loc.isPending || anchors.isPending;
   const report = useMemo(() => {
     if (!store) return null;
     const lic = detail.data?.operation_history.license;
@@ -149,7 +149,7 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
   const partialFailures = [bench.isError && "상권 매출 비교", nearby.isError && "주변 인허가 분석", loc.isError && "입지 영향력"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame title="상권분석 보고서 · 내 매장(자영업자용)" canPrint={Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame title="상권분석 보고서 · 내 매장(자영업자용)" canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>
@@ -160,7 +160,7 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
       {!pending && report && !hasAny && (
         <div style={{ ...boxS, background: C.paper }}>이 매장은 상권 매출·경쟁 자료가 부족해 리포트를 만들 수 없습니다. 자료가 없는 것이지 0이라는 뜻이 아닙니다.{bench.data?.message ? ` (${bench.data.message})` : ""}</div>
       )}
-      {report && hasAny && <ReportPages r={report} today={today()} />}
+      {!pending && report && hasAny && <ReportPages r={report} today={today()} />}
     </ReportFrame>
   );
 }

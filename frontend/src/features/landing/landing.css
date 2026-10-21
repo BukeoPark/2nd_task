@@ -80,8 +80,8 @@
 }
 /* 모드 카드 */
 .lp .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 32px; }
-.lp .mode { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: var(--card); border: 2px solid var(--ink); border-radius: 18px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
-.lp .mode:hover { transform: translateY(-3px); box-shadow: 0 8px 0 var(--ink); }
+.lp .mode { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+.lp .mode:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(14, 26, 43, 0.10); }
 .lp .mode .name { font-weight: 800; font-family: var(--f-display); font-size: 26px; line-height: 1.2; }
 .lp .mode.owner .name { color: var(--blue); }
 .lp .mode.founder .name { color: var(--orange); }

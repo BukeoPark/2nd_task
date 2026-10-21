@@ -142,7 +142,7 @@ export function AreaOverviewPanel(p: Props) {
               type="button"
               data-tour="area-report-button"
               onClick={() => setReportOpen(true)}
-              style={{ width: "100%", marginTop: 12, minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" }}
+              style={{ width: "100%", marginTop: 12, minHeight: 56, padding: "12px 14px", border: "1px solid #D1D5DB", borderRadius: 10, background: "white", color: "#374151", fontWeight: 700, fontSize: 15, cursor: "pointer", textAlign: "left" }}
             >
               상권분석 보고서 보기 ›
               <span style={{ display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>

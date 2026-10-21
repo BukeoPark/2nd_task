@@ -28,7 +28,7 @@ export function Drawer({ title, subtitle, onClose, onBack, backLabel = "← 목�
         top: 56,
         bottom: 0,
         left,
-        width: narrow ? `calc(100vw - ${left}px)` : SIDE_PANEL_WIDTH_PX,
+        width: narrow ? `calc(100vw - ${left}px)` : SIDE_PANEL_WIDTH_PX - left,
         background: "white",
         boxShadow: "2px 0 10px rgba(0,0,0,0.15)",
         padding: 20,

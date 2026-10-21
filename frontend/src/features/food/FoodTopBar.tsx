@@ -73,6 +73,7 @@ function useWide(min: number): boolean {
 export function FoodTopBar(p: FoodTopBarProps) {
   const group = p.categories?.groups.find((g) => g.svc_cd === p.svc);
   const narrow = useNarrow();
+  const fullToolbar = useWide(1280);
   const wide = useWide(1600);   // 아주 넓은 화면에서만 '지도 단위' 글자를 보인다 — 좁으면 모드별 주요 메뉴가 잘리지 않게 비운다
   const [menuOpen, setMenuOpen] = useState(false);
   const svcOptions = [{ value: "", label: "외식 전체" }, ...(p.categories?.groups ?? []).map((g) => ({ value: g.svc_cd, label: `${g.svc_nm} (${g.store_count.toLocaleString()})` }))];
@@ -80,7 +81,7 @@ export function FoodTopBar(p: FoodTopBarProps) {
   const changeSvc = (v: string) => { p.onSvcChange(v || null); p.onSclsChange(null); };
   // 휴대폰 폭: 한 줄에 다 담으면 업종·지표·월간 점검·내 관심 지역·도움말이 화면 밖으로 밀려 보이지 않는다 →
   // 바에는 로고·검색·내 관심 지역·'메뉴'만 두고, 모드·업종·지표·월간 점검·도움말은 '메뉴' 시트에 모은다.
-  if (narrow) {
+  if (!fullToolbar) {
     const sheetBtn: React.CSSProperties = { width: "100%", minHeight: 44, padding: "10px 12px", borderRadius: 10, border: "1px solid #D1D5DB", background: "white", color: "#111827", fontSize: 15, fontWeight: 700, cursor: "pointer", textAlign: "left" };
     return (
       <>

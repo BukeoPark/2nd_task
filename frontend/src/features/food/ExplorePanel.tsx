@@ -101,7 +101,9 @@ export function ExplorePanel(p: Props) {
                       </button>
                     </div>
                     {c.caution && <div style={{ fontSize: 12.5, color: "#6B7280", margin: "0 0 4px" }}>{cautionText(preset, c.stores)}</div>}
-                    <button type="button" onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ ...btn(true), width: "100%", marginTop: c.caution ? 0 : 4 }}>상권분석 보고서 보기 ›</button>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                      <button type="button" aria-label={`${c.name} 상권분석 보고서 보기`} onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ minHeight: 36, padding: "6px 4px", border: 0, background: "none", color: "#6B7280", fontSize: 13, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>보고서 보기</button>
+                    </div>
                   </li>
                 );
               })}
@@ -128,8 +130,3 @@ export function ExplorePanel(p: Props) {
     </Drawer>
   );
 }
-
-const btn = (primary: boolean, disabled = false): React.CSSProperties => ({
-  minHeight: 36, padding: "6px 12px", borderRadius: 8, fontSize: 14, fontWeight: primary ? 700 : 500, cursor: disabled ? "not-allowed" : "pointer",
-  border: primary ? "1px solid #1D4ED8" : "1px solid #D1D5DB", background: primary ? "#1D4ED8" : "white", color: disabled ? "#9CA3AF" : primary ? "white" : "#374151",
-});
