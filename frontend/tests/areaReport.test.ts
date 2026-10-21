@@ -205,7 +205,7 @@ test("점포 10곳 미만이면 프랜차이즈 비중·점포 수 증감·폐�
     const r = buildAreaReport(withStores(7, mode));
     const text = [...r.lens.positive, ...r.lens.caution].map((s) => s.title).concat(r.lens.checklist).join("|");
     assert.doesNotMatch(text, /프랜차이즈|점포 수가 약 2년|점포 수가 안정|문 닫|최근 문을 닫은|상권 전체 매출/);
-    assert.match(r.lens.checklist.join("|"), /내 가게 점검|입지 비교/);   // 현장 확인·내 가게 점검 같은 일반 항목은 남는다
+    assert.match(r.lens.checklist.join("|"), /내 가게 점검|내 관심 지역/);   // 현장 확인·내 가게 점검 같은 일반 항목은 남는다
   }
 });
 

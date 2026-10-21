@@ -64,16 +64,8 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
         <ReportLead lead={reportLead(r.lens.mode, "area", { level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("stab") : undefined, checklist: r.checklist.length > 0 ? total : undefined })} />
-        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: r.lens.caution.map((c) => c.title), checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        <div>
-          {r.findings.map((f, i) => (
-            <div key={f.title} style={{ display: "grid", gridTemplateColumns: "36px 1fr", gap: 12, padding: "14px 0", borderTop: `1px solid ${C.line}` }}>
-              <div style={{ fontFamily: "ui-monospace,Menlo,Consolas,monospace", fontWeight: 600, fontSize: 20, color: C.accent }}>{i + 1}</div>
-              <div><h3 style={{ margin: "0 0 2px", fontSize: 14 }}>{f.title}</h3><p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{f.body}</p></div>
-            </div>
-          ))}
-        </div>
+        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.lens.positive.length === 0 && r.lens.caution.length === 0 && (
           <div style={{ ...boxS, background: C.paper }}>
             <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
@@ -99,7 +91,6 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
               </table>
             </div>
           )}
-          <div style={boxS}><strong style={{ color: C.ink }}>읽기 전에</strong><br />이 리포트의 매출은 한 가게의 실제 매출이 아니라, 이 지역 같은 업종 점포들의 카드 결제 기반 추정 평균입니다. 점수나 '창업 적합도'는 만들지 않았고, 원인을 단정하지 않고 관측된 차이와 가능한 해석만 적었습니다. 공개 통계로 만든 문서이며 특정 가게의 자료는 쓰지 않았습니다.</div>
         </div>
       </Page>
 

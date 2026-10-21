@@ -31,16 +31,8 @@ function ReportPages({ r, today: date }: { r: InsightReport; today: string }) {
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
         <ReportLead lead={reportLead("owner", "store", { level: no("level") || undefined, slots: no("slots") || undefined, competition: hasChurn ? no("comp") : undefined, checklist: r.checklist.length > 0 ? total : undefined })} />
-        <ReportTriad triad={buildTriad({ mode: "owner", tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        <div>
-          {r.findings.map((f, i) => (
-            <div key={f.title} style={{ display: "grid", gridTemplateColumns: "36px 1fr", gap: 12, padding: "14px 0", borderTop: `1px solid ${C.line}` }}>
-              <div style={{ fontFamily: "ui-monospace,Menlo,Consolas,monospace", fontWeight: 600, fontSize: 20, color: C.accent }}>{i + 1}</div>
-              <div><h3 style={{ margin: "0 0 2px", fontSize: 14 }}>{f.title}</h3><p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{f.body}</p></div>
-            </div>
-          ))}
-        </div>
+        <ReportTriad triad={buildTriad({ mode: "owner", tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         <div className="irp-cols">
           {r.profile.length > 0 && (
             <div>
@@ -50,7 +42,6 @@ function ReportPages({ r, today: date }: { r: InsightReport; today: string }) {
               </table>
             </div>
           )}
-          <div style={boxS}><strong style={{ color: C.ink }}>읽기 전에</strong><br />{r.limits[0]} 원인을 단정하지 않고 관측된 차이와 가능한 해석만 적었습니다. 이 문서는 서비스가 제공하는 공개 통계로 만들었으며 매장 운영자의 자료는 쓰지 않았습니다.</div>
         </div>
       </Page>
 

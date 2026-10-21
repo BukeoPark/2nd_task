@@ -13,20 +13,10 @@ import { viewState } from "../../lib/queryState";
 import { SERIES_COLORS } from "../../lib/vizConfig";
 import { CompareTable } from "./ComparePanel";
 import { useFoodBubbles, useFoodCompare } from "./useFood";
+import { CHART_GROUPS, KEY_ROWS } from "../../lib/compareLayout";
 
 const UNIT_NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
 const MAX_COMPARE = 4;
-// 상세 차트로 그릴 행 — 표(CompareTable)에는 모든 행이 있다. 종합점수·레이더는 만들지 않는다.
-const CHART_GROUPS: { title: string; keys: string[] }[] = [
-  { title: "매출", keys: ["per_store_month", "sales_yoy_pct", "sales_per_10k_flpop"] },
-  { title: "경쟁", keys: ["stores_sbiz", "frc_share", "starbucks_zone_share", "daiso_zone_share"] },
-  { title: "수요", keys: ["wrc_total", "repop_total", "fac_total"] },
-  { title: "안정성", keys: ["stores_change_2y", "stores_volatility", "open_rate_y", "close_rate_y"] },
-  { title: "임대료·공실(참고값)", keys: ["rent_small_shop", "vacancy_small_shop_pct"] },
-];
-// 맨 위 '지역별 핵심 지표'에 한 줄씩 보이는 행(같은 순서)
-const KEY_ROWS = ["per_store_month", "sales_yoy_pct", "stores_sbiz", "stores_change_2y", "close_rate_y", "open_rate_y"];
-
 interface Props {
   level: FoodLevel;
   codes: string[];
@@ -182,9 +172,11 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
                 </Card>
               ))}
             </div>
-            <Card title="전체 지표 표">
-              <CompareTable data={data} onRemove={onRemove} />
-            </Card>
+            {/* 위 핵심 지표·상세 차트의 값을 모두 한 표로 모은 것 — 같은 값을 되풀이해 길어지므로 접어 둔다 */}
+            <details style={cardStyle}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 17, minHeight: 36, display: "flex", alignItems: "center" }}>전체 지표 표 보기</summary>
+              <div style={{ marginTop: 8 }}><CompareTable data={data} onRemove={onRemove} /></div>
+            </details>
           </div>
         )}
       </div>

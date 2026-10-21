@@ -165,7 +165,7 @@ export function buildLens(mode: Mode, c: LensContext): Lens {
 
   const checklist: string[] = [];
   if (founder) {
-    checklist.push(`후보 ${c.unitWord}을 '입지 비교'에 담아 점포당 월평균 추정매출·폐업률·점포 수를 나란히 견주기`);
+    checklist.push(`후보 ${c.unitWord}을 '내 관심 지역'에 담아 점포당 월평균 추정매출·폐업률·점포 수를 나란히 견주기`);
     const top = topSlot(c.slots);
     if (top && top.sales >= 45) checklist.push(`${top.label} 외 시간대(특히 내 메뉴가 노리는 시간대)의 실제 유동·손님을 현장에서 시간대별로 확인하기`);
     if (clearlyHigher(ch?.closeRate, ch?.medClose)) checklist.push("최근 문을 닫은 가게의 이유를 이웃 상인·부동산에 물어보기");
