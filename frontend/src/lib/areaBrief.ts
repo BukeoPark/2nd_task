@@ -1,6 +1,6 @@
 // 상권·행정동 종합분석 '요약' 맨 위의 3단 구성 — ① 확인된 사실(중요한 숫자 2~3개) ② 어떻게 읽을까?(데이터로 직접 확인되는 해석 1~2문장)
 // ③ 다음 확인사항(눌러서 이동하는 실제 분석 기능). 모드에 따라 사실의 우선순위와 다음 확인사항이 다르다.
-//  · 예비 창업자: 성장성·경쟁 강도·점포 변화 → 후보 비교 → 비용 점검 → 현장 확인
+//  · 예비 창업자: 성장성·경쟁 강도·점포 변화 → 후보 비교 → 비용 점검
 //  · 자영업자: 상권 흐름·경쟁 변화 → 내 매장 찾기·내 가게 점검 → 시간대·수요
 // 해석은 값 사이의 직접 비교(증감 부호, 폐업률과 개업률의 크기)만 말한다. 원인·유망 여부를 단정하지 않고 종합점수를 만들지 않는다.
 // 표본 점포가 10곳 미만이면 해석을 만들지 않고 '분석 보류'라고 말한다(기존 표본 기준과 같다). 0·자료 없음·분석 보류는 서로 다른 말로 쓴다.
@@ -16,7 +16,7 @@ export interface BriefRow { key: string; kind: string; as_of: string | null; cel
 export type FactState = "value" | "missing" | "hold";
 export interface BriefFact { key: string; label: string; value: string; note: string; state: FactState }
 
-export type BriefTarget = "tab-growth" | "tab-stability" | "tab-demand" | "tab-location" | "tab-cost" | "tab-visit" | "compare" | "search" | "report";
+export type BriefTarget = "tab-growth" | "tab-stability" | "tab-demand" | "tab-location" | "tab-cost" | "compare" | "search" | "report";
 export interface BriefAction { target: BriefTarget; label: string; why: string }
 
 export interface AreaBrief {
@@ -105,7 +105,6 @@ export function buildAreaBrief(inp: BriefInput): AreaBrief {
     ? [
         { target: "compare", label: "내 관심 지역에 담고 비교하기", why: inp.basketHas ? "저장한 지역 중 2~4곳을 같은 기준으로" : "담아 두면 보고서·비용·답사까지 이어져요" },
         { target: "tab-cost", label: "창업 비용 점검", why: "내가 넣은 비용으로 손익분기 계산" },
-        { target: "tab-visit", label: "현장 확인 체크리스트", why: "숫자로 못 보는 동선·가시성 확인" },
       ]
     : [
         { target: "search", label: "내 매장 찾아 점검하기", why: "내 매출·비용 기록과 상권 평균 견주기" },

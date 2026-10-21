@@ -11,14 +11,14 @@ test("요약이 첫 항목이고 행정동에만 세부 상권이 있으며 매�
   }
 });
 
-test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 성장성·경쟁·수요·입지 → 비용 → 답사", () => {
+test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 성장성·경쟁·수요·입지 → 비용", () => {
   assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "traits", "type", "stores"]);
-  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "visit", "traits", "type", "stores"]);
+  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "traits", "type", "stores"]);
 });
 
-test("예비 창업자 모드에만 비용 점검·현장 확인이 있다", () => {
-  assert.ok(!areaTabsFor("dong", "owner").includes("cost" as never) && !areaTabsFor("dong").includes("visit" as never));
-  assert.ok(areaTabsFor("dong", "founder").includes("cost") && areaTabsFor("dong", "founder").includes("visit"));
+test("예비 창업자 모드에만 비용 점검이 있고, 현장 확인 메뉴는 없다", () => {
+  assert.ok(!areaTabsFor("dong", "owner").includes("cost" as never) && !areaTabsFor("dong", "founder").includes("visit" as never));
+  assert.ok(areaTabsFor("dong", "founder").includes("cost"));
 });
 
 test("모든 항목에 질문형 제목이 있고(물음표가 있음) 두 모드의 관점이 다른 항목이 있다", () => {

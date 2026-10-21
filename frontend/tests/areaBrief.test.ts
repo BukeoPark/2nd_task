@@ -6,10 +6,10 @@ const r = (key: string, kind: string, value: number | null, extra: { note?: stri
 const rows: BriefRow[] = [r("per_store_month", "money", 39_000_000), r("sales_yoy_pct", "growth", -5.6), r("close_rate_y", "rate", 19.7), r("open_rate_y", "rate", 13.1), r("stores_sbiz", "count", 23), r("stores_change_2y", "growth", -8.8)];
 const base: BriefInput = { mode: "founder", unitWord: "상권", scope: "한식음식점 전체", rows, sampleStores: 31, basketHas: false };
 
-test("예비 창업자: 매출·증감·폐업률을 먼저, 다음 확인은 후보 비교→비용 점검→현장 확인", () => {
+test("예비 창업자: 매출·증감·폐업률을 먼저, 다음 확인은 후보 비교→비용 점검", () => {
   const b = buildAreaBrief(base);
   assert.deepEqual(b.facts.map((f) => f.key), ["per_store_month", "sales_yoy_pct", "close_rate_y"]);
-  assert.deepEqual(b.next.map((n) => n.target), ["compare", "tab-cost", "tab-visit"]);
+  assert.deepEqual(b.next.map((n) => n.target), ["compare", "tab-cost"]);
   assert.match(b.facts[2].note, /개업률 13\.1%/);
   assert.equal(b.scopeLine, "상권 단위 · 한식음식점 전체 기준");
 });

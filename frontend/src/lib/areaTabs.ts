@@ -1,9 +1,9 @@
 // 행정동·상권 종합분석 패널의 레일 메뉴 — 어떤 항목이 어떤 순서로 있는지.
 // 요약(핵심 카드·기준 안내·지도 버튼)이 첫 항목이고, 항목은 한 번에 하나씩 보인다. 어느 항목이든 맨 위에 어떤 상권인지가 나온다.
-// 예비 창업자 모드에는 '비용 점검'(내가 입력한 비용으로 손익분기)과 '현장 확인'(답사 체크리스트)이 더 있다.
+// 예비 창업자 모드에는 '비용 점검'(내가 입력한 비용으로 손익분기)이 더 있다.
 // 다른 모듈을 import 하지 않는 순수 데이터(tests/areaTabs.test.ts).
 
-export type AreaTabId = "summary" | "type" | "traits" | "growth" | "stability" | "demand" | "location" | "cost" | "visit" | "trdars" | "stores";
+export type AreaTabId = "summary" | "type" | "traits" | "growth" | "stability" | "demand" | "location" | "cost" | "trdars" | "stores";
 
 export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   summary: "요약",
@@ -14,7 +14,6 @@ export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   demand: "소비 수요",
   location: "입지",
   cost: "비용 점검",
-  visit: "현장 확인",
   trdars: "세부 상권",
   stores: "매장 목록",
 };
@@ -29,7 +28,6 @@ export const AREA_TAB_STYLE: Record<AreaTabId, { bg: string; fg: string }> = {
   demand: { bg: "#FEF3C7", fg: "#92400E" },
   location: { bg: "#FFE4E6", fg: "#BE123C" },
   cost: { bg: "#ECFCCB", fg: "#3F6212" },
-  visit: { bg: "#FAE8FF", fg: "#86198F" },
   trdars: { bg: "#F3E8FF", fg: "#6B21A8" },
   stores: { bg: "#CCFBF1", fg: "#0F766E" },
 };
@@ -44,18 +42,17 @@ export const AREA_QUESTION: Record<AreaTabId, { owner: string; founder: string }
   demand: { owner: "손님이 언제 많이 오갈까?", founder: "사람들은 언제, 얼마나 오갈까?" },
   location: { owner: "주변 큰 브랜드와 임대료는 어떨까?", founder: "입지 위험은 없을까? (주변 브랜드·임대료)" },
   cost: { owner: "얼마를 벌어야 손해를 안 볼까?", founder: "창업하면 얼마를 벌어야 손해를 안 볼까?" },
-  visit: { owner: "직접 가서 무엇을 확인해야 할까?", founder: "직접 가서 무엇을 확인해야 할까?" },
   trdars: { owner: "이 행정동 안에는 어떤 상권이 있을까?", founder: "이 행정동 안에는 어떤 상권이 있을까?" },
   stores: { owner: "이 지역에는 어떤 가게들이 있을까?", founder: "이 지역에는 어떤 가게들이 있을까?" },
 };
 
 /** 레일 항목과 순서 — 모드마다 먼저 궁금한 것이 다르다.
  *  · 자영업자(우리 가게 장사 점검): 경쟁 변화 → 시간대·수요 → 매출 흐름 → 입지 → (성격)
- *  · 예비 창업자(창업할 자리 찾기): 성장성 → 경쟁·점포 변화 → 수요 → 입지 위험 → 비용 점검 → 현장 확인 → (성격)
+ *  · 예비 창업자(창업할 자리 찾기): 성장성 → 경쟁·점포 변화 → 수요 → 입지 위험 → 비용 점검 → (성격)
  * 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). 매장 목록은 항상 마지막, 요약은 항상 첫 항목. */
 export function areaTabsFor(level: "dong" | "trdar", mode: "owner" | "founder" = "owner"): AreaTabId[] {
   const body: AreaTabId[] = mode === "founder"
-    ? ["growth", "stability", "demand", "location", "cost", "visit", "traits", "type"]
+    ? ["growth", "stability", "demand", "location", "cost", "traits", "type"]
     : ["stability", "demand", "growth", "location", "traits", "type"];
   return level === "dong" ? ["summary", ...body, "trdars", "stores"] : ["summary", ...body, "stores"];
 }

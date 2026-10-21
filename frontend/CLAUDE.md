@@ -48,7 +48,7 @@
     - **종합분석 항목 구성**: 요약(지표 카드 → 지도 버튼 → '읽는 법·유의사항' → 안내 → 리포트 버튼 순) / 유형(참고용 분류·판정 근거·강점·주의사항) / 특성(교통·배후 수요·상업·경쟁 네 영역) / 성장성 / 안정·경쟁 / 소비 수요 / 입지 / 세부 상권 / 매장 목록.
       특성은 네 영역 카드에 값·근거를 보인다(핵심 메시지·색 제목은 복잡해져 뺐다). 좋고 나쁨·성공 가능성은 말하지 않는다.
     - **종합분석 요약의 3단**(`features/area/AreaBriefCard`, 계산은 `lib/areaBrief`): ① 확인된 사실(모드별 2~3개) ② 어떻게 읽을까?(증감 부호·개폐업률 크기만, 점포 10곳 미만이면 '분석 보류') ③ 다음 확인사항(눌러서 이동). 매장 상세 '이 매장'(자영업자)에도 같은 3단(`StoreBriefCard`, `lib/storeBrief`).
-      예비 창업자는 레일에 '비용 점검'(`CostCheckSection`, `lib/costCheck` — 입력 기반 시뮬레이션, 저장 키 `founderCostCheck:v1`, '내 가게' 기록과 분리)·'현장 확인'(`VisitChecklistSection`, `lib/visitChecklist`)이 더해진다.
+      예비 창업자는 레일에 '비용 점검'(`CostCheckSection`, `lib/costCheck` — 입력 기반 시뮬레이션, 저장 키 `founderCostCheck:v1`, '내 가게' 기록과 분리)이 더해진다. 종합분석 레일에는 '현장 확인' 메뉴가 없다 — 답사 체크리스트(`VisitChecklistSection`, `lib/visitChecklist`)는 '내 관심 지역'(`InterestBox`)에서만 쓴다.
       관심 지역(`lib/favorites`, 최대 10곳)·최근 본 지역(`lib/recentUnits`)은 이 브라우저(localStorage)에만 두고, 공유 주소(`?unit=level:code&svc=`)에는 모드·지역·업종 코드만 담는다(내 매출·비용 없음). 비교 상단의 '차이가 큰 지표'는 `lib/compareHighlights`(유리한 곳을 고르거나 점수로 합치지 않음).
       요약 해석은 리포트와 같은 규칙을 쓴다(`lib/interpretRules`: 기준값의 1.25배 이상일 때만 '눈에 띄게 높다', 증감은 부호대로, 표본 점포는 서울시 집계 최근 분기 → 상가정보). 임계값이 `areaLens`·`areaReport` 원문과 어긋나지 않는지 `tests/interpretRules.test.ts` 가 지킨다. 근거가 부족하면 해석 없이 숫자만 보인다.
       **지역 비교 화면**(`features/food/CompareDashboard`): 화면 너비를 넓게 쓰고(최대 1760px), 맨 위에 '지역별 핵심 지표' 표(열 = 담은 지역)와 '눈여겨볼 차이 3가지'(`lib/compareHighlights` — 모든 지역의 값·차이를 센 방식·기간·업종 범위를 함께 보임)를 놓는다. 매출·경쟁·수요·안정성·임대료(참고) 상세 차트와 전체 표는 그 아래다. 종합점수·우수 지역 선정은 없다.

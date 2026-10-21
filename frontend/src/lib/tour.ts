@@ -47,7 +47,7 @@ export const TOURS: Record<Mode, TourStep[]> = {
     { id: "favorites", target: "favorites", placement: "bottom", title: "내 관심 지역", body: "마음에 둔 상권·행정동을 최대 10곳까지 담아 두세요. 한곳에서 2~4곳을 골라 나란히 비교하고, 지역별 상권분석 보고서·비용 점검·현장 답사 메모로 이어져요. 이 브라우저에만 저장돼요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표로 후보 찾기", body: "순위표 탭에서 지금 지표의 순위를 확인하고, 행을 누르면 그 지역 요약이 열려요." },
     { id: "compare-add", target: "compare-add", placement: "right", title: "④ 담고 비교하기", body: "후보 상권·행정동의 요약에서 '내 관심 지역에 담고 비교하기'를 누르면 담은 뒤 바로 비교할 지역을 고를 수 있어요.", fallback: "후보 상권·행정동을 눌러 열린 요약에서 '내 관심 지역에 담고 비교하기'를 눌러 보세요." },
-    { id: "cost", target: "area-rail", placement: "right", title: "⑥ 비용 점검·현장 확인", body: "왼쪽 메뉴의 '창업 비용 점검'에서 내가 넣은 비용으로 손익분기를 계산하고, '현장 확인'에서 답사 체크리스트를 채울 수 있어요. 입력은 이 브라우저에만 저장돼요.", fallback: "후보 상권·행정동을 열면 왼쪽 메뉴에 '창업 비용 점검'(내가 넣은 비용으로 손익분기 계산)과 '현장 확인'(답사 체크리스트)이 나와요. 입력은 이 브라우저에만 저장돼요." },
+    { id: "cost", target: "area-rail", placement: "right", title: "⑥ 비용 점검", body: "왼쪽 메뉴의 '창업 비용 점검'에서 내가 넣은 비용으로 손익분기를 계산할 수 있어요. 입력은 이 브라우저에만 저장돼요.", fallback: "후보 상권·행정동을 열면 왼쪽 메뉴에 '창업 비용 점검'(내가 넣은 비용으로 손익분기 계산)이 나와요. 입력은 이 브라우저에만 저장돼요." },
     { id: "report", target: "area-report-button", placement: "right", title: "⑦ 상권분석 보고서", body: "마음에 드는 후보의 요약에서 이 버튼을 누르면 매출 수준·시간대·안정성·입지를 4쪽으로 정리해 드려요. 인쇄·PDF 저장도 돼요.", fallback: "후보 상권·행정동의 요약 패널에서 '인사이트 리포트 뽑기'를 누르면 매출 수준·시간대·안정성·입지를 4쪽으로 정리해 드려요." },
   ],
 };

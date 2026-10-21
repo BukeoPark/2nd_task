@@ -20,7 +20,6 @@ import { AreaReportModal } from "./AreaReportModal";
 import { AreaBriefCard } from "./AreaBriefCard";
 import { CostCheckLauncher } from "./CostCheckSection";
 import { CostCheckModal } from "./CostCheckModal";
-import { VisitChecklistSection } from "./VisitChecklistSection";
 import { unitSampleStores } from "../../lib/interpretRules";
 import { buildAreaBrief, type BriefTarget } from "../../lib/areaBrief";
 import { UnitStoreList } from "../food/UnitStoreList";
@@ -77,7 +76,6 @@ const ICON: Record<AreaTabId, ReactNode> = {
     </>
   ),
   cost: <path d="M4 16V8M10 16V4M16 16v-6M3 16h14" />,
-  visit: <path d="M5 3h10v14H5zM8 7l1.5 1.5L12 6M8 12h4" />,
   location: <path d="M10 18s6-5 6-9a6 6 0 10-12 0c0 4 6 9 6 9zM10 11a2 2 0 100-4 2 2 0 000 4z" />,
   trdars: <path d="M3 4h6v6H3zM11 4h6v6h-6zM3 12h6v4H3zM11 12h6v4h-6z" />,
   stores: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
@@ -198,8 +196,6 @@ export function AreaOverviewPanel(p: Props) {
       {p.mode === "founder" && pane("cost", "창업 비용 점검 — 내가 넣은 값으로 계산",
         <CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onOpen={() => setCostOpen(true)} />)}
       {p.mode === "founder" && costOpen && <CostCheckModal unitKey={`${p.level}:${p.code}`} unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
-      {p.mode === "founder" && pane("visit", "현장 확인 — 답사 체크리스트",
-        <VisitChecklistSection level={p.level} code={p.code} unitWord={unitWord} onShowStores={() => goTab("stores")} />)}
 
       {p.level === "dong" && pane("trdars", `세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`,
         ov.data?.trdars ? (
