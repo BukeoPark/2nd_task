@@ -119,11 +119,11 @@ export function AreaTraitsSection({ level, code, svc, scls, unitKind }: Props) {
             </Area>
 
             <Area title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`}>
-              <DemandPart demand={s.demand} />
+              <DemandPart demand={s.demand} unitKind={unitKind} />
             </Area>
 
             <Area title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설">
-              <AnchorPart anchor={s.anchor} />
+              <AnchorPart anchor={s.anchor} scope={s.competition.scope.stores_label} />
             </Area>
 
             <Area title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`}>
@@ -160,8 +160,11 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
       {rail.count > 0 && (
         <>
           <div style={grid2}>
-            <Mini label="연결된 역 하루 평균 승차" value={usage.boardings} sub={usage.partial ? `연결 ${rail.linked}/${rail.count}역 · ${rail.year}년` : `${rail.year}년`} />
-            <Mini label="연결된 역 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "이용량이 확인된 역만 더한 값" : `${rail.year}년`} />
+            <Mini label="하루 평균 승차 합계" value={usage.partial && rail.boardings_observed !== null ? peopleText(rail.boardings_observed) : usage.boardings} />
+            <Mini label="하루 평균 하차 합계" value={usage.partial && rail.alightings_observed !== null ? peopleText(rail.alightings_observed) : usage.alightings} />
+          </div>
+          <div style={fine}>
+            {rail.year}년 · {rail.linked > 0 ? `인근 ${rail.count}개 역 중 이용량이 확인된 ${rail.linked}개 역의 합계${usage.partial ? "(일부 역·노선만 포함)" : ""}. 이 상권 방문객 수가 아닙니다.` : "인근 역의 이용량 자료가 연결되지 않았습니다(0명이 아님)."}
           </div>
           <Fold title={`역 ${rail.count}곳 보기`}>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
@@ -188,10 +191,13 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
     <div style={{ marginTop: 8 }}>
       <div style={sub}>버스 — 경계 안 정류장 {bus.count === 0 ? "0곳" : `${bus.count}곳(㎢당 ${bus.per_km2 ?? "-"}곳)`}</div>
       {bus.count > 0 && (
-        <div style={grid2}>
-          <Mini label="연결된 정류장 하루 평균 승차" value={usage.boardings} sub={bus.linked_ratio === null ? undefined : `이용량 연결 ${bus.linked}/${bus.count}곳(${Math.round(bus.linked_ratio * 100)}%)`} />
-          <Mini label="연결된 정류장 하루 평균 하차" value={usage.alightings} sub={usage.partial ? "이용량이 확인된 정류장만 더한 값" : `${bus.year}년`} />
-        </div>
+        <>
+          <div style={grid2}>
+            <Mini label="하루 평균 승차 합계" value={usage.partial && bus.boardings_observed !== null ? peopleText(bus.boardings_observed) : usage.boardings} />
+            <Mini label="하루 평균 하차 합계" value={usage.partial && bus.alightings_observed !== null ? peopleText(bus.alightings_observed) : usage.alightings} />
+          </div>
+          <div style={fine}>{bus.year}년 · {bus.linked > 0 ? `전체 ${bus.count}곳 중 이용량이 확인된 ${bus.linked}곳 합계` : "정류장 이용량 자료가 연결되지 않았습니다(0명이 아님)."}</div>
+        </>
       )}
       {bus.caution && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.caution}</Notice></div>}
       <Caveat>{bus.basis}</Caveat>
@@ -199,24 +205,34 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
   );
 }
 
-function DemandPart({ demand }: { demand: AreaCharacter["sections"]["demand"] }) {
+function DemandPart({ demand, unitKind }: { demand: AreaCharacter["sections"]["demand"]; unitKind: string }) {
   const f = demand.floating;
+  const workersSource = cellSub(demand.workers);
+  const residentsSource = cellSub(demand.residents);
+  const sharedSource = workersSource && workersSource === residentsSource ? workersSource : undefined;
   return (
     <>
-      <div style={grid3}>
-        <Mini label="직장인구" value={cellText(demand.workers, peopleText)} sub={cellSub(demand.workers)} />
-        <Mini label="상주인구" value={cellText(demand.residents, peopleText)} sub={cellSub(demand.residents)} />
-        <Mini label="직장인구 비율" value={demand.worker_share_pct === null ? "자료 없음" : pctText(demand.worker_share_pct)} sub={demand.demand_type ?? undefined} />
+      <div style={grid2}>
+        <Mini label="직장인구" value={cellText(demand.workers, peopleText)} sub={sharedSource ? undefined : workersSource} />
+        <Mini label="상주인구" value={cellText(demand.residents, peopleText)} sub={sharedSource ? undefined : residentsSource} />
+      </div>
+      {sharedSource && <div style={fine}>{sharedSource}</div>}
+      <div style={{ ...sub, marginTop: 8 }}>
+        직장인구 비율 {demand.worker_share_pct === null ? "자료 없음" : pctText(demand.worker_share_pct)}{demand.demand_type ? ` · ${demand.demand_type}` : ""}
       </div>
       {!demand.base_ok && <div style={{ marginTop: 6 }}><Notice tone="warn">직장·상주 인구 합이 1,000명 미만이거나 자료가 없어 업무·주거 판정은 보류했습니다.</Notice></div>}
       {f ? (
         <div style={{ marginTop: 8 }}>
-          <div style={sub}>유동인구({f.label}) {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString("ko-KR")}명(분기 합)`}</div>
-          <div style={grid3}>
-            <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank)} />
-            <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank)} />
+          <div style={sub}>분기 누적 추정 유동인구({f.label}) {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString("ko-KR")}명(분기 합)`}</div>
+          <div style={fine}>길 단위로 배분한 인구 추정치로, 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</div>
+          <div style={{ ...grid3, marginTop: 6 }}>
+            <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, `비교 ${unitKind} 중`)} />
+            <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, `비교 ${unitKind} 중`)} />
             <Mini label="주말 비중" value={f.weekend_pct === null ? "자료 없음" : pctText(f.weekend_pct)} />
           </div>
+          <Fold title="비교 범위·집계 기준">
+            <div style={fine}>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`} 기준입니다. 각 지역의 최신 분기 값을 사용하며, 자료가 없는 지역은 제외합니다. 높은 순위가 매출이나 방문객이 많다는 뜻은 아닙니다.</div>
+          </Fold>
         </div>
       ) : (
         <div style={{ marginTop: 6 }}><Notice tone="muted">유동인구 자료 없음</Notice></div>
@@ -226,12 +242,13 @@ function DemandPart({ demand }: { demand: AreaCharacter["sections"]["demand"] })
   );
 }
 
-function AnchorPart({ anchor }: { anchor: AreaCharacter["sections"]["anchor"] }) {
+function AnchorPart({ anchor, scope }: { anchor: AreaCharacter["sections"]["anchor"]; scope: string }) {
   return (
     <>
-      <div style={grid2}>
-        <Mini label="스타벅스" value={anchorText(anchor.starbucks)} sub={`매장 250m 안 비율 ${cellText(anchor.starbucks.zone_share, pctText)}`} />
-        <Mini label="다이소" value={anchorText(anchor.daiso)} sub={`매장 250m 안 비율 ${cellText(anchor.daiso.zone_share, pctText)}`} />
+      <div style={fine}>아래 비율은 이 지역의 {scope} 매장 기준입니다. 좌표 간 직선거리로 계산하며 실제 도보 거리가 아닙니다.</div>
+      <div style={{ ...grid2, marginTop: 6 }}>
+        <Mini label="스타벅스" value={anchorText(anchor.starbucks)} sub={`스타벅스 250m 이내에 있는 매장 비율 ${cellText(anchor.starbucks.zone_share, pctText)}`} />
+        <Mini label="다이소" value={anchorText(anchor.daiso)} sub={`다이소 250m 이내에 있는 매장 비율 ${cellText(anchor.daiso.zone_share, pctText)}`} />
       </div>
       <div style={{ ...grid2, marginTop: 8 }}>
         <Mini label="집객시설" value={cellText(anchor.facilities.total, countText)} sub={cellSub(anchor.facilities.total)} />
@@ -243,17 +260,24 @@ function AnchorPart({ anchor }: { anchor: AreaCharacter["sections"]["anchor"] })
 }
 
 function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] }) {
+  const openSource = cellSub(c.open_rate_y);
+  const closeSource = cellSub(c.close_rate_y);
+  const sharedSource = openSource && openSource === closeSource ? openSource : undefined;
   return (
     <>
-      <div style={grid3}>
+      <div style={sub}>현재 점포 현황</div>
+      <div style={grid2}>
         <Mini label="점포 수(현재)" value={cellText(c.stores, countText)} sub={cellSub(c.stores)} />
         <Mini label="점포 밀도" value={densityText(c.density_per_km2, c.small_area)} sub={densityReferenceText(c.reference_applies, c.reference_density_p75)} />
-        <Mini label="점포 수 증감(약 2년)" value={cellText(c.change_2y, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`)} sub={cellSub(c.change_2y)} />
       </div>
+      <div style={{ ...sub, marginTop: 14 }}>점포 변화·개폐업 흐름</div>
+      <div style={fine}>서울시 {c.scope.sales_label} 기준 · 현재 점포 현황과 출처·기준 기간이 다릅니다.</div>
+      <div style={{ marginTop: 6 }}><Mini label="점포 수 증감(약 2년)" value={cellText(c.change_2y, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`)} sub={cellSub(c.change_2y)} /></div>
       <div style={{ ...grid2, marginTop: 8 }}>
-        <Mini label="연 개업률(최근 1년)" value={cellText(c.open_rate_y, pctText)} sub={cellSub(c.open_rate_y)} />
-        <Mini label="연 폐업률(최근 1년)" value={cellText(c.close_rate_y, pctText)} sub={cellSub(c.close_rate_y)} />
+        <Mini label="연 개업률(최근 1년)" value={cellText(c.open_rate_y, pctText)} sub={sharedSource ? undefined : openSource} />
+        <Mini label="연 폐업률(최근 1년)" value={cellText(c.close_rate_y, pctText)} sub={sharedSource ? undefined : closeSource} />
       </div>
+      {sharedSource && <div style={fine}>{sharedSource}</div>}
       {c.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{c.scope.notice}</Notice></div>}
       <Caveat>{c.note}</Caveat>
     </>
@@ -298,5 +322,5 @@ function Chip({ text, style, small }: { text: string; style: { bg: string; fg: s
 const card: CSSProperties = { background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" };
 const fine: CSSProperties = { fontSize: 11, color: "#6B7280", marginTop: 6, lineHeight: 1.5 };
 const sub: CSSProperties = { fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 4 };
-const grid2: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
+const grid2: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 8 };
 const grid3: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 };

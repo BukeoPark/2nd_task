@@ -326,7 +326,8 @@ def character(level: str, code: str, svc: str | None, scls: str | None) -> dict:
         "demand_type": None if ws is None else ("업무형" if ws >= WORKER_MIN * 100 else ("주거형" if ws <= RESIDENT_MAX * 100 else "혼합형")),
         "base_ok": feats["workers"] is not None and feats["residents"] is not None and (feats["workers"] + feats["residents"]) >= MIN_POP_BASE,
         "floating": None if fl is None else {"quarter": fl["quarter"], "label": fl["label"], "flpop": fl["flpop"], "weekend_pct": fl["weekend_pct"], "slots": fl["slots"],
-                                              "lunch_pct": lunch, "late_pct": late, "lunch_rank": lunch_rank, "late_rank": late_rank, "yoy_pct": fl["yoy_pct"]},
+                                              "lunch_pct": lunch, "late_pct": late, "lunch_rank": lunch_rank, "late_rank": late_rank,
+                                              "lunch_peer_count": int(refs["table"]["lunch"].notna().sum()), "late_peer_count": int(refs["table"]["late"].notna().sum()), "yoy_pct": fl["yoy_pct"]},
         "note": "직장인구 ÷ (직장+상주) 비율로 업무·주거·혼합을 가르고(기존 수요 유형 기준), 점심·야간 유동 비중은 보조 근거입니다. 서로 다른 분기의 값은 더하지 않았습니다.",
     }
     # ③ 상업·앵커 환경

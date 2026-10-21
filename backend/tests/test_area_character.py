@@ -348,3 +348,13 @@ def test_real_sensitivity_golden_transitions_for_the_recommendation(all_feats):
     assert changed({"resident_max": 0.2}, "trdar") == 18 and changed({"resident_max": 0.4}, "trdar") == 6
     assert changed({"min_pop": 500}, "trdar") == 16 and changed({"min_pop": 2000}, "trdar") == 30
     assert max(changed(p, "dong") for p in ({"worker_min": 0.5}, {"worker_min": 0.7}, {"resident_max": 0.2}, {"resident_max": 0.4}, {"transit_q": 0.7}, {"density_q": 0.7}, {"min_pop": 2000})) <= 4   # 행정동은 안정적
+
+
+def test_floating_peer_counts_match_the_nonmissing_rank_population(all_results):
+    for (level, _), result in all_results.items():
+        floating = result["sections"]["demand"]["floating"]
+        if floating is None:
+            continue
+        table = ac._refs(level)["table"]
+        assert floating["lunch_peer_count"] == int(table["lunch"].notna().sum())
+        assert floating["late_peer_count"] == int(table["late"].notna().sum())

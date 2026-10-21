@@ -599,7 +599,7 @@ export interface AreaCharacter {
       worker_share_pct: number | null;
       demand_type: "업무형" | "혼합형" | "주거형" | null;
       base_ok: boolean;
-      floating: { quarter: string; label: string; flpop: number | null; weekend_pct: number | null; slots: { label: string; pct: number | null }[]; lunch_pct: number | null; late_pct: number | null; lunch_rank: number | null; late_rank: number | null; yoy_pct: number | null } | null;
+      floating: { quarter: string; label: string; flpop: number | null; weekend_pct: number | null; slots: { label: string; pct: number | null }[]; lunch_pct: number | null; late_pct: number | null; lunch_rank: number | null; late_rank: number | null; lunch_peer_count?: number; late_peer_count?: number; yoy_pct: number | null } | null;
       note: string;
     };
     anchor: {

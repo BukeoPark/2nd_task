@@ -13,11 +13,11 @@ export const TRAIT_STYLE: Record<TraitKey, { bg: string; fg: string }> = {
 export const NEUTRAL_STYLE = { bg: "#F3F4F6", fg: "#374151" };
 
 /** 같은 단위 안 위치(percentile rank, 높을수록 큼) → 문장. 중간권은 위치를 말하지 않는다. */
-export function rankText(rank: number | null): string {
+export function rankText(rank: number | null, comparison = "같은 단위"): string {
   if (rank === null) return "";
-  if (rank >= 75) return `같은 단위 상위 ${Math.max(1, Math.round(100 - rank))}%`;
-  if (rank <= 25) return `같은 단위 하위 ${Math.max(1, Math.round(rank))}%`;
-  return "같은 단위 중간 수준";
+  if (rank >= 75) return `${comparison} 상위 ${Math.max(1, Math.round(100 - rank))}%`;
+  if (rank <= 25) return `${comparison} 하위 ${Math.max(1, Math.round(rank))}%`;
+  return `${comparison} 중간 수준`;
 }
 
 /** 값 칸 → 문장. 값이 없으면 사유(note)를, 사유도 없으면 '자료 없음' — 0 으로 쓰지 않는다. */

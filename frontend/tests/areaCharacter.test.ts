@@ -61,3 +61,9 @@ test("값 칸 아래 줄은 기준 시점과 원천을 함께 말하고, 업종�
   assert.equal(densityReferenceText(true, 407), "외식 전체 상위 25% 기준 407곳/㎢");
   assert.equal(densityReferenceText(true, null), undefined);
 });
+
+test("순위 설명에 행정동·상권 비교 대상을 명시하고 결측은 숨긴다", () => {
+  assert.equal(rankText(86, "비교 상권 중"), "비교 상권 중 상위 14%");
+  assert.equal(rankText(23, "비교 행정동 중"), "비교 행정동 중 하위 23%");
+  assert.equal(rankText(null, "비교 상권 중"), "");
+});
