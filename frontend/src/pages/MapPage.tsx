@@ -326,6 +326,8 @@ export function MapPage() {
     focusCode.current = null;
     mapKakao.map.setCenter(toKakaoLatLng(mapKakao.kakao, searchSelection.center));
   }, [searchSelection, mapKakao]);
+  // 검색으로 연 요약은 도착하는 즉시 일반 선택으로 옮겨, 이후 업종·지표를 바꿔 버블이 다시 조회되는 동안에도(조회 중에는 searchSelection 이 비어) 화면이 닫히거나 처음으로 돌아가지 않게 한다.
+  if (searchSelection && selection === null) { setSelection(searchSelection); setPendingOpen(null); }   // 렌더 중 상태 조정(같은 컴포넌트, 조건이 풀리면 다시 일어나지 않는다)
   const shownSelection = selection ?? searchSelection;
   // ── 화면 이동 기록 — 지역·매장·후보 탐색·시작 화면 사이의 이동을 브라우저 기록에 쌓아 '뒤로·앞으로'와 앱 안 '← 뒤로'가 같은 길을 가게 한다.
   // 전체 화면 작업창(비교·내 관심 지역·보고서·비용·월간 점검)은 lib/overlayHistory 가 따로 쌓는다. 새로고침·직접 접속으로 기록의 화면 정보가 없으면 지도 기본 화면(시작 화면)으로 간다.
@@ -427,8 +429,9 @@ export function MapPage() {
     const g = categories.data?.groups.find((x) => x.svc_cd === sv);
     return sc ? (g?.details.find((d) => d.code === sc)?.name ?? "세부 업종") : (g?.svc_nm ?? "외식 전체");
   };
-  // 업종·지표를 바꾸면 이전 조건으로 만든 요약 패널은 닫는다(값이 섞여 보이지 않도록).
-  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection(null); setPendingOpen(null); };
+  // 조건(업종·세부 업종·지도 지표)을 바꿔도 지금 보던 화면은 그대로 두고 값만 새 조건으로 다시 읽는다. 행정동·상권 종합분석과 매장 상세는 업종·세부 업종을 props 로
+  // 받아 스스로 다시 조회하므로 닫지 않는다. 자치구 요약(InfoPanel)만 클릭 당시의 값이 굳어 있어 닫는다(R-ONE 임대 상권은 조건과 무관해 그대로 둔다).
+  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSelection((s) => (s?.compare?.level === "gu" ? null : s)); };
 
   const svcGroup = categories.data?.groups.find((g) => g.svc_cd === svc);
   const filterName = scls ? (svcGroup?.details.find((d) => d.code === scls)?.name ?? "세부 업종") : (svcGroup?.svc_nm ?? "외식 전체");
