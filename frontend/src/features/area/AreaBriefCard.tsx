@@ -4,14 +4,14 @@ import { FS } from "../../lib/typography";
 
 const FACT_COLOR: Record<FactState, string> = { value: "#111827", missing: "#9CA3AF", hold: "#92400E" };
 
-/** 종합분석 요약 맨 위의 3단 구성 — ① 확인된 사실 ② 어떻게 읽을까? ③ 다음 확인사항(눌러서 이동). 계산은 lib/areaBrief 가 한다. */
+/** 종합분석 요약 맨 위의 3단 구성 — 핵심 숫자 ② 어떻게 읽을까? 다음 확인사항(눌러서 이동). 계산은 lib/areaBrief 가 한다. */
 export function AreaBriefCard({ brief, onAction, insights }: { brief: AreaBrief; onAction: (t: BriefTarget) => void; insights?: ReactNode }) {
   return (
     <section data-tour="area-brief" aria-label="핵심 요약" style={{ marginTop: 12, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px", background: "#FFFFFF" }}>
       {/* 모드·'핵심 요약' 이름은 위 질문 제목과 겹쳐 빼고, 어느 단위·업종 기준인지 한 줄만 둔다 */}
       <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{brief.scopeLine}</div>
 
-      <div style={{ ...stepTitle, marginTop: 20 }}>① 확인된 사실</div>
+      <div style={{ ...stepTitle, marginTop: 20 }}>핵심 숫자</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 10 }}>
         {brief.facts.map((f, i) => (
           <div key={f.key} style={{ gridColumn: i === 0 && brief.facts.length % 2 === 1 ? "1 / -1" : undefined, minWidth: 0, background: "#F8FAFC", border: "1px solid #EEF2F6", borderRadius: 10, padding: "14px 16px" }}>
@@ -23,17 +23,10 @@ export function AreaBriefCard({ brief, onAction, insights }: { brief: AreaBrief;
       </div>
       {brief.caution && <div style={{ fontSize: FS.warn, color: "#B45309", marginTop: 6 }}>{brief.caution}</div>}
 
-      <div style={{ ...stepTitle, marginTop: 20 }}>② 어떻게 읽을까?</div>
-      {brief.reading.length > 0 ? (
-        <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: FS.body, color: "#374151", lineHeight: 1.8, display: "grid", gap: 8, wordBreak: "keep-all", overflowWrap: "anywhere" }}>
-          {brief.reading.map((t) => <li key={t}>{t}</li>)}
-        </ul>
-      ) : (
-        <div style={{ fontSize: FS.warn, color: "#92400E", marginTop: 6 }}>{brief.hold}</div>
-      )}
+      {brief.hold && <div style={{ fontSize: FS.warn, color: "#92400E", marginTop: 12 }}>{brief.hold}</div>}
 
       {insights}
-      <div style={{ ...stepTitle, marginTop: 20 }}>③ 다음 확인사항</div>
+      <div style={{ ...stepTitle, marginTop: 20 }}>다음 확인사항</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
         {brief.next.map((n, i) => <NextLink key={n.target} action={n} primary={i === 0} onClick={() => onAction(n.target)} />)}
       </div>

@@ -83,15 +83,14 @@ export function buildAreaBrief(inp: BriefInput): AreaBrief {
   const founder = mode === "founder";
   const sample = sampleStatus(inp.sampleStores);
   const close = briefFact(rows, "close_rate_y", "최근 1년 폐업률");
-  const openC = cell(rows, "open_rate_y")?.value ?? null;
-  if (close.state === "value" && openC !== null) close.note = [`개업률 ${openC.toFixed(1)}%`, close.note].filter(Boolean).join(" · ");
+  const open = briefFact(rows, "open_rate_y", "최근 1년 개업률");
   const stores = briefFact(rows, "stores_sbiz", "같은 업종 점포 수");
   const chg = cell(rows, "stores_change_2y")?.value ?? null;
   if (stores.state === "value" && chg !== null) stores.note = [`약 2년 ${signed(chg)}`, stores.note].filter(Boolean).join(" · ");
 
   const facts: BriefFact[] = founder
-    ? [briefFact(rows, "per_store_month", "점포당 월평균 추정매출"), briefFact(rows, "sales_yoy_pct", "총매출 증감(전년 동기)"), close]
-    : [briefFact(rows, "sales_yoy_pct", "상권 총매출 증감(전년 동기)"), stores, close];
+    ? [briefFact(rows, "per_store_month", "점포당 월평균 추정매출"), briefFact(rows, "sales_yoy_pct", "총매출 증감(전년 동기)"), open, close]
+    : [briefFact(rows, "sales_yoy_pct", "상권 총매출 증감(전년 동기)"), stores, open, close];
 
   const tooFew = sample === "too_few";
   const sentences = tooFew ? [] : readingSentences(rows);

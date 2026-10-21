@@ -8,15 +8,18 @@ const base: BriefInput = { mode: "founder", unitWord: "상권", scope: "한식�
 
 test("예비 창업자: 매출·증감·폐업률을 먼저, 다음 확인은 후보 비교→비용 점검", () => {
   const b = buildAreaBrief(base);
-  assert.deepEqual(b.facts.map((f) => f.key), ["per_store_month", "sales_yoy_pct", "close_rate_y"]);
+  assert.deepEqual(b.facts.map((f) => f.key), ["per_store_month", "sales_yoy_pct", "open_rate_y", "close_rate_y"]);
   assert.deepEqual(b.next.map((n) => n.target), ["compare", "tab-cost"]);
-  assert.match(b.facts[2].note, /개업률 13\.1%/);
+  assert.equal(b.facts[2].value, "13.1%");
+  assert.equal(b.facts[3].value, "19.7%");
+  assert.equal(b.facts[2].label, "최근 1년 개업률");
+  assert.equal(b.facts[3].label, "최근 1년 폐업률");
   assert.equal(b.scopeLine, "상권 단위 · 한식음식점 전체 기준");
 });
 
 test("자영업자: 총매출 증감·같은 업종 점포 수·폐업률을 먼저, 다음 확인은 내 매장 찾기→경쟁→수요", () => {
   const b = buildAreaBrief({ ...base, mode: "owner" });
-  assert.deepEqual(b.facts.map((f) => f.key), ["sales_yoy_pct", "stores_sbiz", "close_rate_y"]);
+  assert.deepEqual(b.facts.map((f) => f.key), ["sales_yoy_pct", "stores_sbiz", "open_rate_y", "close_rate_y"]);
   assert.deepEqual(b.next.map((n) => n.target), ["search", "tab-stability", "tab-demand"]);
   assert.match(b.facts[1].note, /약 2년 -8\.8%/);
 });
