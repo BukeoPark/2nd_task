@@ -226,8 +226,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                     {mode === "owner" && (
                       <button type="button" data-tour="report-button" onClick={() => setReportOpen(true)} style={reportButtonStyle}>
-                        내 매장 보고서 보기 ›
-                        <span style={reportSubStyle}>이 매장 기준 · 주변 경쟁·상권 변화·고객 수요·확인사항 · 매장 보고서</span>
+                        내 매장 보고서 보기 (500m 기준) ›
+                        <span style={reportSubStyle}>이 매장 반경 500m 고정 · 상권 변화·고객 수요·확인사항</span>
                       </button>
                     )}
                     {onOpenAreaReport && (
@@ -264,7 +264,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 </NoteHost>
                 {g !== "store" && (
                   <button type="button" onClick={() => (mode === "owner" ? setReportOpen(true) : areaReport())} style={{ ...reportLinkStyle }}>
-                    {mode === "owner" ? "내 매장 보고서 보기 ›" : "소속 상권 보고서 보기 ›"}
+                    {mode === "owner" ? "내 매장 보고서 보기 (500m 기준) ›" : "소속 상권 보고서 보기 ›"}
                   </button>
                 )}
               </div>

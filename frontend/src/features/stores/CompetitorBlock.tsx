@@ -2,6 +2,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Notice, Section } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
+import { glyphFor } from "../../lib/storeGlyph";
 import { apiClient } from "../../lib/apiClient";
 import { distanceLabel, groupByCategory, radiusBounds, withinRadius, type Competitor, type CompetitorSort } from "../../lib/competitors";
 
@@ -47,10 +48,11 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, onSel
     if (d.isPending) return "확인 중";
     return d.data?.operation_history.business_status?.label ?? "인허가 자료로 확인 안 됨";
   };
+  const industry = glyphFor(svc).label;
   const truncated = q.data?.truncated ?? false;
 
   return (
-    <Section title="주변에 같은 업종 가게는 어디에 있을까?" scope={<ScopeTag kind="radius" label={`반경 ${radius}m`} />}>
+    <Section title={`주변 ${industry} 가게 찾기`} scope={<ScopeTag kind="radius" label={`반경 ${radius}m`} />}>
       {svc === null ? (
         <Notice tone="muted">이 매장은 서울시 외식 10개 업종에 대응이 없어 같은 업종 목록을 만들지 않았어요(자료가 없는 것이지 0곳이 아닙니다).</Notice>
       ) : q.isPending ? (
@@ -60,10 +62,10 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, onSel
       ) : (
         <>
           <div style={{ fontSize: 15 }}>
-            반경 {radius}m 안 같은 업종 가게 <strong style={{ fontSize: 26 }}>{all.length.toLocaleString()}{truncated ? "곳 이상" : "곳"}</strong>
+            반경 {radius}m · {industry} 전체 <strong style={{ fontSize: 26 }}>{all.length.toLocaleString()}{truncated ? "곳 이상" : "곳"}</strong>
           </div>
-          <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 2 }}>
-            지도에 보이는 매장 점 기준(소상공인 상가정보)이에요. {truncated ? "한 번에 가져오는 수를 넘어 일부만 셌어요. " : ""}지도에서 파란 링 점이 같은 상권의 같은 업종 가게예요.
+          <div style={{ fontSize: 14, color: "#4B5563", marginTop: 2 }}>
+            소상공인 상가정보 기준 · 선택 매장 제외. 위 요약은 같은 세부 업종, 이 목록은 {industry} 전체예요. {truncated ? "조회 한도로 일부만 집계했어요. " : ""}파란 링은 같은 상권·같은 업종 표시로, 이 반경 목록과 범위가 다를 수 있어요.
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "10px 0 6px" }}>
@@ -95,11 +97,11 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, onSel
               <div key={g.category} style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{g.category} · {g.items.length}곳</div>
                 <ul style={list}>{g.items.slice(0, 5).map((c) => <Row key={c.store_id} c={c} status={statusOf(c.store_id)} onSelectStore={onSelectStore} onHoverStore={onHoverStore} onShowOnMap={onShowOnMap} />)}</ul>
-                {g.items.length > 5 && <div style={{ fontSize: 12.5, color: "#6B7280" }}>가까운 5곳만 보여요. '가까운 순'에서 모두 볼 수 있어요.</div>}
+                {g.items.length > 5 && <div style={{ fontSize: 14, color: "#4B5563" }}>가까운 5곳만 보여요. '가까운 순'에서 모두 볼 수 있어요.</div>}
               </div>
             ))
           )}
-          <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 8, lineHeight: 1.6 }}>
+          <div style={{ fontSize: 14, color: "#4B5563", marginTop: 8, lineHeight: 1.6 }}>
             영업 상태는 인허가 기록 기준이고 가까운 {STATUS_ROWS}곳만 읽어 와요. 실제로 문을 열었는지는 현장에서 확인해야 해요. 이 목록은 같은 업종 가게 위치일 뿐 경쟁이 심하다·약하다는 판단이 아니에요.
           </div>
         </>
@@ -116,7 +118,7 @@ function Row({ c, status, onSelectStore, onHoverStore, onShowOnMap }: { c: Compe
         <span style={{ fontSize: 15, fontWeight: 700 }}><span aria-hidden="true" style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", border: "2px solid #1D4ED8", marginRight: 6 }} />{c.name}{c.branch ? ` ${c.branch}` : ""}</span>
         <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap" }}>{distanceLabel(c.distance_m)}</span>
       </div>
-      <div style={{ fontSize: 12.5, color: "#6B7280" }}>{c.category}{status ? ` · ${status}` : ""}</div>
+      <div style={{ fontSize: 14, color: "#4B5563" }}>{c.category}{status ? ` · ${status}` : ""}</div>
       <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
         {onShowOnMap && <button type="button" onClick={() => onShowOnMap(c)} style={mini}>지도에서 보기</button>}
         <button type="button" onClick={() => onSelectStore(c.store_id)} style={mini}>운영이력·상세 ›</button>

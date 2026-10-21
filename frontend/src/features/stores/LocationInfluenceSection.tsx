@@ -183,7 +183,7 @@ function GlanceBlock({ data }: { data: LocationInfluenceResponse }) {
     <div style={card}>
       <div style={cardTitle}>반경 {radiusLabel(data.radius_m)} 한눈에</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 6 }}>
-        <Stat big label="같은 업종 가게" value={`${same.count}곳`} sub={`같은 ${same.level}(${same.label})`} />
+        <Stat big label={same.label} value={`${same.count}곳`} sub={`같은 ${same.level} · 선택 매장 제외`} />
         <Stat big label="가장 가까운 지하철역" value={nearest ? nearest.value : "자료 없음"} sub={nearest?.sub} />
         <Stat big label="반경 안 전체 업소" value={`${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} sub="업종 구분 없이" />
       </div>

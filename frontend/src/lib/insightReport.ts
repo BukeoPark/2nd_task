@@ -32,7 +32,7 @@ export interface NearbyIn {
   radius_m: number;
   trend?: { year: number; opened: number; closed: number | null; partial_year: boolean }[];
   closure_cohort?: { status: string; rate: number | null; numerator?: number; denominator?: number; horizon_years?: number };
-  competitors?: { raw_count: number; open_confirmed_count: number; unconfirmed_count: number };
+  competitors?: { raw_count: number; open_confirmed_count: number; unconfirmed_count: number; excluded_closed_count?: number | null; adjusted_count?: number | null };
 }
 export interface LocIn {
   radius_metrics: { competitors: { same_category: { label: string; count: number; nearest_m: number | null } } };
@@ -252,7 +252,7 @@ function factorsSection(l: LocIn | null): FactorsSection | null {
   const none = factors.filter((f) => !f.sig).map((f) => f.label);
   const r2 = m.cv?.r2_full ?? null;
   let text = sig.length
-    ? `점포당 추정매출이 높은 상권에서 ${sig.map((f) => `${f.label}이(가) ${f.binary ? "있을 때" : "많을수록"}(${signed(f.pct)})`).join(", ")} 높은 경향이 있었습니다.`
+    ? `점포당 추정매출이 높은 상권에서 ${sig.map((f) => `${f.label}${f.binary ? " 유무 중 있음에 해당할 때" : " 수치가 클수록"}(${signed(f.pct)})`).join(", ")} 높은 경향이 있었습니다.`
     : "점포당 추정매출과 뚜렷한 관계를 보인 입지 요인이 없었습니다.";
   if (none.length) text += ` ${none.join("·")}은 뚜렷한 관계가 없었습니다.`;
   if (r2 !== null) text += ` 모델 설명력(R²)은 ${r2.toFixed(2)}${r2 < 0.3 ? "로 낮아 방향 참고용입니다" : "입니다"}.`;
@@ -305,7 +305,14 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   const profile: { label: string; value: string }[] = [];
   if (inp.licenseAge) profile.push({ label: "인허가 업력", value: inp.licenseAge });
   if (inp.licenseState) profile.push({ label: "인허가상 상태", value: inp.licenseState });
-  if (competition?.sameCount != null) profile.push({ label: `반경 ${competition.radiusM}m 같은 소분류`, value: `${competition.sameCount}곳${competition.openConfirmed !== null ? ` (영업 확인 ${competition.openConfirmed} · 미확인 ${competition.unconfirmed})` : ""}` });
+  if (competition?.sameCount != null) {
+    profile.push({ label: `반경 ${competition.radiusM}m ${competition.label}`, value: `${competition.sameCount}곳 (상가정보 원본 · 선택 매장 제외)` });
+    const status = inp.nearby?.status === "ok" ? inp.nearby.competitors : null;
+    if (status) {
+      profile.push({ label: "인허가 대조 내역", value: `대조 대상 ${status.raw_count}곳 · 영업 확인 ${status.open_confirmed_count} · 미확인 ${status.unconfirmed_count}${status.excluded_closed_count != null ? ` · 폐업 기록 ${status.excluded_closed_count}` : " · 폐업 기록 제외 수 확인 불가"}` });
+      if (status.adjusted_count != null) profile.push({ label: "폐업 기록 제외 참고 수", value: `${status.adjusted_count}곳 (미확인 포함 · 현장 영업 확인 아님)` });
+    }
+  }
   const anchors = inp.anchors.filter((a) => a.nearestM !== null);
   if (anchors.length) profile.push({ label: "가까운 앵커 브랜드", value: anchors.map((a) => `${a.label} ${a.nearestM}m`).join(" · ") });
 

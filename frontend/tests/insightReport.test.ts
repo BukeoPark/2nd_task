@@ -132,3 +132,22 @@ test("매장 리포트: 제목이 중립 문장이면 시간대 핵심 발견은
   const gap = buildInsightReport(input);
   assert.equal(gap.findings.find((f) => f.body.endsWith("→ 3쪽"))!.title, gap.headline);       // 차이가 크면 제목이 곧 시간대 발견
 });
+
+test("경쟁 원본 수와 인허가 상태·폐업 제외 수를 분리해서 설명한다", () => {
+  const r = buildInsightReport({ ...input, nearby: {
+    status: "ok", radius_m: 500,
+    competitors: { raw_count: 114, open_confirmed_count: 87, unconfirmed_count: 23, excluded_closed_count: 4, adjusted_count: 110 },
+  } });
+  assert.match(r.profile.find((p) => p.label.includes("같은 소분류"))!.value, /114곳/);
+  assert.match(r.profile.find((p) => p.label === "인허가 대조 내역")!.value, /영업 확인 87 · 미확인 23 · 폐업 기록 4/);
+  assert.match(r.profile.find((p) => p.label === "폐업 기록 제외 참고 수")!.value, /110곳.*미확인 포함/);
+});
+
+test("폐업 제외 자료가 없으면 차액을 폐업 수로 추정하지 않는다", () => {
+  const r = buildInsightReport({ ...input, nearby: {
+    status: "ok", radius_m: 500,
+    competitors: { raw_count: 114, open_confirmed_count: 87, unconfirmed_count: 23 },
+  } });
+  assert.match(r.profile.find((p) => p.label === "인허가 대조 내역")!.value, /폐업 기록 제외 수 확인 불가/);
+  assert.equal(r.profile.some((p) => p.label === "폐업 기록 제외 참고 수"), false);
+});

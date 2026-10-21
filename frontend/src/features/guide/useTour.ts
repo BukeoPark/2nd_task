@@ -38,7 +38,18 @@ export function useTour(mode: Mode): Tour {
   useEffect(() => {
     if (!shouldWelcome(read(mode))) return;
     const id = window.setTimeout(() => setPhase((p) => (p === "idle" ? "welcome" : p)), WELCOME_DELAY_MS);
-    return () => window.clearTimeout(id);
+    // 사용자가 탐색을 시작했다면 자동 안내로 검색·선택을 가로막지 않는다.
+    // 도움말에서는 언제든 직접 안내를 열 수 있다.
+    const cancel = () => window.clearTimeout(id);
+    window.addEventListener("pointerdown", cancel, { once: true, capture: true });
+    window.addEventListener("keydown", cancel, { once: true, capture: true });
+    window.addEventListener("input", cancel, { once: true, capture: true });
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("pointerdown", cancel, true);
+      window.removeEventListener("keydown", cancel, true);
+      window.removeEventListener("input", cancel, true);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
