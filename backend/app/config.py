@@ -25,14 +25,16 @@ class Settings(BaseSettings):
 
     # Google Places API (New) Text Search — 매장↔Google 장소 연결에만 사용(서버 전용 키, 결과는 Place ID 만 저장)
     google_maps_server_key: str = ""
-    # 무료 한도 안에서만 쓴다(2026-09-30 결정). 두 SKU 모두 월 무료 5,000건 → 여유를 두고 월 4,500건에서 멈춘다.
+    # 무료 한도 안에서만 쓴다. Text Search Pro 는 월 무료 5,000건이라 여유를 두고 월 4,500건에서 멈춘다.
+    # Places UI Kit(평점·리뷰 표시)은 과금 SKU 등급·무료 한도를 확인하지 못했다(상위 등급이면 월 무료 1,000건) → 그보다 낮게 월 900건·일 30건으로 둔다
+    # (2026-10-21 하향, 기존 일 150·월 4,500). 실제 무료 한도를 가격표에서 확인한 뒤 올린다.
     #   Text Search Pro(매장↔Google 장소 연결)        : 일 150 · 분당 20 · 월 4,500
-    #   Places UI Kit(브라우저의 평점·리뷰 컴포넌트 표시): 일 150 · 월 4,500 — 서버가 허락한 경우에만 표시
+    #   Places UI Kit(브라우저의 평점·리뷰 컴포넌트 표시): 일 30 · 월 900 — 서버가 허락한 경우에만 표시
     google_textsearch_daily_cap: int = 150
     google_textsearch_per_minute: int = 20
     google_textsearch_monthly_cap: int = 4500
-    google_ui_kit_daily_cap: int = 150
-    google_ui_kit_monthly_cap: int = 4500
+    google_ui_kit_daily_cap: int = 30
+    google_ui_kit_monthly_cap: int = 900
 
     # DB 미설정 시 파일 기반(data/processed)으로 동작
     database_url: str = ""
