@@ -110,8 +110,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
   const railPlan = useMemo(() => railMapPlan(loc.isPlaceholderData ? null : railResp, radius, showExits), [railResp, loc.isPlaceholderData, radius, showExits]);
   const facResp = loc.data?.radius_metrics.facilities;
   const facilityPlan = useMemo(() => facilityMapPlan(loc.isPlaceholderData ? null : facResp, radius, showFacilities), [facResp, loc.isPlaceholderData, radius, showFacilities]);
-  // 네이버 장소 ID 가 없어 장소 상세가 아니라 검색 결과로만 보낸다. 긴 전체 주소는 '업체 없음'이 나오기 쉬워 기본 검색어는 짧게 쓴다.
-  const naver = store ? naverSearches(store) : null;
   /** 소속 상권(없으면 행정동)의 지역 보고서 — 그 매장의 업종 기준 */
   const areaReport = () => {
     if (!store || !onOpenAreaReport) return;
@@ -134,22 +132,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
               <div style={{ marginTop: 10 }}>
                 <LicenseSummary history={data.operation_history} />
               </div>
-              {naver && naver.primary && (
-                <div style={{ marginTop: 6 }}>
-                  <a href={naver.primary} target="_blank" rel="noopener noreferrer" style={naverLinkStyle}>
-                    네이버 지도에서 보기 ↗
-                  </a>
-                  <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11 }}>
-                    {naver.nameOnly && (
-                      <a href={naver.nameOnly} target="_blank" rel="noopener noreferrer" style={subLinkStyle}>매장명만 검색 ↗</a>
-                    )}
-                    {naver.address && (
-                      <a href={naver.address} target="_blank" rel="noopener noreferrer" style={subLinkStyle}>주소로 위치 검색 ↗</a>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>검색 결과로 이동합니다. 네이버 지도 검색 결과가 실제 매장과 일치하는지 확인하세요.</div>
-                </div>
-              )}
             </div>
           ),
           google: <GoogleReviewSection storeId={storeId} />,
@@ -298,24 +280,9 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onPr
   );
 }
 
-/** 네이버 지도 '검색 결과' 링크 3종 — 기본(상호+지점+구/동), 상호만, 주소만. 쓸 글자가 없는 링크는 null. */
-function naverSearches(store: StoreBasic): { primary: string | null; nameOnly: string | null; address: string | null } {
-  const clean = (v: string | null | undefined) => (v ?? "").trim();
-  const url = (q: string) => (q ? `https://map.naver.com/p/search/${encodeURIComponent(q)}` : null);
-  const name = clean(store.name);
-  const base = [name, clean(store.branch)].filter(Boolean).join(" ");
-  // 구/동은 매장 기본정보의 시군구·행정동 값을 그대로 쓴다. 비어 있으면 붙이지 않고 상호+지점만 쓴다.
-  const area = [clean(store.sigungu), clean(store.dong)].filter(Boolean).join(" ");
-  const primary = url(base && area ? `${base} ${area}` : base);
-  const nameOnly = url(name);
-  return { primary, nameOnly: nameOnly === primary ? null : nameOnly, address: url(clean(store.address)) };
-}
-
 const linkStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #3B82F6", borderRadius: 8, background: "white", color: "#1D4ED8", cursor: "pointer", textAlign: "left", fontWeight: 600 };
 
 const reportButtonStyle: React.CSSProperties = { width: "100%", minHeight: 56, padding: "12px 14px", border: "none", borderRadius: 12, background: "#C2410C", color: "white", fontWeight: 800, fontSize: 17, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 6px rgba(194,65,12,0.35)" };
 const reportSubStyle: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 500, opacity: 0.92, marginTop: 2 };
 const reportSecondaryStyle: React.CSSProperties = { width: "100%", minHeight: 48, padding: "10px 14px", border: "2px solid #C2410C", borderRadius: 12, background: "white", color: "#9A3412", fontWeight: 800, fontSize: 15.5, cursor: "pointer", textAlign: "left" };
 const reportLinkStyle: React.CSSProperties = { marginTop: 16, minHeight: 40, padding: "8px 14px", border: "1px solid #C2410C", borderRadius: 10, background: "white", color: "#9A3412", fontWeight: 700, fontSize: 14.5, cursor: "pointer" };
-const naverLinkStyle: React.CSSProperties = { display: "inline-block", marginTop: 6, padding: "4px 10px", border: "1px solid #03C75A", borderRadius: 6, color: "#02A94C", fontSize: 12, fontWeight: 600, textDecoration: "none" };
-const subLinkStyle: React.CSSProperties = { color: "#02A94C", textDecoration: "underline" };
