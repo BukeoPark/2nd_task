@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Notice } from "../../components/Notice";
 import type { FoodBubble, FoodBubblesResponse } from "../../lib/apiClient";
@@ -33,19 +34,31 @@ export function ExplorePanel(p: Props) {
   const fresh = data && data.level === p.level && data.metric === preset.metric && data.svc === p.svc && data.scls === p.scls ? data : null;
   const res = fresh ? candidatesFor(preset, fresh.bubbles) : null;
   const unitWord = p.level === "dong" ? "행정동" : "상권";
+  // 조건은 고른 뒤에는 한 줄 칩으로 접어 결과가 첫 화면에 보이게 한다('변경'을 누르면 네 질문이 다시 펼쳐진다)
+  const [choosing, setChoosing] = useState(false);
   return (
     <Drawer title="조건으로 후보 찾기" subtitle="어떤 곳을 먼저 보고 싶으세요?" onClose={p.onClose}>
-      <div role="radiogroup" aria-label="찾는 조건" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-        {PRESETS.map((x) => {
-          const on = x.id === preset.id;
-          return (
-            <button key={x.id} type="button" role="radio" aria-checked={on} onClick={() => p.onPreset(x.id)}
-              style={{ textAlign: "left", padding: "9px 12px", borderRadius: 10, border: on ? "2px solid #1D4ED8" : "1px solid #D1D5DB", background: on ? "#EFF6FF" : "white", color: on ? "#1E3A8A" : "#111827", fontWeight: on ? 800 : 600, fontSize: 15, cursor: "pointer" }}>
-              {x.question}
-            </button>
-          );
-        })}
-      </div>
+      {choosing ? (
+        <div role="radiogroup" aria-label="찾는 조건" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+          {PRESETS.map((x) => {
+            const on = x.id === preset.id;
+            return (
+              <button key={x.id} type="button" role="radio" aria-checked={on} onClick={() => { p.onPreset(x.id); setChoosing(false); }}
+                style={{ textAlign: "left", padding: "9px 12px", borderRadius: 10, border: on ? "2px solid #1D4ED8" : "1px solid #D1D5DB", background: on ? "#EFF6FF" : "white", color: on ? "#1E3A8A" : "#111827", fontWeight: on ? 800 : 600, fontSize: 15, cursor: "pointer" }}>
+                {x.question}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8, padding: "8px 8px 8px 12px", borderRadius: 10, border: "2px solid #1D4ED8", background: "#EFF6FF" }}>
+          <span style={{ fontWeight: 800, fontSize: 15, color: "#1E3A8A" }}>{preset.question}</span>
+          <button type="button" aria-expanded={false} onClick={() => setChoosing(true)}
+            style={{ minHeight: 36, padding: "6px 12px", borderRadius: 8, border: "1px solid #1D4ED8", background: "white", color: "#1D4ED8", fontWeight: 700, fontSize: 14, cursor: "pointer", whiteSpace: "nowrap" }}>
+            조건 변경
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "12px 0 4px", fontSize: 13 }}>
         <span style={{ color: "#4B5563" }}>보는 단위</span>
@@ -66,7 +79,7 @@ export function ExplorePanel(p: Props) {
           <>
             <div style={{ fontSize: 13, fontWeight: 700 }}>조건에 맞는 {unitWord} {res.candidates.length + res.more}곳{res.more > 0 ? ` 중 ${res.candidates.length}곳` : ""}</div>
             <div style={{ fontSize: 12.5, color: "#6B7280", margin: "2px 0 6px" }}>
-              {p.filterName} · {fresh.scope.metric_scope} · {fresh.as_of} · 영등포구·양천구 안에서만 찾아요. 조건 값 순으로 나열한 것이며 창업 추천 순위가 아닙니다.
+              {p.filterName} · {fresh.scope.metric_scope} · {fresh.as_of} · 영등포구·양천구 안에서만 찾아요. 조건 값 순으로 나열한 것이며 창업 추천 순위가 아닙니다. 지역을 누르면 종합분석이 열려요.
             </div>
             {res.candidates.length === 0 && <Notice tone="muted">이 조건에 맞는 {unitWord}가 없어요(자료가 없는 것이 아니라 조건에 맞는 곳이 없는 경우예요).</Notice>}
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -74,19 +87,24 @@ export function ExplorePanel(p: Props) {
                 const b = fresh.bubbles.find((x) => x.code === c.code) as FoodBubble;
                 const fav = p.isFavorite(c.code);
                 return (
-                  <li key={c.code} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 10px", background: "white" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-                      <strong style={{ fontSize: 15 }}>{c.name}{c.type ? <span style={{ fontWeight: 400, fontSize: 12.5, color: "#6B7280" }}> {c.type}</span> : null}</strong>
+                  <li key={c.code} onClick={() => p.onPick(b, fresh)} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "8px 8px 8px 10px", background: "white", cursor: "pointer" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                      {/* 카드 어디를 눌러도 종합분석이 열리고, 키보드·화면낭독은 이 이름 단추로 같은 일을 한다 */}
+                      <button type="button" aria-label={`${c.name} 종합분석 보기`} onClick={(e) => { e.stopPropagation(); p.onPick(b, fresh); }}
+                        style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: "none", textAlign: "left", cursor: "pointer", color: "#111827", font: "inherit" }}>
+                        <strong style={{ fontSize: 15 }}>{c.name}{c.type ? <span style={{ fontWeight: 400, fontSize: 12.5, color: "#6B7280" }}> {c.type}</span> : null}</strong>
+                      </button>
                       <span style={{ fontWeight: 800, fontSize: 16, whiteSpace: "nowrap" }}>{formatMetric(fresh.kind, c.value)}</span>
+                      <button type="button" aria-pressed={fav} aria-label={fav ? `${c.name} 내 관심 지역에서 빼기` : `${c.name} 내 관심 지역에 담기`} title={fav ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"}
+                        onClick={(e) => { e.stopPropagation(); p.onFavorite(b, fresh); }}
+                        style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 8, border: "1px solid #D1D5DB", background: fav ? "#FEF3C7" : "white", color: fav ? "#B45309" : "#6B7280", fontSize: 18, lineHeight: 1, cursor: "pointer" }}>
+                        {fav ? "★" : "☆"}
+                      </button>
                     </div>
                     <div style={{ fontSize: 12.5, color: "#6B7280" }}>
                       {fresh.label} · 같은 업종 점포 {c.stores.toLocaleString()}곳{c.caution ? ` · 점포 ${SAMPLE_MIN}~19곳이라 값이 크게 흔들릴 수 있어요` : ""}
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                      <button type="button" onClick={() => p.onReport(b)} style={btn(true)}>상권분석 보고서 보기 ›</button>
-                      <button type="button" onClick={() => p.onPick(b, fresh)} style={btn(false)}>종합분석 보기</button>
-                      <button type="button" aria-pressed={fav} onClick={() => p.onFavorite(b, fresh)} style={btn(false)}>{fav ? "★ 내 관심 지역에서 빼기" : "☆ 내 관심 지역에 담기"}</button>
-                    </div>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ ...btn(true), width: "100%", marginTop: 6 }}>상권분석 보고서 보기 ›</button>
                   </li>
                 );
               })}
