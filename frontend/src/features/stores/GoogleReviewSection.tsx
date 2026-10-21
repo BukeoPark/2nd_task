@@ -41,7 +41,7 @@ function LinkResult({ storeId, status, message, placeId }: { storeId: string; st
   return <Notice tone="warn">{message}</Notice>;
 }
 
-type ElementState = "loading" | "ready" | "no_rating" | "error" | "not_configured" | "quota";
+type ElementState = "loading" | "ready" | "error" | "not_configured" | "quota";
 
 function GooglePlaceDetails({ storeId, placeId }: { storeId: string; placeId: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -69,12 +69,8 @@ function GooglePlaceDetails({ storeId, placeId }: { storeId: string; placeId: st
         for (const tag of ["gmp-place-rating", "gmp-place-reviews", "gmp-place-attribution"]) cfg.appendChild(document.createElement(tag));
         el.append(req, cfg);
         el.addEventListener("gmp-error", () => !cancelled && setState("error"));
-        el.addEventListener("gmp-load", () => {
-          if (cancelled) return;
-          // 평점 없는 장소를 컴포넌트가 어떻게 보여주는지 실제 키로 확인하지 못해, 로드된 place 기준으로 안내를 덧붙인다(값은 저장하지 않음).
-          const place = (el as unknown as { place?: { rating?: number | null; userRatingCount?: number | null } }).place;
-          setState(place && "rating" in place && place.rating == null && !place.userRatingCount ? "no_rating" : "ready");
-        });
+        // 평점·리뷰 유무는 컴포넌트가 직접 보여 준다. 로드 직후의 place 값을 읽어 '정보 없음'을 덧붙이면(실제 키로 확인: 평점이 있어도 값이 비어 있어 틀리게 안내됨) 오안내가 되므로 읽지 않는다.
+        el.addEventListener("gmp-load", () => !cancelled && setState("ready"));
         host.replaceChildren(el);
       })
       .catch((e) => {
@@ -92,7 +88,6 @@ function GooglePlaceDetails({ storeId, placeId }: { storeId: string; placeId: st
       {state === "loading" && <Notice tone="muted">Google 고객평가를 불러오는 중...</Notice>}
       {state === "error" && <Notice tone="error">Google 조회 실패 — 잠시 후 다시 시도해 주세요.</Notice>}
       {state === "not_configured" && <Notice tone="pending">연동 준비 중</Notice>}
-      {state === "no_rating" && <Notice tone="muted">고객평가 정보 없음</Notice>}
       {state === "quota" && <Notice tone="warn">{quotaMessage}</Notice>}
       {/* 비Google 지도와 함께 쓸 때는 Google 콘텐츠를 테두리 등으로 시각적으로 구분해야 한다(서비스 약관). */}
       <div ref={hostRef} style={{ border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", marginTop: 6 }} />
