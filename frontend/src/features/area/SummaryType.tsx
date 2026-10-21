@@ -6,7 +6,7 @@ import { demandStructureNote, typeNotice } from "../../lib/areaCharacter";
 /** 유형은 지역명 옆에 표시하고, 통계·주의사항은 요약 안에서 읽는다. */
 export function SummaryTypeBadge({ data }: { data: AreaCharacter }) {
   const label = data.type.traits.length ? data.type.traits.map((t) => t.label).join(" · ") : data.type.headline;
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "4px 10px", background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC", fontSize: FS.caption, fontWeight: 700, wordBreak: "keep-all" }}><span aria-hidden="true">⌂</span>{label}</span>;
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "6px 13px", background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC", fontSize: FS.cardTitle, fontWeight: 700, lineHeight: 1.4, wordBreak: "keep-all" }}><span aria-hidden="true" style={{ fontSize: FS.screenTitle, lineHeight: 1 }}>⌂</span>{label}</span>;
 }
 
 export function SummaryTypeContext({ data: d }: { data: AreaCharacter }) {
