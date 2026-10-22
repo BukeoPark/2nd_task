@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { NoteHost } from "../../components/NoteHost";
@@ -26,7 +27,6 @@ import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBas
 import { CompetitorBlock } from "./CompetitorBlock";
 import { MineStatusBar } from "./MineStatusBar";
 import { MonthlyCheckModal } from "./MonthlyCheckModal";
-import { noteMyStore } from "../../lib/monthlyCheck";
 import { toKakaoLatLng } from "../../lib/geo";
 import { StoreBriefCard } from "./StoreBriefCard";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
@@ -96,9 +96,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
   const groups: GroupId[] = mode === "founder" ? GROUP_IDS.filter((g) => g !== "mine") : ["store", "mine", "radius", "area"];
   const manwon = lastMonth ? String(mine.record.months[lastMonth]) : "";
   const store = data?.store;
-  // 자영업자가 연 가게의 이름을 남겨 두면 '월간 점검'에서 다시 고를 수 있다(이름·동만, 이 브라우저에만)
-  const storeIdName = store ? `${store.name}${store.branch ? ` ${store.branch}` : ""}` : null;
-  useEffect(() => { if (mode === "owner" && store && storeIdName) noteMyStore({ storeId, name: storeIdName, dong: store.dong }, Date.now()); }, [mode, store, storeId, storeIdName]);
   // 지도 원은 위 radius(API 조회와 같은 상태값)로만 그린다. '주변' 묶음을 벗어나거나 매장이 바뀌어(key) 이 컴포넌트가 사라지면 원도 사라진다.
   const circleRadius = overlayRadius(group, radius);
   // 지도의 역·출입구 표시는 아래 반경 블록과 같은 쿼리(같은 키)의 같은 반경 결과만 쓴다 — 이전 반경 결과가 남아 있는 동안은 그리지 않는다.
@@ -140,6 +137,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
               storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`}
               center={{ lon: store.lon, lat: store.lat }}
               svc={store.category.svc ?? null}
+              defaultCategory={mode === "owner" ? store.category.scls : undefined}
               radius={radius}
               onSelectStore={(id) => onSelectStore?.(id)}
               onHoverStore={onHoverStore}
@@ -178,6 +176,19 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
           checkup: <MyStoreCheckupSection storeId={storeId} record={mine.record} onChange={mine.update} onReset={mine.reset} saveFailed={mine.saveFailed} />,
         }
       : null;
+
+  if (mode === "owner" && store && blocks) return <OwnerStoreWorkspace
+    store={store} record={mine.record} blocks={blocks} radius={radius} onRadius={setRadius}
+    onBack={onBack} onClose={onClose} onGroupChange={setGroup}
+    onReport={() => setReportOpen(true)} onAreaReport={onOpenAreaReport ? areaReport : undefined}
+    monthlyOpen={monthlyOpen} onMonthlyOpenChange={onMonthlyOpenChange}
+    overlays={<>
+      {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
+      {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && <RadiusCircleLayer map={mapView.map} kakao={mapView.kakao} center={{ lon: store.lon, lat: store.lat }} radiusM={circleRadius} />}
+      {mapView && circleRadius !== null && railPlan.stations.length > 0 && <RailStationLayer map={mapView.map} kakao={mapView.kakao} stations={railPlan.stations} exits={railPlan.exits} />}
+      {mapView && circleRadius !== null && facilityPlan.length > 0 && <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />}
+    </>}
+  />;
 
   return (
     <>

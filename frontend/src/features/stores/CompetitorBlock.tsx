@@ -10,6 +10,7 @@ import { FS } from "../../lib/typography";
 interface Props {
   storeId: string;
   storeName: string;
+  defaultCategory?: string;
   center: { lon: number; lat: number };
   /** 서울시 외식 업종 코드 — 같은 업종 매장만 모은다. 대응이 없으면(null) 목록을 만들지 않는다 */
   svc: string | null;
@@ -25,9 +26,9 @@ const STATUS_ROWS = 10;   // 영업 상태(인허가 기록)는 가까운 순으
 
 /** 주변에 같은 업종 가게는 어디에 있을까? — 경쟁 매장 수 → 실제 목록(거리순·세부 업종별) → 지도 위치 → 운영이력·상세. 영업 상태는 인허가 기록 기준이며 현장 영업을 확인한 것이 아니다.
  * 리뷰·평점은 보이지 않는다(Google 고객평가는 매장 상세의 공식 구성요소로만 본다). */
-export function CompetitorBlock({ storeId, storeName, center, svc, radius, onSelectStore, onHoverStore, onShowOnMap }: Props) {
+export function CompetitorBlock({ storeId, storeName, center, svc, radius, defaultCategory, onSelectStore, onHoverStore, onShowOnMap }: Props) {
   const [sort, setSort] = useState<CompetitorSort>("distance");
-  const [category, setCategory] = useState<string>("");
+  const [category, setCategory] = useState<string>(defaultCategory ?? "");
   const [shown, setShown] = useState(PAGE);
   const bounds = useMemo(() => radiusBounds(center, radius), [center, radius]);
   const q = useQuery({
@@ -63,11 +64,11 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, onSel
       ) : (
         <>
           <div style={{ fontSize: FS.body }}>
-            반경 {radius}m · {industry} 전체 <strong style={{ fontSize: FS.metric }}>{all.length.toLocaleString()}{truncated ? "곳 이상" : "곳"}</strong>
+            반경 {radius}m · {category || `${industry} 전체`} <strong style={{ fontSize: FS.metric }}>{filtered.length.toLocaleString()}{truncated ? "곳 이상" : "곳"}</strong>
           </div>
           {categories.length > 1 && <div style={{ fontSize: FS.warn, color: "#374151", marginTop: 2 }}>세부 업종별: {categories.slice(0, 4).map((g) => `${g.category} ${g.items.length}곳`).join(" · ")}{categories.length > 4 ? " …" : ""}</div>}
           <div style={{ fontSize: FS.ui, color: "#4B5563", marginTop: 2 }}>
-            소상공인 상가정보 기준 · 선택 매장 제외. 위 요약은 같은 세부 업종, 이 목록은 {industry} 전체예요. {truncated ? "조회 한도로 일부만 집계했어요. " : ""}파란 링은 같은 상권·같은 업종 표시로, 이 반경 목록과 범위가 다를 수 있어요.
+            소상공인 상가정보 기준 · 선택 매장 제외. 선택 업종의 요약 숫자와 목록을 같은 범위로 보여 드려요. {truncated ? "조회 한도로 일부만 집계했어요. " : ""}파란 링은 같은 상권·같은 업종 표시로, 이 반경 목록과 범위가 다를 수 있어요.
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "10px 0 6px" }}>

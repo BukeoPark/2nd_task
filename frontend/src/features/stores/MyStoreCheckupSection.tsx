@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ActionButton, Caption, Stat, SubHead } from "../../components/PanelKit";
 import { inputStyle as kitInput, labelStyle } from "../../lib/panelStyle";
@@ -101,9 +101,9 @@ export function MyStoreCheckupSection({
   const bep = breakeven(cost, latestRevenue, benchWon === null ? null : benchWon / 1e4);
 
   return (
-    <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: FS.caption, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
+    <Section title="매출·비용 기록" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: FS.caption, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
       <Caption style={{ marginTop: 0, marginBottom: 8 }}>
-        월 매출을 달마다 기록하면 소속 상권 같은 업종의 흐름과 견주고, 가장 최근 달은 '내 매출 비교'에도 쓰입니다. 비용을 넣으면 손익분기 매출을 계산합니다.
+        한 달만 기록해도 매출을 보관할 수 있어요. 연속한 두 달은 전월 대비 변화를, 공공 통계와 기간이 맞는 기록은 상권 흐름과 비교합니다. 비용을 넣으면 손익분기 매출을 계산합니다.
       </Caption>
       {saveFailed && (
         <div style={{ marginBottom: 8 }}>
@@ -111,7 +111,7 @@ export function MyStoreCheckupSection({
         </div>
       )}
 
-      <SubHead>월 매출 기록 — 상권 흐름과 비교</SubHead>
+      <SubHead>월 매출 기록</SubHead>
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
         <label style={labelStyle}>
           월
@@ -184,7 +184,7 @@ export function MyStoreCheckupSection({
       </Caveat>
       {bench && <SourceNote label="비교 기준 자료" title={bench.source.title} reference={bench.source.reference ?? "-"} />}
 
-      <Fold title="간이 손익분기 계산 펼치기">
+      <div style={{ marginTop: 24 }}><SubHead>월 비용과 손익분기 매출</SubHead>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
         {COST_FIELDS.map((f) => (
           <label key={f.key} style={labelStyle}>
@@ -225,7 +225,7 @@ export function MyStoreCheckupSection({
         )}
       </div>
 
-      </Fold>
+      </div>
 
       {(monthKeys.length > 0 || Object.values(record.costs).some((v) => v !== "")) && (
         <div style={{ marginTop: 12 }}>

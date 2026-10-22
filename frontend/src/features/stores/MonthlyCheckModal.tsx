@@ -13,6 +13,7 @@ import { useNearbyAnalysis } from "./useStores";
 import { FS } from "../../lib/typography";
 
 interface Props {
+  inline?: boolean;
   storeId: string;
   storeName: string;
   record: StoreRecord;
@@ -29,7 +30,7 @@ const manwon = (v: number) => `${Math.round(v).toLocaleString("ko-KR")}만원`;
 
 /** 우리 가게 월간 점검 — 한 화면에서 ① 내 기록(월 매출·손익분기) ② 주변 경쟁 변화 ③ 상권 변화 ④ 이번 달 확인사항을 차례로 돌아본다.
  * 계산은 기존 손익분기·내 가게 기록·반경 인허가·동네 매출 비교를 그대로 읽고, 원인을 단정하거나 경영 처방을 내리지 않는다. 체크·메모는 이 브라우저에만 저장한다. */
-export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMine, onGoRadius, onGoArea }: Props) {
+export function MonthlyCheckModal({ inline = false, storeId, storeName, record, onClose, onGoMine, onGoRadius, onGoArea }: Props) {
   const now = useMemo(() => new Date(), []);
   const month = monthOf(now);
   const sum = useMemo(() => recordSummary(record, now), [record, now]);
@@ -38,26 +39,27 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
   const nearby = useNearbyAnalysis(storeId, 500);
   const bench = useQuery({ queryKey: ["sales-benchmark", storeId], queryFn: () => apiClient.getSalesBenchmark(storeId), staleTime: 10 * 60 * 1000 });
   const back = useRef<HTMLButtonElement>(null);
-  const requestClose = useOverlayBack(onClose);
+  const requestClose = useOverlayBack(onClose, !inline);
   useEffect(() => {
+    if (inline) return;
     const opener = document.activeElement as HTMLElement | null;
     back.current?.focus();
     return () => { opener?.focus?.(); };
-  }, []);
+  }, [inline]);
 
   const update = (next: MonthState) => { setState(next); setSaveFailed(!saveMonth(storeId, month, next)); };
   const done = monthlyDone(state, sum.hasThisMonth);
   const trend = nearby.data?.status === "ok" ? (nearby.data.trend ?? []).filter((t) => !t.partial_year && t.closed !== null).slice(-2) : [];
   const yoy = bench.data?.status === "ok" ? bench.data.growth?.yoy.total_sales : undefined;
 
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="우리 가게 월간 점검" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: FS.body }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+  const content = (
+    <div role={inline ? undefined : "dialog"} aria-modal={inline ? undefined : true} aria-label="우리 가게 월간 점검" style={inline ? {} : { position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: FS.body }}>
+      <div hidden={inline} style={{ position: "sticky", top: 0, zIndex: 2, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <ModalNav onBack={requestClose} backRef={back} />
         <strong style={{ fontSize: FS.screenTitle }}>우리 가게 월간 점검</strong>
         <span style={{ color: "#6B7280", fontSize: FS.warn }}>{storeName} · {month}</span>
       </div>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 24px 32px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 14, alignItems: "start" }}>
+      <div className={inline ? "owner-month-grid" : undefined} style={inline ? {} : { maxWidth: 1100, margin: "0 auto", padding: "16px 24px 32px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 14, alignItems: "start" }}>
         {/* ① 내 기록 */}
         <Block surface="card" title="① 우리 가게 숫자는 어땠을까?" hint="내가 기록한 값 · 이 브라우저에만 저장돼요">
           {sum.months.length === 0 ? (
@@ -84,18 +86,18 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
         </Block>
 
         {/* ② 주변 경쟁 변화 */}
-        <Block surface="card" title="② 주변 같은 업종 가게에 변화가 있었을까?" hint="반경 500m · 인허가 기록 기준">
+        <Block surface="card" title="② 주변 개폐업 참고" hint="반경 500m · 연간 인허가 기록">
           {nearby.isPending ? <Notice tone="muted">불러오는 중...</Notice> : nearby.data?.status !== "ok" ? (
             <Notice tone="muted">{nearby.data?.reason ?? "이 매장은 인허가 자료와 연결되지 않아 주변 변화를 보여 드릴 수 없어요(자료 없음)."}</Notice>
           ) : (
             <>
-              <div style={{ fontSize: FS.body }}>영업 중으로 확인되는 같은 업종 인허가 <strong style={{ fontSize: FS.cardTitle }}>{nearby.data.active_count ?? "자료 없음"}{nearby.data.active_count != null ? "곳" : ""}</strong></div>
+              <div style={{ fontSize: FS.body }}>영업 중으로 확인되는 같은 업종 인허가 <strong style={{ fontSize: FS.cardTitle }}>{nearby.data.active_count ?? "자료 없음"}{nearby.data.active_count != null ? "건" : ""}</strong></div>
               {trend.length > 0 ? (
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.7 }}>
-                  {trend.map((t) => <li key={t.year}>{t.year}년: 새로 열린 곳 {t.opened}곳 · 문 닫은 곳 {t.closed}곳</li>)}
+                  {trend.map((t) => <li key={t.year}>{t.year}년: 개업 {t.opened}건 · 폐업 {t.closed}건</li>)}
                 </ul>
               ) : <Caption>연도별 개폐업 기록이 충분하지 않아요.</Caption>}
-              <Caption>인허가 기록 기준이라 실제 영업과 다를 수 있고, 이유는 이 자료로 알 수 없어요.</Caption>
+              <Caption>연간 인허가 기록이며 이번 달의 변화가 아닙니다. 실제 영업 여부는 현장에서 확인하세요.</Caption>
             </>
           )}
           <div style={{ marginTop: 12 }}><ActionButton onClick={onGoRadius}>가까운 경쟁 가게 목록 보기 ›</ActionButton></div>
@@ -107,6 +109,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
             <Notice tone="muted">{yoy?.message ?? bench.data?.message ?? "상권 매출 변화를 계산할 자료가 없어요(분석 보류 또는 자료 없음)."}</Notice>
           ) : (
             <>
+              <Caption>{bench.data?.unit?.name} · {bench.data?.svc_nm} 전체 · {bench.data?.quarter_label}</Caption>
               <Stat big label="전년 같은 분기 대비 총매출" value={`${yoy.value > 0 ? "+" : ""}${yoy.value.toFixed(1)}%`} />
               <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>점포 수 변화가 섞인 값이고 물가는 보정하지 않았어요. 카드 결제 기반 추정이라 우리 가게의 실제 매출이 아니에요.{yoy.status === "caution" ? " 소규모 상권이라 값이 크게 흔들릴 수 있어요." : ""}</div>
             </>
@@ -137,7 +140,7 @@ export function MonthlyCheckModal({ storeId, storeName, record, onClose, onGoMin
           {saveFailed && <div style={{ marginTop: 6 }}><Notice tone="warn">이 브라우저가 저장을 막아 체크·메모가 새로고침하면 사라집니다.</Notice></div>}
         </Block>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  return inline ? content : createPortal(content, document.body);
 }
