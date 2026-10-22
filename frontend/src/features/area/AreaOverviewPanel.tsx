@@ -19,13 +19,13 @@ import { AreaReportModal } from "./AreaReportModal";
 import { glyphFor } from "../../lib/storeGlyph";
 import { SummaryTypeBadge, SummaryTypeContext, SummaryTypeInsights } from "./SummaryType";
 import { AreaBriefCard } from "./AreaBriefCard";
-import { Block, Caption, ListRow, Stat, StatRow } from "../../components/PanelKit";
+import { Block, Caption, ListRow, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { CostCheckLauncher } from "./CostCheckSection";
 import { CostCheckModal } from "./CostCheckModal";
 import { unitSampleStores } from "../../lib/interpretRules";
 import { buildAreaBrief, type BriefTarget } from "../../lib/areaBrief";
 import { UnitStoreList } from "../food/UnitStoreList";
-import { AreaTraitsSection } from "./AreaCharacterSection";
+import { AreaFacilitiesBlock, AreaFloatingStats, AreaStoreStatusBlock, AreaTransitBlock, AreaWorkerShareRow } from "./AreaCharacterSection";
 import { FS } from "../../lib/typography";
 
 type Row = FoodCompareResponse["rows"][number];
@@ -67,7 +67,6 @@ const RAIL_PREFIX = "area-";
 const ICON: Record<AreaTabId, ReactNode> = {
   summary: <path d="M4 4h12v12H4zM7 8h6M7 12h4" />,
   type: <path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v4l3 2" />,
-  traits: <path d="M5 5h10M5 10h10M5 15h6" />,
   growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
   stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
   demand: (
@@ -183,29 +182,39 @@ export function AreaOverviewPanel(p: Props) {
         </>
       ), { manualNotes: true })}
 
-      {pane("traits", "특성 — 교통·배후 수요·앵커·경쟁", <AreaTraitsSection level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />, { scoped: true })}
-
-      {cmp.data && pane("growth", "성장성 — 매출 추이·점포 수 증감",
-        ov.data ? <GrowthBlock ov={ov.data} change={row("stores_change_2y")} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />, { scoped: true })}
-      {cmp.data && pane("stability", "안정성·경쟁 — 개폐업·변동성·프랜차이즈",
-        <Block title="개폐업·점포 변동·프랜차이즈"><Rows rows={["open_rate_y", "close_rate_y", "stores_volatility", "frc_share"].map(row)} /></Block>, { scoped: true })}
+      {cmp.data && pane("growth", "매출 흐름 — 추정매출 수준·추이·증감",
+        ov.data ? <GrowthBlock ov={ov.data} yoy={row("sales_yoy_pct")} /> : <OvState q={ov} />, { scoped: true })}
+      {cmp.data && pane("stability", "경쟁·개폐업 — 점포 현황·변화·개폐업·프랜차이즈",
+        <>
+          <AreaStoreStatusBlock level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
+          {ov.data ? <StoreChangeBlock ov={ov.data} change={row("stores_change_2y")} volatility={row("stores_volatility")} /> : <OvState q={ov} />}
+          <Block title="개폐업·프랜차이즈"><Rows rows={["open_rate_y", "close_rate_y", "frc_share"].map(row)} /></Block>
+        </>, { scoped: true })}
       {cmp.data && pane("demand", "소비 수요 — 유동·상주·직장인구, 시간대별 소비",
         <>
           <Notice tone="info">유동인구는 지나가는 사람 수예요. 이 지역에 오는 손님이나 방문객 수가 아니에요.</Notice>
-          <Block title="인구·집객시설"><Rows rows={["wrc_total", "repop_total", "fac_total", "sales_per_10k_flpop"].map(row)} /></Block>
-          {ov.data ? <DemandBlock ov={ov.data} /> : <OvState q={ov} />}
+          <Block title="인구·유동">
+            <Rows rows={["wrc_total", "repop_total", "sales_per_10k_flpop"].map(row)} />
+            <AreaWorkerShareRow level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
+          </Block>
+          {ov.data ? <DemandBlock ov={ov.data} extra={<AreaFloatingStats level={p.level} code={p.code} svc={p.svc} scls={p.scls} unitKind={unitKind} />} /> : <OvState q={ov} />}
         </>, { scoped: true })}
-      {cmp.data && pane("location", "입지 — 앵커 브랜드·임대료·공실률",
+      {cmp.data && pane("location", "입지·교통 — 역·정류장·집객시설·앵커 브랜드·임대료",
         <>
+          <AreaTransitBlock level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
+          <AreaFacilitiesBlock level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
           <Block title="앵커 브랜드 근처 매장 비율"><Rows rows={["starbucks_zone_share", "daiso_zone_share"].map(row)} /></Block>
+
+        </>, { scoped: true })}
+
+      {pane("cost", "비용·임대", <>
+        {p.mode === "founder" && <Block title="내가 입력한 비용으로 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onOpen={() => setCostOpen(true)} /></Block>}
           <Block title="임대료·공실률(참고값)">
             <Notice tone="warn">임대료·공실률은 이 {unitKind}의 실제 값이 아니라, 가까운(1km 이내) R-ONE 조사상권의 <strong>참고값</strong>입니다.</Notice>
             <Rows rows={["rent_small_shop", "vacancy_small_shop_pct"].map(row)} />
           </Block>
-        </>, { scoped: true })}
-
-      {p.mode === "founder" && pane("cost", "창업 비용 점검 — 내가 넣은 값으로 계산",
-        <CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onOpen={() => setCostOpen(true)} />)}
+        <Caption>공개 임대자료는 인근 조사상권의 시장 참고값이며, 실제 계약 임대료가 아닙니다.</Caption>
+      </>)}
       {p.mode === "founder" && costOpen && <CostCheckModal unitKey={`${p.level}:${p.code}`} unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
 
       {p.level === "dong" && pane("trdars", `세부 상권 — 이 행정동과 겹치는 발달·골목상권${ov.data?.trdars ? ` (${ov.data.trdars.length})` : ""}`,
@@ -281,31 +290,40 @@ function Rows({ rows }: { rows: (Row | undefined)[] }) {
   );
 }
 
-function GrowthBlock({ ov, change, yoy }: { ov: NonNullable<ReturnType<typeof useUnitOverview>["data"]>; change?: Row; yoy?: Row }) {
+function GrowthBlock({ ov, yoy }: { ov: NonNullable<ReturnType<typeof useUnitOverview>["data"]>; yoy?: Row }) {
   const labels = ov.trend.map((t) => shortQuarter(t.quarter));
-  const partial = ov.trend.filter((t) => t.total > t.used).length;
   return (
     <>
-      <Block title="최근 증감"><Rows rows={[yoy, change]} /></Block>
+      <Block title="최근 증감"><Rows rows={[yoy]} /></Block>
       <Block title={<>점포당 월평균 추정매출 추이 <InfoTip label="추이 범위·출처 보기"><b>업종 범위</b> {ov.trend_scope}<br /><b>출처</b> {ov.trend_source}<br /><b>기간</b> {ov.trend[0]?.label ?? ""}~{ov.trend.at(-1)?.label ?? ""}</InfoTip></>}>
         <LineChart labels={labels} series={[{ name: "점포당 월평균 추정매출", color: "#1D4ED8", values: ov.trend.map((t) => t.per_store_month) }]} fmt={(v) => formatKrw(v)} />
-      </Block>
-      <Block title={<>점포 수 추이 <InfoTip label="추이 범위·출처 보기"><b>업종 범위</b> {ov.trend_scope}<br /><b>출처</b> {ov.trend_source}<br />서울시 집계 점포 수라 요약의 점포 수(상가정보)와 다를 수 있습니다.</InfoTip></>}>
-        <LineChart labels={labels} series={[{ name: "점포 수", color: "#059669", values: ov.trend.map((t) => t.stores) }]} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} />
-        {partial > 0 && <Caption tone="warn">{partial}개 분기는 일부 업종의 매출·점포 수가 비어 그 업종을 뺀 값입니다(0 으로 채우지 않음).</Caption>}
       </Block>
     </>
   );
 }
 
-function DemandBlock({ ov }: { ov: NonNullable<ReturnType<typeof useUnitOverview>["data"]> }) {
+/** 경쟁·개폐업 — 점포 수 증감·변동성과 점포 수 추이(서울시 분기 통계). 현재 점포 수(상가정보)와는 출처·시점이 달라 따로 둔다. */
+function StoreChangeBlock({ ov, change, volatility }: { ov: NonNullable<ReturnType<typeof useUnitOverview>["data"]>; change?: Row; volatility?: Row }) {
+  const labels = ov.trend.map((t) => shortQuarter(t.quarter));
+  const partial = ov.trend.filter((t) => t.total > t.used).length;
+  return (
+    <Block title={<>점포 변화 <InfoTip label="추이 범위·출처 보기"><b>업종 범위</b> {ov.trend_scope}<br /><b>출처</b> {ov.trend_source}<br />서울시 집계 점포 수라 위 '현재 점포 현황'(상가정보)과 다를 수 있습니다.</InfoTip></>}>
+      <Rows rows={[change, volatility]} />
+      <SubHead>점포 수 추이</SubHead>
+      <LineChart labels={labels} series={[{ name: "점포 수", color: "#059669", values: ov.trend.map((t) => t.stores) }]} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} />
+      {partial > 0 && <Caption tone="warn">{partial}개 분기는 일부 업종의 매출·점포 수가 비어 그 업종을 뺀 값입니다(0 으로 채우지 않음).</Caption>}
+    </Block>
+  );
+}
+
+function DemandBlock({ ov, extra }: { ov: NonNullable<ReturnType<typeof useUnitOverview>["data"]>; extra?: ReactNode }) {
   const f = ov.floating;
   const sales = ov.hours;
   return (
     <>
       <Block title={<><Term id="floatingIndex" label="유동인구" /> 시간대별 비중 <InfoTip label="유동인구 출처 보기"><b>출처</b> 서울시 상권분석서비스(유동인구) · 시간대별 비중<br />{f && <><b>기준</b> {f.label}</>}</InfoTip></>}
         hint={f ? `${f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString()}명(분기 합)`}${f.yoy_pct !== null ? ` · 전년 동기 ${f.yoy_pct > 0 ? "+" : ""}${f.yoy_pct}%` : ""}` : undefined}>
-        {f ? <BarList items={f.slots.map((s) => ({ label: s.label, value: s.pct, color: "#6366F1" }))} fmt={(v) => `${v}%`} />
+        {f ? <><BarList items={f.slots.map((s) => ({ label: s.label, value: s.pct, color: "#6366F1" }))} fmt={(v) => `${v}%`} />{extra}</>
           : <Notice tone="muted">이 지역의 유동인구 자료가 없어요(0이 아니라 자료가 없는 것이에요).</Notice>}
       </Block>
       <Block title={<>시간대별 소비(매출 비중) <InfoTip label="시간대 소비 출처 보기"><b>출처</b> 서울시 상권분석서비스(추정매출) · {ov.trend_scope}<br /><b>기준</b> {sales.label} · 업종 {sales.total}개 중 {sales.used}개 반영(매출액 가중)</InfoTip></>}>

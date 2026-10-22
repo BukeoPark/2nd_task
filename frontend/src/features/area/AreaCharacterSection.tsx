@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Caveat } from "../../components/NoteHost";
-import { Block, Caption, Stat, SubHead } from "../../components/PanelKit";
+import { Block, Caption, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { PK, grid2, grid3 } from "../../lib/panelStyle";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
-import { anchorText, cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
+import { cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
 import { busUsageLines } from "../../lib/busText";
 import { railUsageLines } from "../../lib/railText";
 import { useAreaCharacter } from "../food/useFood";
@@ -18,7 +18,7 @@ interface Props {
   unitKind: string;
 }
 
-/** 조회 상태(불러오는 중·실패)를 한 곳에서 처리하고, 값이 오면 그리는 함수에 넘긴다 — '유형'과 '특성' 두 항목이 같은 조회를 나눠 쓴다. */
+/** 조회 상태(불러오는 중·실패)를 한 곳에서 처리하고, 값이 오면 그리는 함수에 넘긴다 — 요약의 유형·입지·교통·경쟁·소비 수요가 같은 조회를 나눠 쓴다. */
 function WithCharacter({ level, code, svc, scls, children }: Omit<Props, "unitKind"> & { children: (d: AreaCharacter) => ReactNode }) {
   const q = useAreaCharacter(level, code, svc, scls);
   if (q.isPending) return <Notice tone="muted">상권 유형·입지 특성을 계산하는 중...</Notice>;
@@ -100,32 +100,102 @@ export function AreaTypeSection({ level, code, svc, scls, unitKind }: Props) {
   );
 }
 
-/** '특성' — 교통 접근성·배후 소비 수요·상업·앵커 환경·경쟁 환경. 영역마다 값과 근거를 보인다. */
-export function AreaTraitsSection({ level, code, svc, scls, unitKind }: Props) {
+type CharProps = Omit<Props, "unitKind">;
+
+// '특성' 항목은 없앴다 — 같은 값을 다른 항목이 이미 보여 줘 되풀이였다. 특성에만 있던 정보(교통·점포 밀도·집객시설 밀도·유동인구 시간대 순위)는 아래 조각으로
+// 각 항목(입지·교통, 경쟁·개폐업, 소비 수요)에 한 번씩만 둔다. 값은 모두 경계 기준 조회(useAreaCharacter)이고 유형 탭·요약의 판정 근거와 같은 조회를 나눠 쓴다.
+
+/** 입지·교통 — 지하철·버스(경계 안 + 경계 밖 250m 이내 역). 이용량은 이용량이 확인된 곳만 더한 값이다. */
+export function AreaTransitBlock(p: CharProps) {
   return (
-    <WithCharacter level={level} code={code} svc={svc} scls={scls}>
+    <WithCharacter {...p}>
+      {(d) => (
+        <Block title="교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장(경계 기준)">
+          <RailPart rail={d.sections.transit.rail} />
+          <BusPart bus={d.sections.transit.bus} />
+          <Caveat>{d.sections.transit.note}</Caveat>
+        </Block>
+      )}
+    </WithCharacter>
+  );
+}
+
+/** 입지·교통 — 집객시설 수와 밀도(같은 단위 중앙값과 견줌). */
+export function AreaFacilitiesBlock(p: CharProps) {
+  return (
+    <WithCharacter {...p}>
       {(d) => {
-        const s = d.sections;
+        const fa = d.sections.anchor.facilities;
         return (
-          <div>
-            <Area title="① 교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장">
-              <RailPart rail={s.transit.rail} />
-              <BusPart bus={s.transit.bus} />
-              <Caveat>{s.transit.note}</Caveat>
-            </Area>
+          <Block title="집객시설" hint="경계 기준 · 서울시 시설 수">
+            <div style={grid2}>
+              <Mini label="집객시설" value={cellText(fa.total, countText)} sub={cellSub(fa.total)} />
+              <Mini label="집객시설 밀도" value={densityText(fa.per_km2, false)} sub={fa.reference_median === null ? undefined : `같은 단위 중앙값 ${fa.reference_median.toLocaleString("ko-KR")}곳/㎢`} />
+            </div>
+            <Caveat>집객시설은 서울시 시설 수(상권·행정동 단위)이고, 밀도는 경계 면적으로 나눈 값입니다.</Caveat>
+          </Block>
+        );
+      }}
+    </WithCharacter>
+  );
+}
 
-            <Area title="② 배후 소비 수요" hint={`이 ${unitKind} 경계 기준 · 값마다 기준 분기가 다릅니다`}>
-              <DemandPart demand={s.demand} unitKind={unitKind} />
-            </Area>
+/** 경쟁·개폐업 — 현재 점포 수와 밀도(상가정보). 선택 업종 기준이고, 밀도는 같은 단위 상위 25% 기준선과 견준다. */
+export function AreaStoreStatusBlock(p: CharProps) {
+  return (
+    <WithCharacter {...p}>
+      {(d) => {
+        const c = d.sections.competition;
+        return (
+          <Block title="현재 점포 현황" hint={`선택 업종: ${c.scope.stores_label} · 소상공인 상가정보`}>
+            <div style={grid2}>
+              <Mini label="점포 수(현재)" value={cellText(c.stores, countText)} sub={cellSub(c.stores)} />
+              <Mini label="점포 밀도" value={densityText(c.density_per_km2, c.small_area)} sub={densityReferenceText(c.reference_applies, c.reference_density_p75)} />
+            </div>
+            {c.scope.notice && <div style={{ marginTop: 8 }}><Notice tone="warn">점포 현황과 개폐업 통계는 집계 업종이 달라요.</Notice><Fold title="집계 업종 차이 보기"><Caption>{c.scope.notice}</Caption></Fold></div>}
+            <Caveat>{c.note}</Caveat>
+          </Block>
+        );
+      }}
+    </WithCharacter>
+  );
+}
 
-            <Area title="③ 상업·앵커 환경" hint="스타벅스·다이소 · 집객시설">
-              <AnchorPart anchor={s.anchor} scope={s.competition.scope.stores_label} />
-            </Area>
+/** 소비 수요 — 직장인구 비율(업무·주거 판정). 직장·상주 인구 값은 위 표에 이미 있어 비율만 더한다. */
+export function AreaWorkerShareRow(p: CharProps) {
+  return (
+    <WithCharacter {...p}>
+      {(d) => {
+        const dm = d.sections.demand;
+        return (
+          <>
+            <StatRow label="직장인구 비율" value={`${dm.worker_share_pct === null ? "자료 없음" : pctText(dm.worker_share_pct)}${dm.demand_type ? ` · ${dm.demand_type}` : ""}`} missing={dm.worker_share_pct === null} />
+            {!dm.base_ok && <div style={{ marginTop: 6 }}><Notice tone="warn">직장·상주 인구 합이 1,000명 미만이거나 자료가 없어 업무·주거 판정은 보류했습니다.</Notice></div>}
+          </>
+        );
+      }}
+    </WithCharacter>
+  );
+}
 
-            <Area title="④ 경쟁 환경" hint={`선택 업종: ${s.competition.scope.stores_label}`}>
-              <CompetitionPart c={s.competition} />
-            </Area>
-          </div>
+/** 소비 수요 — 유동인구 시간대 비중의 점심·야간·주말 순위(같은 단위끼리 비교). 시간대 전체 막대는 위의 시간대 비중에 있다. */
+export function AreaFloatingStats({ unitKind, ...p }: CharProps & { unitKind: string }) {
+  return (
+    <WithCharacter {...p}>
+      {(d) => {
+        const f = d.sections.demand.floating;
+        if (!f) return null;
+        return (
+          <>
+            <div style={{ ...grid3, marginTop: 10 }}>
+              <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, `비교 ${unitKind} 중`)} />
+              <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, `비교 ${unitKind} 중`)} />
+              <Mini label="주말 비중" value={f.weekend_pct === null ? "자료 없음" : pctText(f.weekend_pct)} />
+            </div>
+            <Fold title="비교 범위·집계 기준">
+              <Caption>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`}과 비교했습니다. 길 단위로 배분한 인구 추정치라 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</Caption>
+            </Fold>
+          </>
         );
       }}
     </WithCharacter>
@@ -199,90 +269,6 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
       <Caveat>{bus.basis}</Caveat>
     </div>
   );
-}
-
-function DemandPart({ demand, unitKind }: { demand: AreaCharacter["sections"]["demand"]; unitKind: string }) {
-  const f = demand.floating;
-  const workersSource = cellSub(demand.workers);
-  const residentsSource = cellSub(demand.residents);
-  const sharedSource = workersSource && workersSource === residentsSource ? workersSource : undefined;
-  return (
-    <>
-      <div style={grid2}>
-        <Mini label="직장인구" value={cellText(demand.workers, peopleText)} sub={sharedSource ? undefined : workersSource} />
-        <Mini label="상주인구" value={cellText(demand.residents, peopleText)} sub={sharedSource ? undefined : residentsSource} />
-      </div>
-      {sharedSource && <Caption>{sharedSource}</Caption>}
-      <SubHead>
-        직장인구 비율 {demand.worker_share_pct === null ? "자료 없음" : pctText(demand.worker_share_pct)}{demand.demand_type ? ` · ${demand.demand_type}` : ""}
-      </SubHead>
-      {!demand.base_ok && <div style={{ marginTop: 6 }}><Notice tone="warn">직장·상주 인구 합이 1,000명 미만이거나 자료가 없어 업무·주거 판정은 보류했습니다.</Notice></div>}
-      {f ? (
-        <div style={{ marginTop: 8 }}>
-          <SubHead>분기 누적 추정 유동인구({f.label}) {f.flpop === null ? "자료 없음" : `${Math.round(f.flpop).toLocaleString("ko-KR")}명(분기 합)`}</SubHead>
-          <Caption>길 단위로 배분한 인구 추정치로, 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</Caption>
-          <div style={{ ...grid3, marginTop: 6 }}>
-            <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, `비교 ${unitKind} 중`)} />
-            <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, `비교 ${unitKind} 중`)} />
-            <Mini label="주말 비중" value={f.weekend_pct === null ? "자료 없음" : pctText(f.weekend_pct)} />
-          </div>
-          <Fold title="비교 범위·집계 기준">
-            <Caption>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`} 기준입니다. 각 지역의 최신 분기 값을 사용하며, 자료가 없는 지역은 제외합니다. 높은 순위가 매출이나 방문객이 많다는 뜻은 아닙니다.</Caption>
-          </Fold>
-        </div>
-      ) : (
-        <div style={{ marginTop: 6 }}><Notice tone="muted">유동인구 자료 없음</Notice></div>
-      )}
-      <Caveat>{demand.note}</Caveat>
-    </>
-  );
-}
-
-function AnchorPart({ anchor, scope }: { anchor: AreaCharacter["sections"]["anchor"]; scope: string }) {
-  return (
-    <>
-      <Caption>아래 비율은 이 지역의 {scope} 매장 기준입니다. 좌표 간 직선거리로 계산하며 실제 도보 거리가 아닙니다.</Caption>
-      <div style={{ ...grid2, marginTop: 6 }}>
-        <Mini label="스타벅스" value={anchorText(anchor.starbucks)} sub={`스타벅스 250m 이내에 있는 매장 비율 ${cellText(anchor.starbucks.zone_share, pctText)}`} />
-        <Mini label="다이소" value={anchorText(anchor.daiso)} sub={`다이소 250m 이내에 있는 매장 비율 ${cellText(anchor.daiso.zone_share, pctText)}`} />
-      </div>
-      <div style={{ ...grid2, marginTop: 8 }}>
-        <Mini label="집객시설" value={cellText(anchor.facilities.total, countText)} sub={cellSub(anchor.facilities.total)} />
-        <Mini label="집객시설 밀도" value={densityText(anchor.facilities.per_km2, false)} sub={anchor.facilities.reference_median === null ? undefined : `같은 단위 중앙값 ${anchor.facilities.reference_median.toLocaleString("ko-KR")}곳/㎢`} />
-      </div>
-      <Caveat>{anchor.note}</Caveat>
-    </>
-  );
-}
-
-function CompetitionPart({ c }: { c: AreaCharacter["sections"]["competition"] }) {
-  const openSource = cellSub(c.open_rate_y);
-  const closeSource = cellSub(c.close_rate_y);
-  const sharedSource = openSource && openSource === closeSource ? openSource : undefined;
-  return (
-    <>
-      <SubHead>현재 점포 현황</SubHead>
-      <div style={grid2}>
-        <Mini label="점포 수(현재)" value={cellText(c.stores, countText)} sub={cellSub(c.stores)} />
-        <Mini label="점포 밀도" value={densityText(c.density_per_km2, c.small_area)} sub={densityReferenceText(c.reference_applies, c.reference_density_p75)} />
-      </div>
-      <SubHead>점포 변화·개폐업 흐름</SubHead>
-      <Caption>서울시 {c.scope.sales_label} 기준 · 현재 점포 현황과 출처·기준 기간이 다릅니다.</Caption>
-      <div style={{ marginTop: 6 }}><Mini label="점포 수 증감(약 2년)" value={cellText(c.change_2y, (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`)} sub={cellSub(c.change_2y)} /></div>
-      <div style={{ ...grid2, marginTop: 8 }}>
-        <Mini label="연 개업률(최근 1년)" value={cellText(c.open_rate_y, pctText)} sub={sharedSource ? undefined : openSource} />
-        <Mini label="연 폐업률(최근 1년)" value={cellText(c.close_rate_y, pctText)} sub={sharedSource ? undefined : closeSource} />
-      </div>
-      {sharedSource && <Caption>{sharedSource}</Caption>}
-      {c.scope.notice && <div style={{ marginTop: 6 }}><Notice tone="warn">{c.scope.notice}</Notice></div>}
-      <Caveat>{c.note}</Caveat>
-    </>
-  );
-}
-
-function Area({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
-  const m = /^([①②③④⑤⑥])\s*(.*)$/.exec(title);
-  return <Block no={m?.[1]} title={m ? m[2] : title} hint={hint}>{children}</Block>;
 }
 
 function Points({ title, tone, items, empty }: { title: string; tone: string; items: string[]; empty: string }) {

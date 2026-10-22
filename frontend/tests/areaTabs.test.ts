@@ -11,13 +11,13 @@ test("요약이 첫 항목이고 행정동에만 세부 상권이 있으며 매�
   }
 });
 
-test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 성장성·경쟁·수요·입지 → 비용", () => {
-  assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "traits", "stores"]);
-  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "traits", "stores"]);
+test("모드마다 먼저 보는 순서가 다르다: 자영업자는 경쟁 변화·시간대 수요, 예비 창업자는 매출 흐름·경쟁·수요·입지 → 비용", () => {
+  assert.deepEqual(areaTabsFor("trdar", "owner"), ["summary", "stability", "demand", "growth", "location", "cost", "stores"]);
+  assert.deepEqual(areaTabsFor("trdar", "founder"), ["summary", "growth", "stability", "demand", "location", "cost", "stores"]);
 });
 
-test("예비 창업자 모드에만 비용 점검이 있고, 현장 확인 메뉴는 없다", () => {
-  assert.ok(!areaTabsFor("dong", "owner").includes("cost" as never) && !areaTabsFor("dong", "founder").includes("visit" as never));
+test("두 모드에 비용·임대 메뉴가 있고, 현장 확인 메뉴는 없다", () => {
+  assert.ok(areaTabsFor("dong", "owner").includes("cost") && !areaTabsFor("dong", "founder").includes("visit" as never));
   assert.ok(areaTabsFor("dong", "founder").includes("cost"));
 });
 
@@ -45,4 +45,11 @@ test("항목마다 다른 색을 쓰고, 글자색은 배경과 대비 4.5:1 이
 
 test("유형은 요약에 통합되어 별도 메뉴가 없다", () => {
   for (const mode of ["owner", "founder"] as const) for (const level of ["dong", "trdar"] as const) assert.ok(!areaTabsFor(level, mode).includes("type"));
+});
+
+test("특성 메뉴는 없고, 항목 이름은 매출 흐름·경쟁·개폐업·소비 수요·입지·교통이다", async () => {
+  const { AREA_TAB_LABEL } = await import("../src/lib/areaTabs.ts");
+  const labels = Object.values(AREA_TAB_LABEL);
+  assert.ok(!labels.includes("특성") && !labels.includes("성장성") && !labels.includes("안정·경쟁"));
+  assert.deepEqual([AREA_TAB_LABEL.growth, AREA_TAB_LABEL.stability, AREA_TAB_LABEL.demand, AREA_TAB_LABEL.location], ["매출 흐름", "경쟁·개폐업", "소비 수요", "주변 환경"]);
 });

@@ -3,17 +3,16 @@
 // 예비 창업자 모드에는 '비용 점검'(내가 입력한 비용으로 손익분기)이 더 있다.
 // 다른 모듈을 import 하지 않는 순수 데이터(tests/areaTabs.test.ts).
 
-export type AreaTabId = "summary" | "type" | "traits" | "growth" | "stability" | "demand" | "location" | "cost" | "trdars" | "stores";
+export type AreaTabId = "summary" | "type" | "growth" | "stability" | "demand" | "location" | "cost" | "trdars" | "stores";
 
 export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   summary: "요약",
   type: "유형",
-  traits: "특성",
-  growth: "성장성",
-  stability: "안정·경쟁",
+  growth: "매출 흐름",
+  stability: "경쟁·개폐업",
   demand: "소비 수요",
-  location: "입지",
-  cost: "비용 점검",
+  location: "주변 환경",
+  cost: "비용·임대",
   trdars: "세부 상권",
   stores: "매장 목록",
 };
@@ -22,7 +21,6 @@ export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
 export const AREA_TAB_STYLE: Record<AreaTabId, { bg: string; fg: string }> = {
   summary: { bg: "#E0E7FF", fg: "#3730A3" },
   type: { bg: "#EDE9FE", fg: "#5B21B6" },
-  traits: { bg: "#E0F2FE", fg: "#075985" },
   growth: { bg: "#DCFCE7", fg: "#166534" },
   stability: { bg: "#DBEAFE", fg: "#1D4ED8" },
   demand: { bg: "#FEF3C7", fg: "#92400E" },
@@ -36,23 +34,22 @@ export const AREA_TAB_STYLE: Record<AreaTabId, { bg: string; fg: string }> = {
 export const AREA_QUESTION: Record<AreaTabId, { owner: string; founder: string }> = {
   summary: { owner: "우리 지역 상권은 지금 어떤 상태일까?", founder: "이 지역은 지금 어떤 상태일까?" },
   type: { owner: "우리 지역은 어떤 성격의 상권일까?", founder: "이 지역은 어떤 성격의 상권일까?" },
-  traits: { owner: "교통·사람·경쟁 가게는 어떨까?", founder: "교통·사람·경쟁 가게는 어떨까?" },
   growth: { owner: "우리 상권 매출은 늘고 있을까, 줄고 있을까?", founder: "이 지역 매출은 늘고 있을까?" },
-  stability: { owner: "주변 가게들은 얼마나 열고 닫을까?", founder: "여기서 가게들은 오래 버틸까? (열고 닫는 흐름)" },
+  stability: { owner: "가게가 얼마나 모여 있고, 어떻게 바뀔까?", founder: "가게가 얼마나 모여 있고, 어떻게 바뀔까?" },
   demand: { owner: "손님이 언제 많이 오갈까?", founder: "사람들은 언제, 얼마나 오갈까?" },
-  location: { owner: "주변 큰 브랜드와 임대료는 어떨까?", founder: "입지 위험은 없을까? (주변 브랜드·임대료)" },
-  cost: { owner: "얼마를 벌어야 손해를 안 볼까?", founder: "창업하면 얼마를 벌어야 손해를 안 볼까?" },
+  location: { owner: "교통과 주변 시설은 어떨까?", founder: "교통과 주변 시설은 어떨까?" },
+  cost: { owner: "주변 임대시장 상황은 어떨까?", founder: "창업 비용과 임대시장 상황은 어떨까?" },
   trdars: { owner: "이 행정동 안에는 어떤 상권이 있을까?", founder: "이 행정동 안에는 어떤 상권이 있을까?" },
   stores: { owner: "이 지역에는 어떤 가게들이 있을까?", founder: "이 지역에는 어떤 가게들이 있을까?" },
 };
 
 /** 레일 항목과 순서 — 모드마다 먼저 궁금한 것이 다르다.
- *  · 자영업자(우리 가게 장사 점검): 경쟁 변화 → 시간대·수요 → 매출 흐름 → 입지 → (성격)
- *  · 예비 창업자(창업할 자리 찾기): 성장성 → 경쟁·점포 변화 → 수요 → 입지 위험 → 비용 점검 → (성격)
+ *  · 자영업자(우리 가게 장사 점검): 경쟁·개폐업 → 소비 수요 → 매출 흐름 → 입지·교통
+ *  · 예비 창업자(창업할 자리 찾기): 매출 흐름 → 경쟁·개폐업 → 소비 수요 → 입지·교통 → 비용 점검
  * 세부 상권은 행정동에서만 있다(상권 안에는 하위 상권이 없다). 매장 목록은 항상 마지막, 요약은 항상 첫 항목. */
 export function areaTabsFor(level: "dong" | "trdar", mode: "owner" | "founder" = "owner"): AreaTabId[] {
   const body: AreaTabId[] = mode === "founder"
-    ? ["growth", "stability", "demand", "location", "cost", "traits"]
-    : ["stability", "demand", "growth", "location", "traits"];
+    ? ["growth", "stability", "demand", "location", "cost"]
+    : ["stability", "demand", "growth", "location", "cost"];
   return level === "dong" ? ["summary", ...body, "trdars", "stores"] : ["summary", ...body, "stores"];
 }
