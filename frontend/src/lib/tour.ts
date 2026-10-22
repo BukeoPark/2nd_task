@@ -32,7 +32,6 @@ export const TOURS: Record<Mode, TourStep[]> = {
   owner: [
     { id: "mode", target: "mode", placement: "bottom", title: "나에게 맞는 모드", body: "운영 중인 가게가 있으면 '자영업자', 창업을 준비 중이면 '예비 창업자'를 고르세요. 모드에 따라 안내와 화면 구성이 달라져요." },
     { id: "search", target: "search", placement: "right", avoid: SEARCH_DROPDOWN, title: "내 가게 찾기", body: "내 가게 이름이나 주소를 검색하세요. 입력하는 동안 아래에 후보가 바로 뜨고, 결과를 누르면 지도가 그 위치로 가고 매장 정보가 열려요. 같은 이름의 매장이 여러 곳이면 '모두 보기'로 지도에 한꺼번에 볼 수 있어요." },
-    { id: "monthly", target: "mode-menu", placement: "bottom", title: "이번 달 점검", body: "내 가게를 연 뒤 '월간 점검'을 누르면 내 기록·주변 경쟁 변화·상권 변화·이번 달 확인사항을 한 화면에서 차례로 돌아볼 수 있어요. 체크와 메모는 이 브라우저에만 저장돼요." },
     { id: "svc", target: "svc", placement: "bottom", title: "내 업종 고르기", body: "업종과 세부 업종을 고르면 그 업종 기준으로 상권과 점포를 볼 수 있어요. 세부 업종은 점포 수·매장 위치에만 적용돼요." },
     { id: "metric", target: "metric", placement: "bottom", title: "주변 상권과 비교", body: "지도 지표를 매출·점포 수·개업률·폐업률 등으로 바꾸면 지도의 원 크기와 색이 달라져요. 내 상권이 주변과 비교해 어느 정도인지 살펴보세요." },
     { id: "dock", target: "dock", placement: "top", title: "순위표와 범례", body: "순위표 탭에서는 지금 지표의 순위를, 범례 탭에서는 색·크기의 뜻과 업종 범위를 볼 수 있어요." },

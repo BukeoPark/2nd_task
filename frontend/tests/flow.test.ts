@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { START_STEPS, stepsLine } from "../src/lib/flow.ts";
 
-test("이용 순서는 자영업자 5단계·예비 창업자 4단계이고 이름이 겹치지 않는다", () => {
-  assert.equal(START_STEPS.owner.length, 5);
+test("이용 순서는 자영업자 4단계·예비 창업자 4단계이고 이름이 겹치지 않는다", () => {
+  assert.equal(START_STEPS.owner.length, 4);
   assert.equal(START_STEPS.founder.length, 4);
   for (const steps of Object.values(START_STEPS)) assert.equal(new Set(steps).size, steps.length);
   assert.equal(stepsLine("founder"), "후보 탐색 → 상권 요약 → 지역 비교 → 창업 비용 점검");

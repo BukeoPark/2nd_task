@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Notice, Section, SourceNote } from "../../components/Notice";
+import { Notice, Section } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ActionButton, Caption, Stat, SubHead } from "../../components/PanelKit";
 import { inputStyle as kitInput, labelStyle } from "../../lib/panelStyle";
@@ -8,7 +8,7 @@ import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
 import { breakeven, parseNum, type CostInput } from "../../lib/breakeven";
-import { assess, buildRows, checkupText, GAP_PP, latestMonth as latestRecordMonth, quarterLabel } from "../../lib/checkup";
+import { assess, buildRows, checkupText, latestMonth as latestRecordMonth, quarterLabel } from "../../lib/checkup";
 import { formatKrw } from "../../lib/format";
 import type { CostKey, StoreRecord } from "../../lib/myStoreStorage";
 import { FS } from "../../lib/typography";
@@ -103,11 +103,11 @@ export function MyStoreCheckupSection({
   return (
     <Section title="매출·비용 기록" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: FS.caption, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
       <Caption style={{ marginTop: 0, marginBottom: 8 }}>
-        한 달만 기록해도 매출을 보관할 수 있어요. 연속한 두 달은 전월 대비 변화를, 공공 통계와 기간이 맞는 기록은 상권 흐름과 비교합니다. 비용을 넣으면 손익분기 매출을 계산합니다.
+        월 매출과 비용을 입력하세요. 기록은 이 브라우저에 저장됩니다.
       </Caption>
       {saveFailed && (
         <div style={{ marginBottom: 8 }}>
-          <Notice tone="warn">이 브라우저에서 저장이 막혀 있어(시크릿 창·저장 차단 등) 지금 화면에서만 계산됩니다. 새로고침하면 사라져요.</Notice>
+          <Notice tone="warn">저장되지 않았어요. 새로고침하면 입력이 사라집니다.</Notice>
         </div>
       )}
 
@@ -128,7 +128,7 @@ export function MyStoreCheckupSection({
           <Notice tone="warn">{formError}</Notice>
         </div>
       )}
-      <Caveat>같은 달을 다시 기록하면 덮어씁니다. 달마다 쌓을수록 비교가 정확해져요.</Caveat>
+      <Caveat>같은 달을 기록하면 기존 값을 바꿉니다.</Caveat>
 
       {monthKeys.length > 0 && (
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -152,10 +152,10 @@ export function MyStoreCheckupSection({
       <div style={{ marginTop: 10 }}>
         {!bench && data && <Notice tone="muted">{data.message ?? "이 매장은 상권 매출 자료와 연결되지 않아 비교할 수 없습니다. 비용 계산은 아래에서 쓸 수 있어요."}</Notice>}
         {!data && <Notice tone="muted">상권 매출 자료를 불러오는 중...</Notice>}
-        {bench && (
+        {bench && rows.length > 0 && (
           <Notice tone={checkup.verdict === "lagging" ? "warn" : "info"}>
             {checkupText(checkup, unitLabel)}
-            {checkup.partial && " (기록이 3개월 미만인 분기는 기록한 달만의 평균이에요.)"}
+            {checkup.partial && " (분기 내 기록한 달 평균)"}
           </Notice>
         )}
       </div>
@@ -178,11 +178,7 @@ export function MyStoreCheckupSection({
           ))}
         </div>
       )}
-      <Caveat>
-        상권 값은 서울시 카드 결제 기반 추정이라 현금·배달 매출이 섞인 내 매출과 금액 수준은 다를 수 있어요. 그래서 금액이 아니라 같은 기간의 변화율을 견줍니다.
-        차이가 {GAP_PP}%p 이상일 때만 더 낮아짐·높아짐으로 말하며, 원인이나 개선 방향을 뜻하지는 않습니다.
-      </Caveat>
-      {bench && <SourceNote label="비교 기준 자료" title={bench.source.title} reference={bench.source.reference ?? "-"} />}
+      {bench && rows.length > 0 && <Caveat>상권은 카드 결제 기반 추정치 · 같은 기간의 변화율로 비교합니다.</Caveat>}
 
       <div style={{ marginTop: 24 }}><SubHead>월 비용과 손익분기 매출</SubHead>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -201,14 +197,13 @@ export function MyStoreCheckupSection({
         ))}
       </div>
       <Caption>
-        손익분기 매출 = 월 고정비 ÷ (1 − 재료비율 − 수수료율). 세금·대출 원리금은 '기타 고정비'에 넣어야 반영됩니다. 사장님 본인 몫을 인건비에 넣을지는 직접 정하세요.
-        상권 평균 비용 자료는 없어 입력한 값만으로 계산한 참고용 숫자입니다.
+        입력 비용으로 계산합니다. 세금·대출 상환액은 기타 고정비에 포함하세요.
       </Caption>
 
       <div style={{ marginTop: 8 }}>
         {bep.status === "empty" && <Notice tone="muted">비용을 입력하면 손익분기 매출을 계산해 드려요.</Notice>}
         {bep.status === "invalid" && <Notice tone="warn">비용은 0 이상의 숫자로, 비율(%)은 0~100 사이로 입력해 주세요.</Notice>}
-        {bep.status === "no_margin" && <Notice tone="warn">재료비율과 수수료율의 합이 100% 이상이면 매출이 늘어도 고정비를 갚을 수 없어 손익분기가 없습니다. 비율을 다시 확인해 주세요.</Notice>}
+        {bep.status === "no_margin" && <Notice tone="warn">원가율과 수수료율의 합을 100% 미만으로 입력하세요.</Notice>}
         {bep.status === "ok" && bep.bep !== null && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <Card label="월 고정비 합" value={manwon(bep.fixed)} />

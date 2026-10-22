@@ -131,10 +131,10 @@ def reserve_google_view(bizes_id: str) -> dict:
 
 
 @router.get("/stores/{bizes_id}/google-place")
-def store_google_place(bizes_id: str) -> dict:
+def store_google_place(bizes_id: str, refresh: bool = False) -> dict:
     """Google 장소 연결(요청한 매장 1곳만, Place ID 만 반환). 평점·리뷰는 브라우저의 Places UI Kit 이 직접 표시한다."""
     try:
-        return google_places.link_store(bizes_id)
+        return google_places.link_store(bizes_id, refresh=refresh)
     except store_profile.StoreNotFound:
         raise _not_found(bizes_id)
     except data_store.DataNotReady as e:

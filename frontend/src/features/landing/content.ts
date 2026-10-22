@@ -65,7 +65,6 @@ export const FLOWS: Record<Mode, { label: string; steps: FlowStep[] }> = {
       { title: "매출·비용 점검", body: "월 매출·비용을 기록하면 상권 같은 업종의 변화율과 견주고 손익분기를 보여 줘요.", art: "mine" },
       { title: "주변 경쟁 변화", body: "반경 안 같은 업종 가게를 거리순으로 보고, 새로 생기거나 문 닫은 곳은 인허가 기준으로 확인해요.", art: "pick" },
       { title: "시간대별 상권 수요", body: "내 상권에 손님이 언제, 어떤 연령대로 몰리는지 시간대 매출과 유동인구로 살펴봐요.", art: "area" },
-      { title: "이번 달 확인사항", body: "월간 점검에서 내 기록과 주변 변화를 모아 이번 달 확인할 것을 체크하고 메모해요.", art: "report" },
     ],
   },
   founder: {

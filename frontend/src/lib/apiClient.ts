@@ -1045,8 +1045,8 @@ export const apiClient = {
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),
   getLocationInfluence: (storeId: string, radiusM = 500) =>
     request<LocationInfluenceResponse>(`/api/stores/${encodeURIComponent(storeId)}/location-influence?radius_m=${radiusM}`),
-  getGooglePlaceLink: (storeId: string) =>
-    request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place`),
+  getGooglePlaceLink: (storeId: string, refresh = false) =>
+    request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place${refresh ? "?refresh=true" : ""}`),
   reserveGoogleView: (storeId: string) =>
     request<GoogleViewReservation>(`/api/stores/${encodeURIComponent(storeId)}/google-place/view`, "POST"),
 };

@@ -16,7 +16,7 @@ const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
 };
 
 /** 매장 상단 요약용 — 인허가 기준 업력·영업 상태. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다. */
-export function LicenseSummary({ history, part = "core" }: { history: OperationHistory; part?: "core" | "detail" }) {
+export function LicenseSummary({ history, part = "core", compact = false }: { history: OperationHistory; part?: "core" | "detail"; compact?: boolean }) {
   const { link, license } = history;
   return (
     <div>
@@ -28,14 +28,14 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
           <Card
             label="영업 상태(인허가 기준)"
             value={history.business_status?.label ?? "영업 여부 미확인"}
-            sub={history.business_status?.basis ?? "인허가 자료로 확인할 수 없음"}
+            sub={compact ? undefined : history.business_status?.basis ?? "인허가 자료로 확인할 수 없음"}
           />
         </div>
       )}
       {part === "core" && (
-        <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다.</div>
+        <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>인허가 기준 · 실제 영업은 현장 확인</div>
       )}
-      {part === "core" && (
+      {part === "core" && !compact && (
         <Fold title="영업 상태 기준·자료 기준일 보기">
           <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
             {history.business_status?.caveat ?? "인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다."} {license?.age_caveat}
@@ -52,14 +52,15 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
           )}
         </Fold>
       )}
+      {part === "core" && compact && history.data_dates && <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>상가정보 {history.data_dates.store_info.base ?? "기준일 없음"} · 인허가 갱신 {history.data_dates.license?.source_updated ?? "기준일 없음"}</div>}
       {license && part === "detail" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <Card label="인허가 업종" value={license.license_name} sub={license.uptae ?? undefined} />
-          <Card
+          {(!compact || license.other_license_count > 0) && <Card
             label="같은 매장 추정 인허가"
             value={`${license.other_license_count}건 추가`}
             sub={license.duplicate_license_count ? `중복 등록 ${license.duplicate_license_count}건(1건으로 셈)` : undefined}
-          />
+          />}
         </div>
       )}
     </div>
@@ -67,21 +68,22 @@ export function LicenseSummary({ history, part = "core" }: { history: OperationH
 }
 
 /** '인증·지정 이력' — 모범업소 등 지정 여부(매장 고유 정보). */
-export function OperationHistorySection({ history }: { history: OperationHistory }) {
+export function OperationHistorySection({ history, compact = false }: { history: OperationHistory; compact?: boolean }) {
   const { certifications, sources } = history;
   return (
     <Section title="운영이력 — 인허가·인증·지정" scope={<ScopeTag kind="store" label="이 매장" />}>
-      <LicenseSummary history={history} part="detail" />
+      <LicenseSummary history={history} part="detail" compact={compact} />
       <div style={{ marginTop: 10 }}>
         {certifications.map((c) => (
           <div key={c.name} style={{ fontSize: FS.caption }}>
             <strong>{c.name}</strong>{" "}
-            {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : c.label}
-            <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />
+            {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : compact ? "지정 확인 안 됨" : c.label}
+            {!compact && <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />}
           </div>
         ))}
       </div>
-      {sources.map((s) => (
+      {compact && <p style={{ fontSize: FS.caption, color: "#6B7280" }}>출처: {[...new Set([...sources.map(s => s.title), ...certifications.map(c => c.source.title)])].join(" · ")}</p>}
+      {!compact && sources.map((s) => (
         <SourceNote key={s.title} label="인허가 이력 자료" title={s.title} reference={s.reference} />
       ))}
     </Section>

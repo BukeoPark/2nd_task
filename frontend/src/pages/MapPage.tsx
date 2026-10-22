@@ -29,7 +29,6 @@ import { StartPanel } from "../features/guide/StartPanel";
 import { ExplorePanel } from "../features/food/ExplorePanel";
 import { InterestBox } from "../features/area/InterestBox";
 import { AreaReportModal } from "../features/area/AreaReportModal";
-import { MonthlyPicker } from "../features/stores/MonthlyPicker";
 import { presetById, type PresetId } from "../lib/explorePresets";
 import { loadMyStores } from "../lib/monthlyCheck";
 import { MAX_FAVORITES, addFavorite, favKey, isFavorite, loadFavorites, parseShare, removeFavorite, saveFavorites, shareSearch, type FavoriteArea } from "../lib/favorites";
@@ -161,8 +160,6 @@ export function MapPage() {
   const [interestPicked, setInterestPicked] = useState<string[]>([]);
   const [reportFor, setReportFor] = useState<FavoriteArea | null>(null);
   const [navDepth, setNavDepth] = useState(0);
-  const [monthlyFor, setMonthlyFor] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [rivalId, setRivalId] = useState<string | null>(null);   // 경쟁 가게 목록에서 열어 본 매장
   // 좁은 화면: 서랍을 접고 지도를 보는 중인가(다른 매장·지역을 고르면 다시 서랍을 연다)
   const [peekAt, setPeekAt] = useState<string | null>(null);
@@ -425,7 +422,7 @@ export function MapPage() {
     mapKakao?.map.setCenter(toKakaoLatLng(mapKakao.kakao, b));
   };
   const favFromBubble = (b: FoodBubble, level: "dong" | "trdar"): FavoriteArea => ({ level, code: b.code, name: b.name, type: b.type, lon: b.lon, lat: b.lat, svc, scls });
-  const openMonthly = (id: string) => { setPickerOpen(false); setStartOpen(false); setBrand(null); setPlace(null); setSelection(null); setPendingOpen(null); setStoreId(id); setMonthlyFor(id); };
+  const openSavedStore = (id: string) => { setStartOpen(false); setBrand(null); setPlace(null); setSelection(null); setPendingOpen(null); setStoreId(id); };
   const industryNameOf = (sv: string | null, sc: string | null) => {
     const g = categories.data?.groups.find((x) => x.svc_cd === sv);
     return sc ? (g?.details.find((d) => d.code === sc)?.name ?? "세부 업종") : (g?.svc_nm ?? "외식 전체");
@@ -479,11 +476,10 @@ export function MapPage() {
           pickedPlaceName={place?.name ?? null}
           onClearPlace={onClearPlace}
           mode={mode}
-          onModeChange={(m) => { setMode(m); setStartOpen(true); setExplore(null); setInterestOpen(false); setPickerOpen(false); setMonthlyFor(null); }}
+          onModeChange={(m) => { setMode(m); setStartOpen(true); setExplore(null); setInterestOpen(false); }}
           onHelp={tour.openHelp}
           interestCount={favorites.length}
           onOpenInterest={() => { setInterestPicked([]); setInterestOpen(true); }}
-          ownerMenu={mode === "owner" ? { label: "월간 점검", onClick: () => (storeId !== null ? setMonthlyFor(storeId) : setPickerOpen(true)) } : undefined}
           onBack={navDepth > 0 ? goBack : undefined}
         />
         {interestOpen && (
@@ -503,7 +499,6 @@ export function MapPage() {
         {reportFor && (
           <AreaReportModal level={reportFor.level} code={reportFor.code} name={reportFor.name} type={reportFor.type} svc={reportFor.svc} scls={reportFor.scls} mode={mode} onClose={() => setReportFor(null)} />
         )}
-        {pickerOpen && <MonthlyPicker stores={loadMyStores()} onPick={openMonthly} onSearch={() => { setPickerOpen(false); focusSearch(); }} onClose={() => setPickerOpen(false)} />}
         {brand !== null && !hideOverlays && (
           <SearchResultChip query={brand} total={brandStores.data?.total ?? null} truncated={brandStores.data?.truncated ?? false} loading={brandStores.isPending} failed={brandStores.isError} onClose={() => setBrand(null)} />
         )}
@@ -559,8 +554,6 @@ export function MapPage() {
             onHoverStore={setHoveredId}
             asRival={rivalId === storeId}
             onOpenAreaReport={(t) => setReportFor({ level: t.level, code: t.code, name: t.name, type: t.type, lon: null, lat: null, svc: t.svc, scls: null })}
-            monthlyOpen={monthlyFor === storeId}
-            onMonthlyOpenChange={(open) => setMonthlyFor(open ? storeId : null)}
             onBack={() => setStoreId(null)}
             onClose={() => { setStoreId(null); setSelection(null); setPendingOpen(null); }}
             onOpenArea={({ level, store }) => {
@@ -707,7 +700,7 @@ export function MapPage() {
               onPickSvc={(sv) => { setSvc(sv); setScls(null); openExplore("growing"); }}
               onFocusSearch={focusSearch}
               onOpenInterest={() => { setStartOpen(false); setInterestPicked([]); setInterestOpen(true); }}
-              onOpenMonthly={openMonthly}
+              onOpenStore={openSavedStore}
               onReportFirst={() => openExplore("growing")}
               onClose={() => setStartOpen(false)}
             />
@@ -736,6 +729,16 @@ export function MapPage() {
             onRemove={(code) => setBasket((b) => (b && b.codes.length > 1 ? { ...b, codes: b.codes.filter((c) => c !== code) } : null))}
             onClose={() => setCompareOpen(false)}
             suggestions={suggestForCompare(recent, basket.level, basket.codes)}
+            onReviewCosts={mode === "founder" && basket.level !== "gu" ? (units) => {
+              let next = favorites;
+              for (const u of units) {
+                const result = addFavorite(next, { level: basket.level as "dong" | "trdar", code: u.code, name: u.name, type: u.type, lon: null, lat: null, svc, scls });
+                if (result.status === "added") next = result.list;
+                else if (result.status === "full") setFavNote(`관심 지역은 최대 ${MAX_FAVORITES}곳입니다. 비용을 점검할 지역을 담으려면 기존 지역을 빼 주세요.`);
+              }
+              updateFavorites(next);
+              setCompareOpen(false); setInterestPicked([]); setInterestOpen(true);
+            } : undefined}
             onShowOnMap={mapKakao && basket.level !== "gu" ? ({ level, lon, lat }) => {
               setCompareOpen(false);
               setInterestOpen(false);

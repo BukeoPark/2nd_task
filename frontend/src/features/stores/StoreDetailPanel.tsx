@@ -1,3 +1,4 @@
+import { OwnerChurnDetails, OwnerLocationDetails } from "./OwnerReferenceDetails";
 import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
@@ -26,7 +27,6 @@ import { AreaCharacterLine } from "../area/AreaCharacterSection";
 import { DEFAULT_RADIUS_M, LocationAreaSection, LocationRadiusSection, RadiusBasisSection } from "./LocationInfluenceSection";
 import { CompetitorBlock } from "./CompetitorBlock";
 import { MineStatusBar } from "./MineStatusBar";
-import { MonthlyCheckModal } from "./MonthlyCheckModal";
 import { toKakaoLatLng } from "../../lib/geo";
 import { StoreBriefCard } from "./StoreBriefCard";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
@@ -75,7 +75,7 @@ export function StoreDetailPanel(props: StoreDetailPanelProps) {
   return <StoreDetail key={props.storeId} {...props} />;
 }
 
-function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGroupChange, onSelectStore, onHoverStore, asRival = false, onOpenAreaReport, monthlyOpen = false, onMonthlyOpenChange }: StoreDetailPanelProps) {
+function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGroupChange, onSelectStore, onHoverStore, asRival = false, onOpenAreaReport }: StoreDetailPanelProps) {
   const { data, isLoading, isError, error } = useStoreDetail(storeId);
   const narrow = useNarrow();
   const [group, setGroupState] = useState<GroupId>("store");
@@ -124,12 +124,12 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 <SourceNote title={store.source.title} reference={store.source.reference} />
               </div>
               <div style={{ marginTop: 10 }}>
-                {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} /></Fold> : <LicenseSummary history={data.operation_history} />}
+                {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} /></Fold> : <LicenseSummary history={data.operation_history} compact />}
               </div>
             </div>
           ),
-          google: <GoogleReviewSection storeId={storeId} />,
-          history: <OperationHistorySection history={data.operation_history} />,
+          google: <GoogleReviewSection storeId={storeId} autoLoad />,
+          history: <OperationHistorySection history={data.operation_history} compact={mode === "owner"} />,
           radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
           competitors: (
             <CompetitorBlock
@@ -138,6 +138,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
               center={{ lon: store.lon, lat: store.lat }}
               svc={store.category.svc ?? null}
               defaultCategory={mode === "owner" ? store.category.scls : undefined}
+              concise={mode === "owner"}
               radius={radius}
               onSelectStore={(id) => onSelectStore?.(id)}
               onHoverStore={onHoverStore}
@@ -178,10 +179,13 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       : null;
 
   if (mode === "owner" && store && blocks) return <OwnerStoreWorkspace
-    store={store} record={mine.record} blocks={blocks} radius={radius} onRadius={setRadius}
+    store={store} record={mine.record} blocks={{ ...blocks,
+      "owner-churn": <OwnerChurnDetails storeId={storeId} radius={radius} />,
+      "owner-location": <OwnerLocationDetails storeId={storeId} radius={radius} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} showExits={showExits} onShowExitsChange={setShowExits} />,
+    }} radius={radius} onRadius={setRadius}
     onBack={onBack} onClose={onClose} onGroupChange={setGroup}
+    onOpenArea={(level) => onOpenArea({ level, store })}
     onReport={() => setReportOpen(true)} onAreaReport={onOpenAreaReport ? areaReport : undefined}
-    monthlyOpen={monthlyOpen} onMonthlyOpenChange={onMonthlyOpenChange}
     overlays={<>
       {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
       {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && <RadiusCircleLayer map={mapView.map} kakao={mapView.kakao} center={{ lon: store.lon, lat: store.lat }} radiusM={circleRadius} />}
@@ -214,17 +218,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
               <FacilityLayer map={mapView.map} kakao={mapView.kakao} facilities={facilityPlan} />
             )}
             {narrow && <GroupRail active={group} onChange={setGroup} orientation="horizontal" groups={groups} />}
-            {monthlyOpen && (
-              <MonthlyCheckModal
-                storeId={storeId}
-                storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`}
-                record={mine.record}
-                onClose={() => onMonthlyOpenChange?.(false)}
-                onGoMine={() => { onMonthlyOpenChange?.(false); setGroup("mine"); }}
-                onGoRadius={() => { onMonthlyOpenChange?.(false); setGroup("radius"); }}
-                onGoArea={() => { onMonthlyOpenChange?.(false); setGroup("area"); }}
-              />
-            )}
             {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
             {groups.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
@@ -267,7 +260,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                   />
                 )}
                 {g === "mine" && (
-                  <MineStatusBar onOpenMonthly={() => onMonthlyOpenChange?.(true)} months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
+                  <MineStatusBar months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
                 )}
                 <NoteHost>
                   {blocksOf(g).map((id) => (

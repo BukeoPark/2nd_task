@@ -5,7 +5,7 @@ import { Glimpse } from "./Art";
 
 const ORDER: Mode[] = ["owner", "founder"];
 
-/** 이용 흐름 — 자영업자(5단계)와 예비 창업자(4단계)를 탭으로 바꿔 보여 준다. 탭은 화살표 키로도 옮긴다. */
+/** 이용 흐름 — 자영업자(4단계)와 예비 창업자(4단계)를 탭으로 바꿔 보여 준다. 탭은 화살표 키로도 옮긴다. */
 export function FlowTabs() {
   const [mode, setMode] = useState<Mode>("owner");
   const flow = FLOWS[mode];
@@ -20,7 +20,7 @@ export function FlowTabs() {
         <div>
           <p className="eyebrow">이용 흐름</p>
           <h2 className="h2" style={{ marginTop: 8 }}>
-            {mode === "owner" ? "다섯 걸음이면, 내 가게의 자리가 보여요" : "네 걸음이면, 후보가 한눈에 정리돼요"}
+            {mode === "owner" ? "네 걸음이면, 내 가게의 자리가 보여요" : "네 걸음이면, 후보가 한눈에 정리돼요"}
           </h2>
         </div>
         <div className="tabs" role="tablist" aria-label="이용 대상" onKeyDown={onKey}>
