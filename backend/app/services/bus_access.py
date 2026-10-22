@@ -40,7 +40,7 @@ UNLINKED_REASON = {
 CAVEATS = [
     "직선거리 기준입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.",
     "이용량은 정류장별 일일 평균 승차·하차 인원(2025년)이며 실시간 유동인구나 매장 방문객 수가 아닙니다.",
-    "위치정보와 연결된 정류장의 이용량만 더한 '관측된 부분 합계'입니다. 승차와 하차는 따로 보여주고, 환승은 겹침 여부를 확인하지 못해 합산하지 않았습니다.",
+    "위치정보와 연결된 정류장의 이용량만 더한 값입니다. 승차와 하차는 따로 보여주고, 환승은 겹침 여부를 확인하지 못해 합산하지 않았습니다.",
     "같은 정류장이 서울·경기·인천 BIS 에 중복 실려 있어 하나로 줄여 셉니다. 반대 방향 정류장은 번호가 달라 따로 셉니다.",
 ]
 
@@ -115,7 +115,7 @@ def compute(lon: float, lat: float, stops: pd.DataFrame, meta: dict, radius_m: i
                   "extent": meta.get("extent"),
                   "reason": None if complete else ("수집 범위를 확인할 수 없습니다." if pilot_m is None else
                                                    f"이 반경(최대 {radius_m}m)의 일부가 수집 범위 밖이라 정류장 수가 실제보다 적을 수 있습니다.")},
-        "usage_basis": {"year": meta.get("usage_year"), "text": f"정류장별 일일 평균 승차·하차 인원({meta.get('usage_year')}년), 연결된 정류장만의 관측된 부분 합계"},
+        "usage_basis": {"year": meta.get("usage_year"), "text": f"정류장별 일일 평균 승차·하차 인원({meta.get('usage_year')}년), 연결된 정류장만 더한 값"},
         "caveats": CAVEATS,
         "source": {"title": "국토교통부 전국 버스정류장 위치정보 · 시군구별 정류장평균이용량",
                    "reference": f"위치정보 {meta.get('loc_collected_at')} 기준 · 이용량 {meta.get('usage_year')}년"},

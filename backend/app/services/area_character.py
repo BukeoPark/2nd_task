@@ -196,7 +196,7 @@ def classify(f: dict, refs: dict, params: dict | None = None) -> dict:
             held.append({"key": "transit", "reason": f"경계 안·{RAIL_NEAR_M}m 이내 역 {f['rail_near']}곳은 있으나 이용량 자료가 연결되지 않아 교통 거점 판정을 보류했습니다."})
         elif refs.get("transit_boardings_p75") is not None and (f.get("rail_boardings") or 0) >= refs["transit_boardings_p75"]:
             ev = [f"{RAIL_NEAR_M}m 이내 포함 역 {f['rail_near']}곳",
-                  f"연결된 역 승차 하루 평균 {f['rail_boardings']:,.0f}명 (같은 단위 상위 {(1 - p['transit_q']) * 100:.0f}% 기준 {refs['transit_boardings_p75']:,.0f}명 이상, 관측된 부분 합계)"]
+                  f"연결된 역 승차 하루 평균 {f['rail_boardings']:,.0f}명 (같은 단위 상위 {(1 - p['transit_q']) * 100:.0f}% 기준 {refs['transit_boardings_p75']:,.0f}명 이상, 이용량이 확인된 역만 더한 값)"]
             if (f.get("rail_shared") or 1) >= 2:
                 ev.append(f"같은 역을 같은 단위 {f['rail_shared']}곳이 함께 포함 — 이용량은 곳끼리 더하면 중복")
             traits.append({"key": "transit", "label": TRAIT_LABEL["transit"], "evidence": ev})
@@ -310,10 +310,10 @@ def character(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     transit = {
         "rail": {"inside": st_in, "within_250m": st_near, "nearest_m": sp["rail_nearest_m"], "count": len(sp["stations"]), "linked": sp["rail_linked"], "usage_state": rail_state,
                  "boardings_observed": _num(sp["rail_boardings"], 0), "alightings_observed": _num(sp["rail_alightings"], 0), "year": USAGE_YEAR,
-                 "basis": f"경계 안 + 경계 밖 {RAIL_NEAR_M}m 이내 역사(환승 노선은 한 역사로 한 번). 이용량은 연결된 역만의 {USAGE_YEAR}년 하루 평균 승차·하차(관측된 부분 합계)."},
+                 "basis": f"경계 안 + 경계 밖 {RAIL_NEAR_M}m 이내 역사(환승 노선은 한 역사로 한 번). 이용량은 연결된 역만의 {USAGE_YEAR}년 하루 평균 승차·하차(이용량이 확인된 역만 더한 값)."},
         "bus": {"count": sp["bus_n"], "per_km2": _num(sp["bus_per_km2"], 1), "linked": sp["bus_linked"], "linked_ratio": _num(sp["bus_linked"] / sp["bus_n"], 3) if sp["bus_n"] else None, "usage_state": bus_state,
                 "boardings_observed": _num(sp["bus_boardings"], 0), "alightings_observed": _num(sp["bus_alightings"], 0), "year": USAGE_YEAR,
-                "basis": "경계 안 정류장만(버스는 경계 밖을 더하지 않음). 이용량은 연결된 정류장만의 하루 평균 승차·하차(관측된 부분 합계).",
+                "basis": "경계 안 정류장만(버스는 경계 밖을 더하지 않음). 이용량은 연결된 정류장만의 하루 평균 승차·하차(이용량이 확인된 정류장만 더한 값).",
                 "caution": (f"이용량 연결률 {sp['bus_linked'] / sp['bus_n'] * 100:.0f}% — 연결되지 않은 정류장이 많아 승하차는 일부 정류장만 관측된 값입니다."
                             if sp["bus_n"] and sp["bus_linked"] / sp["bus_n"] < BUS_LINK_CAUTION else None)},
         "note": "역·버스의 승하차 수치는 해당 역·정류장의 이용 기록(역 이용 수요)이며 실제 상권 방문객이나 실시간 유동인구가 아닙니다. 서로 다른 교통수단이라 합치지 않았습니다. "
@@ -412,7 +412,7 @@ def _statements(typ: dict, transit: dict, demand: dict, anchor: dict, competitio
     if bus.get("caution"):
         c.insert(0, bus["caution"])
     elif bus["count"] and bus["usage_state"] in ("partial", "none_linked"):
-        c.append("일부 정류장은 이용량이 연결되지 않아 버스 승하차는 관측된 부분 합계입니다.")
+        c.append("일부 정류장은 이용량이 연결되지 않아 버스 승하차는 이용량이 확인된 정류장만 더한 값입니다.")
     shared = [x["name"] for x in sorted(rail["inside"] + rail["within_250m"], key=lambda z: -(z["boardings"] or 0)) if x.get("shared_units", 1) >= 2 and x["boardings"] is not None]
     if any(t["key"] == "transit" for t in typ["traits"]) and shared:
         c.append(f"교통 거점 근거인 {'·'.join(shared[:2])}역은 인접한 다른 단위에도 같은 이용량으로 잡힙니다(단위끼리 더하면 중복).")

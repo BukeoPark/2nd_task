@@ -609,6 +609,8 @@ export function MapPage() {
                 {sel.unit && sel.unit.level !== "gu" && (() => {
                   const f: FavoriteArea = { level: sel.unit.level as "dong" | "trdar", code: sel.unit.code, name: plainTitle(sel.title, sel.type), type: sel.type ?? null, lon: sel.center?.lon ?? null, lat: sel.center?.lat ?? null, svc, scls };
                   const on = isFavorite(favorites, f);
+                  // 예비 창업자는 요약의 '다음 확인사항 > 내 관심 지역에 담고 비교하기'로 담는다 — 같은 동작의 단추를 한 번 더 두지 않고, 이미 담았을 때만 '빼기'를 보인다.
+                  if (mode === "founder" && !on) return null;
                   return (
                     <div style={{ marginBottom: 12 }}>
                       <button type="button" aria-pressed={on} onClick={() => toggleFavorite(f)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #D97706", background: on ? "#FEF3C7" : "white", color: "#92400E", cursor: "pointer" }}>

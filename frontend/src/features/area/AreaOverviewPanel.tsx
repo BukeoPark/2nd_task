@@ -163,12 +163,12 @@ export function AreaOverviewPanel(p: Props) {
             </button>
           )}
           {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
-          <Fold title="그 밖의 작업 — 지도에서 보기 · 내 관심 지역">
+          <Fold title="그 밖의 작업">
             {p.actions}
           </Fold>
           {/* 지표 카드·기준 안내와 읽는 법·유의사항은 접이식 하나로 모은다(요약에 접이식이 셋이던 것을 둘로) */}
           <NoteSlot label="기준·읽는 법 자세히">
-            {cmp.data && <Summary stores={row("stores_sbiz")} perStore={row("per_store_month")} yoy={row("sales_yoy_pct")} />}
+            {cmp.data && <Summary stores={row("stores_sbiz")} />}
             <div style={{ marginTop: 10 }}>
               <Notice tone="info">
                 {p.level === "trdar"
@@ -255,14 +255,15 @@ function Card({ row, label, hint }: { row: Row | undefined; label: string; hint?
   return <Stat big onGray label={<>{label} <MetricTip row={row} hint={hint} /></>} value={row ? formatMetric(row.kind, c?.value ?? null) : "자료 없음"} missing={c?.value == null} sub={c?.note} subTone={c && (c.partial || c.caution) ? "warn" : undefined} />;
 }
 
+/** 접힘 안의 점포 수 카드 — 점포당 매출·증감은 위 '핵심 숫자'에 있어 되풀이하지 않는다. perStore·yoy 를 주면 그 카드도 그린다(다른 화면용). */
 function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?: Row }) {
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: perStore ? "1fr 1fr" : "1fr", gap: 8 }}>
         <Card row={stores} label="점포 수" hint={`소상공인 상가정보 ${stores?.as_of ?? ""}`} />
-        <Card row={perStore} label="점포당 월평균 추정매출" hint={`서울시 공개 자료(추정) · ${perStore?.as_of ?? ""}`} />
+        {perStore && <Card row={perStore} label="점포당 월평균 추정매출" hint={`서울시 공개 자료(추정) · ${perStore.as_of ?? ""}`} />}
       </div>
-      <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>
+      {yoy && <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>}
       <Caveat>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</Caveat>
     </div>
   );

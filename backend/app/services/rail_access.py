@@ -36,7 +36,7 @@ SOURCE_LABEL = {"seoul_card": "서울 교통카드(월별)", "seoul_daily": "서
 CAVEATS_WITH_EXITS = [
     "직선거리 기준입니다. 환승 노선은 한 역사로 묶어 한 번만 셉니다.",
     "출입구 좌표가 있는 역사는 가장 가까운 출입구까지의 거리로, 없는 역사는 공식 역사 중심점까지의 거리로 판단합니다(두 기준이 섞일 수 있음).",
-    "이용량은 연결된 역사의 2025년 하루 평균 승차·하차 인원(관측된 부분 합계)이며 실시간 유동인구나 매장 방문객 수가 아닙니다. 승차와 하차는 합치지 않았고, 이용량이 없는 역은 0명이 아니라 '자료 없음'입니다.",
+    "이용량은 연결된 역사의 2025년 하루 평균 승차·하차 인원(이용량이 확인된 역만 더한 값)이며 실시간 유동인구나 매장 방문객 수가 아닙니다. 승차와 하차는 합치지 않았고, 이용량이 없는 역은 0명이 아니라 '자료 없음'입니다.",
     "반경 안에 중심점·출입구가 들어온 역사의 이용량만 더했고, 반경 밖 역의 이용량은 포함하지 않았습니다.",
 ]
 CAVEATS_CENTER_ONLY = [
@@ -188,7 +188,7 @@ def compute(lon: float, lat: float, cx: pd.DataFrame, ent: pd.DataFrame, meta: d
         "scope": {"entrance_scope_complete": selected["entrance_scope_complete"], "distance_to_pilot_m": None if pilot_m is None else round(float(pilot_m), 1),
                   "entrance_extent": "파일럿 구역(양천·영등포) 경계 밖 약 1.1km 안(카카오 로컬 보조 자료)" if EXIT_COORDINATES_ENABLED else "사용하지 않음(공식 출입구 좌표 자료 없음)", "location_extent": "전국 도시철도 역사(공식 표준데이터)",
                   "location_regions": regions_loc, "usage_regions": sorted(usage_regions)},
-        "usage_basis": {"year": meta.get("usage_year"), "text": f"역사별 {meta.get('usage_year')}년 하루 평균 승차·하차 인원, 연결된 노선만의 관측된 부분 합계",
+        "usage_basis": {"year": meta.get("usage_year"), "text": f"역사별 {meta.get('usage_year')}년 하루 평균 승차·하차 인원, 연결된 노선만 더한 값",
                         "sources": sorted({SOURCE_LABEL.get(k, k) for k in srcs}), "periods": {SOURCE_LABEL.get(k, k): [v["versions"][0].get("period_first"), v["versions"][-1].get("period_last")] for k, v in srcs.items() if v.get("versions")}},
         "caveats": CAVEATS,
         "source": {"title": "국가철도공단 도시철도 역사정보(공식 좌표) · 서울·부산·인천 승하차" if not EXIT_COORDINATES_ENABLED else "국가철도공단 도시철도 역사정보(공식 좌표) · 카카오 로컬(출입구, 보조) · 서울·부산·인천 승하차",
