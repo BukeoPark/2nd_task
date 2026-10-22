@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
+import { ActionButton, Caption, Stat, SubHead } from "../../components/PanelKit";
+import { inputStyle as kitInput, labelStyle } from "../../lib/panelStyle";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import { apiClient } from "../../lib/apiClient";
@@ -21,8 +23,7 @@ const COST_FIELDS: { key: CostKey; label: string; unit: string; placeholder: str
   { key: "feePct", label: "카드·배달앱 수수료율", unit: "% (매출 대비)", placeholder: "5" },
 ];
 
-const inputStyle = { width: "100%", padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: FS.warn, boxSizing: "border-box" } as const;
-const buttonStyle = { padding: "6px 12px", border: "1px solid #D1D5DB", borderRadius: 6, background: "#fff", fontSize: FS.caption, cursor: "pointer" } as const;
+const inputStyle = kitInput;
 
 function thisMonth(): string {
   const d = new Date();
@@ -101,28 +102,26 @@ export function MyStoreCheckupSection({
 
   return (
     <Section title="내 가게 점검" scope={<ScopeTag kind="mine" label="내 입력" />} right={<span style={{ fontSize: FS.caption, color: "#6B7280" }}>이 브라우저에만 저장</span>}>
-      <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 6 }}>
+      <Caption style={{ marginTop: 0, marginBottom: 8 }}>
         월 매출을 달마다 기록하면 소속 상권 같은 업종의 흐름과 견주고, 가장 최근 달은 '내 매출 비교'에도 쓰입니다. 비용을 넣으면 손익분기 매출을 계산합니다.
-      </div>
+      </Caption>
       {saveFailed && (
         <div style={{ marginBottom: 8 }}>
           <Notice tone="warn">이 브라우저에서 저장이 막혀 있어(시크릿 창·저장 차단 등) 지금 화면에서만 계산됩니다. 새로고침하면 사라져요.</Notice>
         </div>
       )}
 
-      <div style={{ fontSize: FS.caption, fontWeight: 600, marginBottom: 4 }}>월 매출 기록 — 상권 흐름과 비교</div>
+      <SubHead>월 매출 기록 — 상권 흐름과 비교</SubHead>
       <form onSubmit={addMonth} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "end" }}>
-        <label style={{ fontSize: FS.caption, color: "#6B7280" }}>
+        <label style={labelStyle}>
           월
           <input id="my-store-month-input" type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} style={inputStyle} />
         </label>
-        <label style={{ fontSize: FS.caption, color: "#6B7280" }}>
+        <label style={labelStyle}>
           매출 (만원)
           <input type="text" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="예: 3500" style={inputStyle} />
         </label>
-        <button type="submit" style={buttonStyle}>
-          기록
-        </button>
+        <ActionButton type="submit" variant="primary">기록</ActionButton>
       </form>
       {formError && (
         <div style={{ marginTop: 4 }}>
@@ -172,7 +171,7 @@ export function MyStoreCheckupSection({
             <div key={r.quarter} style={{ display: "grid", gridTemplateColumns: "52px 1fr 1fr", gap: 4, padding: "2px 0", borderTop: "1px solid #F3F4F6" }}>
               <span>{quarterLabel(r.quarter)}</span>
               <span>
-                {manwon(r.mine / 1e4)} <span style={{ color: "#9CA3AF" }}>({r.months}개월)</span>
+                {manwon(r.mine / 1e4)} <span style={{ color: "#6B7280" }}>({r.months}개월)</span>
               </span>
               <span>{r.bench === null ? "아직 공개 전" : formatKrw(r.bench)}</span>
             </div>
@@ -188,7 +187,7 @@ export function MyStoreCheckupSection({
       <Fold title="간이 손익분기 계산 펼치기">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
         {COST_FIELDS.map((f) => (
-          <label key={f.key} style={{ fontSize: FS.caption, color: "#6B7280" }}>
+          <label key={f.key} style={labelStyle}>
             {f.label} ({f.unit})
             <input
               type="text"
@@ -201,10 +200,10 @@ export function MyStoreCheckupSection({
           </label>
         ))}
       </div>
-      <div style={{ fontSize: FS.caption, color: "#9CA3AF", marginTop: 4 }}>
+      <Caption>
         손익분기 매출 = 월 고정비 ÷ (1 − 재료비율 − 수수료율). 세금·대출 원리금은 '기타 고정비'에 넣어야 반영됩니다. 사장님 본인 몫을 인건비에 넣을지는 직접 정하세요.
         상권 평균 비용 자료는 없어 입력한 값만으로 계산한 참고용 숫자입니다.
-      </div>
+      </Caption>
 
       <div style={{ marginTop: 8 }}>
         {bep.status === "empty" && <Notice tone="muted">비용을 입력하면 손익분기 매출을 계산해 드려요.</Notice>}
@@ -230,9 +229,7 @@ export function MyStoreCheckupSection({
 
       {(monthKeys.length > 0 || Object.values(record.costs).some((v) => v !== "")) && (
         <div style={{ marginTop: 12 }}>
-          <button type="button" onClick={resetAll} style={{ ...buttonStyle, color: "#991B1B" }}>
-            이 가게 기록 모두 지우기
-          </button>
+          <ActionButton variant="danger" onClick={resetAll}>이 가게 기록 모두 지우기</ActionButton>
         </div>
       )}
     </Section>
@@ -240,11 +237,5 @@ export function MyStoreCheckupSection({
 }
 
 function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
-      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
-    </div>
-  );
+  return <Stat label={label} value={value} sub={sub} />;
 }

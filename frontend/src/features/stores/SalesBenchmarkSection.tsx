@@ -8,6 +8,7 @@ import { CompareBasisBox } from "./CompareBasisBox";
 import { usePeerStores } from "./useStores";
 import { apiClient, type GrowthCell, type SalesBenchmarkResponse } from "../../lib/apiClient";
 import { formatKrw, formatSignedPct, parseManwon } from "../../lib/format";
+import { Block, Caption, Stat } from "../../components/PanelKit";
 import { FS } from "../../lib/typography";
 
 /** '내 매출 비교' — 매장이 속한 상권(없으면 행정동)·같은 업종의 점포당 월평균 추정매출과 사장님 매출을 비교한다.
@@ -89,16 +90,16 @@ function Body({
       />
 
       <Fold title="상권 평균의 순위·증감 보기">
-        <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>
+        <Caption style={{ marginTop: 0, marginBottom: 6 }}>
           {data.unit?.peer_label ?? "양천·영등포"} 중 순위: <strong>{data.rank} / {data.peer_count}위</strong> (같은 업종 점포당 평균 기준)
-        </div>
+        </Caption>
         {data.growth ? (
           <>
             <GrowthRow title="전년 동기 대비" pair={data.growth.yoy} />
             <GrowthRow title="직전 분기 대비(계절 영향 있음)" pair={data.growth.qoq} />
-            <div style={{ fontSize: FS.caption, color: "#9CA3AF", marginTop: 4 }}>
+            <Caption>
               총매출 증감은 점포 수 변화가 섞인 값이고, 점포당 평균매출 증감은 점포 수로 나눈 값이라 서로 다른 지표입니다. 둘 다 명목값이며, 비교하는 두 분기의 점포 수 중 작은 쪽이 10곳 미만이면 계산하지 않고 10~19곳이면 변동성 주의를 붙입니다.
-            </div>
+            </Caption>
           </>
         ) : (
           <Notice tone="muted">증감 자료 없음</Notice>
@@ -143,13 +144,7 @@ function GrowthRow({ title, pair }: { title: string; pair: { compare_label: stri
 
 function GrowthCard({ label, cell }: { label: string; cell: GrowthCell }) {
   const shown = cell.value !== null;
-  return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: FS.body, color: shown ? "#111827" : "#9CA3AF" }}>{shown ? formatSignedPct(cell.value) : cell.status === "too_few" ? "표본 작음" : "자료 없음"}</div>
-      {cell.message && <div style={{ fontSize: FS.caption, color: cell.status === "caution" ? "#B45309" : "#6B7280" }}>{cell.message}</div>}
-    </div>
-  );
+  return <Stat label={label} value={shown ? formatSignedPct(cell.value) : cell.status === "too_few" ? "표본 작음" : "자료 없음"} missing={!shown} sub={cell.message} subTone={cell.status === "caution" ? "warn" : undefined} />;
 }
 
 /** 내 월 매출(기록한 가장 최근 달)을 상권 평균·다른 상권 평균들과 견준다. 입력은 '내 가게 점검'에서만 받고 여기서는 읽기만 한다. */
@@ -173,15 +168,14 @@ function RevenueComparison({
   const above = value !== null ? peerValues.filter((v) => value >= v).length : 0;
 
   return (
-    <div style={{ marginTop: 12, background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: FS.caption, fontWeight: 600, marginBottom: 4 }}>내 월 매출과 견주기</div>
+    <Block title="내 월 매출과 견주기">
       {value === null ? (
-        <div style={{ fontSize: FS.caption, color: "#6B7280" }}>위 '내 가게 점검'에 월 매출을 기록하면 이 평균과 견줘 드려요. 입력은 한 곳에서만 받고, 가장 최근 달의 값을 씁니다.</div>
+        <Caption style={{ marginTop: 0 }}>위 '내 가게 점검'에 월 매출을 기록하면 이 평균과 견줘 드려요. 입력은 한 곳에서만 받고, 가장 최근 달의 값을 씁니다.</Caption>
       ) : (
-        <div style={{ fontSize: FS.caption, color: "#6B7280" }}>기록한 가장 최근 달{latestMonth ? ` ${latestMonth}` : ""} · {formatKrw(value)} 기준</div>
+        <Caption style={{ marginTop: 0 }}>기록한 가장 최근 달{latestMonth ? ` ${latestMonth}` : ""} · {formatKrw(value)} 기준</Caption>
       )}
       {value !== null && dongAvg !== null && dongAvg > 0 && (
-        <div style={{ marginTop: 6, fontSize: FS.caption }}>
+        <div style={{ marginTop: 8, fontSize: FS.body, lineHeight: 1.6 }}>
           <div>
             이 {unitLabel} 같은 업종 점포당 평균의 <strong>{((value / dongAvg) * 100).toFixed(0)}%</strong> 수준
             ({value >= dongAvg ? "+" : "-"}
@@ -190,21 +184,13 @@ function RevenueComparison({
           <div style={{ color: "#374151" }}>
             {peerLabel} {peerValues.length}곳의 점포당 평균 중 {above}곳보다 높거나 같음
           </div>
-          <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
-            비교 대상은 개별 매장이 아니라 {unitLabel}별 평균입니다. 카드 결제 외 현금·배달앱 정산 방식에 따라 기준이 다를 수 있습니다.
-          </div>
+          <Caption>비교 대상은 개별 매장이 아니라 {unitLabel}별 평균입니다. 카드 결제 외 현금·배달앱 정산 방식에 따라 기준이 다를 수 있습니다.</Caption>
         </div>
       )}
-    </div>
+    </Block>
   );
 }
 
 function Card({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: FS.body }}>{value}</div>
-      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
-    </div>
-  );
+  return <Stat label={label} value={value} sub={sub} />;
 }

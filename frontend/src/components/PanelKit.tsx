@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 import { BLOCK_GAP, PK } from "../lib/panelStyle";
 import { FS } from "../lib/typography";
 
@@ -21,11 +21,16 @@ export function SubHead({ children, aside }: { children: ReactNode; aside?: Reac
   );
 }
 
-/** 카드 — 항목 안의 주제 하나. no 는 '①' 같은 번호, hint 는 제목 아래 한 줄 설명, accent 는 왼쪽 띠 색. */
-export function Block({ no, title, hint, accent, children }: { no?: string; title: ReactNode; hint?: ReactNode; accent?: string; children?: ReactNode }) {
+/** 카드 — 항목 안의 주제 하나. no 는 '①' 같은 번호(제목이 '① 제목' 꼴이면 자동으로 나눈다), hint 는 제목 아래 한 줄 설명, accent 는 왼쪽 띠 색.
+ * surface="card" 는 회색 작업 화면(모달) 위의 흰 카드, 기본은 흰 패널 위의 회색 카드. */
+export function Block({ no, title, hint, accent, surface = "soft", children }: { no?: string; title: ReactNode; hint?: ReactNode; accent?: string; surface?: "soft" | "card"; children?: ReactNode }) {
+  const m = no === undefined && typeof title === "string" ? /^([①②③④⑤⑥⑦⑧⑨⑩])\s*(.*)$/.exec(title) : null;
+  const number = m ? m[1] : no;
+  const text = m ? m[2] : title;
+  const card = surface === "card";
   return (
-    <section style={{ background: PK.soft, border: accent ? `1px solid ${PK.line}` : undefined, borderLeft: accent ? `3px solid ${accent}` : undefined, borderRadius: 12, padding: "14px 16px", marginTop: BLOCK_GAP }}>
-      <div style={{ fontSize: FS.cardTitle, fontWeight: 800, lineHeight: 1.4, color: accent ?? PK.ink }}>{no ? `${no} ` : ""}{title}</div>
+    <section style={{ background: card ? "#fff" : PK.soft, boxShadow: card ? "0 1px 4px rgba(0,0,0,0.08)" : undefined, border: accent ? `1px solid ${PK.line}` : undefined, borderLeft: accent ? `3px solid ${accent}` : undefined, borderRadius: 12, padding: "14px 16px", marginTop: card ? 0 : BLOCK_GAP }}>
+      <div style={{ fontSize: FS.cardTitle, fontWeight: 800, lineHeight: 1.4, color: accent ?? PK.ink }}>{number ? `${number} ` : ""}{text}</div>
       {hint && <Caption>{hint}</Caption>}
       {children !== undefined && <div style={{ marginTop: 10 }}>{children}</div>}
     </section>
@@ -33,11 +38,11 @@ export function Block({ no, title, hint, accent, children }: { no?: string; titl
 }
 
 /** 숫자 칸 — 이름(경고 크기)·값(카드 제목 크기, big 이면 핵심 숫자 크기)·부연(보조). onGray 는 회색 블록 안에서 흰 바탕으로. */
-export function Stat({ label, value, sub, subTone, big, missing, onGray }: { label: ReactNode; value: ReactNode; sub?: ReactNode; subTone?: "warn"; big?: boolean; missing?: boolean; onGray?: boolean }) {
+export function Stat({ label, value, sub, subTone, big, missing, onGray, valueColor }: { label: ReactNode; value: ReactNode; sub?: ReactNode; subTone?: "warn"; big?: boolean; missing?: boolean; onGray?: boolean; valueColor?: string }) {
   return (
     <div style={{ background: onGray ? "#fff" : PK.soft, border: onGray ? `1px solid ${PK.line}` : "1px solid transparent", borderRadius: 10, padding: "10px 12px", minWidth: 0 }}>
       <div style={{ fontSize: FS.warn, lineHeight: 1.4, color: PK.sub }}>{label}</div>
-      <div style={{ fontSize: big ? FS.metric : FS.cardTitle, fontWeight: 800, lineHeight: 1.3, marginTop: 4, color: missing ? PK.missing : PK.ink, wordBreak: "keep-all" }}>{value}</div>
+      <div style={{ fontSize: big ? FS.metric : FS.cardTitle, fontWeight: 800, lineHeight: 1.3, marginTop: 4, color: missing ? PK.missing : valueColor ?? PK.ink, wordBreak: "keep-all" }}>{value}</div>
       {sub && <Caption tone={subTone} style={{ marginTop: 4 }}>{sub}</Caption>}
     </div>
   );
@@ -66,3 +71,18 @@ export function ListRow({ name, kind, meta, onClick }: { name: ReactNode; kind?:
   );
 }
 
+/** 누르는 단추 — primary(파랑 꽉 찬)·secondary(파랑 옅은)·ghost(테두리)·danger(빨강 테두리). 글자는 단추 크기(ui), 설명 한 줄(sub)은 보조 크기. */
+export function ActionButton({ variant = "secondary", full, sub, children, ...rest }: { variant?: "primary" | "secondary" | "ghost" | "danger"; full?: boolean; sub?: ReactNode; children: ReactNode } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children">) {
+  const V: Record<string, CSSProperties> = {
+    primary: { background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8" },
+    secondary: { background: "#EFF6FF", color: "#1E3A8A", border: "1px solid #BFDBFE" },
+    ghost: { background: "#fff", color: PK.sub, border: "1px solid #D1D5DB" },
+    danger: { background: "#fff", color: "#991B1B", border: "1px solid #FCA5A5" },
+  };
+  return (
+    <button type="button" {...rest} style={{ ...V[variant], width: full ? "100%" : undefined, minHeight: 40, padding: "8px 14px", borderRadius: 10, fontSize: FS.ui, fontWeight: 700, textAlign: "left", cursor: "pointer" }}>
+      {children}
+      {sub && <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.9, marginTop: 2 }}>{sub}</span>}
+    </button>
+  );
+}
