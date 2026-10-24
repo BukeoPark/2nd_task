@@ -22,6 +22,7 @@ import { glyphFor } from "../../lib/storeGlyph";
 import { SummaryTypeBadge, SummaryTypeContext } from "./SummaryType";
 import { AreaBriefCard } from "./AreaBriefCard";
 import { Block, Caption, ListRow, Stat, StatRow, SubHead } from "../../components/PanelKit";
+import { ReportCTA } from "../../components/ReportCTA";
 import { CostCheckLauncher } from "./CostCheckSection";
 import { computeRentDetail, loadDraft, type CostCheckDraft } from "../../lib/costCheck";
 import { rentVsReference } from "../../lib/costSummary";
@@ -156,17 +157,10 @@ export function AreaOverviewPanel(p: Props) {
           {character.data && <SummaryTypeContext data={character.data} />}
           {brief && <AreaBriefCard brief={brief} onAction={onBriefAction} />}
           {brief && (
-            <button
-              type="button"
-              data-tour="area-report-button"
-              onClick={() => setReportOpen(true)}
-              style={{ width: "100%", marginTop: 12, minHeight: 56, padding: "12px 14px", border: "1px solid #C2410C", borderRadius: 12, background: "#C2410C", color: "#FFFFFF", boxShadow: "0 4px 12px rgba(194,65,12,.18)", fontWeight: 700, fontSize: FS.cardTitle, cursor: "pointer", textAlign: "left" }}
-            >
-              <span className="data-heading"><AppIcon name="trend" />상권분석 보고서 보기 ›</span>
-              <span style={{ display: "block", fontSize: FS.warn, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>
-                {unitKind} 전체 · {p.mode === "owner" ? "내 매장 주변 경쟁·상권 변화·고객 수요" : "매출 흐름·경쟁·입지·확인사항"} · 지역 보고서 · 인쇄·PDF 저장
-              </span>
-            </button>
+            <div style={{ marginTop: 12 }}>
+              <ReportCTA tourId="area-report-button" onClick={() => setReportOpen(true)} title="상권분석 보고서 보기 ›"
+                sub={`${unitKind} 전체 · ${p.mode === "owner" ? "내 매장 주변 경쟁·상권 변화·고객 수요" : "매출 흐름·경쟁·입지·확인사항"} · 지역 보고서 · 인쇄·PDF 저장`} />
+            </div>
           )}
           {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
           {p.actions}

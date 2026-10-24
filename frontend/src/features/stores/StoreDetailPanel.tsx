@@ -30,6 +30,7 @@ import { CompetitorBlock } from "./CompetitorBlock";
 import { MineStatusBar } from "./MineStatusBar";
 import { toKakaoLatLng } from "../../lib/geo";
 import { StoreBriefCard } from "./StoreBriefCard";
+import { ReportCTA } from "../../components/ReportCTA";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { RadiusCircleLayer } from "./RadiusCircleLayer";
@@ -125,7 +126,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 <SourceNote title={store.source.title} reference={store.source.reference} />
               </div>
               <div style={{ marginTop: 10 }}>
-                {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} /></Fold> : <LicenseSummary history={data.operation_history} compact />}
+                {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} part="basis" /></Fold> : <LicenseSummary history={data.operation_history} compact />}
               </div>
             </div>
           ),
@@ -235,11 +236,15 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                         <span style={reportSubStyle}>이 매장 반경 500m 고정 · 상권 변화·고객 수요·확인사항</span>
                       </button>
                     )}
-                    {onOpenAreaReport && (
-                      <button type="button" data-tour={mode === "founder" ? "report-button" : undefined} onClick={areaReport} style={mode === "owner" ? reportSecondaryStyle : reportButtonStyle}>
+                    {onOpenAreaReport && mode === "owner" && (
+                      <button type="button" onClick={areaReport} style={reportSecondaryStyle}>
                         소속 {store.trdar ? "상권" : "행정동"} 보고서 보기 ›
-                        <span style={mode === "owner" ? { ...reportSubStyle, color: "#7C2D12" } : reportSubStyle}>{store.trdar ? store.trdar.name : store.dong} 전체 · {mode === "owner" ? "지역 보고서" : "후보지 매출 흐름·경쟁·입지·확인사항 · 지역 보고서"}</span>
+                        <span style={{ ...reportSubStyle, color: "#7C2D12" }}>{store.trdar ? store.trdar.name : store.dong} 전체 · 지역 보고서</span>
                       </button>
+                    )}
+                    {onOpenAreaReport && mode === "founder" && (
+                      <ReportCTA tourId="report-button" onClick={areaReport} title="상권분석 보고서 보기 ›"
+                        sub={`${store.trdar ? store.trdar.name : store.dong} 전체 · 매출 흐름·경쟁·입지·확인사항 · 지역 보고서 · 인쇄·PDF 저장`} />
                     )}
                     {mode === "founder" && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>매장 한 곳의 보고서는 자영업자용만 제공돼요. 예비 창업자는 이 매장이 속한 지역의 보고서를 볼 수 있어요.</div>}
                   </div>
@@ -267,7 +272,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                     <Fragment key={id}>{blocks[id]}</Fragment>
                   ))}
                 </NoteHost>
-                {g !== "store" && (
+                {g !== "store" && mode === "owner" && (
                   <button type="button" onClick={() => (mode === "owner" ? setReportOpen(true) : areaReport())} style={{ ...reportLinkStyle }}>
                     {mode === "owner" ? "내 매장 보고서 보기 (500m 기준) ›" : "소속 상권 보고서 보기 ›"}
                   </button>

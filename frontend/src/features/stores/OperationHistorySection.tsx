@@ -15,12 +15,31 @@ const LINK_TONE: Record<string, "info" | "pending" | "warn" | "muted"> = {
   source_missing_gu: "muted",
 };
 
-/** 매장 상단 요약용 — 인허가 기준 업력·영업 상태. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다. */
-export function LicenseSummary({ history, part = "core", compact = false }: { history: OperationHistory; part?: "core" | "detail"; compact?: boolean }) {
+/** 매장 상단 요약용 — 인허가 기준 업력·영업 상태. 연결이 불확실하면 값을 채우지 않고 상태만 보여준다.
+ * part="basis" 는 상태·업력 카드 없이 근거·기준일만 — 요약 카드가 이미 상태·업력을 보이는 화면(예비 창업자)에서 같은 카드를 되풀이하지 않으려는 용도. */
+export function LicenseSummary({ history, part = "core", compact = false }: { history: OperationHistory; part?: "core" | "detail" | "basis"; compact?: boolean }) {
   const { link, license } = history;
+  const basis = (
+    <>
+      <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
+        {history.business_status?.caveat ?? "인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다."} {license?.age_caveat}
+      </div>
+      {history.data_dates && (
+        <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>
+          자료 기준일 — 상가정보 {history.data_dates.store_info.base ?? "자료 없음"} 기준
+          {" · "}
+          {history.data_dates.license
+            ? `인허가 ${history.data_dates.license.source_updated ?? "원천 갱신일 자료 없음"} 갱신(${history.data_dates.license.collected_at ?? "수집일 자료 없음"} 수집)`
+            : "인허가 자료 연결 없음"}
+          . 실시간 정보가 아닙니다.
+        </div>
+      )}
+    </>
+  );
   return (
     <div>
-      {part === "core" && !history.business_status && link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
+      {(part === "core" || part === "basis") && !history.business_status && link && link.status !== "matched" && <Notice tone={LINK_TONE[link.status] ?? "muted"}>{link.message}</Notice>}
+      {part === "basis" && basis}
 
       {part === "core" && (
         <div style={{ display: "grid", gridTemplateColumns: license ? "1fr 1fr" : "1fr", gap: 8 }}>
@@ -37,19 +56,7 @@ export function LicenseSummary({ history, part = "core", compact = false }: { hi
       )}
       {part === "core" && !compact && (
         <Fold title="영업 상태 기준·자료 기준일 보기">
-          <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
-            {history.business_status?.caveat ?? "인허가 자료 기준이며 실제 현장 영업 여부와 다를 수 있습니다."} {license?.age_caveat}
-          </div>
-          {history.data_dates && (
-            <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>
-              자료 기준일 — 상가정보 {history.data_dates.store_info.base ?? "자료 없음"} 기준
-              {" · "}
-              {history.data_dates.license
-                ? `인허가 ${history.data_dates.license.source_updated ?? "원천 갱신일 자료 없음"} 갱신(${history.data_dates.license.collected_at ?? "수집일 자료 없음"} 수집)`
-                : "인허가 자료 연결 없음"}
-              . 실시간 정보가 아닙니다.
-            </div>
-          )}
+          {basis}
         </Fold>
       )}
       {part === "core" && compact && history.data_dates && <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 4 }}>상가정보 {history.data_dates.store_info.base ?? "기준일 없음"} · 인허가 갱신 {history.data_dates.license?.source_updated ?? "기준일 없음"}</div>}
