@@ -29,6 +29,8 @@ import { StartPanel } from "../features/guide/StartPanel";
 import { ExplorePanel } from "../features/food/ExplorePanel";
 import { InterestBox } from "../features/area/InterestBox";
 import { AreaReportModal } from "../features/area/AreaReportModal";
+import { InsightReportModal } from "../features/stores/report/InsightReportModal";
+import { MapReportButton, type MapReport } from "../features/food/MapReportButton";
 import { presetById, type PresetId } from "../lib/explorePresets";
 import { loadMyStores } from "../lib/monthlyCheck";
 import { MAX_FAVORITES, addFavorite, favKey, isFavorite, loadFavorites, parseShare, removeFavorite, saveFavorites, shareSearch, type FavoriteArea } from "../lib/favorites";
@@ -159,6 +161,8 @@ export function MapPage() {
   const [interestOpen, setInterestOpen] = useState(false);
   const [interestPicked, setInterestPicked] = useState<string[]>([]);
   const [reportFor, setReportFor] = useState<FavoriteArea | null>(null);
+  // 지도 위 '업소 인사이트 리포트 보기'로 여는 매장 보고서(자영업자용)
+  const [storeReportFor, setStoreReportFor] = useState<string | null>(null);
   const [navDepth, setNavDepth] = useState(0);
   const [rivalId, setRivalId] = useState<string | null>(null);   // 경쟁 가게 목록에서 열어 본 매장
   // 좁은 화면: 서랍을 접고 지도를 보는 중인가(다른 매장·지역을 고르면 다시 서랍을 연다)
@@ -445,6 +449,29 @@ export function MapPage() {
   const svcGroup = categories.data?.groups.find((g) => g.svc_cd === svc);
   const filterName = scls ? (svcGroup?.details.find((d) => d.code === scls)?.name ?? "세부 업종") : (svcGroup?.svc_nm ?? "외식 전체");
 
+  // 지도 위 보고서 단추: 지금 보는 것이 업소면 업소 보고서(예비 창업자는 소속 상권 보고서), 행정동·상권이면 그 지역 보고서.
+  const mapReport: MapReport | null = (() => {
+    if (storeId !== null && selectedStore) {
+      const areaOfStore: FavoriteArea = selectedStore.trdar
+        ? { level: "trdar", code: selectedStore.trdar.code, name: selectedStore.trdar.name, type: selectedStore.trdar.type, lon: null, lat: null, svc: selectedStore.category.svc ?? null, scls: null }
+        : { level: "dong", code: selectedStore.adong_cd, name: selectedStore.dong, type: null, lon: null, lat: null, svc: selectedStore.category.svc ?? null, scls: null };
+      const areaSub = `${areaOfStore.name} 전체 · 같은 업종 기준`;
+      if (mode === "owner") {
+        return {
+          title: "업소 인사이트 리포트 보기 ›", sub: `${selectedStore.name}${selectedStore.branch ? ` ${selectedStore.branch}` : ""} · 반경 500m 기준`, onClick: () => setStoreReportFor(storeId),
+          secondary: { title: "소속 상권 인사이트 리포트", sub: areaSub, onClick: () => setReportFor(areaOfStore) },
+        };
+      }
+      return { title: "상권 인사이트 리포트 보기 ›", sub: areaSub, onClick: () => setReportFor(areaOfStore) };
+    }
+    const sel = shownSelection;
+    if (storeId === null && sel?.unit && sel.unit.level !== "gu") {
+      const f: FavoriteArea = { level: sel.unit.level as "dong" | "trdar", code: sel.unit.code, name: plainTitle(sel.title, sel.type), type: sel.type ?? null, lon: sel.center?.lon ?? null, lat: sel.center?.lat ?? null, svc, scls };
+      return { title: "상권 인사이트 리포트 보기 ›", sub: `${f.name} ${f.level === "trdar" ? "상권" : "행정동"} 전체 · ${filterName}`, onClick: () => setReportFor(f) };
+    }
+    return null;
+  })();
+
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <KakaoMap onReady={(map, kakao) => setMapKakao({ map, kakao })}>
@@ -506,6 +533,10 @@ export function MapPage() {
             onRemove={(f) => updateFavorites(removeFavorite(favorites, favKey(f)))}
             onClose={() => setInterestOpen(false)}
           />
+        )}
+        {storeReportFor && <InsightReportModal storeId={storeReportFor} onClose={() => setStoreReportFor(null)} />}
+        {mapReport && !startVisible && (!narrow || peekMap) && !competitionView && (
+          <MapReportButton report={mapReport} leftInset={narrow ? 0 : SIDE_PANEL_WIDTH_PX + RAIL_WIDTH_PX} rightInset={narrow ? 0 : 342} />
         )}
         {reportFor && (
           <AreaReportModal level={reportFor.level} code={reportFor.code} name={reportFor.name} type={reportFor.type} svc={reportFor.svc} scls={reportFor.scls} mode={mode} onClose={() => setReportFor(null)} />

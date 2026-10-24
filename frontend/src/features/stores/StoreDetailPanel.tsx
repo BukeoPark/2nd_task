@@ -187,7 +187,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
     }} radius={radius} onRadius={setRadius}
     onBack={onBack} onClose={onClose} onGroupChange={setGroup}
     onOpenArea={(level) => onOpenArea({ level, store })}
-    onReport={() => setReportOpen(true)} onAreaReport={onOpenAreaReport ? areaReport : undefined}
     overlays={<>
       {reportOpen && <InsightReportModal storeId={storeId} onClose={() => setReportOpen(false)} />}
       {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && <RadiusCircleLayer map={mapView.map} kakao={mapView.kakao} center={{ lon: store.lon, lat: store.lat }} radiusM={circleRadius} />}

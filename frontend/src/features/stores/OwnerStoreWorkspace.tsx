@@ -34,9 +34,9 @@ interface Props {
   store: StoreBasic; record: StoreRecord; blocks: Record<string, ReactNode>; radius: number; onRadius: (n: number) => void;
   onBack: () => void; onClose: () => void; onGroupChange: (g: GroupId) => void;
   onOpenArea: (level: "dong" | "trdar") => void;
-  onReport: () => void; onAreaReport?: () => void; overlays: ReactNode;
+  overlays: ReactNode;
 }
-export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, onBack, onClose, onGroupChange, onReport, onAreaReport, onOpenArea, overlays }: Props) {
+export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, onBack, onClose, onGroupChange, onOpenArea, overlays }: Props) {
   const narrow = useNarrow();
   const [googleVisited, setGoogleVisited] = useState(false);
   const [screen, setScreen] = useState<Screen>("overview");
@@ -70,7 +70,7 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
           <button className="owner-stat" onClick={() => go("nearby")}><span>반경 500m · {store.category.scls}</span><strong>{nearby.isError ? "조회 실패" : nearby.isPending ? "불러오는 중" : count == null ? "자료 없음" : `${count.toLocaleString()}곳`}</strong><small>상가정보 기준 · 선택 매장 제외</small><b>경쟁 매장 확인 →</b></button>
           <button className="owner-stat" onClick={() => go("area")}><span>{bench?.unit?.name ?? "소속 상권"} · {bench?.svc_nm ?? "대응 업종"} 전체</span><strong>{benchmark.isError ? "조회 실패" : benchmark.isPending ? "불러오는 중" : growth == null ? "자료 없음" : `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`}</strong><small>총매출 · {bench?.quarter_label ?? "집계 기간 확인 필요"} · 전년 동기 대비</small><b>상권 흐름 확인 →</b></button>
         </div>
-        <details className="owner-report"><summary>보고서 모아보기</summary><button onClick={onReport}>매장 중심 · 반경 500m 보고서</button>{onAreaReport && <button onClick={onAreaReport}>소속 상권 전체 보고서</button>}</details>
+
       </>}
       {id === "records" && <>{blocks.checkup}<details className="owner-report"><summary>상권 평균 참고</summary>
         {bench ? <div className="owner-reference"><span className="owner-caption">{bench.unit?.name} · {bench.svc_nm} 전체 · {bench.quarter_label}</span><div className="owner-time-row"><span>점포당 월평균 추정매출</span><b>{bench.per_store_month == null ? "자료 없음" : man(bench.per_store_month / 10000)}</b></div><p className="owner-caption">{bench.stores ?? "자료 없는"}곳 평균 · 내 가게 실제 매출과는 달라요.</p><small className="owner-caption">출처: {bench.source.title}</small></div> : <p className="owner-caption">상권 매출 자료 없음</p>}
