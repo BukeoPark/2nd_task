@@ -6,6 +6,7 @@ import { buildLens, type Lens } from "./areaLens.ts";
 import { bigPeerRank, median, sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type Finding, type LevelSection, type SampleStatus, type Tile } from "./insightReport.ts";
 export { sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type SampleStatus };
 import type { Mode } from "./mode";
+import { formatPerArea } from "./format.ts";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ko-KR");
 const man = (won: number) => won / 1e4;
@@ -245,7 +246,7 @@ function locationSection(inp: AreaReportInput): AreaLocation | null {
   if (tr?.bus) facts.push({ label: "버스 정류장", value: `${tr.bus.count}곳`, note: tr.bus.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.bus.boardings_observed)}명(연결된 정류장만)` : tr.bus.count === 0 ? "경계 안 정류장 없음" : "이용량 연결 안 됨" });
   const rent = val(inp.rows, "rent_small_shop");
   const vac = val(inp.rows, "vacancy_small_shop_pct");
-  facts.push({ label: "소규모상가 임대료(R-ONE 참고)", value: rent !== null ? `${rent.toFixed(1)}천원/㎡` : "자료 없음", note: rent !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "rent_small_shop") ?? "가까운 R-ONE 조사상권이 없음") });
+  facts.push({ label: "소규모상가 임대료(R-ONE 참고)", value: rent !== null ? formatPerArea(rent) : "자료 없음", note: rent !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "rent_small_shop") ?? "가까운 R-ONE 조사상권이 없음") });
   facts.push({ label: "소규모상가 공실률(R-ONE 참고)", value: vac !== null ? `${vac.toFixed(1)}%` : "자료 없음", note: vac !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "vacancy_small_shop_pct") ?? "가까운 R-ONE 조사상권이 없음") });
   const sb = val(inp.rows, "starbucks_zone_share");
   const ds = val(inp.rows, "daiso_zone_share");

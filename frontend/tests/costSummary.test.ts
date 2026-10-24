@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { emptyDraft } from "../src/lib/costCheck.ts";
-import { BASE_COST_FIELDS, costFill, orderHint, rentVsReference, salesBenchmark } from "../src/lib/costSummary.ts";
+import { BASE_COST_FIELDS, benchSubText, costFill, launcherActionLabel, orderHint, rentVsReference, salesBenchmark } from "../src/lib/costSummary.ts";
 import { installFakeStorage } from "./_fakeStorage.ts";
 
 installFakeStorage();
@@ -69,4 +69,16 @@ test("하루 필요 주문이 빈 이유를 알려준다", () => {
   assert.equal(orderHint("", "12000", false, null), "월 영업일을 넣으면 계산돼요.");
   assert.equal(orderHint("40", "12000", true, null), "영업일은 1~31일, 주문 금액은 0원 초과로 입력해 주세요.");
   assert.equal(orderHint("26", "12000", false, 5), null);
+});
+
+test("입력 단추 이름은 다음에 할 일을 말한다", () => {
+  assert.equal(launcherActionLabel(false, 7, null), "월 비용 입력하기");
+  assert.equal(launcherActionLabel(true, 2, null), "비어 있는 비용 입력하기");
+  assert.equal(launcherActionLabel(true, 0, null), "영업일·주문 금액 입력하기");
+  assert.equal(launcherActionLabel(true, 0, 59), "입력값 수정·다시 계산하기");
+});
+
+test("지역 평균 비교 문구 — 비어 있는 칸이 있으면 그만큼 뺀 계산임을 밝힌다", () => {
+  assert.equal(benchSubText(272, 0), "지역 추정 평균 대비 272%");
+  assert.equal(benchSubText(1210, 2), "지역 추정 평균 대비 1,210% · 비어 있는 2칸은 빼고 계산");
 });

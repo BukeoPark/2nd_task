@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { COST_CHECK_EXCLUDED, COST_CHECK_KEY, clearDraft, computeCostCheck, computeRentDetail, emptyDraft, loadDraft, sanitizeDraft, saveDraft } from "../src/lib/costCheck.ts";
+import { COST_CHECK_EXCLUDED, COST_CHECK_KEY, clearDraft, computeCostCheck, computeRentDetail, emptyDraft, isInheritedDraft, loadDraft, sanitizeDraft, saveDraft } from "../src/lib/costCheck.ts";
 import { installFakeStorage } from "./_fakeStorage.ts";
 
 const d = (o: Partial<ReturnType<typeof emptyDraft>>) => ({ ...emptyDraft(), ...o });
@@ -116,4 +116,15 @@ test("기존 합산 월세를 보존하고 단가로 오인하지 않으며 새 
  assert.equal(loadDraft().legacyRentCombined, "");
  assert.equal(computeRentDetail(d({ floorArea: "0" })).invalidArea, true);
  assert.equal(computeRentDetail(d({ floorArea: "abc" })).invalidArea, true);
+});
+
+test("그 지역에 저장한 입력이 없고 최근 입력이 있으면 대신 쓰는 중이다", () => {
+  installFakeStorage();
+  assert.equal(isInheritedDraft("dong:1"), false);                   // 최근 입력도 없음
+  saveDraft(d({ rent: "200" }), "dong:2");                           // 전역에 최근 입력이 생김
+  assert.equal(isInheritedDraft("dong:1"), true);                    // dong:1 은 저장한 적 없어 전역 값을 씀
+  assert.equal(isInheritedDraft("dong:2"), false);                   // 직접 저장한 지역
+  assert.equal(isInheritedDraft(undefined), false);
+  clearDraft("dong:1");                                              // 지웠다면 비어 있는 입력이 저장돼 있어 더는 대신 쓰지 않는다
+  assert.equal(isInheritedDraft("dong:1"), false);
 });

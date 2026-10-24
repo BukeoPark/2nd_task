@@ -54,6 +54,11 @@ export function loadUnitDraft(unitKey: string): CostCheckDraft | null {
 }
 /** 지역 키가 있으면 그 지역 입력, 없으면 전역(가장 최근) 입력. */
 export const loadDraft = (unitKey?: string): CostCheckDraft => (unitKey ? loadUnitDraft(unitKey) : null) ?? sanitizeDraft(readJson(COST_CHECK_KEY));
+/** 지역 키가 있는데 그 지역에 저장한 입력이 없고, 최근(전역) 입력이 있어 그 값을 대신 쓰고 있는지. */
+export function isInheritedDraft(unitKey?: string): boolean {
+  if (!unitKey || loadUnitDraft(unitKey) !== null) return false;
+  return Object.values(sanitizeDraft(readJson(COST_CHECK_KEY))).some((v) => v !== "");
+}
 export function saveDraft(d: CostCheckDraft, unitKey?: string): boolean {
   const okUnit = unitKey ? writeJson(unitStoreKey(unitKey), d) : true;
   return writeJson(COST_CHECK_KEY, d) && okUnit;

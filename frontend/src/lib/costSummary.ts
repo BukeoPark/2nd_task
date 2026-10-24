@@ -43,8 +43,6 @@ export function salesBenchmark(requiredManwon: number | null, benchWon: number |
   return { benchManwon, pct: Math.round(ratio * 100), level: ratio < 0.9 ? "low" : ratio > 1.1 ? "high" : "similar" };
 }
 
-export const BENCH_LEVEL_TEXT: Record<Level, string> = { low: "평균보다 낮은 수준", similar: "평균과 비슷한 수준", high: "평균보다 높은 수준" };
-
 export interface RentVsReference { mine: number; ref: number; diffPct: number; level: Level }
 
 /** 내 ㎡당 월세(원)를 인근 조사상권 참고값(천원/㎡)과 견준다. ±5% 안은 비슷함. 둘 중 하나라도 없으면 null. */
@@ -64,4 +62,17 @@ export function orderHint(openDays: string, averageTicket: string, invalidOrders
   if (!days) return "월 영업일을 넣으면 계산돼요.";
   if (!ticket) return "주문 1건당 결제액을 넣으면 계산돼요.";
   return null;
+}
+
+/** 패널의 입력 단추 이름 — 지금 상태에서 다음에 할 일을 말한다. */
+export function launcherActionLabel(valid: boolean, missingCosts: number, dailyOrders: number | null): string {
+  if (!valid) return "월 비용 입력하기";
+  if (missingCosts > 0) return "비어 있는 비용 입력하기";
+  if (dailyOrders === null) return "영업일·주문 금액 입력하기";
+  return "입력값 수정·다시 계산하기";
+}
+
+/** 지역 평균 비교 문구 — 비어 있는 비용 칸이 있으면 그만큼 빼고 계산한 값임을 밝힌다. */
+export function benchSubText(pct: number, missingCosts: number): string {
+  return `지역 추정 평균 대비 ${pct.toLocaleString("ko-KR")}%${missingCosts > 0 ? ` · 비어 있는 ${missingCosts}칸은 빼고 계산` : ""}`;
 }

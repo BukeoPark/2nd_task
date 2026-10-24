@@ -12,7 +12,7 @@ import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import type { FoodCompareResponse, FoodLevel, OverviewTrdar } from "../../lib/apiClient";
 import { AREA_QUESTION, AREA_TAB_LABEL, AREA_TAB_STYLE, areaTabsFor, type AreaTabId } from "../../lib/areaTabs";
-import { formatKrw, formatMetric, shortQuarter } from "../../lib/format";
+import { formatKrw, formatMetric, formatRentWon, shortQuarter } from "../../lib/format";
 import { railPanelId, railTabId } from "../../lib/railIds";
 import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
@@ -95,6 +95,8 @@ export function AreaOverviewPanel(p: Props) {
   const cmp = useFoodCompare(level, [p.code], p.svc, p.scls);
   const ov = useUnitOverview(p.level, p.code, p.svc, p.scls);
   const character = useAreaCharacter(p.level, p.code, p.svc, p.scls);
+  // 조건·지역이 바뀐 직후에는 새 값이 올 때까지 이전 값(keepPreviousData)이 남는다 — 흐리게 하고 누르지 못하게 한다(같은 값이 계속 보이는 오해 방지).
+  const stale = cmp.isPlaceholderData;
   const row = (key: string): Row | undefined => cmp.data?.rows.find((r) => r.key === key);
   const unitKind = LEVEL_NOUN[p.level];
   const narrow = useNarrow();
@@ -141,6 +143,7 @@ export function AreaOverviewPanel(p: Props) {
       {p.mode === "founder" && p.favorite && <button type="button" aria-label={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} aria-pressed={p.favorite.saved} onClick={p.favorite.onToggle} title={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, minWidth: 40, justifyContent: "center", padding: "6px", borderRadius: 24, border: "1px solid #D97706", background: p.favorite.saved ? "#FEF3C7" : "#FFFBEB", color: "#92400E", fontSize: FS.ui, fontWeight: 700, cursor: "pointer" }}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={p.favorite.saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8"><path d="m12 3 2.8 5.7 6.3.9-4.6 4.4 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.6l6.2-.9Z"/></svg></button>}
     </div>} onBack={p.onBack} backLabel={p.backLabel ?? `← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
       {cmp.isPending && <div style={{ marginTop: 10 }}><Notice tone="muted">종합분석을 불러오는 중...</Notice></div>}
+      {stale && <div style={{ marginTop: 10 }} role="status"><Notice tone="muted">새 조건의 값을 불러오는 중...</Notice></div>}
       {cmp.isError && (
         <div style={{ marginTop: 10 }}>
           <Notice tone="error">지표 조회 실패: {cmp.error.message} <button type="button" onClick={() => void cmp.refetch()}>다시 시도</button></Notice>
@@ -149,6 +152,7 @@ export function AreaOverviewPanel(p: Props) {
 
       {narrow && <div style={{ marginTop: 10 }}><TabRail {...railProps} orientation="horizontal" /></div>}
 
+      <div aria-busy={stale} style={stale ? { opacity: 0.45, pointerEvents: "none" } : undefined}>
       {pane("summary", "요약", (
         <>
           {p.mode === "founder" && p.favorite?.note && <div role="status"><Notice tone="warn">{p.favorite.note}</Notice></div>}
@@ -215,8 +219,8 @@ export function AreaOverviewPanel(p: Props) {
         </>, { scoped: true })}
 
       {pane("cost", "비용·임대", <>
-        {p.mode === "founder" && <Block title="내 창업 비용 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} benchNote={[row("per_store_month")?.scope, row("per_store_month")?.as_of].filter(Boolean).join(" · ")} onOpen={() => setCostOpen(true)} /></Block>}
-        <RentMarketBlock rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending} failed={cmp.isError} founderDraft={p.mode === "founder" ? loadDraft(`${p.level}:${p.code}`) : undefined}/>
+        {p.mode === "founder" && <Block title="내 창업 비용 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={stale ? null : row("per_store_month")?.cells[0]?.value ?? null} benchNote={[row("per_store_month")?.scope, row("per_store_month")?.as_of].filter(Boolean).join(" · ")} onOpen={() => setCostOpen(true)} /></Block>}
+        <RentMarketBlock rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending || stale} failed={cmp.isError} founderDraft={p.mode === "founder" ? loadDraft(`${p.level}:${p.code}`) : undefined}/>
 
       </>)}
       {p.mode === "founder" && costOpen && <CostCheckModal unitKey={`${p.level}:${p.code}`} unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
@@ -235,6 +239,7 @@ export function AreaOverviewPanel(p: Props) {
           <Caption style={{ marginBottom: 8 }}>아래는 개별 매장 목록입니다. 매장을 누르면 그 매장 고유 정보(고객평가·운영이력)로 넘어가며, 위의 상권 통계와는 별개입니다.</Caption>
           <UnitStoreList level={level} code={p.code} svc={p.svc} scls={p.scls} filterName={p.filterName} onSelect={p.onSelectStore} onHover={p.onHoverStore} />
         </>)}
+      </div>
     </Drawer>
     </>
   );
@@ -255,11 +260,11 @@ function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { ren
     {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note ?? "이번 분기 주변 임대자료가 없어요."}</Caption> : <>
       <Caption>인근 조사상권 기준{rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}{rent?.as_of ? ` · ${rent.as_of}` : ""}</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
-        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? `${Math.round((rent!.cells[0].value as number) * 1000).toLocaleString()}원` : "자료 없음"} missing={!hasRent}/>
+        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? formatRentWon(rent!.cells[0].value as number) : "자료 없음"} missing={!hasRent}/>
         <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancy!.cells[0].value) : "자료 없음"} missing={!hasVacancy}/>
       </div>
       {founderDraft && hasRent && (mine
-        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${Math.round(mine.mine * 1000).toLocaleString()}원/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
+        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${formatRentWon(mine.mine)}/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
         : <Caption>비용 계산에서 월세와 면적을 넣으면 이 임대료와 견줘 드려요.</Caption>)}
     </>}
   </Block>;

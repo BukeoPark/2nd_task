@@ -8,9 +8,14 @@ export function formatPercent(value: number | null): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** R-ONE 임대료(자료 단위 천원/㎡·월)를 원 단위로 — 41.9 → "41,900원". 화면에는 천원 단위를 쓰지 않는다. */
+export function formatRentWon(value: number): string {
+  return `${Math.round(value * 1000).toLocaleString("ko-KR")}원`;
+}
+
 export function formatPerArea(value: number | null): string {
   if (value === null) return "정보 없음";
-  return `${value.toFixed(1)}천원/㎡`;
+  return `${formatRentWon(value)}/㎡·월`;
 }
 
 /** 금액을 억/만원 단위로 짧게. 1억 이상은 소수 한 자리 억원, 그 아래는 만원. */
