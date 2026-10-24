@@ -2,7 +2,7 @@ import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
-import type { BusAccess, DemandType, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
+import type { BusAccess, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
 import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityReferenceText, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
@@ -15,11 +15,6 @@ import { BLOCK_GAP, PK } from "../../lib/panelStyle";
 import { FS } from "../../lib/typography";
 
 export const DEFAULT_RADIUS_M = 500;
-const TYPE_STYLE: Record<DemandType, { bg: string; fg: string }> = {
-  업무형: { bg: "#DBEAFE", fg: "#1E3A8A" },
-  혼합형: { bg: "#F3E8FF", fg: "#6B21A8" },
-  주거형: { bg: "#DCFCE7", fg: "#166534" },
-};
 
 /** '반경 주변 입지' — ① 상업·경쟁 환경 ② 주요 집객시설 ③ 대중교통 접근성 ④ 교통 이용 수요 (모두 직선거리, 같은 반경). 이어서 ⑤ 인허가 개폐업 ⑥ 분석 기준.
  * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·⑥ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
@@ -146,7 +141,7 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
 export function LocationAreaSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error, refetch } = useLocationInfluence(storeId, DEFAULT_RADIUS_M);
   return (
-    <Section title="입지 영향력 — 상권 수요 유형·입지 요인" scope={<ScopeTag kind="area" label="소속 상권" />}>
+    <Section title="입지 영향력 — 상권 수요 구조·입지 요인" scope={<ScopeTag kind="area" label="소속 상권" />}>
       {isLoading && <Notice tone="muted">상권을 분석하는 중...</Notice>}
       {isError && (
         <Notice tone="error">
@@ -435,22 +430,17 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
   return (
     <div style={card}>
-      <div style={cardTitle}>{a.level_label} 수요 유형 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</div>
+      <div style={cardTitle}>{a.level_label} 수요 구조 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</div>
       {a.fallback_reason && <div style={{ marginTop: 6 }}><Notice tone="muted">{a.fallback_reason}</Notice></div>}
       {a.demand_type === null ? (
         <div style={{ marginTop: 6 }}><Notice tone="warn">{a.message}</Notice></div>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-            <span style={{ ...TYPE_STYLE[a.demand_type], borderRadius: 12, padding: "2px 10px", fontWeight: 700, fontSize: FS.warn }}>{a.demand_type}</span>
             <span style={{ fontSize: FS.caption, color: "#374151" }}>{a.basis}</span>
             <Term id="demandType" label="" />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 }}>
-            <Stat label="직장인구 비중" value={a.worker_share === null || a.worker_share === undefined ? "자료 없음" : `${a.worker_share}%`} />
-            <Stat label="직장인구" value={a.workers === null || a.workers === undefined ? "자료 없음" : `${a.workers.toLocaleString("ko-KR")}명`} />
-            <Stat label="상주인구" value={a.residents === null || a.residents === undefined ? "자료 없음" : `${a.residents.toLocaleString("ko-KR")}명`} />
-          </div>
+          <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>유형 이름과 직장·상주인구 숫자는 위 '소속 상권'의 유형과 종합분석 '소비 수요'에서 봐요.</div>
           <Fold title="유형 판정 기준 보기">
             <div style={fine}>
               {a.rule} · 지하철역 {a.has_subway === null || a.has_subway === undefined ? "자료 없음" : a.has_subway ? "영역 안에 있음" : "영역 안에 없음"} ·

@@ -24,7 +24,7 @@ export function AreaBriefCard({ brief, onAction, insights }: { brief: AreaBrief;
       {brief.hold && <div style={{ fontSize: FS.warn, color: "#92400E", marginTop: 12 }}>{brief.hold}</div>}
 
       {insights}
-      <div style={{ ...stepTitle, marginTop: 20 }}>다음 확인사항</div>
+      <div style={{ ...stepTitle, marginTop: 20 }}>이어서 분석하기</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
         {brief.next.map((n, i) => <NextLink key={n.target} action={n} primary={i === 0} onClick={() => onAction(n.target)} />)}
       </div>

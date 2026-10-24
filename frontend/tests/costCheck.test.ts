@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { COST_CHECK_EXCLUDED, COST_CHECK_KEY, clearDraft, computeCostCheck, emptyDraft, loadDraft, sanitizeDraft, saveDraft } from "../src/lib/costCheck.ts";
+import { COST_CHECK_EXCLUDED, COST_CHECK_KEY, clearDraft, computeCostCheck, computeRentDetail, emptyDraft, loadDraft, sanitizeDraft, saveDraft } from "../src/lib/costCheck.ts";
 import { installFakeStorage } from "./_fakeStorage.ts";
 
 const d = (o: Partial<ReturnType<typeof emptyDraft>>) => ({ ...emptyDraft(), ...o });
@@ -50,7 +50,7 @@ test("같은 업종 평균을 넘기면 손익분기가 그 평균의 몇 %인�
 
 test("포함하지 않은 항목을 화면에 밝힐 수 있게 이름으로 가지고 있다", () => {
   assert.equal(COST_CHECK_EXCLUDED.length, 3);
-  assert.ok(COST_CHECK_EXCLUDED.some((x) => x.includes("세금")) && COST_CHECK_EXCLUDED.some((x) => x.includes("금융")) && COST_CHECK_EXCLUDED.some((x) => x.includes("투자비")));
+  assert.ok(COST_CHECK_EXCLUDED.some((x) => x.includes("세금")) && COST_CHECK_EXCLUDED.some((x) => x.includes("대출")) && COST_CHECK_EXCLUDED.some((x) => x.includes("투자비")));
 });
 
 test("저장은 '내 가게' 기록과 다른 키에 이 브라우저에만 하고, 모양이 틀린 값은 걸러 낸다", () => {
@@ -68,4 +68,52 @@ test("저장소가 막힌 환경에서는 저장 실패를 알리고(false) 읽�
   installFakeStorage({ failWrite: true, failRead: true });
   assert.equal(saveDraft(d({ rent: "1" })), false);
   assert.deepEqual(loadDraft(), emptyDraft());
+});
+
+
+test("내 월급은 필요 매출에 포함하고 대출 상환은 별도로 계산한다", () => {
+  const r = computeCostCheck(d({ rent: "200", labor: "300", ownerPay: "300", loanPayment: "100", cogsPct: "50", revenue: "2000" }));
+  assert.equal(r.fixed, 800); assert.equal(r.bep, 1600);
+  assert.equal(r.cashBep, 1800); assert.equal(r.profit, 200); assert.equal(r.cashSurplus, 100);
+});
+test("내 월급·대출의 빈 값과 실제 0을 구분하고 음수는 계산하지 않는다", () => {
+  assert.equal(computeCostCheck(d({ rent: "100" })).ownerPay, null);
+  assert.equal(computeCostCheck(d({ ownerPay: "0" })).ownerPay, 0);
+  assert.equal(computeCostCheck(d({ ownerPay: "-1" })).status, "invalid");
+  assert.equal(computeCostCheck(d({ loanPayment: "-1" })).status, "invalid");
+  const loanOnly = computeCostCheck(d({ loanPayment: "100" }));
+  assert.equal(loanOnly.bep, 0); assert.equal(loanOnly.cashBep, 100);
+});
+test("새 항목도 저장하며 기존 기록은 월급·대출 미입력을 유지한다", () => {
+  installFakeStorage();
+  saveDraft(d({ ownerPay: "300", loanPayment: "100" }), "dong:x");
+  assert.equal(loadDraft("dong:x").ownerPay, "300");
+  assert.equal(loadDraft("dong:x").loanPayment, "100");
+  assert.equal(sanitizeDraft({ labor: "500" }).ownerPay, "");
+});
+
+
+test("내 월급이 있어도 음수 직원 급여를 상쇄해 계산하지 않는다", () => {
+  assert.equal(computeCostCheck(d({ labor: "-100", ownerPay: "300" })).status, "invalid");
+});
+
+test("월세·관리비를 한 번씩 합산하고 면적은 고정비에 포함하지 않는다", () => {
+ const draft = d({ rent: "200", maintenance: "30", floorArea: "50", cogsPct: "50" });
+ assert.equal(computeCostCheck(draft).fixed, 230);
+ assert.equal(computeCostCheck(draft).bep, 460);
+ assert.equal(computeRentDetail(draft).rentPerSqm, 40000);
+ assert.equal(computeCostCheck(d({ maintenance: "30" })).fixed, 30);
+ assert.equal(computeCostCheck(d({ maintenance: "-1" })).status, "invalid");
+ assert.equal(computeCostCheck(d({ floorArea: "50" })).status, "empty");
+});
+test("기존 합산 월세를 보존하고 단가로 오인하지 않으며 새 입력은 저장한다", () => {
+ const old = sanitizeDraft({ rent: "250" });
+ assert.equal(old.rent, "250"); assert.equal(old.legacyRentCombined, "1");
+ assert.equal(computeCostCheck(old).fixed, 250);
+ assert.equal(computeRentDetail({ ...old, floorArea: "50" }).rentPerSqm, null);
+ installFakeStorage(); saveDraft(d({ rent: "200", maintenance: "30", floorArea: "50" }));
+ assert.equal(loadDraft().maintenance, "30"); assert.equal(loadDraft().floorArea, "50");
+ assert.equal(loadDraft().legacyRentCombined, "");
+ assert.equal(computeRentDetail(d({ floorArea: "0" })).invalidArea, true);
+ assert.equal(computeRentDetail(d({ floorArea: "abc" })).invalidArea, true);
 });

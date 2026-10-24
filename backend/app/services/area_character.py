@@ -284,6 +284,65 @@ def _cell(rows: dict, key: str) -> dict:
     return cell
 
 
+FACILITY_LABELS = {"public_office": "공공기관", "bank": "은행", "general_hospital": "종합병원", "hospital": "병원", "pharmacy": "약국", "kindergarten": "유치원", "elementary": "초등학교", "middle": "중학교", "high": "고등학교", "university": "대학교", "department_store": "백화점", "supermarket": "슈퍼마켓", "theater": "극장", "lodging": "숙박시설", "airport": "공항", "rail_station": "철도역", "bus_terminal": "버스터미널", "subway": "지하철역", "bus_stop": "버스정류장"}
+
+
+def oliveyoung_stores(stores: pd.DataFrame) -> pd.DataFrame:
+    """상호가 겹치는 의원을 제외하고 같은 이름·주소의 중복 매장을 한 번만 센다."""
+    names = stores["bizesNm"].fillna("").str.replace(r"\s+", "", regex=True)
+    retail = stores["indsSclsNm"].fillna("").str.contains("소매업|슈퍼마켓", regex=True)
+    hit = stores.loc[names.str.match(r"^(씨제이)?올리브영") & retail & stores["lon"].notna() & stores["lat"].notna()].copy()
+    hit["_brand_name"] = hit["bizesNm"].fillna("").str.replace(r"\s+", "", regex=True)
+    hit["_brand_address"] = hit["rdnmAdr"].fillna("").where(hit["rdnmAdr"].fillna("") != "", hit["lnoAdr"].fillna(""))
+    return hit.drop_duplicates(["_brand_name", "brchNm", "_brand_address"])
+
+
+@lru_cache(maxsize=256)
+def oliveyoung_count(level: str, code: str) -> int:
+    shape = _shapes(level).get(code)
+    if shape is None:
+        return 0
+    stores = oliveyoung_stores(data_store.load_parquet("stores.parquet"))
+    x, y = _to_m(stores["lon"].to_numpy(), stores["lat"].to_numpy())
+    return int(shapely.covers(shape, shapely.points(x, y)).sum())
+
+
+@lru_cache(maxsize=256)
+def supplementary_facilities(level: str, code: str) -> list[dict]:
+    """공개 이용 가능한 공식 시설과 의료 인허가로 경계 안 개수를 보완한다."""
+    shape = _shapes(level).get(code)
+    if shape is None:
+        return []
+    fac = data_store.load_parquet("facilities.parquet")
+    fac = fac.loc[fac["analysis_eligible"].astype(bool) & fac["in_scope"].astype(bool)]
+    pts = shapely.points(fac["x_5179"].to_numpy(), fac["y_5179"].to_numpy())
+    within = fac.loc[shapely.covers(shape, pts)]
+    out = []
+    for key, label in [("department_store", "백화점"), ("shopping_mall", "쇼핑몰"), ("hypermarket", "대형마트"), ("outlet", "아울렛")]:
+        available = bool((fac["facility_type"] == key).any())
+        count = int(within.loc[within["facility_type"] == key, "facility_id"].nunique()) if available else None
+        out.append({"key": key, "label": label, "count": count})
+    lic = data_store.load_parquet("licenses.parquet")
+    medical = lic.loc[lic["license_code"].isin(["010101", "010102"]) & (lic["status_norm"] == "active") & (lic["uptae"] != "종합병원") & lic["lon"].notna() & lic["lat"].notna()]
+    x, y = _to_m(medical["lon"].to_numpy(), medical["lat"].to_numpy())
+    medical = medical.loc[shapely.covers(shape, shapely.points(x, y))]
+    # 같은 시설의 중복 인허가 기록은 한 번만 센다.
+    count = len(medical.drop_duplicates(["name_norm", "road_key", "jibun_key"]))
+    out.append({"key": "hospital", "label": "병원·의원", "count": count})
+    return out
+
+
+def facility_breakdown(level: str, code: str) -> list[dict]:
+    """총 시설 수와 동일한 서울시 경계별 자료에서 종류별 수를 읽는다."""
+    df = data_store.load_parquet(f"{level}_hinterland.parquet")
+    key = "adongCd" if level == "dong" else "trdar_cd"
+    hit = df.loc[df[key].astype(str) == code]
+    if hit.empty:
+        return []
+    row = hit.iloc[0]
+    return [{"key": k, "label": label, "count": _num(row.get(f"fac_{k}"), 0)} for k, label in FACILITY_LABELS.items()]
+
+
 def character(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     if level not in LEVELS:
         raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
@@ -332,8 +391,9 @@ def character(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     }
     # ③ 상업·앵커 환경
     anchor = {
+        "oliveyoung": {"inside": oliveyoung_count(level, code)},
         "starbucks": {**sp["anchors"]["starbucks"], "zone_share": _cell(rows, "starbucks_zone_share")}, "daiso": {**sp["anchors"]["daiso"], "zone_share": _cell(rows, "daiso_zone_share")},
-        "facilities": {"total": _cell(base_rows, "fac_total"), "per_km2": _num(feats["fac_density"], 0), "reference_median": _num(refs["fac_density_median"], 0)},
+        "facilities": {"supplementary": supplementary_facilities(level, code), "by_type": facility_breakdown(level, code), "total": _cell(base_rows, "fac_total"), "per_km2": _num(feats["fac_density"], 0), "reference_median": _num(refs["fac_density_median"], 0)},
         "note": f"스타벅스·다이소는 경계 안 매장 수와 경계까지 거리, 매장 단위 '250m 안 비율'(선택 업종 기준)입니다. 집객시설은 서울시 시설 수(상권·행정동 단위)입니다.",
     }
     # ④ 경쟁 환경 (선택 업종)

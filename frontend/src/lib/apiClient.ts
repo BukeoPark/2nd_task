@@ -603,9 +603,10 @@ export interface AreaCharacter {
       note: string;
     };
     anchor: {
+      oliveyoung: { inside: number };
       starbucks: { inside: number; nearest_m: number | null; zone_share: CharacterCell };
       daiso: { inside: number; nearest_m: number | null; zone_share: CharacterCell };
-      facilities: { total: CharacterCell; per_km2: number | null; reference_median: number | null };
+      facilities: { supplementary: { key: string; label: string; count: number | null }[]; by_type: { key: string; label: string; count: number | null }[]; total: CharacterCell; per_km2: number | null; reference_median: number | null };
       note: string;
     };
     competition: {
@@ -933,6 +934,9 @@ export interface FoodStoresResponse {
 export type UnitStoreSort = "distance" | "name";
 
 export interface FoodUnitStoresResponse {
+  anchor_proximity: Record<"starbucks" | "daiso", { total: number; assessed: number; nearby: number }>;
+  /** 페이지와 관계없이 선택 지역·업종 전체를 집계한 구성 */
+  category_mix: { code: string | null; name: string; count: number; share_pct: number }[];
   level: FoodLevel;
   code: string;
   name: string;
@@ -1045,8 +1049,8 @@ export const apiClient = {
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),
   getLocationInfluence: (storeId: string, radiusM = 500) =>
     request<LocationInfluenceResponse>(`/api/stores/${encodeURIComponent(storeId)}/location-influence?radius_m=${radiusM}`),
-  getGooglePlaceLink: (storeId: string) =>
-    request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place`),
+  getGooglePlaceLink: (storeId: string, refresh = false) =>
+    request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place${refresh ? "?refresh=true" : ""}`),
   reserveGoogleView: (storeId: string) =>
     request<GoogleViewReservation>(`/api/stores/${encodeURIComponent(storeId)}/google-place/view`, "POST"),
 };

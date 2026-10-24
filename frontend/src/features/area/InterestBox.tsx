@@ -128,7 +128,7 @@ function Card({ row, founder, industry, checked, block, onToggle, onCost, onOpen
         상권분석 보고서 보기 ›
         <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.9 }}>{unitWord} 전체 · {founder ? "예비 창업자용" : "자영업자용"} · 지역 보고서</span>
       </button>
-      <Line label="종합분석" value="성장성·경쟁·수요·입지를 지도와 함께" action="열기 ›" onClick={onOpenArea} />
+      <Line label="종합분석" value="매출 흐름·경쟁·수요·입지를 지도와 함께" action="열기 ›" onClick={onOpenArea} />
       {founder && (
         <>
           <Line label="비용 시뮬레이션"

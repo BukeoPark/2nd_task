@@ -1,281 +1,110 @@
+import { AppIcon, MetricBars } from "../../components/DataVisuals";
+import { useRef, useState, type CSSProperties } from "react";
 import { useQueries } from "@tanstack/react-query";
-import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { BarList, LineChart } from "../../components/MiniCharts";
+import { LineChart } from "../../components/MiniCharts";
 import { InfoTip } from "../../components/InfoTip";
 import { Notice } from "../../components/Notice";
-import { apiClient, type FoodLevel, type UnitOverviewResponse } from "../../lib/apiClient";
-import { compareHighlights } from "../../lib/compareHighlights";
-import { compactPeriod, formatKrw, formatMetric, shortQuarter } from "../../lib/format";
-import { useNarrow } from "../../lib/useNarrow";
+import { apiClient, type FoodCompareResponse, type FoodLevel, type UnitOverviewResponse } from "../../lib/apiClient";
+import { compareConclusion } from "../../lib/compareConclusion";
+import { formatKrw, formatMetric, shortQuarter } from "../../lib/format";
 import { ModalNav } from "../nav/ModalNav";
 import { useOverlayBack } from "../nav/useOverlayBack";
 import { viewState } from "../../lib/queryState";
 import { SERIES_COLORS } from "../../lib/vizConfig";
-import { CompareTable } from "./ComparePanel";
 import { useFoodBubbles, useFoodCompare } from "./useFood";
-import { CHART_GROUPS, KEY_ROWS } from "../../lib/compareLayout";
+import { KEY_ROWS } from "../../lib/compareLayout";
 import { FS } from "../../lib/typography";
+import "./compareDashboard.css";
 
-const UNIT_NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
-const MAX_COMPARE = 4;
+const NOUN: Record<FoodLevel, string> = { gu: "자치구", dong: "행정동", trdar: "상권" };
+const views = { summary: "핵심 비교", trends: "변화 추이", all: "전체 지표" } as const;
 interface Props {
-  level: FoodLevel;
-  codes: string[];
-  svc: string | null;
-  scls: string | null;
-  filterName: string;
-  onAdd: (code: string) => void;
-  onRemove: (code: string) => void;
-  onClose: () => void;
-  /** 최근 본 같은 단위 지역 중 아직 담지 않은 곳 — 한 번 눌러 비교에 더한다 */
+  level: FoodLevel; codes: string[]; svc: string | null; scls: string | null; filterName: string;
+  onAdd: (code: string) => void; onRemove: (code: string) => void; onClose: () => void;
   suggestions?: { code: string; name: string; type: string | null }[];
-  /** 비교 중인 지역을 지도에서 보여 준다(경계·위치가 확인된 지역에만 단추를 낸다). 없으면 단추를 내지 않는다 */
   onShowOnMap?: (p: { level: FoodLevel; code: string; lon: number; lat: number }) => void;
+  onReviewCosts?: (units: FoodCompareResponse["units"]) => void;
 }
 
-/** 전체 화면 지역 비교 — 같은 단위 2~4곳. 기존 /api/food/compare 값을 표와 차트로 보여주고, 추이는 단위별 overview 를 쓴다. */
-export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, onRemove, onClose, suggestions = [], onShowOnMap }: Props) {
+/** 결론 → 근거 → 비용 확인. 핵심 표·추이·전체 표는 별도 화면으로 보여 반복을 줄인다. */
+export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, onRemove, onClose, suggestions = [], onShowOnMap, onReviewCosts }: Props) {
   const requestClose = useOverlayBack(onClose);
+  const surface = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<keyof typeof views>("summary");
+  const [category, setCategory] = useState("전체");
   const q = useFoodCompare(level, codes, svc, scls);
   const state = viewState({ isPending: q.isPending, isError: q.isError, isPlaceholderData: q.isPlaceholderData, hasData: q.data !== undefined });
   const list = useFoodBubbles(level, "stores", svc, scls);
-  const options = [...(list.data?.bubbles ?? [])].filter((b) => !codes.includes(b.code)).sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  const stale = state === "refetching";
-  const trendable = level !== "gu";
-  const trends = useQueries({
-    queries: codes.map((c) => ({
-      queryKey: ["unit-overview", level, c, svc, scls],
-      queryFn: () => apiClient.getUnitOverview(level as "dong" | "trdar", c, svc, scls),
-      enabled: trendable,
-      staleTime: 10 * 60 * 1000,
-    })),
-  });
+  const options = (list.data?.bubbles ?? []).filter(b => !codes.includes(b.code)).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const trends = useQueries({ queries: codes.map(code => ({
+    queryKey: ["unit-overview", level, code, svc, scls],
+    queryFn: () => apiClient.getUnitOverview(level as "dong" | "trdar", code, svc, scls),
+    enabled: level !== "gu" && view === "trends", staleTime: 600000,
+  })) });
   const data = q.data;
-  const highlights = data && data.units.length >= 2 ? compareHighlights({ units: data.units, rows: data.rows }) : [];
-  const canAddMore = codes.length < MAX_COMPARE;
+  const conclusion = data ? compareConclusion(data) : null;
   const color = (code: string) => SERIES_COLORS[codes.indexOf(code) % SERIES_COLORS.length];
-  const quarters = trendable ? [...new Set(trends.flatMap((t) => t.data?.trend.map((r) => r.quarter) ?? []))].sort() : [];
-  const trendSeries = (pick: (r: UnitOverviewResponse["trend"][number]) => number | null) =>
-    codes.map((c, i) => {
-      const t = trends[i]?.data;
-      return { name: t?.name ?? c, color: color(c), values: quarters.map((qt) => { const r = t?.trend.find((x) => x.quarter === qt); return r ? pick(r) : null; }) };
-    });
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="지역 비교" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#F3F4F6", overflowY: "auto", fontSize: FS.body }}>
-      <div style={{ position: "sticky", top: 0, background: "white", borderBottom: "1px solid #E5E7EB", padding: "10px 20px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", zIndex: 1 }}>
-        <ModalNav onBack={requestClose} />
-        <strong style={{ fontSize: FS.screenTitle }}>{UNIT_NOUN[level]} 비교</strong>
-        <span style={{ color: "#6B7280", fontSize: FS.warn }}>선택 업종: {filterName}</span>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto", alignItems: "center" }}>
-          {codes.map((c, i) => (
-            <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, border: `1px solid ${color(c)}`, color: color(c), fontWeight: 600 }}>
-              {data?.units.find((u) => u.code === c)?.name ?? trends[i]?.data?.name ?? list.data?.bubbles.find((b) => b.code === c)?.name ?? c}
-              {onShowOnMap && (() => {
-                const b = list.data?.bubbles.find((x) => x.code === c);
-                return b ? (
-                  <button type="button" onClick={() => onShowOnMap({ level, code: c, lon: b.lon, lat: b.lat })} aria-label={`${b.name} 지도에서 보기`} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: FS.warn, textDecoration: "underline", padding: "6px 4px", minHeight: 32 }}>지도에서 보기</button>
-                ) : null;
-              })()}
-              <button type="button" onClick={() => onRemove(c)} aria-label="비교에서 삭제" style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", fontSize: 18, padding: "4px 8px", minHeight: 32 }}>×</button>
-            </span>
-          ))}
-          <select value="" disabled={codes.length >= MAX_COMPARE || options.length === 0} onChange={(e) => e.target.value && onAdd(e.target.value)} aria-label={`${UNIT_NOUN[level]} 추가`} style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #D1D5DB" }}>
-            <option value="">{codes.length >= MAX_COMPARE ? `최대 ${MAX_COMPARE}곳` : `+ ${UNIT_NOUN[level]} 추가`}</option>
-            {options.map((b) => <option key={b.code} value={b.code}>{b.name}{b.type ? ` (${b.type})` : ""}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1760, margin: "0 auto", padding: "16px 24px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
-        {canAddMore && suggestions.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: FS.warn }}>
-            <span style={{ color: "#4B5563" }}>최근 본 {UNIT_NOUN[level]}:</span>
-            {suggestions.slice(0, MAX_COMPARE - codes.length).map((r) => (
-              <button key={r.code} type="button" onClick={() => onAdd(r.code)} style={{ padding: "3px 10px", border: "1px solid #93C5FD", borderRadius: 999, background: "white", color: "#1D4ED8", cursor: "pointer", fontSize: FS.warn }}>
-                + {r.name}{r.type ? ` (${r.type})` : ""}
-              </button>
-            ))}
-          </div>
-        )}
-        {codes.length < 2 && <Notice tone="muted">한 곳만 담겨 있습니다. 위 '+ 추가'로 고르거나 지도로 돌아가 버블을 눌러 담으세요(2~{MAX_COMPARE}곳).</Notice>}
-        {state === "loading" && <Notice tone="muted">비교 자료를 불러오는 중...</Notice>}
-        {state === "error" && <Notice tone="error">비교 조회 실패: {q.error?.message} <button type="button" onClick={() => void q.refetch()}>다시 시도</button></Notice>}
-        {stale && <Notice tone="warn">새 조건으로 다시 계산하는 중입니다. 아래는 이전 조건의 결과입니다.</Notice>}
-        {data && (
-          <div style={{ opacity: stale ? 0.45 : 1, pointerEvents: stale ? "none" : "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* 맨 위: 지역별 핵심 지표(왼쪽) + 눈여겨볼 차이 3가지(오른쪽). 좁은 화면은 위아래로 쌓인다. */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 14, alignItems: "start" }}>
-              <Card title="지역별 핵심 지표" sub={`${filterName} · 같은 ${UNIT_NOUN[level]} 단위 · 지표마다 기준 기간이 다릅니다`}>
-                <KeyTable data={data} color={color} />
-              </Card>
-              {highlights.length > 0 ? (
-                <section aria-label="눈여겨볼 차이" style={cardStyle}>
-                  <strong style={{ fontSize: FS.cardTitle }}>눈여겨볼 차이 {highlights.length}가지</strong>
-                  <div style={{ fontSize: FS.warn, color: "#4B5563", margin: "2px 0 8px" }}>
-                    담은 {data.units.length}곳 사이에서 값이 가장 크게 벌어진 지표예요. 어느 지역이 낫다는 뜻은 아니에요.
-                  </div>
-                  <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-                    {highlights.map((h) => (
-                      <li key={h.key} style={{ background: "#F9FAFB", borderRadius: 10, padding: "10px 12px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 700, fontSize: FS.body }}>{h.label}</span>
-                          <span style={{ fontWeight: 800, fontSize: FS.cardTitle, color: "#B45309" }}>{h.gap}</span>
-                        </div>
-                        <div style={{ display: "flex", gap: "2px 12px", flexWrap: "wrap", marginTop: 4, fontSize: FS.body }}>
-                          {h.values.map((v) => {
-                            const u = data.units.find((x) => x.name === v.name);
-                            return <span key={v.name}><span aria-hidden="true" style={{ color: u ? color(u.code) : "#6B7280" }}>● </span>{v.name} <strong>{v.text}</strong></span>;
-                          })}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <details style={{ marginTop: 8, fontSize: FS.warn, color: "#4B5563" }}>
-                    <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 32, display: "flex", alignItems: "center" }}>계산 기준 보기</summary>
-                    <ul style={{ margin: "4px 0 0", paddingLeft: 18, lineHeight: 1.6, color: "#6B7280", fontSize: FS.caption }}>
-                      <li>비율 지표는 3%p, 금액·인원은 25% 이상 차이 나는 것만 뽑아요.</li>
-                      {highlights.map((h) => (
-                        <li key={h.key}>{h.label}: 차이 = {h.basis} · {h.scope ? `${h.scope} · ` : ""}{h.asOf ?? "기준 시점 없음"}</li>
-                      ))}
-                    </ul>
-                  </details>
-                </section>
-              ) : (
-                <section aria-label="눈여겨볼 차이" style={cardStyle}>
-                  <strong style={{ fontSize: FS.cardTitle }}>눈여겨볼 차이</strong>
-                  <div style={{ fontSize: FS.warn, color: "#4B5563", marginTop: 4 }}>
-                    {data.units.length < 2 ? "2곳 이상 담으면 값이 크게 벌어진 지표를 보여 드려요." : "뚜렷하게 벌어진 지표가 없습니다(비율은 3%p, 금액·인원은 25% 이상 차이만 뽑아요)."}
-                  </div>
-                </section>
-              )}
-            </div>
-            {data.scope.notice && <Notice tone="warn">{data.scope.notice}</Notice>}
-
-            <h2 style={{ fontSize: FS.cardTitle, margin: "6px 0 -4px" }}>상세 차트 — 같은 업종·같은 단위·표시된 기간끼리</h2>
-            {trendable && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 14 }}>
-                <Card title="점포당 월평균 추정매출 추이" sub={`서울시 추정 · ${data.scope.sales_label} 기준`}>
-                  <LineChart labels={quarters.map(shortQuarter)} series={trendSeries((r) => r.per_store_month)} fmt={formatKrw} height={180} />
-                </Card>
-                <Card title="점포 수 추이" sub={`서울시 상권분석서비스 · ${data.scope.sales_label} 기준`}>
-                  <LineChart labels={quarters.map(shortQuarter)} series={trendSeries((r) => r.stores)} fmt={(v) => `${Math.round(v).toLocaleString()}곳`} height={180} />
-                </Card>
-              </div>
-            )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 14 }}>
-              {/* 상세 차트 묶음은 '매출'만 펼쳐 두고 나머지는 접어 둔다(길이를 줄이고, 필요한 묶음만 펼쳐 보게) */}
-              {CHART_GROUPS.map((g, gi) => (
-                <FoldCard key={g.title} title={g.title} open={gi === 0}>
-                  {g.keys.map((k) => {
-                    const row = data.rows.find((r) => r.key === k);
-                    if (!row) return null;
-                    return (
-                      <div key={k} style={{ marginBottom: 12 }}>
-                        <div style={{ fontWeight: 600, fontSize: FS.body }}>{row.label} <InfoTip label={`${row.label} 출처 보기`}><b>출처</b> {row.source}</InfoTip></div>
-                        <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 4 }}>{row.scope ? `${row.scope} · ` : ""}{row.as_of ?? "기준 시점 없음"}</div>
-                        <BarList items={data.units.map((u, i) => ({ label: u.name, value: row.cells[i]?.value ?? null, color: color(u.code), note: row.cells[i]?.note }))} fmt={(v) => formatMetric(row.kind, v)} />
-                      </div>
-                    );
-                  })}
-                </FoldCard>
-              ))}
-            </div>
-            {/* 위 핵심 지표·상세 차트의 값을 모두 한 표로 모은 것 — 같은 값을 되풀이해 길어지므로 접어 둔다 */}
-            <details style={cardStyle}>
-              <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: FS.cardTitle, minHeight: 36, display: "flex", alignItems: "center" }}>전체 지표 표 보기</summary>
-              <div style={{ marginTop: 8 }}><CompareTable data={data} onRemove={onRemove} /></div>
-            </details>
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
-  );
+  const quarters = [...new Set(trends.flatMap(t => t.data?.trend.map(r => r.quarter) ?? []))].sort();
+  const series = (pick: (r: UnitOverviewResponse["trend"][number]) => number | null) => codes.map((code, i) => ({
+    name: data?.units.find(u => u.code === code)?.name ?? code, color: color(code),
+    values: quarters.map(qt => { const r = trends[i]?.data?.trend.find(t => t.quarter === qt); return r ? pick(r) : null; }),
+  }));
+  const style = { "--cmp-body": `${FS.input}px`, "--cmp-small": `${FS.ui}px`, "--cmp-title": `${FS.screenTitle}px`, "--cmp-section": `${FS.cardTitle}px`, "--cmp-value": `${FS.metric}px` } as CSSProperties;
+  const groups = data ? [...new Set(data.rows.map(r => r.group))] : [];
+  const rows = data ? view === "summary" ? KEY_ROWS.flatMap(key => data.rows.filter(r => r.key === key)) : data.rows.filter(r => category === "전체" || r.group === category) : [];
+  return createPortal(<div role="dialog" aria-modal="true" aria-label="지역 비교" className="compare-workspace" style={style} ref={surface}>
+    <header className="cmp-toolbar">
+      <ModalNav onBack={requestClose} /><strong>{NOUN[level]} 비교</strong><span className="cmp-muted">{filterName}</span>
+      <div className="cmp-regions">{codes.map((code, i) => {
+        const unit = data?.units.find(u => u.code === code);
+        const b = list.data?.bubbles.find(x => x.code === code);
+        const name = unit?.name ?? trends[i]?.data?.name ?? b?.name ?? code;
+        return <div key={code} className="cmp-region"><span className="cmp-dot" style={{ background: color(code) }} /><b>{name}</b>
+          {b && onShowOnMap && <button onClick={() => onShowOnMap({ level, code, lon: b.lon, lat: b.lat })} aria-label={`${name} 지도에서 보기`}>지도</button>}
+          <button onClick={() => onRemove(code)} aria-label={`${name} 비교에서 삭제`}>×</button></div>;
+      })}<select aria-label={`${NOUN[level]} 추가`} value="" disabled={codes.length >= 4 || options.length === 0} onChange={e => e.target.value && onAdd(e.target.value)}><option value="">{codes.length >= 4 ? "최대 4곳" : "+ 지역 추가"}</option>{options.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}</select></div>
+    </header>
+    <main className="cmp-content">
+      {state === "loading" && <Notice tone="muted">비교 자료를 불러오는 중…</Notice>}
+      {state === "error" && <Notice tone="error">자료를 불러오지 못했어요. <button onClick={() => void q.refetch()}>다시 시도</button></Notice>}
+      {state === "refetching" && <Notice tone="warn">새 조건으로 계산 중 · 아래는 이전 결과입니다.</Notice>}
+      {data && conclusion && <div aria-busy={state === "refetching"} style={{ opacity: state === "refetching" ? 0.45 : 1, pointerEvents: state === "refetching" ? "none" : undefined }}>
+        <section className={view === "summary" ? "cmp-verdict" : "cmp-verdict cmp-verdict-compact"} aria-label="비교 결론"><span className="cmp-eyebrow">비교 결론 · {filterName}</span><h1>{conclusion.title}</h1><p>{conclusion.reading}</p>
+          <div className="cmp-evidence">{conclusion.evidence.slice(0, 2).map((e, index) => {
+            const row = data.rows.find(r => r.label === e.label);
+            return <div key={e.label}><b className="data-heading"><AppIcon name={index === 0 ? "trend" : "store"} />{e.label}</b>{row ? <MetricBars rate={row.kind === "rate"} items={data.units.map((u, i) => ({ label: `${u.name}${row.cells[i]?.partial ? " · 일부 집계" : row.cells[i]?.caution ? " · 표본 주의" : ""}`, value: row.cells[i]?.value ?? null, color: color(u.code) }))} format={n => formatMetric(row.kind, n)} /> : <span>{e.text}</span>}<small>{e.period}</small></div>;
+          })}</div>
+          <div className="cmp-next"><div><b className="data-heading"><AppIcon name="calculator" />다음은 실제 점포 비용을 확인하세요</b><p>{conclusion.next}</p></div>{onReviewCosts && <button className="cmp-primary" onClick={() => onReviewCosts(data.units)}>후보별 비용 점검 →</button>}</div>
+        </section>
+        <div className="cmp-tabs" role="tablist" aria-label="비교 자료 보기">{Object.entries(views).map(([key, label]) => <button key={key} role="tab" id={`cmp-tab-${key}`} aria-controls="cmp-view" aria-selected={view === key} onClick={() => { setView(key as keyof typeof views); surface.current?.scrollTo({ top: 0 }); }}>{label}</button>)}</div>
+        <section id="cmp-view" role="tabpanel" aria-labelledby={`cmp-tab-${view}`}>
+          {view !== "trends" ? <div className="cmp-sheet"><div className="cmp-sheet-heading"><div><h2>{view === "summary" ? "선택을 가르는 핵심 숫자" : "전체 지표 비교"}</h2><span className="cmp-muted">{filterName} · 같은 {NOUN[level]} 단위</span></div>{view === "all" && <label>지표 분류<select value={category} onChange={e => setCategory(e.target.value)}><option>전체</option>{groups.map(g => <option key={g}>{g}</option>)}</select></label>}</div>
+            <ComparisonTable data={data} rows={rows} color={color} />
+            {data.scope.notice && <p className="cmp-footnote">점포 수는 상가정보, 매출·개폐업은 서울시 외식 업종 집계입니다. <InfoTip label="집계 업종 차이">{data.scope.notice}</InfoTip></p>}
+          </div> : <div className="cmp-trend-grid">
+            {level === "gu" ? <p>자치구의 추이 자료는 제공되지 않습니다.</p> : trends.some(t => t.isPending) ? <p>추이 자료를 불러오는 중…</p> : <>
+              <section className="cmp-sheet cmp-trend"><h2>점포당 월평균 추정매출</h2><p className="cmp-muted">서울시 추정 · {data.scope.sales_label}</p>{trends.some(t => t.isError) && <p role="alert">일부 지역의 추이를 불러오지 못했어요.</p>}<LineChart labels={quarters.map(shortQuarter)} series={series(r => r.per_store_month)} fmt={formatKrw} height={160} /></section>
+              <section className="cmp-sheet cmp-trend"><h2>등록 점포 수 변화</h2><p className="cmp-muted">서울시 점포 통계 · {data.scope.sales_label}</p><LineChart labels={quarters.map(shortQuarter)} series={series(r => r.stores)} fmt={n => `${Math.round(n).toLocaleString()}곳`} height={160} /></section>
+            </>}
+          </div>}
+        </section>
+        {codes.length < 4 && suggestions.length > 0 && <div className="cmp-suggestions"><span>최근 본 지역 추가</span>{suggestions.slice(0, 4 - codes.length).map(r => <button key={r.code} onClick={() => onAdd(r.code)}>+ {r.name}</button>)}</div>}
+      </div>}
+    </main>
+  </div>, document.body);
 }
 
-const cardStyle: CSSProperties = { background: "white", borderRadius: 12, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" };
-
-/** 맨 위 표 — 열은 담은 지역(색 점), 행은 핵심 지표. 값 아래에 사유(표본 작음·원천에 없음)를 그대로 보인다. */
-function KeyTable({ data, color }: { data: NonNullable<ReturnType<typeof useFoodCompare>["data"]>; color: (code: string) => string }) {
-  const narrow = useNarrow();
-  const rows = KEY_ROWS.map((k) => data.rows.find((r) => r.key === k)).filter((r): r is NonNullable<typeof r> => r !== undefined);
-  // 좁은 화면에서 3곳 이상이면 열이 잘려 옆으로 밀어야 하므로, 지표마다 지역 값을 2열 목록으로 풀어 보인다(값·단위·기간은 그대로)
-  if (narrow && data.units.length >= 3) {
-    return (
-      <div role="list" aria-label="지역별 핵심 지표">
-        {rows.map((r) => (
-          <div key={r.key} role="listitem" style={{ borderTop: "1px solid #F3F4F6", padding: "8px 0" }}>
-            <div style={{ fontSize: FS.warn, fontWeight: 600 }}>{r.label} <span style={{ fontWeight: 400, color: "#6B7280", fontSize: FS.caption }}>· {r.as_of ? compactPeriod(r.as_of) : "기준 시점 없음"}</span></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 10px", marginTop: 3 }}>
-              {data.units.map((u, i) => {
-                const c = r.cells[i];
-                return (
-                  <div key={u.code} style={{ fontSize: FS.warn, minWidth: 0 }}>
-                    <span aria-hidden="true" style={{ color: color(u.code) }}>● </span>{u.name}
-                    <div style={{ fontWeight: 800, fontSize: FS.cardTitle, whiteSpace: "nowrap", color: c?.value == null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c?.value ?? null)}</div>
-                    {c?.note && <div style={{ fontSize: FS.caption, color: c.partial || c.caution ? "#B45309" : "#6B7280" }}>{c.note}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: FS.body }}>
-        <thead>
-          <tr>
-            <th scope="col" style={{ textAlign: "left", padding: "4px 8px 6px 0", fontWeight: 600, color: "#4B5563", fontSize: FS.warn }}>지표 (기준 기간)</th>
-            {data.units.map((u) => (
-              <th key={u.code} scope="col" style={{ textAlign: "right", padding: "4px 0 6px 10px", whiteSpace: "nowrap" }}>
-                <span aria-hidden="true" style={{ color: color(u.code) }}>● </span>{u.name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.key} style={{ borderTop: "1px solid #F3F4F6" }}>
-              <th scope="row" style={{ textAlign: "left", padding: narrow ? "5px 6px 5px 0" : "7px 8px 7px 0", fontWeight: 500, verticalAlign: "top", fontSize: narrow ? FS.caption : FS.warn }}>
-                {r.label}
-                <div style={{ fontSize: FS.caption, color: "#6B7280", fontWeight: 400, whiteSpace: narrow ? "nowrap" : undefined }}>{r.as_of ? (narrow ? compactPeriod(r.as_of) : r.as_of) : "기준 시점 없음"}</div>
-              </th>
-              {data.units.map((u, i) => {
-                const c = r.cells[i];
-                return (
-                  <td key={u.code} style={{ textAlign: "right", padding: narrow ? "5px 0 5px 6px" : "7px 0 7px 10px", verticalAlign: "top" }}>
-                    <div style={{ fontWeight: 800, fontSize: narrow ? FS.ui : FS.body, whiteSpace: "nowrap", color: c?.value == null ? "#9CA3AF" : "#111827" }}>{formatMetric(r.kind, c?.value ?? null)}</div>
-                    {c?.note && <div style={{ fontSize: FS.caption, color: c.partial || c.caution ? "#B45309" : "#6B7280" }}>{c.note}</div>}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function FoldCard({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
-  return (
-    <details open={open} style={cardStyle}>
-      <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: FS.cardTitle, minHeight: 36, display: "flex", alignItems: "center" }}>{title}</summary>
-      <div style={{ marginTop: 8 }}>{children}</div>
-    </details>
-  );
-}
-
-function Card({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
-  return (
-    <section style={cardStyle}>
-      <strong style={{ fontSize: FS.cardTitle }}>{title}</strong>
-      {sub && <div style={{ fontSize: FS.warn, color: "#1D4ED8", marginBottom: 6 }}>{sub}</div>}
-      <div style={{ marginTop: 8 }}>{children}</div>
-    </section>
-  );
+function ComparisonTable({ data, rows, color }: { data: FoodCompareResponse; rows: FoodCompareResponse["rows"]; color: (code: string) => string }) {
+  const hasDifference = data.units.length === 2;
+  const diff = (r: FoodCompareResponse["rows"][number]) => {
+    const [a, b] = r.cells;
+    if (a?.value == null || b?.value == null || a.partial || b.partial || a.caution || b.caution) return "—";
+    const n = a.value - b.value;
+    if (Math.abs(n) < 0.00001) return "같음";
+    return r.kind === "rate" || r.kind === "growth" ? `${n > 0 ? "+" : "−"}${Math.abs(n).toFixed(1)}%p` : `${n > 0 ? "+" : "−"}${formatMetric(r.kind, Math.abs(n))}`;
+  };
+  return <div className="cmp-table-wrap"><table className="cmp-table"><colgroup><col style={{ width: hasDifference ? "34%" : "30%" }} />{data.units.map(u => <col key={u.code} />)}{hasDifference && <col style={{ width: "17%" }} />}</colgroup><thead><tr><th scope="col">비교 항목</th>{data.units.map(u => <th key={u.code} scope="col"><span className="cmp-dot" style={{ background: color(u.code) }} />{u.name}</th>)}{hasDifference && <th scope="col">차이 <InfoTip label="차이 계산 기준">{data.units[0].name} − {data.units[1].name}. 비율은 %p 차이입니다.</InfoTip></th>}</tr></thead><tbody>
+    {rows.map(r => <tr key={r.key}><th scope="row"><div>{r.key === "stores_sbiz" ? "등록 점포 수" : r.label} <InfoTip label={`${r.label} 기준`}><div style={{ fontSize: FS.ui, lineHeight: 1.6 }}><b>{r.source}</b><p>{r.scope} · {r.as_of ?? "기간 미제공"}</p>{r.basis && <p>{r.basis}</p>}</div></InfoTip></div><span className="cmp-period">{r.as_of ?? "기간 미제공"}</span></th>{data.units.map((u, i) => { const c = r.cells[i];return <td key={u.code}><span className={c?.value == null ? "cmp-missing" : "cmp-number"}>{formatMetric(r.kind, c?.value ?? null)}</span>{c?.note && <InfoTip label={`${u.name} ${r.label} 참고`}>{c.note}</InfoTip>}{(c?.partial || c?.caution) && <span className="cmp-cell-warning">{c.partial ? "일부 집계" : "표본 주의"}</span>}</td>;})}{hasDifference && <td className="cmp-difference">{diff(r)}</td>}</tr>)}
+  </tbody></table></div>;
 }

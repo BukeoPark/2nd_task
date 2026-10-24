@@ -105,7 +105,7 @@ def test_no_candidates_is_not_an_error(google_env):
 def test_rate_limit(google_env, monkeypatch):
     monkeypatch.setattr(settings, "google_textsearch_per_minute", 1)
     client, calls = _client(lambda r: httpx.Response(200, json={}))
-    assert google_places.link_store("S4", client=client)["status"] == "no_candidate"
+    assert google_places.link_store("S4", client=client)["status"] == "rate_limited"
     assert google_places.link_store("S5", client=client)["status"] == "rate_limited"
     assert len(calls) == 1
 
@@ -140,7 +140,7 @@ def test_ui_kit_daily_and_monthly_free_caps(google_env, monkeypatch):
 def test_text_search_monthly_free_cap(google_env, monkeypatch):
     monkeypatch.setattr(settings, "google_textsearch_monthly_cap", 1)
     client, calls = _client(lambda r: httpx.Response(200, json={}))
-    assert google_places.link_store("S8", client=client)["status"] == "no_candidate"
+    assert google_places.link_store("S8", client=client)["status"] == "rate_limited"
     assert google_places.link_store("S9", client=client)["status"] == "rate_limited"
     assert len(calls) == 1
 
@@ -148,3 +148,93 @@ def test_text_search_monthly_free_cap(google_env, monkeypatch):
 def test_view_endpoint(client):
     assert client.post("/api/stores/NOPE0000/google-place/view").status_code == 404
     assert set(client.get("/api/google-usage").json()) == {"text_search", "ui_kit"}
+
+
+def test_short_name_variant_requires_matching_road_address():
+    store = {**STORE, "bizesNm": "본죽", "brchNm": ""}
+    addr = STORE["rdnmAdr"]
+    assert google_places.evaluate(store, [_place("P1", "본죽&비빔밥 당산점", addr)])[0] == "matched"
+    # 좌표만 가깝거나 상호 중간에 두 글자가 있는 다른 가게는 자동 연결하지 않는다.
+    assert google_places.evaluate(store, [_place("P2", "본죽 당산점", "서울특별시 영등포구 양평로 9")])[0] == "needs_confirmation"
+    assert google_places.evaluate(store, [_place("P3", "일본죽집", addr)])[0] == "no_candidate"
+    assert google_places.evaluate(store, [_place("P4", "본죽 당산점", addr, dlat=0.01)])[0] != "matched"
+
+
+def test_short_name_other_branch_is_not_linked():
+    store = {**STORE, "bizesNm": "본죽"}
+    assert google_places.evaluate(store, [_place("P1", "본죽 영등포점", STORE["rdnmAdr"])])[0] == "no_candidate"
+
+
+def test_address_query_then_one_budgeted_fallback(google_env):
+    import json
+    def response(request):
+        body = json.loads(request.content)
+        if STORE["rdnmAdr"] in body["textQuery"]:
+            return httpx.Response(200, json={})
+        return httpx.Response(200, json={"places": [_place("P1", "행복분식 당산점", STORE["rdnmAdr"])]})
+    client, calls = _client(response)
+    assert google_places.link_store("F1", client=client)["status"] == "matched"
+    assert len(calls) == 2
+    assert STORE["rdnmAdr"] in json.loads(calls[0].content)["textQuery"]
+    assert google_places.usage_summary()["text_search"]["today"] == 2
+
+
+def test_old_failed_cache_is_rechecked_without_deleting_other_links(google_env):
+    from datetime import datetime, timezone
+    google_places._save_cache({"links": {
+        "OLD": {"status": "no_candidate", "place_id": None, "checked_at": datetime.now(timezone.utc).isoformat()},
+        "KEEP": {"status": "matched", "place_id": "existing"},
+    }, "usage": {}})
+    client, calls = _client(lambda r: httpx.Response(200, json={"places": [_place("P1", "행복분식 당산점", STORE["rdnmAdr"])]}))
+    assert google_places.link_store("OLD", client=client)["status"] == "matched"
+    assert len(calls) == 1
+    assert google_places._load_cache()["links"]["KEEP"]["place_id"] == "existing"
+
+
+def test_manual_negative_recheck_has_cooldown_and_uses_quota(google_env):
+    from datetime import datetime, timedelta, timezone
+    entry = {"status": "no_candidate", "place_id": None, "reason": "후보 없음",
+             "matcher_version": google_places.MATCHER_VERSION,
+             "checked_at": datetime.now(timezone.utc).isoformat()}
+    google_places._save_cache({"links": {"RETRY": entry}, "usage": {}})
+    client, calls = _client(lambda r: httpx.Response(200, json={"places": [_place("P1", "행복분식 당산점", STORE["rdnmAdr"])]}))
+    assert google_places.link_store("RETRY", client=client, refresh=True)["cached"]
+    assert len(calls) == 0
+    entry["checked_at"] = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+    google_places._save_cache({"links": {"RETRY": entry}, "usage": {}})
+    assert google_places.link_store("RETRY", client=client, refresh=True)["status"] == "matched"
+    assert len(calls) == 1
+
+
+def test_no_candidate_is_cached_for_one_day(google_env):
+    client, calls = _client(lambda r: httpx.Response(200, json={}))
+    assert google_places.link_store("EMPTY", client=client)["status"] == "no_candidate"
+    assert google_places.link_store("EMPTY", client=client)["cached"]
+    assert len(calls) == 2
+
+
+def test_fallback_api_error_is_not_saved_as_no_candidate(google_env):
+    client, calls = _client(lambda r: httpx.Response(200, json={}) if not len(calls) > 1 else httpx.Response(503))
+    assert google_places.link_store("ERROR", client=client)["status"] == "api_error"
+    assert "ERROR" not in google_places._load_cache()["links"]
+
+
+def test_nearby_uncertain_result_can_be_resolved_by_fallback(google_env):
+    client, calls = _client(lambda r: httpx.Response(200, json={"places": [
+        _place("FAR", "행복분식 당산점", "서울특별시 영등포구 양평로 9", dlat=0.01)
+    ]}) if len(calls) == 1 else httpx.Response(200, json={"places": [
+        _place("RIGHT", "행복분식 당산점", STORE["rdnmAdr"])
+    ]}))
+    result = google_places.link_store("FALLBACK", client=client)
+    assert result["status"] == "matched" and result["place_id"] == "RIGHT"
+    assert len(calls) == 2
+
+
+def test_refresh_query_is_forwarded_by_endpoint(client, monkeypatch):
+    received = []
+    def fake(bid, *, refresh=False):
+        received.append((bid, refresh))
+        return {"status": "no_candidate", "place_id": None, "message": "연결 안 됨", "cached": False}
+    monkeypatch.setattr(google_places, "link_store", fake)
+    assert client.get("/api/stores/RETRY/google-place?refresh=true").status_code == 200
+    assert received == [("RETRY", True)]

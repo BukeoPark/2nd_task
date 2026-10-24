@@ -273,3 +273,40 @@ def test_bbox_stores_carry_seoul_industry_for_point_glyph(client):
     codes = {s["svc"] for s in allv}
     assert {f"CS1000{n:02d}" for n in range(1, 11)} <= codes
     assert None in codes  # 구내식당·뷔페 같은 대응 없는 세부 업종
+
+
+def test_unit_category_mix_uses_all_stores_before_pagination(client):
+    """한 페이지 밖 매장도 구성에 포함하고 이름·비율이 목록과 일치한다."""
+    url = "/api/food/units/trdar/3120148/stores"
+    small = client.get(url, params={"limit": 1}).json()
+    full = client.get(url, params={"limit": 200}).json()
+    assert small["total"] > small["returned"]
+    assert small["category_mix"] == full["category_mix"]
+    assert sum(x["count"] for x in small["category_mix"]) == small["total"]
+    assert sum(x["share_pct"] for x in small["category_mix"]) == pytest.approx(100, abs=0.1)
+    records = list(full["records"])
+    next_offset = full["next_offset"]
+    while next_offset is not None:
+        page = client.get(url, params={"limit": 200, "offset": next_offset}).json()
+        records.extend(page["records"])
+        next_offset = page["next_offset"]
+    for item in full["category_mix"]:
+        assert item["count"] == sum(r["category_detail"] == item["name"] for r in records)
+    filtered = client.get(url, params={"scls": "I21008", "limit": 1}).json()
+    assert len(filtered["category_mix"]) == 1
+    assert filtered["category_mix"][0]["share_pct"] == 100
+
+
+def test_anchor_proximity_counts_are_exact_and_page_independent(client):
+    url = "/api/food/units/trdar/3120148/stores"
+    one = client.get(url, params={"limit": 1, "scls": "I21008"}).json()
+    other = client.get(url, params={"limit": 1, "offset": 1, "scls": "I21008"}).json()
+    assert one["anchor_proximity"] == other["anchor_proximity"]
+    from app.services import food_map
+    stores = food_map._with_unit(food_map._food_stores(None, "I21008"), "trdar")
+    stores = stores.loc[stores["_unit"] == "3120148"]
+    flags = data_store.load_parquet("store_anchor.parquet").set_index("bizesId").loc[stores["bizesId"]]
+    for brand, counts in one["anchor_proximity"].items():
+        assert counts["total"] == one["total"]
+        assert counts["nearby"] == int(flags[f"{brand}_zone"].sum())
+        assert counts["assessed"] == int(flags[f"{brand}_zone"].notna().sum())

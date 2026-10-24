@@ -1,3 +1,4 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Notice, Section } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -8,9 +9,14 @@ import { FS } from "../../lib/typography";
 
 /** 'Google 고객평가' — 사용자가 열 때만 이 매장 1곳을 조회한다. 평점·리뷰는 Google 공식 컴포넌트가 그대로 표시하고,
  * 우리 쪽에서 점수화·순위화·저장하지 않는다. */
-export function GoogleReviewSection({ storeId }: { storeId: string }) {
-  const [open, setOpen] = useState(false);
+export function GoogleReviewSection({ storeId, autoLoad = false }: { storeId: string; autoLoad?: boolean }) {
+  const [open, setOpen] = useState(autoLoad);
   const link = useGooglePlaceLink(storeId, open);
+  const queryClient = useQueryClient();
+  const retry = useMutation({
+    mutationFn: () => apiClient.getGooglePlaceLink(storeId, true),
+    onSuccess: (data) => queryClient.setQueryData(["google-place", storeId], data),
+  });
 
   return (
     <Section
@@ -25,9 +31,10 @@ export function GoogleReviewSection({ storeId }: { storeId: string }) {
       }
     >
       {!open && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>눌렀을 때만 이 매장의 Google 장소를 확인합니다.</div>}
-      {open && link.isLoading && <Notice tone="muted">Google 장소를 확인하는 중...</Notice>}
-      {open && link.isError && <Notice tone="error">조회 실패 — 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.</Notice>}
-      {open && link.data && <LinkResult storeId={storeId} status={link.data.status} message={link.data.message} placeId={link.data.place_id} />}
+      {open && (link.isLoading || retry.isPending) && <Notice tone="muted">Google 장소를 확인하는 중...</Notice>}
+      {open && (link.isError || retry.isError) && <Notice tone="error">Google 연결을 확인하지 못했어요.</Notice>}
+      {open && !retry.isPending && link.data && <LinkResult storeId={storeId} status={link.data.status} message={link.data.message} placeId={link.data.place_id} />}
+      {open && (link.isError || (link.data && ["no_candidate", "needs_confirmation", "api_error"].includes(link.data.status))) && <button type="button" disabled={retry.isPending} onClick={() => retry.mutate()} style={buttonStyle}>다시 확인</button>}
     </Section>
   );
 }

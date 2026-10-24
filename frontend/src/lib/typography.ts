@@ -10,19 +10,19 @@
 //  · caption      출처·기준 기간·단위·부연(가장 작지만 12.5 아래로 내리지 않는다)  · input    입력칸(휴대폰 자동 확대 방지)
 export const FS = {
   /** 화면(패널·작업 화면) 제목 22~24 */
-  screenTitle: 22,
+  screenTitle: 24,
   /** 핵심 숫자 24~28 */
-  metric: 26,
+  metric: 28,
   /** 카드·섹션 제목 16~18 */
-  cardTitle: 17,
+  cardTitle: 18,
   /** 본문 15~16 */
-  body: 15,
+  body: 16,
   /** 메뉴·버튼 14~16 */
-  ui: 14.5,
+  ui: 16,
   /** 주요 경고 13~14 */
-  warn: 13.5,
+  warn: 14,
   /** 보조 설명(출처·기준·부연) 12~13 */
-  caption: 12.5,
+  caption: 13,
   /** 입력칸 */
   input: 16,
 } as const;

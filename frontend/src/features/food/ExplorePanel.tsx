@@ -39,7 +39,7 @@ export function ExplorePanel(p: Props) {
   // 조건은 고른 뒤에는 한 줄 칩으로 접어 결과가 첫 화면에 보이게 한다('변경'을 누르면 네 질문이 다시 펼쳐진다)
   const [choosing, setChoosing] = useState(false);
   return (
-    <Drawer title="조건으로 후보 찾기" subtitle="어떤 곳을 먼저 보고 싶으세요?" onClose={p.onClose}>
+    <Drawer title="조건으로 후보 찾기" onClose={p.onClose}>
       {choosing ? (
         <div role="radiogroup" aria-label="찾는 조건" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
           {PRESETS.map((x) => {

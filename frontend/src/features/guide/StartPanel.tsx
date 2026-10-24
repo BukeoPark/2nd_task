@@ -19,8 +19,8 @@ interface Props {
   /** ③ 관심 지역 확정 → 검색창 */
   onFocusSearch: () => void;
   onOpenInterest: () => void;
-  /** 자영업자: 내 가게 찾기(검색창)·월간 점검·지역 흐름부터 */
-  onOpenMonthly: (storeId: string) => void;
+  /** 자영업자: 내 가게 찾기(검색창)·저장한 가게 열기 */
+  onOpenStore: (storeId: string) => void;
   /** 보고서부터 — 지역을 고르는 화면(조건으로 찾기)으로 간다. 거기서 지역마다 '상권분석 보고서 보기'가 있다 */
   onReportFirst: () => void;
   onClose: () => void;
@@ -34,7 +34,7 @@ export function StartPanel(p: Props) {
 function OwnerStart(p: Props) {
   const steps = START_STEPS.owner;
   return (
-    <Drawer title="우리 가게 장사 점검" subtitle="자영업자 · 5단계로 이번 달 장사를 돌아봐요" onClose={p.onClose}>
+    <Drawer title="우리 가게 장사 점검" onClose={p.onClose}>
       <ol style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
         {steps.map((s, i) => (
           <li key={s} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: FS.body, color: "#374151" }}>
@@ -46,10 +46,10 @@ function OwnerStart(p: Props) {
       <button type="button" onClick={p.onFocusSearch} style={primary}>내 가게 찾기 ›<span style={sub}>가게 이름이나 주소를 검색하면 점검 요약이 열려요</span></button>
       {p.myStores.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: FS.warn, fontWeight: 700, marginBottom: 4 }}>이어서 이번 달 점검하기</div>
+          <div style={{ fontSize: FS.warn, fontWeight: 700, marginBottom: 4 }}>내 가게 이어서 보기</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {p.myStores.slice(0, 3).map((s) => (
-              <button key={s.storeId} type="button" onClick={() => p.onOpenMonthly(s.storeId)} style={secondary}>
+              <button key={s.storeId} type="button" onClick={() => p.onOpenStore(s.storeId)} style={secondary}>
                 {s.name}{s.dong ? <span style={{ color: "#6B7280", fontWeight: 400 }}> · {s.dong}</span> : null} ›
               </button>
             ))}
@@ -66,7 +66,7 @@ function FounderStart(p: Props) {
   const [choosingSvc, setChoosingSvc] = useState(false);
   const [svc, setSvc] = useState("");
   return (
-    <Drawer title="창업할 자리 찾기" subtitle="예비 창업자 · 어디까지 정하셨나요?" onClose={p.onClose}>
+    <Drawer title="창업할 자리 찾기" onClose={p.onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
         <button type="button" onClick={p.onUndecided} style={choice}>
           <strong>① 지역도 업종도 아직 못 정했어요</strong>

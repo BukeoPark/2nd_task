@@ -27,7 +27,9 @@ FIELD_MASK = "places.id,places.displayName,places.formattedAddress,places.locati
 SEARCH_BIAS_RADIUS_M = 300.0
 MATCH_RADIUS_M = 100.0
 CLOSE_RADIUS_M = 30.0
-NO_CANDIDATE_RECHECK_DAYS = 30
+NO_CANDIDATE_RECHECK_DAYS = 1
+MATCHER_VERSION = 2
+MANUAL_RECHECK_SECONDS = 60
 ERROR_COOLDOWN_SEC = 60
 
 MESSAGES = {
@@ -62,9 +64,15 @@ def _save_cache(cache: dict) -> None:
     os.replace(tmp, p)
 
 
-def _fresh(entry: dict) -> bool:
-    if entry["status"] in ("matched", "needs_confirmation"):
+def _fresh(entry: dict, refresh: bool = False) -> bool:
+    if entry["status"] == "matched":
         return True
+    # 기존 실패는 새 매칭 규칙으로 한 번 재검사한다. Place ID가 연결된 결과는 유지한다.
+    if entry.get("matcher_version") != MATCHER_VERSION:
+        return False
+    if refresh:
+        checked = datetime.fromisoformat(entry["checked_at"])
+        return datetime.now(timezone.utc) - checked < timedelta(seconds=MANUAL_RECHECK_SECONDS)
     checked = datetime.fromisoformat(entry["checked_at"])
     return datetime.now(timezone.utc) - checked < timedelta(days=NO_CANDIDATE_RECHECK_DAYS)
 
@@ -134,13 +142,17 @@ def evaluate(store: dict, places: list[dict]) -> tuple[str, str | None, str]:
     for p in places:
         pname = place_matching.norm_name((p.get("displayName") or {}).get("text"))
         rel = place_matching.name_relation(full, core, pname)
+        # 두 글자 상호의 접두어 일치는 도로명주소까지 같은 경우에만 자동 연결한다.
+        short_variant = rel == "none" and len(core) == 2 and pname.startswith(core)
+        if short_variant:
+            rel = "partial"
         if rel == "none" or place_matching.branch_conflict(store.get("brchNm"), pname, core):
             continue
         loc = p.get("location") or {}
         dist = (place_matching.haversine_m(store["lon"], store["lat"], loc["longitude"], loc["latitude"])
                 if "latitude" in loc else None)
         addr = s_road is not None and s_road == place_matching.road_key(p.get("formattedAddress"))
-        if dist is not None and dist <= MATCH_RADIUS_M and (addr or dist <= CLOSE_RADIUS_M):
+        if dist is not None and dist <= MATCH_RADIUS_M and (addr or (not short_variant and dist <= CLOSE_RADIUS_M)):
             confident.append(p)
         else:
             similar.append(p)
@@ -153,12 +165,12 @@ def evaluate(store: dict, places: list[dict]) -> tuple[str, str | None, str]:
     return "no_candidate", None, "상호가 일치하는 후보 없음"
 
 
-def _text_search(client: httpx.Client, store: dict) -> list[dict]:
-    query = " ".join(x for x in (store["bizesNm"], store.get("brchNm")) if x)
+def _text_search(client: httpx.Client, store: dict, *, with_address: bool = True) -> list[dict]:
+    query = " ".join(x for x in (store["bizesNm"], store.get("brchNm"), store.get("rdnmAdr") if with_address else None) if x)
     resp = client.post(
         TEXT_SEARCH_URL,
         headers={"X-Goog-Api-Key": settings.google_maps_server_key, "X-Goog-FieldMask": FIELD_MASK},
-        json={"textQuery": query, "languageCode": "ko", "regionCode": "KR", "pageSize": 5,
+        json={"textQuery": query, "languageCode": "ko", "regionCode": "KR", "pageSize": 10,
               "locationBias": {"circle": {"center": {"latitude": store["lat"], "longitude": store["lon"]},
                                           "radius": SEARCH_BIAS_RADIUS_M}}},
         timeout=10.0,
@@ -173,11 +185,11 @@ def _response(entry: dict, cached: bool) -> dict:
             "message": MESSAGES[entry["status"]], "cached": cached}
 
 
-def link_store(bizes_id: str, client: httpx.Client | None = None) -> dict:
+def link_store(bizes_id: str, client: httpx.Client | None = None, *, refresh: bool = False) -> dict:
     store = store_profile.get_store(bizes_id)  # 없는 매장이면 StoreNotFound
     with _lock:
         entry = _load_cache()["links"].get(bizes_id)
-    if entry and _fresh(entry):
+    if entry and _fresh(entry, refresh):
         return _response(entry, cached=True)
     if not settings.google_maps_server_key:
         return {"status": "not_configured", "place_id": None, "message": MESSAGES["not_configured"], "cached": False}
@@ -190,7 +202,7 @@ def link_store(bizes_id: str, client: httpx.Client | None = None) -> dict:
         with _lock:
             cache = _load_cache()
             entry = cache["links"].get(bizes_id)
-            if entry and _fresh(entry):
+            if entry and _fresh(entry, refresh):
                 return _response(entry, cached=True)
             allowed = _consume_quota(cache)
             _save_cache(cache)
@@ -201,6 +213,20 @@ def link_store(bizes_id: str, client: httpx.Client | None = None) -> dict:
             client = client or httpx.Client()
             try:
                 places = _text_search(client, store)
+                status, place_id, reason = evaluate(store, places)
+                # 주소 표기가 달라 검색이 빗나간 경우에만 상호+위치로 한 번 보완한다.
+                if (status == "no_candidate" or (status == "needs_confirmation" and not place_id
+                        and reason == "상호는 비슷하나 위치·주소·지점 불일치")) and store.get("rdnmAdr"):
+                    with _lock:
+                        cache = _load_cache()
+                        fallback_allowed = _consume_quota(cache)
+                        _save_cache(cache)
+                    if not fallback_allowed:
+                        return {"status": "rate_limited", "place_id": None,
+                                "message": MESSAGES["rate_limited"], "cached": False}
+                    extra = _text_search(client, store, with_address=False)
+                    combined = {p["id"]: p for p in [*places, *extra]}
+                    status, place_id, reason = evaluate(store, list(combined.values()))
             finally:
                 if own:
                     client.close()
@@ -212,8 +238,7 @@ def link_store(bizes_id: str, client: httpx.Client | None = None) -> dict:
             _recent_errors[bizes_id] = time.monotonic()
             return {"status": "api_error", "place_id": None, "message": MESSAGES["api_error"], "cached": False}
 
-        status, place_id, reason = evaluate(store, places)
-        entry = {"status": status, "place_id": place_id, "reason": reason,
+        entry = {"status": status, "place_id": place_id, "reason": reason, "matcher_version": MATCHER_VERSION,
                  "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         with _lock:
             cache = _load_cache()

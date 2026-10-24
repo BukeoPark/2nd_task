@@ -21,10 +21,11 @@ interface TabRailProps {
   /** 같은 화면에 레일이 둘 이상일 때 id 가 겹치지 않게 하는 접두사 */
   idPrefix?: string;
   secondaryIds?: string[];
+  wrapLabels?: boolean;
 }
 
 /** 패널 메뉴 — 넓은 화면은 패널 왼쪽 세로 레일, 좁은 화면은 패널 위 가로 탭. 방향키·Home·End 로 옮긴다. 매장 상세(GroupRail)·종합분석이 함께 쓴다. */
-export function TabRail({ items, active, onChange, orientation, ariaLabel, idPrefix = "", secondaryIds = [] }: TabRailProps) {
+export function TabRail({ items, active, onChange, orientation, ariaLabel, idPrefix = "", secondaryIds = [], wrapLabels = false }: TabRailProps) {
   const vertical = orientation === "vertical";
   const [expanded, setExpanded] = useState(false);
   const visibleItems = items.filter((it) => expanded || !secondaryIds.includes(it.id) || it.id === active);
@@ -60,7 +61,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(it.id)}
             style={{
-              width: vertical ? 46 : undefined, flex: "0 0 auto", minWidth: vertical ? undefined : 64, whiteSpace: "nowrap", padding: vertical ? "6px 0" : "8px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: vertical ? FS.caption : FS.ui, fontWeight: on ? 700 : 500, lineHeight: 1.3,
+              width: vertical ? 46 : undefined, flex: "0 0 auto", minWidth: vertical ? undefined : 64, whiteSpace: wrapLabels ? "normal" : "nowrap", padding: vertical ? "6px 0" : "8px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: vertical ? FS.caption : FS.ui, fontWeight: on ? 700 : 500, lineHeight: 1.3,
               background: on ? it.bg : "transparent", color: on ? it.fg : "#4B5563", boxShadow: on ? `inset 3px 0 0 ${it.fg}` : "none",
               display: "flex", flexDirection: vertical ? "column" : "row", alignItems: "center", justifyContent: "center", gap: vertical ? 2 : 4,
             }}

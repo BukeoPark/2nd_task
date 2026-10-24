@@ -32,13 +32,13 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
 
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: FS.caption, color: "#6b7280", marginBottom: 6 }}>
+      <div style={{ fontSize: FS.ui, color: "#6b7280", marginBottom: 12 }}>
         이 {UNIT_NOUN[level]} 안 매장 ({filterName})
         {q.data && <strong style={{ color: "#374151" }}> — 총 {total.toLocaleString()}곳 중 {records.length.toLocaleString()}곳 표시</strong>}
       </div>
-      <label style={{ fontSize: FS.caption, color: "#6B7280", display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
+      <label style={{ fontSize: FS.ui, color: "#6B7280", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         정렬
-        <select value={sort} onChange={(e) => setSort(e.target.value as UnitStoreSort)} style={{ fontSize: FS.caption, padding: "2px 4px" }}>
+        <select value={sort} onChange={(e) => setSort(e.target.value as UnitStoreSort)} style={{ fontSize: FS.ui, minHeight: 38, padding: "6px 10px", border: "1px solid #E5E7EB", borderRadius: 8, background: "white" }}>
           {(Object.keys(SORT_LABEL) as UnitStoreSort[]).map((s) => (
             <option key={s} value={s}>
               {SORT_LABEL[s]}
@@ -58,7 +58,7 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
       )}
       {q.data && total === 0 && <Notice tone="muted">조건에 맞는 매장이 0곳입니다(조회는 정상).</Notice>}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 300, overflowY: "auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {records.map((s) => (
           <button
             key={s.store_id}
@@ -68,9 +68,9 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
             onMouseLeave={() => onHover?.(null)}
             onFocus={() => onHover?.(s.store_id)}
             onBlur={() => onHover?.(null)}
-            style={{ textAlign: "left", border: "1px solid #E5E7EB", borderRadius: 6, padding: "6px 8px", background: "white", cursor: "pointer" }}
+            style={{ textAlign: "left", border: "1px solid #E5E7EB", borderRadius: 10, padding: "12px 14px", minHeight: 64, lineHeight: 1.6, color: "#111827", background: "white", cursor: "pointer" }}
           >
-            <div style={{ fontWeight: 600, fontSize: FS.warn }}>
+            <div style={{ fontWeight: 700, fontSize: FS.body }}>
               {s.name} {s.branch && <span style={{ fontWeight: 400, color: "#6B7280" }}>{s.branch}</span>}
             </div>
             <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
@@ -83,7 +83,7 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
             type="button"
             disabled={q.isFetchingNextPage}
             onClick={() => void q.fetchNextPage()}
-            style={{ border: "1px dashed #93C5FD", borderRadius: 6, padding: "8px", background: "#EFF6FF", color: "#1D4ED8", cursor: q.isFetchingNextPage ? "default" : "pointer", fontWeight: 600 }}
+            style={{ border: "1px dashed #93C5FD", borderRadius: 10, padding: "10px 14px", minHeight: 40, fontSize: FS.ui, background: "#EFF6FF", color: "#1D4ED8", cursor: q.isFetchingNextPage ? "default" : "pointer", fontWeight: 600 }}
           >
             {q.isFetchingNextPage ? "불러오는 중..." : `더 보기 (남은 ${remaining.toLocaleString()}곳 중 ${Math.min(UNIT_STORE_PAGE, remaining)}곳 더)`}
           </button>
