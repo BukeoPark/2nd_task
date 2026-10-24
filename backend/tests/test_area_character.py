@@ -358,3 +358,40 @@ def test_floating_peer_counts_match_the_nonmissing_rank_population(all_results):
         table = ac._refs(level)["table"]
         assert floating["lunch_peer_count"] == int(table["lunch"].notna().sum())
         assert floating["late_peer_count"] == int(table["late"].notna().sum())
+
+
+@pytest.mark.parametrize("level,code,key", [("dong", "11470510", "adongCd"), ("trdar", "3110592", "trdar_cd")])
+def test_facility_breakdown_uses_same_boundary_source(level, code, key):
+    row = data_store.load_parquet(f"{level}_hinterland.parquet").set_index(key).loc[code]
+    result = ac.facility_breakdown(level, code)
+    assert len(result) == len(ac.FACILITY_LABELS)
+    for item in result:
+        original = row[f"fac_{item['key']}"]
+        assert item["count"] == (None if pd.isna(original) else original)
+    assert ac.facility_breakdown(level, "missing") == []
+
+
+def test_supplementary_facilities_excludes_unconfirmed_and_closed_medical(monkeypatch):
+    fac = pd.DataFrame([
+        {"facility_id": "a", "facility_type": "department_store", "analysis_eligible": True, "in_scope": True, "x_5179": 1, "y_5179": 1},
+        {"facility_id": "b", "facility_type": "department_store", "analysis_eligible": False, "in_scope": True, "x_5179": 1, "y_5179": 1},
+        {"facility_id": "c", "facility_type": "shopping_mall", "analysis_eligible": True, "in_scope": True, "x_5179": 9, "y_5179": 9},
+    ])
+    base = {"license_code": "010102", "status_norm": "active", "uptae": "의원", "lon": 1., "lat": 1., "road_key": "address", "jibun_key": "address"}
+    lic = pd.DataFrame([{**base, "name_norm": "의원"}, {**base, "name_norm": "의원"}, {**base, "name_norm": "폐업", "status_norm": "closed"}, {**base, "name_norm": "종합", "license_code": "010101", "uptae": "종합병원"}, {**base, "name_norm": "밖", "lon": 9.}])
+    with monkeypatch.context() as m:
+        m.setattr(ac, "_shapes", lambda level: {"x": shapely.box(0, 0, 2, 2)})
+        m.setattr(ac, "_to_m", lambda x, y: (x, y))
+        m.setattr(ac.data_store, "load_parquet", lambda name: fac if name == "facilities.parquet" else lic)
+        ac.supplementary_facilities.cache_clear()
+        result = {r["key"]: r["count"] for r in ac.supplementary_facilities("dong", "x")}
+        assert result == {"department_store": 1, "shopping_mall": 0, "hypermarket": None, "outlet": None, "hospital": 1}
+    ac.supplementary_facilities.cache_clear()
+
+
+def test_oliveyoung_matching_excludes_medical_and_deduplicates():
+    base = {"bizesNm": "씨제이올리브영", "brchNm": "여의도점", "rdnmAdr": "서울 A", "lnoAdr": "서울 B", "indsSclsNm": "화장품 소매업", "lon": 126.9, "lat": 37.5}
+    stores = pd.DataFrame([base, base, {**base, "bizesNm": "올리브영상의학과", "indsSclsNm": "기타 의원"}, {**base, "rdnmAdr": "서울 C", "brchNm": "다른점"}])
+    result = ac.oliveyoung_stores(stores)
+    assert len(result) == 2
+    assert not result["bizesNm"].str.contains("의학과").any()

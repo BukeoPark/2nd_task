@@ -47,9 +47,9 @@ test("유형은 요약에 통합되어 별도 메뉴가 없다", () => {
   for (const mode of ["owner", "founder"] as const) for (const level of ["dong", "trdar"] as const) assert.ok(!areaTabsFor(level, mode).includes("type"));
 });
 
-test("특성 메뉴는 없고, 항목 이름은 매출 흐름·경쟁·개폐업·소비 수요·입지·교통이다", async () => {
+test("특성 메뉴는 없고, 항목 이름은 매출 흐름·경쟁·소비 수요·입지·교통이다", async () => {
   const { AREA_TAB_LABEL } = await import("../src/lib/areaTabs.ts");
   const labels = Object.values(AREA_TAB_LABEL);
   assert.ok(!labels.includes("특성") && !labels.includes("성장성") && !labels.includes("안정·경쟁"));
-  assert.deepEqual([AREA_TAB_LABEL.growth, AREA_TAB_LABEL.stability, AREA_TAB_LABEL.demand, AREA_TAB_LABEL.location], ["매출 흐름", "경쟁·개폐업", "소비 수요", "주변 환경"]);
+  assert.deepEqual([AREA_TAB_LABEL.growth, AREA_TAB_LABEL.stability, AREA_TAB_LABEL.demand, AREA_TAB_LABEL.location], ["매출 흐름", "경쟁", "소비 수요", "주변 환경"]);
 });

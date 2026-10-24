@@ -34,7 +34,7 @@ export function StartPanel(p: Props) {
 function OwnerStart(p: Props) {
   const steps = START_STEPS.owner;
   return (
-    <Drawer title="우리 가게 장사 점검" subtitle="자영업자 · 매출·비용과 주변 상권을 살펴봐요" onClose={p.onClose}>
+    <Drawer title="우리 가게 장사 점검" onClose={p.onClose}>
       <ol style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
         {steps.map((s, i) => (
           <li key={s} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: FS.body, color: "#374151" }}>
@@ -66,7 +66,7 @@ function FounderStart(p: Props) {
   const [choosingSvc, setChoosingSvc] = useState(false);
   const [svc, setSvc] = useState("");
   return (
-    <Drawer title="창업할 자리 찾기" subtitle="예비 창업자 · 어디까지 정하셨나요?" onClose={p.onClose}>
+    <Drawer title="창업할 자리 찾기" onClose={p.onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
         <button type="button" onClick={p.onUndecided} style={choice}>
           <strong>① 지역도 업종도 아직 못 정했어요</strong>

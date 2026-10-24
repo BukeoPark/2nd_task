@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
+import { railLineBadge, splitRailLines } from "../../lib/railLines";
+import { AppIcon, MetricBars } from "../../components/DataVisuals";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Caveat } from "../../components/NoteHost";
 import { Block, Caption, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { PK, grid2, grid3 } from "../../lib/panelStyle";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
-import { cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, peopleText, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
-import { busUsageLines } from "../../lib/busText";
-import { railUsageLines } from "../../lib/railText";
+import { cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
 import { useAreaCharacter } from "../food/useFood";
 import { FS } from "../../lib/typography";
 
@@ -110,7 +110,15 @@ export function AreaTransitBlock(p: CharProps) {
   return (
     <WithCharacter {...p}>
       {(d) => (
-        <Block title="교통 접근성" hint="경계 안 + 경계 밖 250m 이내 역 · 경계 안 버스정류장(경계 기준)">
+        <Block title={<span className="data-heading"><AppIcon name="train" />교통 접근성</span>}>
+          <div className="environment-summary environment-transit-summary">
+          <div>
+            <span><AppIcon name="train"/>지하철역</span>
+            {[...d.sections.transit.rail.inside, ...d.sections.transit.rail.within_250m].map(st => <div key={st.name + st.lines} className="environment-station-row"><StationName st={st}/><Caption>{st.where === "inside" ? "지역 안" : `경계에서 ${st.distance_m}m`}</Caption></div>)}
+            {d.sections.transit.rail.count === 0 && <Caption>경계에서 250m 이내 지하철역이 없어요.</Caption>}
+          </div>
+          <div><span><AppIcon name="bus"/>버스정류장</span><strong>{d.sections.transit.bus.count.toLocaleString()}곳</strong><small>지역 안 정류장</small></div>
+          </div>
           <RailPart rail={d.sections.transit.rail} />
           <BusPart bus={d.sections.transit.bus} />
           <Caveat>{d.sections.transit.note}</Caveat>
@@ -122,17 +130,38 @@ export function AreaTransitBlock(p: CharProps) {
 
 /** 입지·교통 — 집객시설 수와 밀도(같은 단위 중앙값과 견줌). */
 export function AreaFacilitiesBlock(p: CharProps) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <WithCharacter {...p}>
       {(d) => {
         const fa = d.sections.anchor.facilities;
+        const schoolKeys = ["elementary", "middle", "high"];
+        const schoolRows = fa.by_type?.filter(t => schoolKeys.includes(t.key)) ?? [];
+        const schoolCount = schoolRows.length === 3 && schoolRows.every(t => t.count !== null)
+          ? schoolRows.reduce((sum, t) => sum + (t.count ?? 0), 0) : null;
+        const supplemented = new Set((fa.supplementary ?? []).map(t => t.key));
+        const facilityTypes = (fa.by_type ?? []).filter(t => !schoolKeys.includes(t.key) && !["subway", "bus_stop"].includes(t.key) && !supplemented.has(t.key));
+        facilityTypes.push(...(fa.supplementary ?? []).map(t => t.key === "hospital" ? { ...t, label: "병원" } : t));
+        if (schoolRows.length > 0) facilityTypes.push({ key: "schools", label: "초·중·고", count: schoolCount });
+        const sortedFacilities = facilityTypes.filter(t => t.count !== null && t.count > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, "ko"));
+        const visibleFacilities = expanded ? sortedFacilities : sortedFacilities.slice(0, 6);
         return (
-          <Block title="집객시설" hint="경계 기준 · 서울시 시설 수">
-            <div style={grid2}>
-              <Mini label="집객시설" value={cellText(fa.total, countText)} sub={cellSub(fa.total)} />
-              <Mini label="집객시설 밀도" value={densityText(fa.per_km2, false)} sub={fa.reference_median === null ? undefined : `같은 단위 중앙값 ${fa.reference_median.toLocaleString("ko-KR")}곳/㎢`} />
+          <Block title={<span className="data-heading"><AppIcon name="building"/>집객시설</span>} >
+            <div className="environment-summary">
+              <div><span><AppIcon name="building"/>전체 집객시설</span><strong>{cellText(fa.total, countText)}</strong>{fa.total.as_of && <small>{fa.total.as_of}</small>}</div>
+              <div><span><AppIcon name="pin"/>집객시설 밀도</span><strong>{densityText(fa.per_km2, false)}</strong><small>경계 면적 1㎢당 시설 수</small></div>
             </div>
-            <Caveat>집객시설은 서울시 시설 수(상권·행정동 단위)이고, 밀도는 경계 면적으로 나눈 값입니다.</Caveat>
+            <SubHead>같은 단위의 시설 밀도 비교</SubHead>
+            <MetricBars items={[
+              { label: "이 지역", value: fa.per_km2, color: "#3159D9" },
+              { label: "비교 지역 중앙값", value: fa.reference_median, color: "#8391A7" },
+            ]} format={(n) => `${n.toLocaleString("ko-KR")}곳/㎢`} />
+            <SubHead>어떤 시설이 있나요?</SubHead>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 16px" }}>{visibleFacilities.map(t => <StatRow key={t.key} label={t.label} value={t.count === null ? "자료 없음" : `${t.count.toLocaleString()}곳`} missing={t.count === null}/>)}</div>
+            {sortedFacilities.length > 6 && <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}><button type="button" onClick={() => setExpanded(v => !v)} aria-expanded={expanded} aria-label={expanded ? "시설 접기" : "시설 더보기"} title={expanded ? "접기" : "더보기"} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 36, padding: 0, border: "none", borderRadius: 8, background: "transparent", color: "#6B7280", cursor: "pointer" }}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={expanded ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"}/></svg></button></div>}
+            {!facilityTypes.some(t => t.count !== null && t.count > 0) && <Caption>종류별로 확인되는 시설이 없어요.</Caption>}
+            <Caveat>백화점·쇼핑몰·대형마트는 공개 이용 가능한 공식 시설 목록을, 병원·의원은 영업 중인 의료 인허가 기록(종합병원 제외)을 경계 안에서 집계합니다. 의원에는 치과의원·한의원이 포함됩니다. 공식 자료가 없거나 0곳인 시설 종류는 목록에서 제외합니다. 시설 종류별 개수는 서로 다른 자료로 보완하여 위 서울시 전체 시설 수와 합계가 다를 수 있습니다.</Caveat>
+            <Caveat>집객시설 자료: {cellSub(fa.total) || "서울시 상권분석서비스"}. 지역 경계 안 시설을 세며, 밀도는 경계 면적으로 나눈 값입니다.</Caveat>
           </Block>
         );
       }}
@@ -147,12 +176,12 @@ export function AreaStoreStatusBlock(p: CharProps) {
       {(d) => {
         const c = d.sections.competition;
         return (
-          <Block title="현재 점포 현황" hint={`선택 업종: ${c.scope.stores_label} · 소상공인 상가정보`}>
+          <Block title="현재 점포 현황">
             <div style={grid2}>
               <Mini label="점포 수(현재)" value={cellText(c.stores, countText)} sub={cellSub(c.stores)} />
               <Mini label="점포 밀도" value={densityText(c.density_per_km2, c.small_area)} sub={densityReferenceText(c.reference_applies, c.reference_density_p75)} />
             </div>
-            {c.scope.notice && <div style={{ marginTop: 8 }}><Notice tone="warn">점포 현황과 개폐업 통계는 집계 업종이 달라요.</Notice><Fold title="집계 업종 차이 보기"><Caption>{c.scope.notice}</Caption></Fold></div>}
+
             <Caveat>{c.note}</Caveat>
           </Block>
         );
@@ -188,10 +217,11 @@ export function AreaFloatingStats({ unitKind, ...p }: CharProps & { unitKind: st
         return (
           <>
             <div style={{ ...grid3, marginTop: 10 }}>
-              <Mini label="점심(11~14시) 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, `비교 ${unitKind} 중`)} />
-              <Mini label="야간(21~24시) 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, `비교 ${unitKind} 중`)} />
+              <Mini label="점심 비중" value={f.lunch_pct === null ? "자료 없음" : pctText(f.lunch_pct)} sub={rankText(f.lunch_rank, "").trim()} />
+              <Mini label="야간 비중" value={f.late_pct === null ? "자료 없음" : pctText(f.late_pct)} sub={rankText(f.late_rank, "").trim()} />
               <Mini label="주말 비중" value={f.weekend_pct === null ? "자료 없음" : pctText(f.weekend_pct)} />
             </div>
+            <Caption>점심 11~14시 · 야간 21~24시</Caption>
             <Fold title="비교 범위·집계 기준">
               <Caption>양천·영등포의 {unitKind}끼리 비교합니다. 점심 비중은 {f.lunch_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.lunch_peer_count}곳`}, 야간 비중은 {f.late_peer_count === undefined ? "대상 수 미제공" : `자료가 있는 ${f.late_peer_count}곳`}과 비교했습니다. 길 단위로 배분한 인구 추정치라 실제 행인 수나 중복을 제거한 방문자 수가 아닙니다.</Caption>
             </Fold>
@@ -218,57 +248,56 @@ export function AreaCharacterLine({ level, code, label }: { level: "dong" | "trd
 }
 
 function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"] }) {
-  const usage = railUsageLines({ usage_state: rail.usage_state, boardings_observed: rail.boardings_observed, alightings_observed: rail.alightings_observed, partial_line_stations: 0 });
-  const list = [...rail.inside, ...rail.within_250m];
-  return (
-    <div style={{ marginTop: 6 }}>
-      <SubHead>지하철 — {rail.count === 0 ? `경계 안·250m 이내 역 없음(가장 가까운 역 경계에서 ${rail.nearest_m?.toLocaleString("ko-KR") ?? "-"}m)` : `경계 안 ${rail.inside.length}곳 · 경계 밖 250m 이내 ${rail.within_250m.length}곳`}</SubHead>
-      {rail.count > 0 && (
-        <>
-          <div style={grid2}>
-            <Mini label="하루 평균 승차 합계" value={usage.partial && rail.boardings_observed !== null ? peopleText(rail.boardings_observed) : usage.boardings} />
-            <Mini label="하루 평균 하차 합계" value={usage.partial && rail.alightings_observed !== null ? peopleText(rail.alightings_observed) : usage.alightings} />
-          </div>
-          <Caption>
-            {rail.year}년 · {rail.linked > 0 ? `인근 ${rail.count}개 역 중 이용량이 확인된 ${rail.linked}개 역의 합계${usage.partial ? "(일부 역·노선만 포함)" : ""}. 이 상권 방문객 수가 아닙니다.` : "인근 역의 이용량 자료가 연결되지 않았습니다(0명이 아님)."}
-          </Caption>
-          <Fold title={`역 ${rail.count}곳 보기`}>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, lineHeight: 1.6, color: "#374151" }}>{list.map((st) => <StationItem key={st.name + st.lines} st={st} />)}</ul>
-          </Fold>
-        </>
-      )}
-      <Caveat>{rail.basis}</Caveat>
-    </div>
-  );
+  return <div className="environment-transport">
+    <div className="data-heading"><AppIcon name="train"/>지하철 이용량</div>
+    {rail.count > 0 ? <>
+      <MetricBars items={[
+        { label: "하루 평균 승차", value: rail.boardings_observed, color: "#3159D9" },
+        { label: "하루 평균 하차", value: rail.alightings_observed, color: "#7995E8" },
+      ]} format={(n) => `${Math.round(n).toLocaleString("ko-KR")}명`} />
+      <Caption>{rail.year}년 · 이용량 확인 {rail.linked}/{rail.count}개 역{rail.usage_state === "partial" ? " · 일부 역·노선만 포함" : ""}</Caption>
+
+    </> : <Caption>경계 안·250m 이내 역 없음 · 가장 가까운 역 {rail.nearest_m == null ? "거리 자료 없음" : `경계에서 ${rail.nearest_m.toLocaleString()}m`}</Caption>}
+    <Caveat>{rail.basis}</Caveat>
+  </div>;
 }
 
-function StationItem({ st }: { st: CharacterStation }) {
-  return (
-    <li>
-      <strong>{st.name}</strong>({st.lines}) · {st.where === "inside" ? "경계 안" : `경계 밖 ${st.distance_m}m`}{(st.shared_units ?? 1) >= 2 ? ` · 인접 단위 ${st.shared_units}곳 공유` : ""} ·{" "}
-      {st.boardings === null ? "이용량 자료 없음" : `승차 ${Math.round(st.boardings).toLocaleString("ko-KR")}명 · 하차 ${Math.round(st.alightings ?? 0).toLocaleString("ko-KR")}명${st.lines_with_usage < st.lines_total ? ` (노선 ${st.lines_with_usage}/${st.lines_total}만 연결)` : ""}`}
-    </li>
-  );
+function StationName({ st }: { st: CharacterStation }) {
+  return <span className="station-name">{splitRailLines(st.lines).map(line => { const badge = railLineBadge(line); return <span key={line} className="rail-line-badge" style={{ background: badge.color, color: ["#BDB092", "#F5A200", "#B7C452", "#77C4A3"].includes(badge.color) ? "#172033" : "white" }} title={badge.name} aria-label={badge.name}>{badge.label}</span>; })}<FittedStationName name={`${st.name.replace(/역$/, "")}역`}/></span>;
+}
+
+/** 역명만 가용 너비에 맞춘다. 창·카드 폭이 바뀌면 다시 측정한다. */
+function FittedStationName({ name }: { name: string }) {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.fontSize = `${FS.metric}px`;
+      const available = el.clientWidth;
+      if (available > 0 && el.scrollWidth > available) el.style.fontSize = `${Math.floor(FS.metric * available / el.scrollWidth * 10) / 10}px`;
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [name]);
+  return <strong ref={ref} className="station-name-text" title={name}>{name}</strong>;
 }
 
 function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) {
-  const usage = busUsageLines({ usage_state: bus.usage_state, boardings_observed: bus.boardings_observed, alightings_observed: bus.alightings_observed });
-  return (
-    <div style={{ marginTop: 8 }}>
-      <SubHead>버스 — 경계 안 정류장 {bus.count === 0 ? "0곳" : `${bus.count}곳(㎢당 ${bus.per_km2 ?? "-"}곳)`}</SubHead>
-      {bus.count > 0 && (
-        <>
-          <div style={grid2}>
-            <Mini label="하루 평균 승차 합계" value={usage.partial && bus.boardings_observed !== null ? peopleText(bus.boardings_observed) : usage.boardings} />
-            <Mini label="하루 평균 하차 합계" value={usage.partial && bus.alightings_observed !== null ? peopleText(bus.alightings_observed) : usage.alightings} />
-          </div>
-          <Caption>{bus.year}년 · {bus.linked > 0 ? `전체 ${bus.count}곳 중 이용량이 확인된 ${bus.linked}곳 합계` : "정류장 이용량 자료가 연결되지 않았습니다(0명이 아님)."}</Caption>
-        </>
-      )}
-      {bus.caution && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.caution}</Notice></div>}
-      <Caveat>{bus.basis}</Caveat>
-    </div>
-  );
+  return <div className="environment-transport">
+    <div className="data-heading"><AppIcon name="bus"/>버스 이용량</div>
+    {bus.count > 0 ? <>
+      <MetricBars items={[
+        { label: "하루 평균 승차", value: bus.boardings_observed, color: "#168581" },
+        { label: "하루 평균 하차", value: bus.alightings_observed, color: "#73BDB5" },
+      ]} format={(n) => `${Math.round(n).toLocaleString("ko-KR")}명`} />
+      <Caption>{bus.year}년 · 이용량 확인 {bus.linked}/{bus.count}곳{bus.usage_state === "partial" ? " · 일부 정류장만 포함" : ""}</Caption>
+    </> : <Caption>경계 안 정류장 없음</Caption>}
+    {bus.caution && <Caption tone="warn">{bus.caution}</Caption>}
+    <Caveat>{bus.basis}</Caveat>
+  </div>;
 }
 
 function Points({ title, tone, items, empty }: { title: string; tone: string; items: string[]; empty: string }) {

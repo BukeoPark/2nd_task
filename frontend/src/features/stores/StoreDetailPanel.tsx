@@ -1,3 +1,4 @@
+import { AppIcon } from "../../components/DataVisuals";
 import { OwnerChurnDetails, OwnerLocationDetails } from "./OwnerReferenceDetails";
 import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
@@ -119,7 +120,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
             <div style={{ marginTop: 4 }}>
               <div style={{ fontSize: FS.caption, fontWeight: 700, color: "#6B7280", marginBottom: 2 }}>기본정보 · 이 매장</div>
               <div style={{ fontSize: FS.caption, color: "#374151" }}>
-                {store.address ?? "주소 정보 없음"}
+                <AppIcon name="pin" /> {store.address ?? "주소 정보 없음"}
                 {store.building ? ` (${store.building})` : ""}
                 <SourceNote title={store.source.title} reference={store.source.reference} />
               </div>
@@ -199,7 +200,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       {!narrow && <GroupRail active={group} onChange={setGroup} orientation="vertical" groups={groups} />}
       <Drawer
         title={store ? `${store.name}${store.branch ? ` ${store.branch}` : ""}` : "매장 정보"}
-        subtitle={store ? `${store.category.lcls} > ${store.category.mcls} > ${store.category.scls}` : undefined}
         onBack={onBack}
         onClose={onClose}
         left={narrow ? 0 : RAIL_WIDTH_PX}

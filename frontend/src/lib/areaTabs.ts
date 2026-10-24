@@ -9,7 +9,7 @@ export const AREA_TAB_LABEL: Record<AreaTabId, string> = {
   summary: "요약",
   type: "유형",
   growth: "매출 흐름",
-  stability: "경쟁·개폐업",
+  stability: "경쟁",
   demand: "소비 수요",
   location: "주변 환경",
   cost: "비용·임대",
@@ -38,7 +38,7 @@ export const AREA_QUESTION: Record<AreaTabId, { owner: string; founder: string }
   stability: { owner: "가게가 얼마나 모여 있고, 어떻게 바뀔까?", founder: "가게가 얼마나 모여 있고, 어떻게 바뀔까?" },
   demand: { owner: "손님이 언제 많이 오갈까?", founder: "사람들은 언제, 얼마나 오갈까?" },
   location: { owner: "교통과 주변 시설은 어떨까?", founder: "교통과 주변 시설은 어떨까?" },
-  cost: { owner: "주변 임대시장 상황은 어떨까?", founder: "창업 비용과 임대시장 상황은 어떨까?" },
+  cost: { owner: "주변 임대시장 상황은 어떨까?", founder: "창업하려면 얼마나 팔아야 할까?" },
   trdars: { owner: "이 행정동 안에는 어떤 상권이 있을까?", founder: "이 행정동 안에는 어떤 상권이 있을까?" },
   stores: { owner: "이 지역에는 어떤 가게들이 있을까?", founder: "이 지역에는 어떤 가게들이 있을까?" },
 };

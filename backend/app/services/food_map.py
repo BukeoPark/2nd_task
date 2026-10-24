@@ -313,10 +313,22 @@ def stores_in_unit(level: str, code: str, svc: str | None, scls: str | None, lim
     # 좁은 범위라 위경도 차를 미터로 바로 환산(위도 37.5° 기준 근사)
     dist = np.hypot((s["lon"] - u["lon"]) * 111_320 * np.cos(np.radians(u["lat"])), (s["lat"] - u["lat"]) * 110_950)
     total = len(s)
+    # 페이지를 자르기 전에 전체 경계·선택 업종의 세부 업종 구성을 집계한다.
+    mix = (s.assign(_category=s["indsSclsNm"].fillna("분류 미상"))
+           .groupby(["indsSclsCd", "_category"], dropna=False).size().reset_index(name="count")
+           .sort_values(["count", "_category", "indsSclsCd"], ascending=[False, True, True], kind="stable"))
+    anchor_flags = data_store.load_parquet("store_anchor.parquet")
+    selected_flags = s[["bizesId"]].merge(anchor_flags[["bizesId", "starbucks_zone", "daiso_zone"]], on="bizesId", how="left", validate="many_to_one")
+    anchor_proximity = {brand: {"total": total, "assessed": int(selected_flags[f"{brand}_zone"].notna().sum()),
+                                "nearby": int(selected_flags[f"{brand}_zone"].fillna(False).astype(bool).sum())}
+                        for brand in ANCHOR_LABELS}
+    category_mix = [{"code": None if pd.isna(r.indsSclsCd) else r.indsSclsCd,
+                     "name": r["_category"], "count": int(r["count"]),
+                     "share_pct": round(int(r["count"]) / total * 100, 2)} for _, r in mix.iterrows()]
     order = ["dist_m", "bizesId"] if sort == "distance" else ["bizesNm", "brchNm", "bizesId"]
     page = s.assign(dist_m=dist).sort_values(order, kind="stable").iloc[offset: offset + limit]
     end = offset + len(page)
-    return {"level": level, "code": code, "name": u["name"], "sort": sort, "total": total, "offset": offset, "returned": len(page),
+    return {"level": level, "code": code, "name": u["name"], "sort": sort, "total": total, "category_mix": category_mix, "anchor_proximity": anchor_proximity, "offset": offset, "returned": len(page),
             "has_more": end < total, "next_offset": end if end < total else None,
             "records": [{"store_id": r.bizesId, "name": r.bizesNm, "branch": r.brchNm or None, "category_detail": r.indsSclsNm,
                          "distance_m": round(float(r.dist_m))} for r in page.itertuples()]}

@@ -1,3 +1,4 @@
+import { AppIcon, PopulationMix } from "../../components/DataVisuals";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer } from "../../components/Drawer";
@@ -58,7 +59,7 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
   const rail = (orientation: "vertical" | "horizontal") => <TabRail items={items} active={screen} onChange={id => go(id as Screen)} orientation={orientation} ariaLabel="자영업자 운영 점검" idPrefix="owner-" wrapLabels />;
   const count = nearby.data?.competitors?.raw_count;
   const growth = bench?.growth?.yoy.total_sales.value;
-  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} subtitle={`${store.category.scls} · ${store.dong}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX} titleAside={<button className="owner-designate" aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</button>}>
+  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX} titleAside={<button className="owner-designate" aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</button>}>
     {overlays}<div className="owner-workspace">
     {narrow && rail("horizontal")}{saveFailed && <p role="alert">이 브라우저에서 내 가게 설정을 저장하지 못했어요.</p>}
     {screens.map(id => <div key={id} role="tabpanel" id={railPanelId(id, "owner-")} aria-labelledby={railTabId(id, "owner-")} hidden={screen !== id}>
@@ -76,9 +77,9 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
       </details></>}
       {id === "nearby" && <><section className="owner-radius"><label>분석 반경<select value={radius} onChange={e => onRadius(Number(e.target.value))}><option value={250}>250m</option><option value={500}>500m</option><option value={1000}>1km</option></select></label></section>{blocks.competitors}<details className="owner-report"><summary>연도별 개폐업</summary>{blocks["owner-churn"]}</details><details className="owner-report"><summary>교통·집객시설</summary>{blocks["owner-location"]}</details></>}
       {id === "area" && <>
-        <section className="owner-surface"><span className="owner-eyebrow">{location.data?.area.name ?? "소속 상권"} · 수요 구조</span><h3>{location.data?.area.demand_type ?? "인구 구조"}</h3><div className="owner-stat-grid"><div><span>직장인구</span><strong className="owner-value">{location.data?.area.workers?.toLocaleString() ?? "자료 없음"}</strong></div><div><span>상주인구</span><strong className="owner-value">{location.data?.area.residents?.toLocaleString() ?? "자료 없음"}</strong></div></div><p className="owner-caption">상권 인구 통계 · 방문 고객 수와 다름</p></section>
-        <section className="owner-surface"><span className="owner-eyebrow">{bench?.svc_nm ?? "대응 업종"} 전체 · {bench?.quarter_label ?? "자료 없음"}</span><h3>상권 매출 흐름</h3><strong className="owner-value">{growth == null ? "자료 없음" : `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`}</strong><p className="owner-caption">전년 동기 대비 · 상권 추정매출</p></section>
-        <section className="owner-surface"><h3>시간대별 유동인구 비중</h3>{location.data?.area.time_pattern ? <><span className="owner-caption">{location.data.area.time_pattern.quarter}</span>{location.data.area.time_pattern.items.map(item => <div className="owner-time-row" key={item.key}><span>{item.label}</span><b>{item.share == null ? "자료 없음" : `${item.share.toFixed(1)}%`}</b></div>)}<p className="owner-caption">유동인구 기준 · 매출 비중과 다름</p></> : <p className="owner-caption">시간대 자료 없음</p>}</section>
+        <section className="owner-surface"><span className="owner-eyebrow">{location.data?.area.name ?? "소속 상권"} · 수요 구조</span><h3>{location.data?.area.demand_type ?? "인구 구조"}</h3><PopulationMix residents={location.data?.area.residents} workers={location.data?.area.workers} /><p className="owner-caption">상권 인구 통계 · 방문 고객 수와 다름</p></section>
+        <section className="owner-surface"><span className="owner-eyebrow">{bench?.svc_nm ?? "대응 업종"} 전체 · {bench?.quarter_label ?? "자료 없음"}</span><h3 className="data-heading"><AppIcon name="trend" />상권 매출 흐름</h3><strong className="owner-value">{growth == null ? "자료 없음" : `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`}</strong><p className="owner-caption">전년 동기 대비 · 상권 추정매출</p></section>
+        <section className="owner-surface"><h3 className="data-heading"><AppIcon name="clock" />시간대별 유동인구 비중</h3>{location.data?.area.time_pattern ? <><span className="owner-caption">{location.data.area.time_pattern.quarter}</span>{location.data.area.time_pattern.items.map(item => <div className="owner-time-row" key={item.key}><span>{item.label}</span><b>{item.share == null ? "자료 없음" : `${item.share.toFixed(1)}%`}</b></div>)}<p className="owner-caption">유동인구 기준 · 매출 비중과 다름</p></> : <p className="owner-caption">시간대 자료 없음</p>}</section>
         <div className="owner-area-links"><button onClick={() => onOpenArea("dong")}>{store.dong} 종합분석 →</button>{store.trdar && <button onClick={() => onOpenArea("trdar")}>{store.trdar.name} 상권 분석 →</button>}</div>
       </>}
       {id === "info" && <>{blocks.basic}{googleVisited && <GoogleReviewSection storeId={store.store_id} autoLoad />}<details className="owner-report"><summary>인허가·지정 이력</summary>{blocks.history}</details></>}

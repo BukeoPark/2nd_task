@@ -1,3 +1,4 @@
+import { BreakevenMeter } from "../../components/DataVisuals";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Notice, Section } from "../../components/Notice";
@@ -204,6 +205,7 @@ export function MyStoreCheckupSection({
         {bep.status === "empty" && <Notice tone="muted">비용을 입력하면 손익분기 매출을 계산해 드려요.</Notice>}
         {bep.status === "invalid" && <Notice tone="warn">비용은 0 이상의 숫자로, 비율(%)은 0~100 사이로 입력해 주세요.</Notice>}
         {bep.status === "no_margin" && <Notice tone="warn">원가율과 수수료율의 합을 100% 미만으로 입력하세요.</Notice>}
+        {bep.status === "ok" && bep.bep !== null && <BreakevenMeter bep={bep.bep} revenue={latestRevenue} revenueLabel={latestMonth ? `${latestMonth} 매출` : "기록 매출"} />}
         {bep.status === "ok" && bep.bep !== null && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <Card label="월 고정비 합" value={manwon(bep.fixed)} />

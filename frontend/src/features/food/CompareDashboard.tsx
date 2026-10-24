@@ -1,3 +1,4 @@
+import { AppIcon, MetricBars } from "../../components/DataVisuals";
 import { useRef, useState, type CSSProperties } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
@@ -70,8 +71,11 @@ export function CompareDashboard({ level, codes, svc, scls, filterName, onAdd, o
       {state === "refetching" && <Notice tone="warn">새 조건으로 계산 중 · 아래는 이전 결과입니다.</Notice>}
       {data && conclusion && <div aria-busy={state === "refetching"} style={{ opacity: state === "refetching" ? 0.45 : 1, pointerEvents: state === "refetching" ? "none" : undefined }}>
         <section className={view === "summary" ? "cmp-verdict" : "cmp-verdict cmp-verdict-compact"} aria-label="비교 결론"><span className="cmp-eyebrow">비교 결론 · {filterName}</span><h1>{conclusion.title}</h1><p>{conclusion.reading}</p>
-          <div className="cmp-evidence">{conclusion.evidence.slice(0, 2).map(e => <div key={e.label}><b>{e.label}</b><span>{e.text}</span><small>{e.period}</small></div>)}</div>
-          <div className="cmp-next"><div><b>다음은 실제 점포 비용을 확인하세요</b><p>{conclusion.next}</p></div>{onReviewCosts && <button className="cmp-primary" onClick={() => onReviewCosts(data.units)}>후보별 비용 점검 →</button>}</div>
+          <div className="cmp-evidence">{conclusion.evidence.slice(0, 2).map((e, index) => {
+            const row = data.rows.find(r => r.label === e.label);
+            return <div key={e.label}><b className="data-heading"><AppIcon name={index === 0 ? "trend" : "store"} />{e.label}</b>{row ? <MetricBars rate={row.kind === "rate"} items={data.units.map((u, i) => ({ label: `${u.name}${row.cells[i]?.partial ? " · 일부 집계" : row.cells[i]?.caution ? " · 표본 주의" : ""}`, value: row.cells[i]?.value ?? null, color: color(u.code) }))} format={n => formatMetric(row.kind, n)} /> : <span>{e.text}</span>}<small>{e.period}</small></div>;
+          })}</div>
+          <div className="cmp-next"><div><b className="data-heading"><AppIcon name="calculator" />다음은 실제 점포 비용을 확인하세요</b><p>{conclusion.next}</p></div>{onReviewCosts && <button className="cmp-primary" onClick={() => onReviewCosts(data.units)}>후보별 비용 점검 →</button>}</div>
         </section>
         <div className="cmp-tabs" role="tablist" aria-label="비교 자료 보기">{Object.entries(views).map(([key, label]) => <button key={key} role="tab" id={`cmp-tab-${key}`} aria-controls="cmp-view" aria-selected={view === key} onClick={() => { setView(key as keyof typeof views); surface.current?.scrollTo({ top: 0 }); }}>{label}</button>)}</div>
         <section id="cmp-view" role="tabpanel" aria-labelledby={`cmp-tab-${view}`}>
