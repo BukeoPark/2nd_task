@@ -252,7 +252,7 @@ function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { ren
   const hasVacancy = vacancy?.cells[0]?.value != null;
   const tip = <InfoTip label="임대시장 자료 기준">인근 1km 이내 R-ONE 조사상권의 참고 통계이며, 선택 지역의 실제 계약금액이 아닙니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}</InfoTip>;
   return <Block title={<>주변 임대시장 참고 {tip}</>}>
-    {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>이번 분기 주변 임대자료가 없어요.</Caption> : <>
+    {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note ?? "이번 분기 주변 임대자료가 없어요."}</Caption> : <>
       <Caption>인근 조사상권 기준{rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}{rent?.as_of ? ` · ${rent.as_of}` : ""}</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
         <Stat onGray big label="소규모 상가 임대료" value={hasRent ? formatMetric(rent!.kind, rent!.cells[0].value) : "자료 없음"} missing={!hasRent}/>
