@@ -28,3 +28,10 @@ test("지역 보고서와 매장 보고서의 범위를 구분해 밝힌다", ()
   assert.match(reportLead("owner", "area", all).scopeNote, /지역 보고서.*한 가게의 보고서가 아니에요/);
   assert.match(reportLead("owner", "store", all).scopeNote, /매장 보고서.*반경 500m/);
 });
+
+
+test("종합 정리와 실전 팁은 서로 다른 쪽으로 안내한다", () => {
+  const lead = reportLead("founder", "area", {summary:9,tips:10});
+  assert.equal(lead.rows.find(r=>r.title === "종합 정리")?.where,"9쪽");
+  assert.equal(lead.rows.find(r=>r.title === "실전 팁")?.where,"10쪽");
+});

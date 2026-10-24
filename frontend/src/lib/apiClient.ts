@@ -414,6 +414,41 @@ export interface OverviewTrdar {
 }
 
 /** 행정동·상권 종합분석 보조 자료 — 시계열·시간대·유동인구·겹치는 상권. 지표 값은 FoodCompareResponse 가 준다. */
+/** 상권분석 보고서 부가 자료 — 외식 업종별 비교표, 서울시 상권변화지표, 인허가 기준 영업 기간·생존. 값이 없으면 null(0이 아님). */
+export interface ReportExtras {
+  level: "dong" | "trdar";
+  code: string;
+  industry: {
+    status: "ok" | "unavailable";
+    quarter: string | null;
+    quarter_label: string | null;
+    message?: string;
+    rows: { svc_cd: string; svc_nm: string; stores: number | null; per_store_month: number | null; ticket: number | null; daily_tx_per_store: number | null;
+            close_rate: number | null; open_rate: number | null; selected: boolean; note: string | null }[];
+    total: { stores: number | null; per_store_month: number | null; used: number; of: number } | null;
+    source?: string;
+    basis?: string;
+  };
+  change_index: { scope: "행정동" | "소속 행정동"; dong_name: string; quarter_label: string | null; stage: string | null; open_months: number | null; close_months: number | null;
+                  seoul_open_months: number | null; seoul_close_months: number | null; note: string } | null;
+  license: {
+    status: "ok" | "unavailable";
+    scope_label: string;
+    message?: string;
+    as_of?: string;
+    total_records?: number;
+    no_coord_pct?: number | null;
+    closures_available?: boolean;
+    short_lived_excluded?: number;
+    short_lived_days?: number;
+    active?: { count: number; enough: boolean; median_years: number | null; mean_years: number | null; bands: { label: string; count: number; pct: number | null }[] };
+    closed?: { window_years: number; count: number; enough: boolean; median_years: number | null; mean_years: number | null } | null;
+    cohort?: { status: "ok" | "insufficient"; rate: number | null; numerator: number; denominator: number; horizon_years: number; cohort_permit_from: string; cohort_permit_to: string; message: string | null } | null;
+    source?: string;
+  };
+  disclaimer: string;
+}
+
 export interface ReportDetail {
   stations?: { name: string; lon: number; lat: number }[];
   period: string;
@@ -1037,6 +1072,12 @@ export const apiClient = {
     if (svc) q.set("svc", svc);
     if (scls) q.set("scls", scls);
     return request<FoodCompareResponse>(`/api/food/compare?${q}`);
+  },
+  getReportExtras: (level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) => {
+    const q = new URLSearchParams();
+    if (svc) q.set("svc", svc);
+    if (scls) q.set("scls", scls);
+    return request<ReportExtras>(`/api/food/units/${level}/${encodeURIComponent(code)}/report-extras?${q}`);
   },
   getAreaCharacter: (level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) => {
     const q = new URLSearchParams();

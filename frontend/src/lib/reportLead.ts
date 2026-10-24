@@ -10,6 +10,7 @@ export type LeadMode = "owner" | "founder";
 /** 보고서 쪽 번호(없으면 그 쪽이 이 보고서에 없다는 뜻). */
 export interface LeadPages {
   summary?: number;
+  tips?: number;
   /** 매출 수준·흐름(상권 변화·후보지 매출 흐름) */
   level?: number;
   /** 시간대·수요 */
@@ -50,7 +51,8 @@ export function reportLead(mode: LeadMode, scope: ReportScope, p: LeadPages): Le
         page("상권 변화(매출 흐름)", p.level),
         page("고객 수요(시간대·연령)", p.slots),
         page("이번 달 확인사항", p.checklist),
-        ...(p.summary ? [page("종합 정리 · 실전 팁", p.summary)] : []),
+        ...(p.summary ? [page("종합 정리", p.summary)] : []),
+        ...(p.tips ? [page("실전 팁", p.tips)] : []),
       ],
     };
   }
@@ -62,7 +64,8 @@ export function reportLead(mode: LeadMode, scope: ReportScope, p: LeadPages): Le
       page("경쟁(개폐업·프랜차이즈)", p.competition),
       page("입지(교통·임대료 참고값)", p.location),
       page("현장 확인사항", p.checklist),
-      ...(p.summary ? [page("종합 정리 · 실전 팁", p.summary)] : []),
+      ...(p.summary ? [page("종합 정리", p.summary)] : []),
+        ...(p.tips ? [page("실전 팁", p.tips)] : []),
     ],
   };
 }

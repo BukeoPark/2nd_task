@@ -1,3 +1,5 @@
+import { RF } from "./reportTypography";
+import { ReportFitLine } from "./ReportFitLine";
 import { AppIcon } from "../../../components/DataVisuals";
 import { useContext, useEffect, type ReactNode } from "react";
 import { ReportDateContext } from "./reportDate";
@@ -12,7 +14,7 @@ export function Page({ n, total, children, className = "" }: { n: number; total:
   const date = useContext(ReportDateContext);
   return (
     <section className={`irp-page ${className}`}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 11, letterSpacing: ".04em", color: C.mute, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: RF.caption, letterSpacing: ".04em", color: C.mute, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
         <span>상권분석 보고서 · 공개 통계 기반</span><span>{date ? `리포트 작성 ${date} · ` : ""}{n} / {total}</span>
       </div>
       {children}
@@ -30,18 +32,18 @@ export const Fig = ({ title, note, children, legend }: { title: string; note: st
   <figure style={{ margin: 0, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
     {children}
     {legend && (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", fontSize: 12, color: C.mute }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", fontSize: RF.caption, color: C.mute }}>
         {legend.map(([c, l]) => (<span key={l}><i style={{ display: "inline-block", width: 10, height: 10, background: c, marginRight: 5 }} />{l}</span>))}
       </div>
     )}
-    <figcaption style={capS}><b style={{ display: "block", color: C.ink, fontSize: 13 }}>{title}</b>{note}</figcaption>
+    <figcaption style={capS}><b style={{ display: "block", color: C.ink, fontSize: RF.section }}>{title}</b>{note}</figcaption>
   </figure>
 );
 export const TileBox = ({ label, value, note, tone = "plain" }: { label: string; value: string; note: string; tone?: "plain" | "accent" | "neg" }) => (
   <div className="irp-tile" style={{ background: C.soft, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-    <span style={{ fontSize: 12, color: C.mute, lineHeight: 1.45 }}>{label}</span>
-    <b style={{ fontSize: 28, lineHeight: 1.15, fontWeight: 900, color: tone === "neg" ? C.bad : tone === "accent" ? C.accent : C.ink }}>{value}</b>
-    {note && <span style={{ fontSize: 12, color: C.mute, lineHeight: 1.45 }}>{note}</span>}
+    <span title={label} style={{fontSize:RF.label,color:C.mute,lineHeight:1.45,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</span>
+    <b style={{ fontSize: RF.metric, lineHeight: 1.15, fontWeight: 900, color: tone === "neg" ? C.bad : tone === "accent" ? C.accent : C.ink }}><ReportFitLine>{value}</ReportFitLine></b>
+    {note && <span style={{ fontSize: RF.caption, color: C.mute, lineHeight: 1.45,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }} title={note}>{note}</span>}
   </div>
 );
 export const Take = ({ text, label = "사장님께 의미" }: { text: string; label?: string }) => (

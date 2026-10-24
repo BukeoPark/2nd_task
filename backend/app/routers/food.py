@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import area_character, area_overview, data_store, food_map, heatmap
+from app.services import area_character, area_overview, area_report_extras, data_store, food_map, heatmap
 
 router = APIRouter(prefix="/api/food", tags=["food"])
 
@@ -110,6 +110,19 @@ def food_unit_character(level: str, code: str, svc: str | None = None, scls: str
     """상권 유형 및 입지 특성 — 교통·배후 수요·앵커/상업·경쟁 4개 영역과 참고용 규칙 분류(경계 기준, 종합점수 없음)."""
     try:
         return area_character.character(level, code, svc, scls)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"단위를 찾을 수 없습니다: {level}/{code}")
+    except data_store.DataNotReady as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/units/{level}/{code}/report-extras")
+def food_unit_report_extras(level: str, code: str, svc: str | None = None, scls: str | None = None) -> dict:
+    """상권분석 보고서 부가 자료 — 외식 업종별 비교표, 서울시 상권변화지표, 인허가 기준 영업 기간·생존(종합점수·순위 없음)."""
+    try:
+        return area_report_extras.extras(level, code, svc, scls)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except KeyError:
