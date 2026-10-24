@@ -1,5 +1,5 @@
 import type { AreaReport } from "./areaReport";
-import type { ReportDetail, FoodUnitStoresResponse } from "./apiClient";
+import type { AreaCharacter, ReportDetail, FoodUnitStoresResponse } from "./apiClient";
 
 export interface ReportTip { key: string; title: string; evidence: string; action: string }
 const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -36,3 +36,44 @@ export const founderFieldChecks = [
   "후보 점포의 월세·관리비·보증금·권리금과 시설 상태 확인하기",
   "최근 상호가 바뀐 자리의 이전·폐업 사정을 이웃 상인에게 확인하기",
 ];
+
+type TraitKey = AreaCharacter["type"]["traits"][number]["key"];
+
+/** 상권 특성별 운영 전략 — 자료 근거는 그 특성을 판정한 근거 한 줄을 그대로 쓴다. 성공을 약속하지 않고 '검토'를 권한다. */
+const TRAIT_STRATEGY: Record<TraitKey, { title: string; action: string }> = {
+  business: { title: "직장인 점심·퇴근 시간대에 맞춘 운영", action: "평일 점심·퇴근 시간대의 회전과 빠른 제공 방식을 먼저 검토하고, 주말 영업은 현장에서 방문객을 확인한 뒤 정해 보세요." },
+  residential: { title: "단골과 저녁·주말 수요에 맞춘 운영", action: "퇴근 후 저녁과 주말의 가족·1인 가구 수요, 포장·배달 비중을 함께 검토해 보세요." },
+  transit: { title: "역 이용객 동선을 활용한 접근성", action: "역 출구에서 후보지까지의 보행 동선과 간판 시야를 확인하고, 이동 중 이용하기 쉬운 메뉴·포장 구성을 검토해 보세요." },
+  commercial: { title: "경쟁이 모인 상권에서 차별점 만들기", action: "같은 업종 가게가 많은 편이니 대표 메뉴·가격대·제공 방식 중 뚜렷한 차이를 먼저 정해 보세요." },
+};
+const MIXED_STRATEGY = { title: "평일 낮과 저녁·주말 수요를 나눠 점검", action: "직장인구와 상주인구가 섞여 있어 한 시간대에 몰리지 않을 수 있습니다. 시간대별 손님 흐름을 현장에서 확인하고 영업시간을 정해 보세요." };
+
+/** 상권 유형(업무·주거·교통 거점·상업 집중·혼합)에서 바로 이어지는 전략. 판정 보류면 만들지 않는다. */
+export function traitStrategies(character: AreaCharacter | null | undefined): ReportTip[] {
+  if (!character || character.type.kind === "hold") return [];
+  const t = character.type;
+  if (t.kind === "mixed" || t.traits.length === 0) return [{ key: "trait-mixed", ...MIXED_STRATEGY, evidence: t.mixed_evidence?.[0] ?? t.headline }];
+  return t.traits.map((x) => ({ key: `trait-${x.key}`, ...TRAIT_STRATEGY[x.key], evidence: x.evidence[0] ?? x.label }));
+}
+
+/** 1쪽에 보이는 창업(운영) 전략 전체 — 자료로 두드러진 항목(예비 창업자만)을 먼저, 그다음 상권 유형 기반 전략. 같은 키는 한 번만. */
+export function areaStrategies(r: AreaReport, character: AreaCharacter | null | undefined, detail?: ReportDetail, stores?: FoodUnitStoresResponse): ReportTip[] {
+  const seen = new Set<string>();
+  return [...areaReportTips(r, detail, stores), ...traitStrategies(character)].filter((t) => !seen.has(t.key) && seen.add(t.key));
+}
+
+/** 1쪽 '이 상권의 특징' — 핵심 숫자 카드(점포당 매출·순위·총매출 증감·폐업률)와 겹치지 않는 값만 문장으로 옮긴다(최대 4줄). 판단·점수는 만들지 않고, 값이 없는 줄은 만들지 않는다. */
+export function areaFeatureLines(r: AreaReport, detail?: ReportDetail, stores?: FoodUnitStoresResponse): string[] {
+  const out: string[] = [];
+  const lv = r.level, sl = r.slots;
+  const top = sl?.rows.length ? sl.rows.reduce((a, b) => a.sales > b.sales ? a : b) : null;
+  if (top) out.push(`매출이 가장 몰리는 시간대는 ${top.label}(${top.sales.toFixed(0)}%)${top.pilot !== null ? `이고 비교 평균은 ${top.pilot.toFixed(0)}%입니다.` : "입니다."}`);
+  const ages = detail?.composition["연령"]?.filter((a) => a.pct != null) ?? [];
+  const age = ages.length ? ages.reduce((a, b) => a.pct! > b.pct! ? a : b) : null;
+  const weekend = detail?.composition["요일"]?.find((x) => x.label === "주말")?.pct;
+  if (age) out.push(`결제 매출 비중이 가장 큰 연령대는 ${age.label}(${age.pct!.toFixed(0)}%)${weekend != null ? `이고, 평일 ${(100 - weekend).toFixed(0)}% · 주말 ${weekend.toFixed(0)}%입니다.` : "입니다."}`);
+  const mix = stores?.category_mix[0];
+  if (mix && stores!.total >= 20) out.push(`세부 업종은 ${mix.name}(${mix.share_pct.toFixed(0)}%)이 가장 많습니다.`);
+  if (lv && lv.flpopYoy != null) out.push(`유동인구 지수는 전년 동기 대비 ${lv.flpopYoy > 0 ? "+" : ""}${lv.flpopYoy.toFixed(1)}%입니다(길 단위로 배분한 추정치).`);
+  return out.slice(0, 4);
+}

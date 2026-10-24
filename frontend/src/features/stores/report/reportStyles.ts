@@ -35,11 +35,13 @@ export const reportCss = `
   .irp-appendix h2{font-size:18px!important}
   .irp-cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .irp-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .irp-tiles:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
   .irp-tile,figure,figcaption,.irp-page>div,.irp-page>p{break-inside:avoid}
   .irp-tile{padding:10px!important}
   .irp-page h1{font-size:28px!important}
   .irp-page h2{font-size:22px!important}
   .irp-page svg{max-width:100%;height:auto}
+  .irp-page svg text{font-size:13px}
 
 }`;
 

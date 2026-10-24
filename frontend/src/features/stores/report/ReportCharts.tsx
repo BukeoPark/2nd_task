@@ -23,7 +23,8 @@ export function HistogramChart({ level }: { level: LevelSection }) {
   const bins = Array<number>(nb).fill(0);
   level.hist.forEach((v) => { bins[Math.min(nb - 1, Math.floor(v / step))]++; });
   const meBin = Math.min(nb - 1, Math.floor(level.me / step));
-  const L = 28, R = 452, B = 205, Tp = 40, w = (R - L) / nb, max = Math.max(...bins, 1);
+  // 가장 높은 막대의 개수 글자가 중앙값 글자와 겹치지 않도록 위쪽 여백(Tp)을 넉넉히 둔다
+  const L = 28, R = 452, B = 205, Tp = 52, w = (R - L) / nb, max = Math.max(...bins, 1);
   const y = (c: number) => B - (c / max) * (B - Tp);
   const mx = L + (level.median / step) * w, ax = L + (level.me / step) * w;
   return (
@@ -38,8 +39,8 @@ export function HistogramChart({ level }: { level: LevelSection }) {
       {Array.from({ length: Math.ceil(nb / 2) }, (_, k) => k * 2).map((i) => (<T key={i} x={L + i * w} y={B + 15} anchor="middle">{fmt(i * step)}</T>))}
       <T x={R} y={B + 32} anchor="end">점포당 월 추정매출(만원) · 맨 오른쪽 칸은 6,000 이상</T>
       <T x={L} y={14}>상권 수</T>
-      <line x1={mx} x2={mx} y1={Tp - 8} y2={B} stroke={C.ink} strokeDasharray="3 3" />
-      <T x={mx + 4} y={Tp - 12}>중앙값 {fmt(level.median)}</T>
+      <line x1={mx} x2={mx} y1={Tp - 20} y2={B} stroke={C.ink} strokeDasharray="3 3" />
+      <T x={mx + 4} y={Tp - 24}>중앙값 {fmt(level.median)}</T>
       <line x1={ax} x2={ax} y1={20} y2={B} stroke={C.accent} strokeWidth={1.5} />
       <T x={Math.min(ax, R - 60)} y={14} anchor="middle" bold color={C.accent}>이 상권 {fmt(level.me)}만원</T>
     </Svg>
@@ -55,6 +56,8 @@ export function TrendChart({ level }: { level: LevelSection }) {
   const x = (i: number) => L + 14 + i * ((R - L - 28) / Math.max(1, tr.length - 1));
   const y = (v: number) => B - ((v - lo) / (hi - lo)) * (B - Tp);
   const peak = Math.max(...vs);
+  // 분기 글자("21.1Q" 약 32 폭)가 서로 겹치지 않게, 점 간격이 좁으면 마지막 분기부터 거꾸로 건너뛰며 쓴다
+  const labelEvery = Math.max(1, Math.ceil(34 / ((R - L - 28) / Math.max(1, tr.length - 1))));
   const grid: number[] = [];
   for (let g = lo; g < hi; g += 500) grid.push(g);
   return (
@@ -67,7 +70,7 @@ export function TrendChart({ level }: { level: LevelSection }) {
           <g key={t.q}>
             <circle cx={x(i)} cy={y(t.v)} r={end ? 5 : 3} fill={end ? C.accent : C.paper} stroke={C.accent} strokeWidth={2} />
             {end && <T x={x(i)} y={y(t.v) - 10} anchor="middle" bold color={C.accent}>{fmt(t.v)}</T>}
-            <T x={x(i)} y={B + 16} anchor="middle">{t.q}</T>
+            {(tr.length - 1 - i) % labelEvery === 0 && <T x={x(i)} y={B + 16} anchor="middle">{t.q}</T>}
           </g>
         );
       })}

@@ -1,3 +1,8 @@
+import type { CSSProperties } from "react";
+import { AppIcon, type AppIconName } from "../../components/DataVisuals";
+import type { AreaCharacter } from "../../lib/apiClient";
+import type { ReportTip } from "../../lib/areaReportTips";
+import { marketType } from "../../lib/marketTypes";
 import { FS } from "../../lib/typography";
 import type { ReportDetail, FoodUnitStoresResponse } from "../../lib/apiClient";
 import { C } from "../stores/report/reportColors";
@@ -29,4 +34,41 @@ export function ReportCompetitionPage({ n, total, stores, failed }: { n: number;
     <p style={{ fontSize: FS.caption, color: C.mute }}>목록은 상권·행정동 중심에서 가까운 순 최대 8곳이며 전체 경쟁점 목록이나 추천 순위가 아닙니다. 등록 정보만으로 현재 영업 중인지 확인할 수 없습니다. 세부 메뉴·가격·영업시간 자료는 확보되지 않았습니다.</p>
     <p>목록의 가게에서 대표 메뉴·가격·영업시간·좌석·포장 및 배달 여부를 확인해 내 계획과 겹치는 가게를 추려 보세요.</p>
   </Page>;
+}
+
+const TRAIT_ICON: Record<"business" | "residential" | "transit" | "commercial", AppIconName> = { business: "work", residential: "home", transit: "train", commercial: "building" };
+const chip: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "5px 12px", fontSize: FS.ui, fontWeight: 700, lineHeight: 1.4, whiteSpace: "nowrap" };
+
+/** 1쪽 '이 상권의 특징' — 서비스 화면과 같은 아이콘의 상권 유형, 값으로 쓴 특징 문장, 지역 프로필을 한곳에 모은다. */
+export function ReportCharacter({ character, marketTypeName, lines, profile }: { character?: AreaCharacter | null; marketTypeName?: string | null; lines: string[]; profile: { label: string; value: string }[] }) {
+  const t = character?.type;
+  const market = marketType(marketTypeName ?? "");
+  const rows = profile.filter((p) => p.label !== "유형(참고용 분류)");
+  return <section style={{ background: C.soft, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }} aria-label="이 상권의 특징">
+    <h3 style={{ margin: 0, fontSize: FS.body }}>이 상권의 특징</h3>
+    {(t || market) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {t && (t.traits.length > 0
+        ? t.traits.map((x) => <span key={x.key} style={{ ...chip, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name={TRAIT_ICON[x.key]} />{x.label}</span>)
+        : <span style={{ ...chip, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name="building" />{t.headline}</span>)}
+      {market && <span style={{ ...chip, background: market.bg, color: market.color, border: `1px solid ${market.color}33` }} title={market.description}><AppIcon name={market.icon} />{market.label}</span>}
+    </div>}
+    {lines.length > 0 && <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3, fontSize: FS.warn }}>{lines.map((l) => <li key={l}>{l}</li>)}</ul>}
+    {rows.length > 0 && <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "6px 14px", fontSize: FS.caption }}>
+      {rows.map((p) => <div key={p.label}><dt style={{ color: C.mute }}>{p.label}</dt><dd style={{ margin: 0, fontWeight: 700 }}>{p.value}</dd></div>)}
+    </dl>}
+    <p style={{ margin: 0, fontSize: FS.caption, color: C.mute }}>유형은 인구·입지 통계에 따른 참고용 분류이며 창업 성공 가능성을 뜻하지 않습니다.</p>
+  </section>;
+}
+
+/** 1쪽 '이 특징을 활용한 전략' — 자료 근거와 운영 전략을 항목마다 한 덩이로. 어디까지나 검토할 방향이다. */
+export function ReportStrategies({ title, tips }: { title: string; tips: ReportTip[] }) {
+  if (tips.length === 0) return null;
+  return <section style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label={title}>
+    {title && <h3 style={{ margin: 0, fontSize: FS.body }}>{title}</h3>}
+    {tips.map((tip, i) => <div className="irp-tip" key={tip.key}>
+      <h4 style={{ margin: "0 0 3px", fontSize: FS.ui }}>{i + 1}. {tip.title}</h4>
+      <p style={{ margin: "0 0 3px", fontSize: FS.caption, color: C.mute }}><b>자료 근거</b> {tip.evidence}</p>
+      <p style={{ margin: 0, fontSize: FS.warn }}><b>운영 전략</b> {tip.action}</p>
+    </div>)}
+  </section>;
 }

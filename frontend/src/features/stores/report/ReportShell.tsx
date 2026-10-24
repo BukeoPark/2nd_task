@@ -1,4 +1,6 @@
-import { useEffect, type ReactNode } from "react";
+import { AppIcon } from "../../../components/DataVisuals";
+import { useContext, useEffect, type ReactNode } from "react";
+import { ReportDateContext } from "./reportDate";
 import { createPortal } from "react-dom";
 import { AppLink } from "../../../components/AppLink";
 import { HOME_PATH } from "../../../lib/route";
@@ -7,10 +9,11 @@ import { C } from "./reportColors";
 import { capS, eyebrow, h2, reportCss, takeS } from "./reportStyles";
 
 export function Page({ n, total, children, className = "" }: { n: number; total: number; children: ReactNode; className?: string }) {
+  const date = useContext(ReportDateContext);
   return (
     <section className={`irp-page ${className}`}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 11, letterSpacing: ".04em", color: C.mute, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
-        <span>상권분석 보고서 · 공개 통계 기반</span><span>{n} / {total}</span>
+        <span>상권분석 보고서 · 공개 통계 기반</span><span>{date ? `리포트 작성 ${date} · ` : ""}{n} / {total}</span>
       </div>
       {children}
     </section>
@@ -42,7 +45,7 @@ export const TileBox = ({ label, value, note, tone = "plain" }: { label: string;
   </div>
 );
 export const Take = ({ text, label = "사장님께 의미" }: { text: string; label?: string }) => (
-  <div style={takeS}><div style={{ ...eyebrow, marginBottom: 2 }}>{label}</div><p style={{ margin: 0 }}>{text}</p></div>
+  <div style={takeS}><div style={{ ...eyebrow, marginBottom: 2, display: "flex", alignItems: "center", gap: 6 }}>{label === "꿀팁" && <AppIcon name="bulb" />}{label}</div><p style={{ margin: 0 }}>{text}</p></div>
 );
 
 /** 전체 화면 리포트 틀 — 위쪽 도구줄(인쇄·닫기), Esc 로 닫기, 인쇄할 때는 리포트만 나오게 한다. */

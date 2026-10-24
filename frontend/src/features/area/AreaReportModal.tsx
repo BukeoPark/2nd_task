@@ -1,9 +1,9 @@
 import { reportFilename } from "../../lib/reportFilename";
 import { ReportHeadline } from "../stores/report/ReportHeadline";
-import { areaReportTips, founderFieldChecks } from "../../lib/areaReportTips";
+import { areaFeatureLines, areaStrategies, founderFieldChecks } from "../../lib/areaReportTips";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient, type ReportDetail, type FoodUnitStoresResponse } from "../../lib/apiClient";
-import { ReportDemandPage, ReportCompetitionPage } from "./ReportExtras";
+import { apiClient, type AreaCharacter, type ReportDetail, type FoodUnitStoresResponse } from "../../lib/apiClient";
+import { ReportCharacter, ReportCompetitionPage, ReportDemandPage, ReportStrategies } from "./ReportExtras";
 import { useMemo } from "react";
 import { ReportLead } from "../stores/report/ReportLead";
 import { reportLead } from "../../lib/reportLead";
@@ -18,6 +18,7 @@ import { AreaSlotsChart, HistogramChart, RateBullets, TrendChart } from "../stor
 import { C } from "../stores/report/reportColors";
 import { boxS, eyebrow, footS } from "../stores/report/reportStyles";
 import { Fig, Head, Page, ReportFrame, Take, TileBox } from "../stores/report/ReportShell";
+import { ReportDateContext } from "../stores/report/reportDate";
 
 const today = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
 const peers = (bubbles: FoodBubble[] | undefined): PeerPoint[] => (bubbles ?? []).map((b) => ({ code: b.code, value: b.value, size: b.size }));
@@ -55,34 +56,35 @@ function SignalBox({ title, items, color, bg }: { title: string; items: { title:
   );
 }
 
-function Pages({ r, date, detail, stores, storesFailed }: { r: AreaReport; date: string; detail?: ReportDetail; stores?: FoodUnitStoresResponse; storesFailed: boolean }) {
+function Pages({ r, date, detail, stores, storesFailed, character, marketTypeName }: { r: AreaReport; date: string; detail?: ReportDetail; stores?: FoodUnitStoresResponse; storesFailed: boolean; character?: AreaCharacter | null; marketTypeName?: string | null }) {
   const lv = r.level, sl = r.slots, st = r.stability, lo = r.location;
   const hasStability = st !== null;
-  const hasSignals = r.lens.positive.length > 0 || r.lens.caution.length > 0 || r.lens.neutral.length > 0 || r.lens.missing.length > 0 || r.profile.length > 0;
-  const tips = r.lens.mode === "founder" ? areaReportTips(r, detail, stores) : [];
-  const summaries = tips.length ? [tips] : [];
+  // 프로필은 1쪽으로 옮겼으므로, 신호가 없으면 신호 쪽을 만들지 않는다
+  const hasSignals = r.lens.positive.length > 0 || r.lens.caution.length > 0 || r.lens.neutral.length > 0 || r.lens.missing.length > 0;
+  // 전략은 자료 기준·계산 방법 바로 앞 쪽에 모은다
+  const strategies = areaStrategies(r, character, detail, stores);
+  const strategyTitle = r.lens.mode === "founder" ? "이 특징을 활용한 창업 전략" : "이 특징을 활용한 운영 전략";
+  const featureLines = areaFeatureLines(r, detail, stores);
   const checklist = r.lens.mode === "founder" ? [...r.checklist.filter((item) => !/현장|유동|실제 임대료|메뉴·가격대|문을 닫은/.test(item)), ...founderFieldChecks] : r.checklist;
-  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", "competitors", hasStability && "stab", "location", "basis", ...summaries.map((_, i) => `tips-${i}`)].filter(Boolean) as string[];
+  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", "competitors", hasStability && "stab", "location", strategies.length > 0 && "tips", "basis"].filter(Boolean) as string[];
   const total = pages.length;
   const no = (k: string) => pages.indexOf(k) + 1;
   return (
-    <>
+    <ReportDateContext.Provider value={date}>
       <Page n={no("cover")} total={total}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={eyebrow}>{r.lens.eyebrow} · {lv?.quarterLabel ?? "최근 분기"} 기준</div>
           <ReportHeadline title={r.headline} />
-          <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
-        {r.lens.mode === "founder" && <p style={{ margin: 0, fontSize: 14 }}>
-          {sl ? `매출이 가장 집중되는 시간대는 ${sl.rows.reduce((a, b) => a.sales > b.sales ? a : b).label}입니다. ` : ""}
-          {lv && lv.sampleStatus !== "too_few" ? `점포당 추정매출은 비교 중앙값의 ${lv.ratio.toFixed(1)}배입니다. ` : ""}
-          {lv?.yoyTotal != null && lv.sampleStatus !== "too_few" ? `총매출은 전년 동기 대비 ${lv.yoyTotal > 0 ? "+" : ""}${lv.yoyTotal.toFixed(1)}%입니다.` : ""}
-        </p>}
-        <ReportLead lead={reportLead(r.lens.mode, "area", { summary: summaries.length ? no("tips-0") : undefined, level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("location") : undefined, checklist: checklist.length > 0 ? no("location") : undefined })} />
+        <ReportCharacter character={character} marketTypeName={marketTypeName} lines={featureLines} profile={r.profile} />
+        <ReportLead lead={reportLead(r.lens.mode, "area", { summary: strategies.length > 0 ? no("tips") : undefined, level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("location") : undefined, checklist: checklist.length > 0 ? no("location") : undefined })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
+        {!hasSignals && <>
+          <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
+        </>}
       </Page>
       {hasSignals && <Page n={no("signals")} total={total}>
+        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
         {r.lens.emptyNote && (
           <div style={{ ...boxS, background: C.paper }}>
             <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
@@ -103,16 +105,6 @@ function Pages({ r, date, detail, stores, storesFailed }: { r: AreaReport; date:
           {r.lens.neutral.length > 0 && <SignalBox title="관측된 특징" items={r.lens.neutral} color={C.slate} bg={C.soft} />}
           {r.lens.missing.length > 0 && <SignalBox title="추가 확인이 필요한 정보" items={r.lens.missing} color={C.mute} bg={C.soft} />}
         </div>}
-        <div className="irp-cols">
-          {r.profile.length > 0 && (
-            <div>
-              <h3 style={{ margin: "0 0 6px", fontSize: 14 }}>이 지역 프로필</h3>
-              <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
-                <tbody>{r.profile.map((p) => (<tr key={p.label}><th style={{ textAlign: "left", color: C.mute, fontWeight: 500, width: "38%", padding: "6px 10px 6px 0", borderBottom: `1px solid ${C.line}`, verticalAlign: "top" }}>{p.label}</th><td style={{ padding: "6px 0", borderBottom: `1px solid ${C.line}` }}>{p.value}</td></tr>))}</tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </Page>}
 
       {lv && (
@@ -181,6 +173,11 @@ function Pages({ r, date, detail, stores, storesFailed }: { r: AreaReport; date:
           </div>
 
       </Page>
+      {strategies.length > 0 && <Page n={no("tips")} total={total} className="irp-tip-page">
+        <Head eyebrowText="종합 정리 · 실전 팁" title={strategyTitle} text="이 상권의 특징에 맞춰 영업 방식과 초기 운영에서 검토해 볼 방향을 정리했습니다." />
+        <ReportStrategies title="" tips={strategies} />
+        <p style={{ margin: 0, fontSize: 11.5, color: C.mute }}>성공을 약속하지 않는 참고 방향입니다. 영업시간·메뉴·인력·후보 점포를 정할 때 함께 검토하고, 현장에서 직접 확인하세요.</p>
+      </Page>}
       <Page n={no("basis")} total={total} className="irp-appendix">
         <div>
           <h2 style={{ fontSize: 18, margin: "0 0 4px", lineHeight: 1.35 }}>자료 기준 · 계산 방법</h2>
@@ -198,16 +195,8 @@ function Pages({ r, date, detail, stores, storesFailed }: { r: AreaReport; date:
         </div>
         <div style={footS}><b>데이터 한계</b> {r.limits.join(" ")}<br /><b>출처</b> {r.sources.join(" · ")}.</div>
       </Page>
-      {summaries.map((tips, i) => <Page key={i} n={no(`tips-${i}`)} total={total} className="irp-tip-page">
-        <Head eyebrowText={`종합 정리 · ${i + 1} / ${summaries.length}`} title="이 상권의 특징을 활용한 창업 전략" text="두드러진 상권 특성에 맞춰 영업 방식과 초기 운영 전략을 정리했습니다." />
-        {tips.map((tip, j) => <div className="irp-tip" key={tip.key}>
-          <h3 style={{ margin: "0 0 5px", fontSize: 15 }}>{j + 1}. {tip.title}</h3>
-          <p style={{ margin: "0 0 5px", fontSize: 12, color: C.mute }}><b>자료 근거</b> {tip.evidence}</p>
-          <p style={{ margin: 0, fontSize: 13 }}><b>운영 전략</b> {tip.action}</p>
-        </div>)}
-        <p style={{ margin: 0, fontSize: 11.5, color: C.mute }}>영업시간·메뉴·인력·후보 점포를 정할 때 위 항목을 함께 검토해 보세요.</p>
-      </Page>)}
-    </>
+
+    </ReportDateContext.Provider>
   );
 }
 
@@ -251,7 +240,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
       )}
       {!pending && cmp.isError && <div style={{ ...boxS, background: C.paper, color: C.bad }}>지표를 불러오지 못했습니다: {cmp.error.message}</div>}
       {!pending && report && !hasAny && <div style={{ ...boxS, background: C.paper }}>이 지역·업종은 매출·점포 자료가 부족해 리포트를 만들 수 없습니다. 자료가 없는 것이지 0이라는 뜻이 아닙니다.</div>}
-      {!pending && report && hasAny && <Pages r={report} date={today()} detail={ov.data?.report_detail} stores={stores.data} storesFailed={stores.isError} />}
+      {!pending && report && hasAny && <Pages r={report} date={today()} detail={ov.data?.report_detail} stores={stores.data} storesFailed={stores.isError} character={ch.data ?? null} marketTypeName={level === "trdar" ? type : null} />}
     </ReportFrame>
   );
 }

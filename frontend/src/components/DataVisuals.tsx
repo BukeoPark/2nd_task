@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { populationShares, breakevenScale } from "../lib/dataVisuals";
 import "./dataVisuals.css";
 
-export type AppIconName = "home" | "work" | "train" | "bus" | "store" | "trend" | "calculator" | "clock" | "pin" | "hospital" | "building" | "users" | "wallet";
+export type AppIconName = "home" | "work" | "train" | "bus" | "store" | "trend" | "calculator" | "clock" | "pin" | "hospital" | "building" | "users" | "wallet" | "bulb";
 const paths: Record<AppIconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7" /></>,
   work: <><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12c6 4 12 4 18 0M10 14h4"/></>,
@@ -17,6 +17,7 @@ const paths: Record<AppIconName, ReactNode> = {
   building: <><path d="M4 21V3h11v18M15 9h5v12M8 7h3M8 11h3M8 15h3M8 19h3M2 21h20"/></>,
   users: <><circle cx="9" cy="7" r="4"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 3a4 4 0 0 1 0 8M18 14a6 6 0 0 1 4 7"/></>,
   wallet: <><path d="M3 7V5a2 2 0 0 1 2-2h13v4M3 7h18v14H3V7Z"/><path d="M21 12h-6v5h6M17 14.5h.01"/></>,
+  bulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></>,
 };
 export function AppIcon({ name }: { name: AppIconName }) {
   return <svg className="data-line-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;

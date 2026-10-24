@@ -218,7 +218,7 @@ export function buildLens(mode: Mode, c: LensContext): Lens {
       : low
         ? `${low.label}${eunNeun(low.label)} 비교 지역 평균보다 매출 비중이 낮습니다. 비중만으로 미충족 수요를 판단할 수 없으니 실제 고객 흐름과 내 매출액을 확인한 뒤 운영 변경을 검토하세요. `
         : "이 상권의 시간대 패턴과 내 가게의 시간대별 매출을 견주면 어디에 여지가 있는지 보입니다. ",
-    takeLabel: founder ? "창업 전에 의미" : "사장님께 의미",
+    takeLabel: founder ? "꿀팁" : "사장님께 의미",
     stabilityTitle: founder ? "안정성·경쟁과 입지" : "경쟁 환경과 입지",
     checklistTitle: founder ? "창업 전에 확인해 볼 것" : "이번 달 해볼 것",
     checklist,
