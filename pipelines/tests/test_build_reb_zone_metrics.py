@@ -58,3 +58,22 @@ def test_non_quarter_codes_are_ignored_and_ambiguous_names_are_not_used():
 def test_missing_value_stays_missing_not_zero():
     values, _ = m.select_latest(_rows(("202602", "영등포역", np.nan)))
     assert pd.isna(values["영등포역"])
+
+
+def test_seoul_reference_uses_official_aggregate_and_preserves_zero():
+    rows = pd.DataFrame([
+        {"WRTTIME_IDTFR_ID": "202601", "CLS_NM": "서울", "CLS_FULLNM": "서울", "DTA_VAL": 10, "UI_NM": "%"},
+        {"WRTTIME_IDTFR_ID": "202602", "CLS_NM": "서울", "CLS_FULLNM": "서울", "DTA_VAL": 0, "UI_NM": "%"},
+        {"WRTTIME_IDTFR_ID": "202602", "CLS_NM": "영등포역", "CLS_FULLNM": "서울>영등포역", "DTA_VAL": 99, "UI_NM": "%"},
+    ])
+    out = m.build_seoul_reference({"vacancy_small_shop": rows})
+    assert len(out) == 1 and out.iloc[0]["value"] == 0 and out.iloc[0]["quarter"] == "202602"
+    # 최신 분기에 공식 집계 행이 없으면 과거 값이나 하위 상권 평균으로 대신하지 않는다.
+    out = m.build_seoul_reference({"vacancy_small_shop": rows.drop(index=1)})
+    assert pd.isna(out.iloc[0]["value"])
+
+
+def test_seoul_reference_rejects_duplicates_and_wrong_units():
+    row = {"WRTTIME_IDTFR_ID": "202602", "CLS_NM": "서울", "CLS_FULLNM": "서울", "DTA_VAL": 50, "UI_NM": "천원/㎡"}
+    assert pd.isna(m.build_seoul_reference({"rent_small_shop": pd.DataFrame([row, row])}).iloc[0]["value"])
+    assert pd.isna(m.build_seoul_reference({"rent_small_shop": pd.DataFrame([{**row, "UI_NM": "%"}])}).iloc[0]["value"])

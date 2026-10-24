@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+
 import numpy as np
 import pandas as pd
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
 from app.services import data_store, store_churn, taxonomy, unit_metrics
-from app.services.reb import reb_quarters
+from app.services.reb import reb_quarters, quarter_label as _reference_quarter
 
 FOOD_SVC_PREFIX = "CS1"
 LEVELS = ("gu", "dong", "trdar")
@@ -414,6 +415,25 @@ def _reb_quarter_label(col: str) -> str | None:
     return reb_quarters(reb.to_dict("records")).get(col)
 
 
+def _seoul_reb_reference() -> dict:
+    """지역 값과 분리한 서울 전체 참고값. 파일이 없으면 기존 동작을 유지한다."""
+    try:
+        rows = data_store.load_parquet("reb_seoul_reference.parquet")
+    except data_store.DataNotReady:
+        return {}
+    out = {}
+    for key in ("rent_small_shop", "vacancy_small_shop_pct"):
+        hit = rows.loc[(rows["metric"] == key) & (rows["region"] == "서울")]
+        if len(hit) != 1:
+            continue
+        r = hit.iloc[0]
+        q = _reference_quarter(str(r["quarter"]))
+        value = None if pd.isna(r["value"]) else float(r["value"])
+        if value is not None and np.isfinite(value) and value >= 0 and (key != "vacancy_small_shop_pct" or value <= 100) and q is not None:
+            out[key] = {"value": value, "as_of": q, "scope": "서울 평균", "source": "한국부동산원 R-ONE · 서울 소규모 상가"}
+    return out
+
+
 def _cell(row) -> dict:
     """비교표 칸 하나 — 값이 없으면 사유를, 일부 업종만 썼으면 그 범위를 note 로 붙인다(전체 값으로 오해하지 않게)."""
     if row is None:
@@ -457,6 +477,7 @@ def compare(level: str, codes: list[str], svc: str | None, scls: str | None) -> 
     source = {"seoul": "서울시 상권분석서비스(추정매출·점포)", "sbiz": "소상공인 상가(상권)정보", "dynamics": "서울시 상권분석서비스(점포)",
               "churn": "서울시 상권분석서비스(개업·폐업)", "hinterland": "서울시 상권분석서비스(직장·상주인구·집객시설)",
               "anchor": "소상공인 상가(상권)정보 매장 좌표", "reb": "한국부동산원 R-ONE 임대동향(천원/㎡)"}
+    seoul_reference = {} if "reb" in skipped else _seoul_reb_reference()
     rows = []
     for group, key, label, kind, src in COMPARE_ROWS:
         if src in skipped:
@@ -491,7 +512,7 @@ def compare(level: str, codes: list[str], svc: str | None, scls: str | None) -> 
             row_as_of = as_of[src]
         rows.append({"group": group, "key": key, "label": label, "kind": kind, "source": source[src], "as_of": row_as_of,
                      "scope": None if src in ("hinterland", "reb") else metric_scope(key, scope),
-                     "basis": METRIC_BASIS.get(key), "cells": cells})
+                     "basis": METRIC_BASIS.get(key), "cells": cells, **({"reference": seoul_reference[key]} if key in seoul_reference else {})})
     notes = ["점수나 순위로 합치지 않았습니다. 어떤 지표가 중요한지는 업종·자금·운영 방식에 따라 다릅니다.",
              "R-ONE 임대료는 5개 조사 상권 값만 있어, 가까운 조사 상권 값을 참고로 붙였습니다(해당 상권 실제 임대료 아님)."]
     if skipped:

@@ -252,19 +252,25 @@ function plainName(title: string, type?: string | null): string {
 
 /** 값이 모두 없으면 같은 결측 사유를 두 번 반복하지 않는다. 0은 유효한 통계다. */
 function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { rent?: Row; vacancy?: Row; loading: boolean; failed: boolean; /** 예비 창업자가 비용 점검에 저장한 입력 — 있으면 내 ㎡당 월세를 참고값과 견준다 */ founderDraft?: CostCheckDraft }) {
-  const hasRent = rent?.cells[0]?.value != null;
-  const mine = founderDraft && hasRent ? rentVsReference(computeRentDetail(founderDraft).rentPerSqm, rent!.cells[0].value as number) : null;
-  const hasVacancy = vacancy?.cells[0]?.value != null;
-  const tip = <InfoTip label="임대시장 자료 기준">인근 1km 이내 R-ONE 조사상권의 참고 통계이며, 선택 지역의 실제 계약금액이 아닙니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}</InfoTip>;
+  const localRent = rent?.cells[0]?.value;
+  const localVacancy = vacancy?.cells[0]?.value;
+  const rentValue = localRent ?? rent?.reference?.value;
+  const vacancyValue = localVacancy ?? vacancy?.reference?.value;
+  const rentFallback = localRent == null && rent?.reference != null;
+  const vacancyFallback = localVacancy == null && vacancy?.reference != null;
+  const hasRent = rentValue != null;
+  const mine = founderDraft && hasRent ? rentVsReference(computeRentDetail(founderDraft).rentPerSqm, rentValue as number) : null;
+  const hasVacancy = vacancyValue != null;
+  const tip = <InfoTip label="임대시장 자료 기준">지역 자료가 있는 항목은 인근 1km 이내 조사상권 값이며, 없는 항목은 서울 전체 소규모 상가 평균을 표시합니다. 선택 지역의 실제 계약금액이 아닙니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}<br/>{rentFallback ? `${rent?.reference?.source} · ${rent?.reference?.as_of}` : ""}<br/>{vacancyFallback ? `${vacancy?.reference?.source} · ${vacancy?.reference?.as_of}` : ""}</InfoTip>;
   return <Block title={<>주변 임대시장 참고 {tip}</>}>
     {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note ?? "이번 분기 주변 임대자료가 없어요."}</Caption> : <>
-      <Caption>인근 조사상권 기준{rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}{rent?.as_of ? ` · ${rent.as_of}` : ""}</Caption>
+      <Caption>{rentFallback || vacancyFallback ? "지역 조사값이 없는 항목은 서울 평균으로 표시해요." : `인근 조사상권 기준${rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}${rent?.as_of ? ` · ${rent.as_of}` : ""}`}</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
-        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? formatRentWon(rent!.cells[0].value as number) : "자료 없음"} missing={!hasRent}/>
-        <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancy!.cells[0].value) : "자료 없음"} missing={!hasVacancy}/>
+        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? formatRentWon(rentValue as number) : "자료 없음"} missing={!hasRent} sub={rentFallback ? `서울 평균 · ${rent?.reference?.as_of}` : rentFallback !== vacancyFallback ? "인근 조사상권" : undefined}/>
+        <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancyValue ?? null) : "자료 없음"} missing={!hasVacancy} sub={vacancyFallback ? `서울 평균 · ${vacancy?.reference?.as_of}` : rentFallback !== vacancyFallback ? "인근 조사상권" : undefined}/>
       </div>
       {founderDraft && hasRent && (mine
-        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${formatRentWon(mine.mine)}/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
+        ? <div style={{ marginTop: 10 }}><Stat onGray label={rentFallback ? "내 월세 단가 · 서울 평균과 비교" : "내가 입력한 월세 단가"} value={`${formatRentWon(mine.mine)}/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
         : <Caption>비용 계산에서 월세와 면적을 넣으면 이 임대료와 견줘 드려요.</Caption>)}
     </>}
   </Block>;

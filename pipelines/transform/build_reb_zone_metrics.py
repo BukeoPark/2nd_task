@@ -12,6 +12,7 @@
        vacancy_small_shop_pct, rent_small_shop, vacancy_midlarge_shop_pct, rent_midlarge_shop,
        vacancy_office_pct, rent_office,
        <위 6개 지표마다> <지표>_quarter  — 그 값을 고른 분기('202602' = 2026년 2분기))
+      data/processed/reb_seoul_reference.parquet — 서울 전체 소규모 상가 공식 임대료·공실률과 지표별 기준 분기
       outputs/tables/reb_zone_metrics_log.csv  통계표별 최신 분기와 값이 있는/없는 상권
 
 기준 분기 규칙
@@ -83,6 +84,28 @@ def build_metrics(zones: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> tuple
     return out, log
 
 
+def build_seoul_reference(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """서울 공식 집계 행만 추출한다. 상권 평균을 재계산하거나 과거 값으로 채우지 않는다."""
+    records = []
+    for key in ("rent_small_shop", "vacancy_small_shop"):
+        rows = tables.get(key)
+        if rows is None:
+            continue
+        quarter = latest_quarter(rows)
+        if quarter is None:
+            continue
+        hit = rows.loc[(rows["WRTTIME_IDTFR_ID"].astype(str) == quarter)
+                       & (rows["CLS_FULLNM"] == "서울") & (rows["CLS_NM"] == "서울")]
+        value = pd.to_numeric(hit["DTA_VAL"], errors="coerce").iloc[0] if len(hit) == 1 else float("nan")
+        unit = hit.iloc[0]["UI_NM"] if len(hit) == 1 else None
+        expected = "천원/㎡" if key == "rent_small_shop" else "%"
+        if unit != expected or pd.isna(value) or not float("-inf") < value < float("inf") or value < 0 or (key == "vacancy_small_shop" and value > 100):
+            value = float("nan")
+        records.append({"metric": METRIC_COLS[key], "value": value, "quarter": quarter,
+                        "region": "서울", "unit": expected, "statbl_id": TABLES[key][0]})
+    return pd.DataFrame(records, columns=["metric", "value", "quarter", "region", "unit", "statbl_id"])
+
+
 def main() -> None:
     zones = pd.read_parquet(config.PROCESSED_DIR / "reb_zone_coords.parquet")
     tables: dict[str, pd.DataFrame] = {}
@@ -90,6 +113,11 @@ def main() -> None:
         path = _latest_raw_file(TABLES[key][0])
         if path is not None:
             tables[key] = pd.DataFrame(json.loads(path.read_text(encoding="utf-8"))["rows"])
+    reference = build_seoul_reference(tables)
+    reference.to_parquet(config.PROCESSED_DIR / "reb_seoul_reference.parquet", index=False)
+    print(f"서울 소규모 상가 참고값: {len(reference)}개 지표 · 유효 {reference['value'].notna().sum()}개")
+    for r in reference.itertuples():
+        print(f"  {r.metric}: {r.quarter} · {r.value} {r.unit}")
     out, log = build_metrics(zones, tables)
     out_path = config.PROCESSED_DIR / "reb_zone_metrics.parquet"
     out.to_parquet(out_path, index=False)

@@ -310,3 +310,24 @@ def test_anchor_proximity_counts_are_exact_and_page_independent(client):
         assert counts["total"] == one["total"]
         assert counts["nearby"] == int(flags[f"{brand}_zone"].sum())
         assert counts["assessed"] == int(flags[f"{brand}_zone"].notna().sum())
+
+
+def test_seoul_reference_is_separate_and_keeps_zero(monkeypatch):
+    from app.services import food_map
+    import pandas as pd
+    monkeypatch.setattr(food_map.data_store, "load_parquet", lambda _: pd.DataFrame([
+        {"metric": "rent_small_shop", "region": "서울", "value": 52.7, "quarter": "202602"},
+        {"metric": "vacancy_small_shop_pct", "region": "서울", "value": 0.0, "quarter": "202601"},
+    ]))
+    refs = food_map._seoul_reb_reference()
+    assert refs["rent_small_shop"]["scope"] == "서울 평균"
+    assert refs["vacancy_small_shop_pct"]["value"] == 0
+    assert refs["vacancy_small_shop_pct"]["as_of"] == "2026년 1분기"
+
+
+def test_seoul_reference_missing_file_is_optional(monkeypatch):
+    from app.services import food_map, data_store
+    def missing(_):
+        raise data_store.DataNotReady("자료 없음")
+    monkeypatch.setattr(data_store, "load_parquet", missing)
+    assert food_map._seoul_reb_reference() == {}

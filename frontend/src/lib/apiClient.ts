@@ -391,6 +391,7 @@ export interface FoodCompareResponse {
     /** 이 지표가 적용된 업종 범위('커피-음료 전체 기준') — 값 바로 옆에 보인다. 수요·임대 행은 업종과 무관해 null */
     scope: string | null;
     basis?: string | null;
+    reference?: { value: number; as_of: string; scope: string; source: string };
     cells: { value: number | null; note?: string; partial?: boolean; caution?: boolean }[];
   }[];
   scope: FoodScope;
