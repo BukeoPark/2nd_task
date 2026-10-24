@@ -77,3 +77,9 @@ export function areaFeatureLines(r: AreaReport, detail?: ReportDetail, stores?: 
   if (lv && lv.flpopYoy != null) out.push(`유동인구 지수는 전년 동기 대비 ${lv.flpopYoy > 0 ? "+" : ""}${lv.flpopYoy.toFixed(1)}%입니다(길 단위로 배분한 추정치).`);
   return out.slice(0, 4);
 }
+
+/** 창업 전략 위에 쓰는 인사이트 한 줄 — 자료로 두드러진 전략(areaStrategies 순서의 첫 항목)의 제목을 그대로 쓴다.
+ *  예: 총매출이 늘면 '매출 증가기에 맞춘 단계적 운영 확대'. 전략이 없으면 쓰지 않는다(null). */
+export function strategyHeadline(tips: ReportTip[]): string | null {
+  return tips.length > 0 ? tips[0].title : null;
+}

@@ -20,6 +20,7 @@ export const reportCss = `
 .irp-summary-page{gap:22px}.irp-result-section,.irp-strategy-section{display:grid;gap:10px}.irp-strategy-section{border-top:1px solid ${C.line};padding-top:18px}.irp-summary-finding{padding:10px 12px!important;font-size:14px!important}.irp-summary-page .irp-tip{padding:9px 12px;line-height:1.45}.irp-summary-page .irp-tip h4{font-size:16px!important}.irp-summary-page .irp-tip p{font-size:14px!important}
 .irp-strategy-section>section{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:10px!important}.irp-summary-page .irp-summary-finding h3{margin:0!important}@media screen and (max-width:600px){.irp-strategy-section>section{grid-template-columns:1fr}}
 .irp-tip{padding:12px 14px;border-left:3px solid ${C.teal};background:${C.soft};break-inside:avoid;line-height:1.55}
+/* 카카오 지도의 축척 표시를 오른쪽 아래로 — 왼쪽 아래의 © Kakao 저작권 표시와 겹치지 않게(저작권 표시는 가리지 않는다) */.irp-report-map-canvas div[style*="cursor: default"][style*="height: 19px"]{left:auto!important;right:0!important}
 .irp-methods{font-size:11.5px;line-height:1.5}
 .irp-methods p{margin:0 0 5px}
 .irp-appendix>div:last-child{font-size:10.5px!important;padding-top:8px!important;line-height:1.5!important}
@@ -79,6 +80,10 @@ export const reportCss = `
   .irp-tile{padding:10px!important}
   .irp-page h1{font-size:28px!important}
   .irp-page h2{font-size:22px!important}
+  .irp-summary-page{gap:12px;padding:10mm}
+  .irp-summary-page .irp-result-section,.irp-summary-page .irp-strategy-section{gap:8px}
+  .irp-summary-page .irp-result-item{padding:7px 12px!important;line-height:1.45!important}
+  .irp-summary-page .irp-tip{padding:7px 10px}.irp-summary-page .irp-tip h4{font-size:15px!important}.irp-summary-page .irp-tip p{font-size:13px!important}.irp-summary-page .irp-checklist{gap:5px!important}
   .irp-page svg{max-width:100%;height:auto}
   .irp-page svg text{font-size:13px}
 

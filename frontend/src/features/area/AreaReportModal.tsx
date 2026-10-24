@@ -3,7 +3,8 @@ import { ReportAreaMap } from "./ReportAreaMap";
 import { RF } from "../stores/report/reportTypography";
 import { reportFilename } from "../../lib/reportFilename";
 import { ReportHeadline } from "../stores/report/ReportHeadline";
-import { areaFeatureLines, areaStrategies, founderFieldChecks } from "../../lib/areaReportTips";
+import { areaFeatureLines, areaStrategies, founderFieldChecks, strategyHeadline } from "../../lib/areaReportTips";
+import { summaryInsights } from "../../lib/summaryInsights";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, type AreaCharacter, type ReportDetail, type ReportExtras, type FoodUnitStoresResponse } from "../../lib/apiClient";
 import { ReportLocationVisuals, ReportCharacter, ReportCompetitionPage, ReportDemandPage, ReportStrategies } from "./ReportExtras";
@@ -20,7 +21,7 @@ import { useFoodBubbles, useFoodCompare, useUnitOverview, useAreaCharacter, useR
 import { ReportIndustryPage, ReportCompetitionSurvivalPage } from "../stores/report/ReportExtraPages";
 import { AreaSlotsChart, HistogramChart, TrendChart } from "../stores/report/ReportCharts";
 import { C } from "../stores/report/reportColors";
-import { boxS, eyebrow, footS } from "../stores/report/reportStyles";
+import { boxS, eyebrow, footS, h2 } from "../stores/report/reportStyles";
 import { Fig, Head, Page, ReportFrame, Take, TileBox } from "../stores/report/ReportShell";
 import { ReportDateContext } from "../stores/report/reportDate";
 
@@ -39,40 +40,18 @@ interface Props {
   onClose: () => void;
 }
 
-/** 신호 목록 상자 — 제목에 개수를 붙이고, 항목은 제목(굵게)과 근거 한 줄로 쓴다. 없으면 '해당 없음'이라고 말한다. */
-function SignalBox({ title, items, color, bg }: { title: string; items: { title: string; body: string }[]; color: string; bg: string }) {
-  return (
-    <div style={{ background: bg, padding: "12px 14px", borderTop: `3px solid ${color}` }}>
-      <div style={{ fontWeight: 800, fontSize: RF.body, color, marginBottom: 6 }}>{title} ({items.length})</div>
-      {items.length === 0 ? (
-        <p style={{ margin: 0, fontSize: RF.body, color: C.mute }}>기준을 넘는 항목이 없습니다.</p>
-      ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
-          {items.map((s) => (
-            <li key={s.title} style={{ fontSize: RF.body, lineHeight: 1.55 }}>
-              <b style={{ color: C.ink }}>{s.title}</b>
-              <div style={{ color: C.mute }}>{s.body}</div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function Pages({ r, date, detail, stores, storesFailed, character, marketTypeName, extras, unitName }: { r: AreaReport; date: string; detail?: ReportDetail; stores?: FoodUnitStoresResponse; storesFailed: boolean; character?: AreaCharacter | null; marketTypeName?: string | null; extras?: ReportExtras; unitName: string }) {
   const lv = r.level, sl = r.slots, st = r.stability, lo = r.location;
   const hasStability = st !== null || !!extras;
-  // 프로필은 1쪽으로 옮겼으므로, 신호가 없으면 신호 쪽을 만들지 않는다
-  const hasSignals = r.lens.positive.length > 0 || r.lens.caution.length > 0 || r.lens.neutral.length > 0 || r.lens.missing.length > 0;
   // 전략은 자료 기준·계산 방법 바로 앞 쪽에 모은다
   const strategies = areaStrategies(r, character, detail, stores);
+  const insights = summaryInsights({ report: r, character, detail, stores, extras });
   const featureLines = areaFeatureLines(r, detail, stores);
   const results = [...r.findings.filter(f=>!(/매출 비중/.test(f.title)&&featureLines.some(l=>l.includes("매출이 가장 몰리는")))).map(f=>f.title), ...featureLines].filter((line,i,all)=>all.indexOf(line)===i);
   const priority = (line:string) => /매출.*(증감|감소|증가|전년)|총매출/.test(line) ? 0 : /점포당|중앙값/.test(line) ? 1 : /시간|시\(/.test(line) ? 2 : /폐업|경쟁|업종/.test(line) ? 3 : /연령|평일|주말/.test(line) ? 4 : 5;
   results.sort((a,b)=>priority(a)-priority(b));
   const checklist = r.lens.mode === "founder" ? [...r.checklist.filter((item) => !/현장|유동|실제 임대료|메뉴·가격대|문을 닫은/.test(item)), ...founderFieldChecks].filter(item=>!item.includes("최근 상호가 바뀐")) : r.checklist.filter(item=>!item.includes("최근 상호가 바뀐"));
-  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", extras && "industries", "competitors", hasStability && "stab", "location", "summary", "basis"].filter(Boolean) as string[];
+  const pages = ["cover", lv && "level", sl && "slots", "demand", extras && "industries", "competitors", hasStability && "stab", "location", "summary", "basis"].filter(Boolean) as string[];
   const total = pages.length;
   const no = (k: string) => pages.indexOf(k) + 1;
   return (
@@ -83,36 +62,12 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
           <ReportHeadline title={r.headline} />
         </div>
         <ReportCharacter character={character} marketTypeName={marketTypeName} lines={[]} profile={r.profile} />
-        <ReportLead compact lead={areaReportLead({signals:no("signals"),level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
+        <ReportLead compact lead={areaReportLead({level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
 
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <ReportTriad hideTodo triad={buildTriad({mode:r.lens.mode,tiles:[],cautions:[],checklist:checklist.slice(0,2),sampleNote:lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores,"지역") : null})}/>
 
       </Page>
-      {hasSignals && <Page n={no("signals")} total={total}>
-        <Head eyebrowText="상권 변화 신호" title={r.lens.caution[0]?.title ?? r.lens.positive[0]?.title ?? r.lens.neutral[0]?.title ?? "아직 확인되지 않은 정보를 먼저 살펴보세요"} text="비교 지역과 다른 점, 최근 달라진 점, 아직 확인하지 못한 정보를 모았습니다."/>
-        {r.lens.emptyNote && (
-          <div style={{ ...boxS, background: C.paper }}>
-            <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
-            <p style={{ margin: "4px 0 0", fontSize: RF.body, color: C.mute }}>{r.lens.emptyNote}</p>
-          </div>
-        )}
-        {(r.lens.positive.length > 0 || r.lens.caution.length > 0) && (
-          <div>
-            <h3 style={{ margin: "0 0 8px", fontSize: RF.section }}>매출·경쟁에서 나타난 변화</h3>
-            <div className="irp-cols">
-              <SignalBox title="살펴볼 기회" items={r.lens.positive} color={C.teal} bg={C.tealSoft} />
-              <SignalBox title="주의할 변화" items={r.lens.caution} color={C.accent} bg={C.accentSoft} />
-            </div>
-            <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>비교 기준을 넘는 변화만 표시했습니다. 원인은 현장에서 확인하세요.</p>
-          </div>
-        )}
-        {(r.lens.neutral.length > 0 || r.lens.missing.length > 0) && <div className="irp-cols">
-          {r.lens.neutral.length > 0 && <SignalBox title="자료에서 확인한 특징" items={r.lens.neutral} color={C.slate} bg={C.soft} />}
-          {r.lens.missing.length > 0 && <SignalBox title="아직 알 수 없는 정보" items={r.lens.missing} color={C.mute} bg={C.soft} />}
-        </div>}
-      </Page>}
-
       {lv && (
         <Page n={no("level")} total={total}>
           <Head eyebrowText="매출 수준과 흐름" title={`점포당 월평균 추정매출은 비교 ${r.subtitle.includes("행정동 단위") ? "행정동" : "상권"} 중앙값의 ${lv.ratio.toFixed(1)}배`} text={lv.text} />
@@ -158,16 +113,22 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
       <Page n={no("summary")} total={total} className="irp-summary-page">
         <section className="irp-result-section">
           <Head eyebrowText="★ 종합 정리 및 창업전략" title={summaryPageTitle(r)}/>
-          <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>{results.map((line,i)=><li key={line} style={{...boxS,display:"grid",gridTemplateColumns:"24px minmax(0,1fr)",gap:8,fontSize:RF.section,fontWeight:700,color:C.ink,lineHeight:1.6}}><b>{i+1}</b><span>{line}</span></li>)}</ol>
-          {!results.length&&<p>종합할 수 있는 자료가 부족합니다.</p>}
+          {/* 인사이트가 있으면 번호 상자(검은 제목 + 회색 근거·확인할 일), 자료가 없으면 예전처럼 핵심 결과 목록을 쓴다 */}
+          <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>
+            {insights.length
+              ? insights.map((it,i)=><li key={it.key} className="irp-result-item" style={{...boxS,display:"grid",gridTemplateColumns:"24px minmax(0,1fr)",gap:8,fontSize:RF.section,fontWeight:700,color:C.ink,lineHeight:1.5}}><b>{i+1}</b><span>{it.title}{it.detail&&<span style={{display:"block",marginTop:2,fontSize:RF.body,fontWeight:500,color:C.mute,lineHeight:1.5}}>{it.detail}</span>}</span></li>)
+              : results.map((line,i)=><li key={line} className="irp-result-item" style={{...boxS,display:"grid",gridTemplateColumns:"24px minmax(0,1fr)",gap:8,fontSize:RF.section,fontWeight:700,color:C.ink,lineHeight:1.6}}><b>{i+1}</b><span>{line}</span></li>)}
+          </ol>
+          {!insights.length&&!results.length&&<p>종합할 수 있는 자료가 부족합니다.</p>}
         </section>
         {strategies.length > 0 && <section className="irp-strategy-section">
+          <h2 style={h2}>{strategyHeadline(strategies)}</h2>
           <ReportStrategies title="" tips={strategies}/>
           <p style={{margin:"8px 0 0",fontSize: RF.caption,color:C.mute}}>영업시간·메뉴·인력·후보 점포를 정할 때 함께 검토하고, 현장에서 직접 확인하세요.</p>
         </section>}
           <div>
             <h3 style={{ margin: "0 0 8px", fontSize: RF.section }}>{r.lens.checklistTitle}</h3>
-            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
+            <ul className="irp-checklist" style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
               {checklist.map((c) => (<li key={c} style={{ display: "grid", gridTemplateColumns: "20px 1fr", gap: 8, fontSize: RF.body }}><span style={{ width: 13, height: 13, border: `1.5px solid ${C.accent}`, marginTop: 5 }} />{c}</li>))}
             </ul>
           </div>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { areaFeatureLines, areaReportTips, areaStrategies, traitStrategies } from "../src/lib/areaReportTips.ts";
+import { areaFeatureLines, areaReportTips, areaStrategies, strategyHeadline, traitStrategies } from "../src/lib/areaReportTips.ts";
 import type { AreaCharacter } from "../src/lib/apiClient";
 import type { AreaReport } from "../src/lib/areaReport";
 const base = { level: null, slots: null, stability: null, location: null, profile: [], lens: { mode: "founder" } } as unknown as AreaReport;
@@ -50,4 +50,11 @@ test("상권 특징 줄은 핵심 숫자 카드와 겹치지 않는 값만, 있�
   assert.match(lines[2], /백반\/한정식\(24%\)/);
   assert.match(lines[3], /\+10\.5%/);
   assert.ok(lines.every((l) => !/2,014|폐업률/.test(l)));
+});
+
+test("전략 인사이트 한 줄은 자료로 두드러진 첫 전략의 제목이고, 전략이 없으면 쓰지 않는다", () => {
+  const rising = { ...base, level: { ratio: 0.9, sampleStatus: "ok", yoyTotal: 5.4 }, profile: [] } as unknown as AreaReport;
+  assert.equal(strategyHeadline(areaStrategies(rising, ch("traits", ["residential"]))), "매출 증가기에 맞춘 단계적 운영 확대");
+  assert.equal(strategyHeadline(areaStrategies(base, ch("traits", ["transit"]))), "역 이용객 동선을 활용한 접근성");
+  assert.equal(strategyHeadline([]), null);
 });
