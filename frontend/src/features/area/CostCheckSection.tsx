@@ -5,7 +5,7 @@ import { ActionButton, Block, Caption, Stat, SubHead } from "../../components/Pa
 import { inputStyle, labelStyle } from "../../lib/panelStyle";
 import { COST_CHECK_EXCLUDED, COST_CHECK_FIELDS, clearDraft, computeCostCheck, computeRentDetail, loadDraft, saveDraft, type CostCheckDraft, type CostCheckKey } from "../../lib/costCheck";
 import { STARTUP_FIELDS, ORDER_FIELDS, computeStartupPlan } from "../../lib/startupPlan";
-import { BENCH_LEVEL_TEXT, costFill, orderHint, salesBenchmark } from "../../lib/costSummary";
+import { costFill, orderHint, salesBenchmark } from "../../lib/costSummary";
 import { formatKrw } from "../../lib/format";
 import { FS } from "../../lib/typography";
 
@@ -115,24 +115,25 @@ export function CostCheckLauncher({ unitKey, unitWord, benchWon, benchNote, onOp
   const plan = computeStartupPlan(draft, required);
   const valid = (res.status === "ok" || res.status === "no_revenue") && required !== null;
   const fill = costFill(draft);
-  const bench = valid ? salesBenchmark(required, benchWon) : null;
+  const bench = valid && fill.missing.length === 0 ? salesBenchmark(required, benchWon) : null;
   const orderNote = orderHint(draft.openDays, draft.averageTicket, plan.invalidOrders, plan.dailyOrders);
   const avgTip = <InfoTip label="지역 평균 기준">{benchNote ? <>{benchNote}<br/></> : null}서울시 카드결제 기반 추정이라 현금·배달 매출이 빠져 있고, 개별 점포의 매출이나 내 매출 예측이 아닙니다.</InfoTip>;
   return <div>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-      <Stat onGray big label="필요한 월매출" value={valid ? manwon(required!) : "—"} missing={!valid} sub={valid ? undefined : "월 비용을 넣으면 계산돼요."}/>
+      <Stat onGray big label="입력 비용 기준 필요 월매출" value={valid ? manwon(required!) : "—"} missing={!valid} sub={valid ? undefined : "월 비용을 넣으면 계산돼요."}/>
       <Stat onGray big label="하루 필요 주문" value={plan.dailyOrders === null ? "—" : `${plan.dailyOrders.toLocaleString()}건`} missing={plan.dailyOrders === null} sub={valid ? orderNote ?? undefined : "영업일·주문 금액도 넣어 주세요."} subTone={valid && plan.invalidOrders ? "warn" : undefined}/>
     </div>
     {valid
       ? <Caption>{hasLoan ? "대출 상환 포함 · " : ""}{res.ownerPay !== null ? "내 월급 포함 · " : ""}저장한 입력값 기준{fill.missing.length === 0 ? ` · 월 비용 ${fill.total}칸 모두 입력` : ""}</Caption>
       : <Caption>월세·관리비·인건비·내 월급·기타 고정비·원가율·수수료율({fill.total}칸)을 넣으면 필요한 매출과 주문 수를 계산해요.</Caption>}
-    {valid && fill.missing.length > 0 && <Caption tone="warn">월 비용 {fill.total}칸 중 {fill.filled}칸만 입력했어요. 비어 있는 {fill.missing.join("·")}만큼 필요한 매출이 낮게 계산돼요.</Caption>}
+    {valid && fill.missing.length > 0 && <Caption tone="warn">일부 비용 미입력 · {fill.missing.join("·")}를 추가해 주세요.</Caption>}
+    {valid && plan.dailyRevenue !== null && <Caption>하루 필요 매출 <strong>{manwon(plan.dailyRevenue)}</strong> · 월 {draft.openDays}일 영업 기준</Caption>}
     {benchWon !== null && benchWon > 0 && <div style={{ marginTop: 10 }}>
       <Stat onGray
         label={<>이 {unitWord} 같은 업종 점포당 월평균 추정매출 {avgTip}</>}
         value={manwon(benchWon / 1e4)}
-        sub={bench ? `필요한 월매출은 이 평균의 ${bench.pct.toLocaleString()}% · ${BENCH_LEVEL_TEXT[bench.level]}` : "월 비용을 넣으면 필요한 월매출을 이 평균과 견줘 드려요."}/>
+        sub={bench ? `지역 추정 평균 대비 ${bench.pct.toLocaleString()}%` : valid && fill.missing.length > 0 ? "비용 입력을 마치면 필요 매출과 비교해요." : "월 비용을 넣으면 필요한 월매출을 이 평균과 견줘 드려요."}/>
     </div>}
-    <div style={{ marginTop: 12 }}><ActionButton variant="primary" full onClick={onOpen}>{!valid ? "필요한 매출 계산하기" : fill.missing.length > 0 ? "비어 있는 비용 입력하기" : "입력값 수정·다시 계산하기"} ›</ActionButton></div>
+    <div style={{ marginTop: 12 }}><ActionButton variant="primary" full onClick={onOpen}>{"비용·영업일 입력하기"} ›</ActionButton></div>
   </div>;
 }

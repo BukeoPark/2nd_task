@@ -255,11 +255,11 @@ function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { ren
     {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note ?? "이번 분기 주변 임대자료가 없어요."}</Caption> : <>
       <Caption>인근 조사상권 기준{rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}{rent?.as_of ? ` · ${rent.as_of}` : ""}</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
-        <Stat onGray big label="소규모 상가 임대료" value={hasRent ? formatMetric(rent!.kind, rent!.cells[0].value) : "자료 없음"} missing={!hasRent}/>
+        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? `${Math.round((rent!.cells[0].value as number) * 1000).toLocaleString()}원` : "자료 없음"} missing={!hasRent}/>
         <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancy!.cells[0].value) : "자료 없음"} missing={!hasVacancy}/>
       </div>
       {founderDraft && hasRent && (mine
-        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${mine.mine.toFixed(1)}천원/㎡`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
+        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${Math.round(mine.mine * 1000).toLocaleString()}원/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
         : <Caption>비용 계산에서 월세와 면적을 넣으면 이 임대료와 견줘 드려요.</Caption>)}
     </>}
   </Block>;
