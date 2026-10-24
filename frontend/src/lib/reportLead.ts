@@ -69,3 +69,14 @@ export function reportLead(mode: LeadMode, scope: ReportScope, p: LeadPages): Le
     ],
   };
 }
+
+
+/** 지역 보고서의 실제 대분류·페이지 순서를 그대로 안내한다. 통합된 전략·확인 목록은 중복 안내하지 않는다. */
+export function areaReportLead(p: {signals?:number;level?:number;slots?:number;demand?:number;industries?:number;competitors?:number;stability?:number;location?:number;summary?:number;basis?:number}):Lead {
+  const entries:[string,number|undefined][]=[
+    ["상권 변화 신호",p.signals],["매출 수준과 흐름",p.level],["시간대별 매출과 배후인구",p.slots],
+    ["고객 구성과 영업일",p.demand],["외식 업종별 비교",p.industries],["세부 업종 구성과 확인할 가게",p.competitors],
+    ["경쟁 변화와 영업 기간",p.stability],["상권 유형과 주변 환경",p.location],["종합 정리 및 창업전략",p.summary],["자료 기준·계산 방법",p.basis],
+  ];
+  return {heading:"보고서 길잡이",scopeNote:"상권·행정동 기준 보고서",rows:entries.filter(([,n])=>n!==undefined&&n>0).sort((a,b)=>a[1]!-b[1]!).map(([title,n])=>page(title,n))};
+}

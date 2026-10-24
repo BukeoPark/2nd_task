@@ -1,3 +1,5 @@
+import {slotsPageTitle,locationPageTitle,summaryPageTitle} from "../../lib/reportPageTitles";
+import { ReportAreaMap } from "./ReportAreaMap";
 import { RF } from "../stores/report/reportTypography";
 import { reportFilename } from "../../lib/reportFilename";
 import { ReportHeadline } from "../stores/report/ReportHeadline";
@@ -7,7 +9,7 @@ import { apiClient, type AreaCharacter, type ReportDetail, type ReportExtras, ty
 import { ReportLocationVisuals, ReportCharacter, ReportCompetitionPage, ReportDemandPage, ReportStrategies } from "./ReportExtras";
 import { useMemo } from "react";
 import { ReportLead } from "../stores/report/ReportLead";
-import { reportLead } from "../../lib/reportLead";
+import { areaReportLead } from "../../lib/reportLead";
 import { ReportTriad } from "../stores/report/ReportTriad";
 import { buildTriad } from "../../lib/reportTriad";
 import { sampleNote } from "../../lib/insightReport";
@@ -15,8 +17,8 @@ import { buildAreaReport, type AreaReport, type PeerPoint } from "../../lib/area
 import type { Mode } from "../../lib/mode";
 import type { FoodBubble } from "../../lib/apiClient";
 import { useFoodBubbles, useFoodCompare, useUnitOverview, useAreaCharacter, useReportExtras } from "../food/useFood";
-import { ReportIndustryPage, ReportSurvivalPage } from "../stores/report/ReportExtraPages";
-import { AreaSlotsChart, HistogramChart, RateBullets, TrendChart } from "../stores/report/ReportCharts";
+import { ReportIndustryPage, ReportCompetitionSurvivalPage } from "../stores/report/ReportExtraPages";
+import { AreaSlotsChart, HistogramChart, TrendChart } from "../stores/report/ReportCharts";
 import { C } from "../stores/report/reportColors";
 import { boxS, eyebrow, footS } from "../stores/report/reportStyles";
 import { Fig, Head, Page, ReportFrame, Take, TileBox } from "../stores/report/ReportShell";
@@ -60,15 +62,17 @@ function SignalBox({ title, items, color, bg }: { title: string; items: { title:
 
 function Pages({ r, date, detail, stores, storesFailed, character, marketTypeName, extras, unitName }: { r: AreaReport; date: string; detail?: ReportDetail; stores?: FoodUnitStoresResponse; storesFailed: boolean; character?: AreaCharacter | null; marketTypeName?: string | null; extras?: ReportExtras; unitName: string }) {
   const lv = r.level, sl = r.slots, st = r.stability, lo = r.location;
-  const hasStability = st !== null;
+  const hasStability = st !== null || !!extras;
   // 프로필은 1쪽으로 옮겼으므로, 신호가 없으면 신호 쪽을 만들지 않는다
   const hasSignals = r.lens.positive.length > 0 || r.lens.caution.length > 0 || r.lens.neutral.length > 0 || r.lens.missing.length > 0;
   // 전략은 자료 기준·계산 방법 바로 앞 쪽에 모은다
   const strategies = areaStrategies(r, character, detail, stores);
-  const strategyTitle = r.lens.mode === "founder" ? "이 특징을 활용한 창업 전략" : "이 특징을 활용한 운영 전략";
   const featureLines = areaFeatureLines(r, detail, stores);
-  const checklist = r.lens.mode === "founder" ? [...r.checklist.filter((item) => !/현장|유동|실제 임대료|메뉴·가격대|문을 닫은/.test(item)), ...founderFieldChecks] : r.checklist;
-  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", "competitors", extras && "industries", hasStability && "stab", extras && "survival", "location", "summary", "basis"].filter(Boolean) as string[];
+  const results = [...r.findings.filter(f=>!(/매출 비중/.test(f.title)&&featureLines.some(l=>l.includes("매출이 가장 몰리는")))).map(f=>f.title), ...featureLines].filter((line,i,all)=>all.indexOf(line)===i);
+  const priority = (line:string) => /매출.*(증감|감소|증가|전년)|총매출/.test(line) ? 0 : /점포당|중앙값/.test(line) ? 1 : /시간|시\(/.test(line) ? 2 : /폐업|경쟁|업종/.test(line) ? 3 : /연령|평일|주말/.test(line) ? 4 : 5;
+  results.sort((a,b)=>priority(a)-priority(b));
+  const checklist = r.lens.mode === "founder" ? [...r.checklist.filter((item) => !/현장|유동|실제 임대료|메뉴·가격대|문을 닫은/.test(item)), ...founderFieldChecks].filter(item=>!item.includes("최근 상호가 바뀐")) : r.checklist.filter(item=>!item.includes("최근 상호가 바뀐"));
+  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", extras && "industries", "competitors", hasStability && "stab", "location", "summary", "basis"].filter(Boolean) as string[];
   const total = pages.length;
   const no = (k: string) => pages.indexOf(k) + 1;
   return (
@@ -79,14 +83,14 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
           <ReportHeadline title={r.headline} />
         </div>
         <ReportCharacter character={character} marketTypeName={marketTypeName} lines={[]} profile={r.profile} />
-        <ReportLead lead={reportLead(r.lens.mode, "area", { summary: no("summary"), tips: strategies.length > 0 ? no("summary") : undefined, level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("location") : undefined, checklist: checklist.length > 0 ? no("location") : undefined })} />
+        <ReportLead compact lead={areaReportLead({signals:no("signals"),level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
+
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        {!hasSignals && <>
-          <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
-        </>}
+        <ReportTriad hideTodo triad={buildTriad({mode:r.lens.mode,tiles:[],cautions:[],checklist:checklist.slice(0,2),sampleNote:lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores,"지역") : null})}/>
+
       </Page>
       {hasSignals && <Page n={no("signals")} total={total}>
-        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
+        <Head eyebrowText="상권 변화 신호" title={r.lens.caution[0]?.title ?? r.lens.positive[0]?.title ?? r.lens.neutral[0]?.title ?? "아직 확인되지 않은 정보를 먼저 살펴보세요"} text="비교 지역과 다른 점, 최근 달라진 점, 아직 확인하지 못한 정보를 모았습니다."/>
         {r.lens.emptyNote && (
           <div style={{ ...boxS, background: C.paper }}>
             <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
@@ -95,23 +99,23 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
         )}
         {(r.lens.positive.length > 0 || r.lens.caution.length > 0) && (
           <div>
-            <h3 style={{ margin: "0 0 8px", fontSize: RF.section }}>{r.lens.signalsTitle}</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: RF.section }}>매출·경쟁에서 나타난 변화</h3>
             <div className="irp-cols">
-              <SignalBox title={r.lens.positiveTitle} items={r.lens.positive} color={C.teal} bg={C.tealSoft} />
-              <SignalBox title={r.lens.cautionTitle} items={r.lens.caution} color={C.accent} bg={C.accentSoft} />
+              <SignalBox title="살펴볼 기회" items={r.lens.positive} color={C.teal} bg={C.tealSoft} />
+              <SignalBox title="주의할 변화" items={r.lens.caution} color={C.accent} bg={C.accentSoft} />
             </div>
-            <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>{r.lens.ruleNote}</p>
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>비교 기준을 넘는 변화만 표시했습니다. 원인은 현장에서 확인하세요.</p>
           </div>
         )}
         {(r.lens.neutral.length > 0 || r.lens.missing.length > 0) && <div className="irp-cols">
-          {r.lens.neutral.length > 0 && <SignalBox title="관측된 특징" items={r.lens.neutral} color={C.slate} bg={C.soft} />}
-          {r.lens.missing.length > 0 && <SignalBox title="추가 확인이 필요한 정보" items={r.lens.missing} color={C.mute} bg={C.soft} />}
+          {r.lens.neutral.length > 0 && <SignalBox title="자료에서 확인한 특징" items={r.lens.neutral} color={C.slate} bg={C.soft} />}
+          {r.lens.missing.length > 0 && <SignalBox title="아직 알 수 없는 정보" items={r.lens.missing} color={C.mute} bg={C.soft} />}
         </div>}
       </Page>}
 
       {lv && (
         <Page n={no("level")} total={total}>
-          <Head eyebrowText="인사이트 1 · 매출 수준과 흐름" title={`점포당 월평균 추정매출은 비교 ${r.subtitle.includes("행정동 단위") ? "행정동" : "상권"} 중앙값의 ${lv.ratio.toFixed(1)}배`} text={lv.text} />
+          <Head eyebrowText="매출 수준과 흐름" title={`점포당 월평균 추정매출은 비교 ${r.subtitle.includes("행정동 단위") ? "행정동" : "상권"} 중앙값의 ${lv.ratio.toFixed(1)}배`} text={lv.text} />
           <div className="irp-cols">
             <Fig title={`${lv.peerCount}개 비교 지역 중 어디에 있나`} note="지역별 점포당 월평균 추정매출 분포(만원). 점포가 적은 지역도 포함돼 값이 크게 흔들릴 수 있습니다."><HistogramChart level={lv} /></Fig>
             <Fig title="최근 분기별 점포당 월평균 추정매출" note={`단위 만원.${lv.storesFrom !== null && lv.storesNow !== null ? ` 서울시 집계 점포 수는 ${lv.storesFrom}곳에서 ${lv.storesNow}곳으로 바뀌었습니다.` : ""}`}><TrendChart level={lv} /></Fig>
@@ -129,7 +133,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
 
       {sl && (
         <Page n={no("slots")} total={total}>
-          <Head eyebrowText="인사이트 2 · 시간대별 매출과 배후인구" title={r.headline} text={sl.text} />
+          <Head eyebrowText="시간대별 매출과 배후인구" title={slotsPageTitle(sl)} text={sl.text} />
           <Fig title="시간대별 비중 (%)" note="반올림 전 각 계열의 합은 100%입니다. 비교 평균은 같은 업종의 매출액 가중 평균이며 분석 지역 자신도 포함합니다. 유동인구와 매출은 다른 집계라 비중의 차이가 구매 전환율을 뜻하지 않습니다."
             legend={[[C.accent, "이 지역 매출 비중"], ...(sl.hasPilot ? ([[C.slate, `${sl.pilotLabel} 평균 매출 비중`]] as [string, string][]) : []), ...(sl.hasFloating ? ([[C.teal, "이 지역 유동인구 비중"]] as [string, string][]) : [])]}>
             <AreaSlotsChart s={sl} />
@@ -141,63 +145,36 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
       )}
 
       <ReportDemandPage n={no("demand")} total={total} detail={detail} />
-      <ReportCompetitionPage n={no("competitors")} total={total} stores={stores} failed={storesFailed} />
       {extras && <ReportIndustryPage n={no("industries")} total={total} extras={extras} unitName={unitName} takeLabel={r.lens.takeLabel} />}
-      {hasStability && (
-        <Page n={no("stab")} total={total}>
-          <Head eyebrowText="인사이트 3 · 안정성·경쟁과 입지" title={st?.churn?.closeRate != null ? r.lens.stabilityTitle : "입지 여건"} text={st?.text} />
-          <div className="irp-cols">
-            {st?.churn && <Fig title="분기 개업률·폐업률 vs 비교 지역" note="최근 분기의 개업(폐업) 점포 ÷ 점포 수. 점포 3곳 미만 지역은 비교에서 뺍니다. 업종 변경·이전도 개폐업으로 잡힙니다."><RateBullets churn={st.churn} labels={{ close: "분기 폐업률", open: "분기 개업률" }} /></Fig>}
-            {st && st.facts.length > 0 && <div className="irp-tiles" style={{ gridTemplateColumns: "repeat(2,minmax(0,1fr))" }}>{st.facts.map((f) => <TileBox key={f.label} label={f.label} value={f.value} note={f.note} />)}</div>}
-          </div>
-          {st && <Take label={r.lens.takeLabel} text={st.take} />}
-        </Page>
-      )}
-      {extras && <ReportSurvivalPage n={no("survival")} total={total} extras={extras} takeLabel={r.lens.takeLabel} />}
-      <Page n={no("location")} total={total}>
-          <Head eyebrowText="입지 · 현장 확인" title="입지 여건과 창업 전 확인사항" />
-          {lo && (
-            <>
-              <h3 style={{ margin: "4px 0 0", fontSize: RF.section }}>입지 여건</h3>
-              <ReportLocationVisuals character={character} marketTypeName={marketTypeName}/>
-              <div className="irp-tiles">{lo.facts.filter(f => !character || (!f.label.includes("지하철") && !f.label.includes("버스"))).map((f) => <TileBox key={f.label} label={f.label} value={f.value} note={f.note} />)}</div>
-              <p style={{ margin: 0, fontSize: RF.body, color: C.mute }}>{lo.text}</p>
-              {(lo.strengths.length > 0 || lo.cautions.length > 0) && (
-                <div className="irp-cols">
-                  {lo.strengths.length > 0 && <div style={boxS}><strong style={{ color: C.ink }}>참고할 점</strong><ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{lo.strengths.map((s) => <li key={s}>{s}</li>)}</ul></div>}
-                  {lo.cautions.length > 0 && <div style={boxS}><strong style={{ color: C.ink }}>주의할 점</strong><ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{lo.cautions.map((s) => <li key={s}>{s}</li>)}</ul></div>}
-                </div>
-              )}
-            </>
-          )}
+      <ReportCompetitionPage n={no("competitors")} total={total} stores={stores} failed={storesFailed} map={extras?.map?.kind === "stores" ? <ReportAreaMap data={extras.map} name={unitName} categoryNames={stores?.category_mix.map(x=>x.name)}/> : undefined} />
+      {hasStability && <ReportCompetitionSurvivalPage n={no("stab")} total={total} extras={extras} stability={st}/>}
+      <Page n={no("location")} total={total} className="irp-location-page">
+        <Head eyebrowText="상권 유형과 주변 환경" title={locationPageTitle(character)}/>
+        <ReportLocationVisuals character={character} marketTypeName={marketTypeName} map={(extras?.facility_map ?? extras?.map)?.kind === "facilities" ? <ReportAreaMap data={(extras?.facility_map ?? extras?.map)!} name={unitName}/> : undefined}/>
+        {lo && <div className="irp-tiles">{lo.facts.filter(f => !character || (!f.label.includes("지하철") && !f.label.includes("버스"))).map(f=><TileBox key={f.label} label={f.label} value={f.value} note={f.note}/>)}</div>}
+        {lo && <p style={{fontSize:RF.caption,color:C.mute,margin:0}}>소규모 상가 참고값 · 선택 지역의 실제 계약 임대료·공실률과 다를 수 있습니다.</p>}
+      </Page>
+
+      <Page n={no("summary")} total={total} className="irp-summary-page">
+        <section className="irp-result-section">
+          <Head eyebrowText="★ 종합 정리 및 창업전략" title={summaryPageTitle(r)}/>
+          <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>{results.map((line,i)=><li key={line} style={{...boxS,display:"grid",gridTemplateColumns:"24px minmax(0,1fr)",gap:8,fontSize:RF.section,fontWeight:700,color:C.ink,lineHeight:1.6}}><b>{i+1}</b><span>{line}</span></li>)}</ol>
+          {!results.length&&<p>종합할 수 있는 자료가 부족합니다.</p>}
+        </section>
+        {strategies.length > 0 && <section className="irp-strategy-section">
+          <ReportStrategies title="" tips={strategies}/>
+          <p style={{margin:"8px 0 0",fontSize: RF.caption,color:C.mute}}>영업시간·메뉴·인력·후보 점포를 정할 때 함께 검토하고, 현장에서 직접 확인하세요.</p>
+        </section>}
           <div>
             <h3 style={{ margin: "0 0 8px", fontSize: RF.section }}>{r.lens.checklistTitle}</h3>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
               {checklist.map((c) => (<li key={c} style={{ display: "grid", gridTemplateColumns: "20px 1fr", gap: 8, fontSize: RF.body }}><span style={{ width: 13, height: 13, border: `1.5px solid ${C.accent}`, marginTop: 5 }} />{c}</li>))}
             </ul>
           </div>
-
-      </Page>
-      <Page n={no("summary")} total={total} className="irp-summary-page">
-        <section className="irp-result-section">
-          <Head eyebrowText="종합 정리" title="핵심 분석 결과"/>
-          {featureLines.length > 0 && <ul style={{margin:0,paddingLeft:20,display:"grid",gap:8,fontSize:RF.body,lineHeight:1.6}}>{featureLines.map(line=><li key={line}>{line}</li>)}</ul>}
-          {r.findings.length > 0 ? r.findings.map((finding,i) => <div key={finding.title} className="irp-summary-finding" style={boxS}>
-            <h3 style={{margin:"0 0 5px",fontSize: RF.section,color:C.ink}}>{i+1}. {finding.title}</h3>
-
-          </div>) : <p>종합할 수 있는 자료가 부족합니다.</p>}
-        </section>
-        {strategies.length > 0 && <section className="irp-strategy-section">
-          <Head eyebrowText="실전 팁" title={strategyTitle}/>
-          <ReportStrategies title="" tips={strategies}/>
-          <p style={{margin:"8px 0 0",fontSize: RF.caption,color:C.mute}}>영업시간·메뉴·인력·후보 점포를 정할 때 함께 검토하고, 현장에서 직접 확인하세요.</p>
-        </section>}
       </Page>
       <Page n={no("basis")} total={total} className="irp-appendix">
-        <div>
-          <h2 style={{ fontSize: 18, margin: "0 0 4px", lineHeight: 1.35 }}>자료 기준 · 계산 방법</h2>
-          <p style={{ margin: 0, fontSize: RF.caption, color: C.mute }}>작성 {date} · 고객 구성 {detail?.period ?? "기준기간 미확인"}. 작성일과 자료 기준일은 다릅니다.</p>
-        </div>
+        <Head eyebrowText="자료 기준 · 계산 방법" title="자료마다 집계 범위와 기준기간이 다릅니다" text={`작성 ${date} · 고객 구성 ${detail?.period ?? "기준기간 미확인"}. 작성일과 자료 기준일은 다릅니다.`}/>
+
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead><tr>{["지표", "기준기간", "집계 범위·참고사항"].map((v) => <th key={v} style={{ textAlign: "left", padding: 6, borderBottom: `1px solid ${C.line}` }}>{v}</th>)}</tr></thead>
           <tbody>{r.dataBasis.map((d) => <tr key={d.label}><td style={{ padding: 6 }}>{d.label}</td><td style={{ padding: 6 }}>{d.period}</td><td style={{ padding: 6 }}>{d.basis}</td></tr>)}</tbody>

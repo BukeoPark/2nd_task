@@ -122,7 +122,7 @@ function founderSignals(c: LensContext): { positive: Signal[]; caution: Signal[]
   const top = topSlot(sl);
   if (top && top.sales >= 45) caution.push({ title: "매출이 한 시간대에 쏠려 있습니다", body: `${top.label}에 매출의 ${pct(top.sales)}가 몰립니다. 그 시간대 수요에 맞지 않는 영업이면 불리할 수 있습니다.${slotTail(c)}` });
   if (lo?.facts.some((f) => f.label === "지하철 역" && /^[1-9]/.test(f.value))) positive.push({ title: "지하철역이 가깝습니다", body: lo.facts.find((f) => f.label === "지하철 역")?.note ?? "" });
-  if (lo?.facts.some((f) => (f.label.startsWith("소규모상가 임대료") && f.value === "자료 없음") || (f.label === "임대료·공실률" && f.value === "자료 미확보"))) caution.push({ title: "임대료·공실률을 이 자료로 알 수 없습니다", body: "해당 기준기간의 참고값을 확보하지 못했습니다. 실제 임대료·보증금·권리금은 부동산에서 직접 확인해야 합니다." });
+  if (lo?.facts.some((f) => ((f.label.startsWith("소규모상가 임대료") || f.label.startsWith("㎡당 월 임대료") || f.label.startsWith("공실률")) && f.value === "자료 없음") || (f.label === "임대료·공실률" && f.value === "자료 미확보"))) caution.push({ title: "임대료·공실률을 이 자료로 알 수 없습니다", body: "해당 기준기간의 참고값을 확보하지 못했습니다. 실제 임대료·보증금·권리금은 부동산에서 직접 확인해야 합니다." });
   return { positive, caution };
 }
 

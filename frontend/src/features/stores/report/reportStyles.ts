@@ -25,6 +25,24 @@ export const reportCss = `
 .irp-appendix>div:last-child{font-size:10.5px!important;padding-top:8px!important;line-height:1.5!important}
 @media(max-width:600px){.irp-appendix{padding:16px}.irp-appendix table{table-layout:auto}}
 .irp-share-list{display:grid;grid-template-columns:max-content minmax(0,1fr) 65px;gap:12px 8px;align-items:center}.irp-share-row{display:grid;grid-template-columns:subgrid;grid-column:1 / -1;align-items:center}.irp-location-facilities{grid-column:1 / -1}.irp-location-facilities .irp-facility-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}.irp-location-visuals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.irp-location-visuals>section{background:${C.soft};padding:14px;min-width:0}.irp-station-list{display:grid;gap:10px}.irp-station-item small{display:block;font-size:12px;color:${C.mute};margin-top:4px}.irp-station-name{min-width:0;display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:16px}.irp-station-name .rail-line-badge{width:26px;height:26px;font-size:12px}.irp-facility-list{display:grid;gap:8px;font-size:13px}.irp-facility-list>div{display:flex;justify-content:space-between;gap:12px}.irp-facility-list b{white-space:nowrap}
+
+.irp-location-page{gap:12px}
+.irp-location-page .irp-location-visuals{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+.irp-location-page .irp-location-visuals>section{padding:10px}
+.irp-location-page .irp-station-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.irp-location-page .irp-station-item{background:white;border:1px solid ${C.line};border-radius:6px;padding:6px;min-width:0;line-height:1.35}
+.irp-location-page .irp-station-name{gap:4px}
+.irp-location-page .irp-station-name .rail-line-badge{width:20px;height:20px;font-size:10px;flex-shrink:0}
+.irp-location-page .irp-location-types>div{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;font-size:12px!important;line-height:1.4!important}
+.irp-location-page .irp-location-types strong{font-size:14px!important;padding:3px 8px!important}
+@media screen and (max-width:600px){.irp-location-page .irp-location-visuals{grid-template-columns:1fr}.irp-location-page .irp-location-types>div{grid-template-columns:1fr}}
+
+.irp-competition-page{gap:12px}.irp-competition-page .irp-share-list{gap:6px 8px}
+.irp-competition-map{min-width:0}.irp-competition-map .irp-report-map-canvas{height:320px!important}
+@media print{.irp-page.irp-competition-page{padding:10mm;gap:8px;break-inside:avoid}.irp-competition-page>div{break-inside:auto}.irp-competition-page .irp-share-list{font-size:12px!important;gap:5px 8px}.irp-competition-page .irp-share-row{font-size:12px!important;line-height:1.4}.irp-competition-page table{font-size:12px!important;line-height:1.4}.irp-competition-page td,.irp-competition-page th{padding:3px!important}.irp-competition-map .irp-report-map-canvas{height:320px!important}.irp-competition-map .irp-map-legend{font-size:11px!important;gap:4px 12px!important;margin-top:5px!important}.irp-competition-page p{margin:0;font-size:11px!important;line-height:1.4}}
+
+.irp-section-head{break-inside:avoid}.irp-section-category{letter-spacing:0;word-break:keep-all}
+@media print{.irp-section-category{font-size:16px!important}.irp-section-head{gap:7px!important}}
 @page{size:A4;margin:0}
 @media print{
   html,body{margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}
@@ -34,6 +52,23 @@ export const reportCss = `
   .irp-bar,.irp-screen-only{display:none!important}
   .irp-sheet{padding:0;gap:0;max-width:none}
   .irp-page{border:0;box-sizing:border-box;padding:12mm;gap:14px;break-after:page;min-height:0;font-size:12px;line-height:1.5}
+
+  .irp-location-page{gap:8px;padding:10mm;break-inside:avoid}
+  .irp-location-page>.irp-location-visuals{break-inside:auto}
+  .irp-location-page .irp-location-visuals{gap:6px}
+  .irp-location-page .irp-location-visuals>section{padding:7px;break-inside:avoid}
+  .irp-location-page h3{margin-bottom:5px!important}
+  .irp-location-page .irp-station-item{padding:5px;line-height:1.25}
+  .irp-location-page .irp-station-item small{margin-top:2px;font-size:11px}
+  .irp-location-page .irp-station-item p{margin-top:2px!important;font-size:11px!important}
+  .irp-location-page .irp-report-map-canvas{height:230px!important}
+  .irp-location-page .irp-map-legend{gap:3px 10px!important;margin-top:5px!important;font-size:11px!important;line-height:1.4}
+  .irp-location-page .irp-map-facilities{margin-top:6px!important}
+  .irp-location-page .irp-map-facilities>div{gap:2px 12px!important;font-size:12px!important;line-height:1.4}
+  .irp-location-page .irp-map-facilities>div>div{padding:2px 4px!important}
+  .irp-location-page .irp-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .irp-location-page .irp-tile{padding:6px!important}
+  .irp-location-page .irp-tile strong{font-size:24px!important}
   .irp-page:last-child{break-after:auto}
   .irp-appendix{padding:10mm;gap:10px}
   .irp-appendix h2{font-size:18px!important}

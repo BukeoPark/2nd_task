@@ -18,7 +18,7 @@ export const monthsText = (m: number | null) => (m === null ? NO_DATA : `${num(m
 export interface IndustryLine { svc: string; selected: boolean; stores: string; perStore: string; ticket: string; daily: string; close: string; note: string | null }
 
 export function industryLines(ind: ReportExtras["industry"]): IndustryLine[] {
-  return ind.rows.map((r) => ({ svc: r.svc_nm, selected: r.selected, stores: countText(r.stores), perStore: manwonText(r.per_store_month), ticket: wonText(r.ticket),
+  return [...ind.rows].sort((a,b) => (b.per_store_month ?? -Infinity) - (a.per_store_month ?? -Infinity) || a.svc_cd.localeCompare(b.svc_cd)).map((r) => ({ svc: r.svc_nm, selected: r.selected, stores: countText(r.stores), perStore: manwonText(r.per_store_month), ticket: wonText(r.ticket),
     daily: txText(r.daily_tx_per_store), close: pctText(r.close_rate), note: r.note }));
 }
 

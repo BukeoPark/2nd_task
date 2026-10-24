@@ -93,3 +93,25 @@ def test_missing_close_dates_turn_closure_metrics_into_no_data(monkeypatch):
     monkeypatch.setattr(svc, "_boundary", lambda level, code: box(0, 0, 1, 1))
     out = svc.license_survival("dong", "A", None, None)
     assert out["closed"] is None and out["cohort"] is None and "폐업일자" in out["message"]
+
+
+def test_facility_map_has_same_stations_as_transit_and_named_landmark():
+    from app.services import area_character
+    from shapely.geometry import Point, shape
+    body = svc.report_map("trdar", "3120148", None, None)
+    expected = area_character._spatial()[("trdar", "3120148")]["stations"]
+    assert {(x["name"], x["lines"]) for x in body["stations"]} == {(x["name"], x["lines"]) for x in expected}
+    assert all(isinstance(x["lon"], float) and isinstance(x["lat"], float) for x in body["stations"])
+    assembly = next(x for x in body["landmarks"] if x["name"] == "국회의사당")
+    assert "visitseoul.net" in assembly["source_url"]
+    assert all(shape(body["boundary"]).covers(Point(x["lon"], x["lat"])) for x in body["points"])
+    # 경계 밖 대표 장소는 시설 집계에 섞지 않는다.
+    assert not any(x["name"] == "국회의사당" for x in body["points"])
+
+
+def test_map_brand_totals_match_region_cards():
+    from app.services import area_character
+    body = svc.report_map("trdar", "3120148", None, None)
+    anchors = area_character.character("trdar", "3120148", None, None)["sections"]["anchor"]
+    for key, name in [("starbucks", "스타벅스"), ("daiso", "다이소"), ("oliveyoung", "올리브영")]:
+        assert sum(x["category"] == name for x in body["points"]) == anchors[key]["inside"]

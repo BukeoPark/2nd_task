@@ -6,7 +6,7 @@ import { buildLens, type Lens } from "./areaLens.ts";
 import { bigPeerRank, median, sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type Finding, type LevelSection, type SampleStatus, type Tile } from "./insightReport.ts";
 export { sampleNote, sampleStatus, SAMPLE_CAUTION_BELOW, SAMPLE_MIN, type SampleStatus };
 import type { Mode } from "./mode";
-import { formatPerArea } from "./format.ts";
+import { formatRentWon } from "./format.ts";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ko-KR");
 const man = (won: number) => won / 1e4;
@@ -14,7 +14,7 @@ const signed = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}%`;
 
 // ── 입력 ──
 export interface PeerPoint { code: string; value: number | null; size: number | null }
-export interface CompareRowIn { key: string; label: string; as_of: string | null; cells: { value: number | null; note?: string; caution?: boolean }[] }
+export interface CompareRowIn { key: string; label: string; as_of: string | null; source?: string; reference?: {value:number; as_of:string; scope:string; source:string}; cells: { value: number | null; note?: string; caution?: boolean; trend?: {scope:string} | null }[] }
 export interface OverviewIn {
   latest_quarter: string;
   trend: { quarter: string; label: string; per_store_month: number | null; stores: number | null }[];
@@ -249,13 +249,13 @@ function locationSection(inp: AreaReportInput): AreaLocation | null {
     facts.push({ label: "지하철 역", value: `${tr.rail.count}곳`, note: tr.rail.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.rail.boardings_observed)}명(${tr.rail.year}년, 연결된 역만)` : "이용량 연결 안 됨" });
   } else if (tr?.rail) facts.push({ label: "지하철 역", value: "경계 안·250m 이내 없음", note: "이용 기록이 없는 것이 아니라 가까운 역이 없다는 뜻" });
   if (tr?.bus) facts.push({ label: "근처 버스정류장", value: `${tr.bus.count}곳`, note: tr.bus.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.bus.boardings_observed)}명(연결된 정류장만)` : tr.bus.count === 0 ? "근처 정류장 없음" : "이용량 연결 안 됨" });
-  const rent = val(inp.rows, "rent_small_shop");
-  const vac = val(inp.rows, "vacancy_small_shop_pct");
-  if (rent === null && vac === null) {
+  const rent = reportRentReference(inp.rows, "rent_small_shop");
+  const vac = reportRentReference(inp.rows, "vacancy_small_shop_pct");
+  if (rent.value === null && vac.value === null) {
     facts.push({ label: "임대료·공실률", value: "자료 미확보", note: [...new Set([note(inp.rows, "rent_small_shop"), note(inp.rows, "vacancy_small_shop_pct")].filter(Boolean))].join(" · ") || "해당 조사값 없음. 실제 계약 조건과 공실은 현장 확인 필요" });
   } else {
-    facts.push({ label: "소규모상가 임대료(R-ONE 참고)", value: rent !== null ? formatPerArea(rent) : "자료 없음", note: rent !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "rent_small_shop") ?? "해당 조사값 없음") });
-    facts.push({ label: "소규모상가 공실률(R-ONE 참고)", value: vac !== null ? `${vac.toFixed(1)}%` : "자료 없음", note: vac !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "vacancy_small_shop_pct") ?? "해당 조사값 없음") });
+    facts.push({ label: "㎡당 월 임대료(R-ONE 참고)", value: rent.value !== null ? formatRentWon(rent.value) : "자료 없음", note: rent.value !== null ? `${rent.scope} / ${rent.period}` : rent.note });
+    facts.push({ label: "공실률(R-ONE 참고)", value: vac.value !== null ? `${vac.value.toFixed(1)}%` : "자료 없음", note: vac.value !== null ? `${vac.scope} / ${vac.period}` : vac.note });
   }
   const strengths = inp.character?.strengths ?? [];
   const cautions = inp.character?.cautions ?? [];
@@ -264,12 +264,25 @@ function locationSection(inp: AreaReportInput): AreaLocation | null {
   return { facts, strengths, cautions, text };
 }
 
+/** 화면과 같은 순서: 인근 조사값 우선, 없을 때만 API가 제공한 서울 평균. 0은 유효값. */
+export function reportRentReference(rows: CompareRowIn[], key: string) {
+  const row = rows.find(r=>r.key===key);
+  const local = row?.cells[0];
+  const fallback = local?.value == null && row?.reference != null;
+  const value = local?.value ?? row?.reference?.value ?? null;
+  const zone = local?.trend?.scope.replace(/ 조사상권 추이$| 추이$/, "") ?? local?.note?.match(/^'([^']+)' 조사값/)?.[1];
+  return {value, fallback, scope: fallback ? "서울 평균" : zone ? `${zone} 조사상권` : "인근 조사상권",
+    period: (fallback ? row?.reference?.as_of : row?.as_of) ?? "기준기간 미확인",
+    source: (fallback ? row?.reference?.source : row?.source) ?? "한국부동산원 R-ONE",
+    note: local?.note ?? "해당 조사값 없음"};
+}
+
 export function buildAreaReport(inp: AreaReportInput): AreaReport {
   const level = levelSection(inp);
   const slots = slotsSection(inp);
   const stability = stabilitySection(inp);
   const location = locationSection(inp);
-  const scopeShort = inp.scope.replace(/ 전체$/, "");
+  const scopeShort = /^외식(?: 전체)?(?: 기준)?$/.test(inp.scope.trim()) ? "외식 전체" : inp.scope.replace(/ 전체$/, "");
   const unitWord = inp.unit.level === "trdar" ? "상권" : "행정동";
 
   const top = slots ? slots.rows.reduce((m, r) => (r.sales > m.sales ? r : m), slots.rows[0]) : null;
@@ -285,8 +298,8 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
     : top && top.sales >= 40
     ? `${inp.unit.name} ${scopeShort}, 매출의 ${Math.round(top.sales)}%가 ${top.label}에 몰립니다`
     : level && !tooFew
-      ? `${inp.unit.name}, ${scopeShort} 점포당 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배입니다`
-      : `${inp.unit.name} ${scopeShort} ${unitWord} 읽기`;
+      ? `${inp.unit.name} ${scopeShort}, 점포당 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배입니다`
+      : `${inp.unit.name} ${scopeShort}, 확인 가능한 자료가 부족합니다`;
   // 자영업자는 '어디에서 더 벌 수 있는가'(평균보다 비는 시간대)를, 예비 창업자는 사실 그대로의 제목을 앞세운다
   const headline = inp.mode === "owner" && lowGap && lowGap.gap <= -8
     ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 매출 비중이 평균보다 ${Math.abs(lowGap.gap).toFixed(1)}%p 낮습니다`
@@ -344,7 +357,11 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
     { label: "매출·점포", period: asOf(inp.rows, "per_store_month") || inp.overview?.latest_quarter || "기준기간 미확인", basis: "서울시 상권분석서비스 · 선택 지역·동일 업종" },
     { label: "유동인구", period: inp.overview?.floating?.label || "자료 없음", basis: "지역 단위 추정치 · 매장 방문객·순방문자 수가 아님" },
     { label: "분기 개폐업률", period: quarterText(inp.peerQuarter) || "기준분기 미확인", basis: `양천·영등포 동일 단위·동일 업종 · 폐업 ${nums(inp.peers.close).length}곳 / 개업 ${nums(inp.peers.open).length}곳 비교` },
-    ...["stores_sbiz", "wrc_total", "repop_total", "rent_small_shop", "vacancy_small_shop_pct"].map((key) => ({ label: inp.rows.find((r) => r.key === key)?.label || key, period: asOf(inp.rows, key) || "기준기간 미확인", basis: note(inp.rows, key) || (val(inp.rows, key) === null ? "자료 없음" : "선택 지역의 지표 · 출처별 집계 기준 상이") })),
+    ...["stores_sbiz", "wrc_total", "repop_total"].map((key) => ({ label: inp.rows.find((r) => r.key === key)?.label || key, period: asOf(inp.rows, key) || "기준기간 미확인", basis: note(inp.rows, key) || (val(inp.rows, key) === null ? "자료 없음" : "선택 지역의 지표 · 출처별 집계 기준 상이") })),
+    ...["rent_small_shop", "vacancy_small_shop_pct"].map(key=>{
+      const ref=reportRentReference(inp.rows,key);
+      return {label:key==="rent_small_shop"?"㎡당 월 임대료":"공실률",period:ref.period,basis:ref.value===null?ref.note:`${ref.scope} · 소규모 상가 · ${ref.source}${ref.fallback ? " · 지역 조사값 없어 서울 평균 사용" : ""}`};
+    }),
   ];
   return { headline, subtitle, tiles, findings, profile, level, slots, stability, location, checklist: lens.checklist, sources, limits, lens, dataBasis };
 }

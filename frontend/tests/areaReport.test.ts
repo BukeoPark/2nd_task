@@ -90,10 +90,10 @@ test("자료가 없는 쪽은 만들지 않는다", () => {
   assert.equal(empty.slots, null);
   assert.equal(empty.stability, null);
   assert.deepEqual(empty.tiles, []);
-  assert.equal(empty.headline, "문래역(문래로데오거리) 한식음식점 상권 읽기");
+  assert.equal(empty.headline, "문래역(문래로데오거리) 한식음식점, 확인 가능한 자료가 부족합니다");
   // 시간대 쏠림이 없으면 매출 수준으로 제목을 만든다
   const flat = buildAreaReport({ ...input, overview: { ...input.overview!, hours: { slots: input.overview!.hours.slots.map((x) => ({ ...x, pct: 16.6 })) } /* 평균 자료 없음 */ } });
-  assert.equal(flat.headline, "문래역(문래로데오거리), 한식음식점 점포당 추정매출은 비교 상권 중앙값의 1.0배입니다");
+  assert.equal(flat.headline, "문래역(문래로데오거리) 한식음식점, 점포당 추정매출은 비교 상권 중앙값의 1.0배입니다");
 });
 
 test("관점: 예비 창업자는 긍정·주의 신호를 값 그대로 나열하고 점수·적합도는 만들지 않는다", () => {
@@ -329,4 +329,39 @@ test("점포당 매출 전년 동기 변화는 같은 분기 유효값으로만 
     { quarter: "20262", label: "2026년 2분기", per_store_month: 8000000, stores: 30 },
   ] } });
   assert.equal(missing.level!.yoyPerStore, null);
+});
+
+
+test("임대시장: 인근 조사값이 없을 때 화면과 같은 서울 평균을 보고서에 쓰고 기간을 보존한다", () => {
+  const reference = {value:52.778, as_of:"2026년 2분기",scope:"서울 전체 평균",source:"한국부동산원 R-ONE"};
+  const rows = input.rows.map(r=>r.key==="rent_small_shop" ? {...r,reference} : r.key==="vacancy_small_shop_pct" ? {...r,reference:{...reference,value:6.4}} : r);
+  const report=buildAreaReport({...input,rows});
+  const rent=report.location!.facts.find(f=>f.label.startsWith("㎡당 월 임대료"));
+  assert.equal(rent?.value,"52,778원");
+  assert.match(rent!.note,/서울 평균.*2026년 2분기/);
+  assert.equal(report.location!.facts.find(f=>f.label.startsWith("공실률"))?.value,"6.4%");
+  assert.ok(!report.lens.missing.some(s=>s.title.includes("임대료·공실률을 이 자료로 알 수 없습니다")));
+  assert.match(report.dataBasis.find(r=>r.label==="㎡당 월 임대료")!.basis,/서울 평균/);
+});
+
+test("임대시장: 인근 조사값 0을 서울 평균으로 덮지 않고 두 지표를 개별 대체한다", () => {
+  const rows=input.rows.map(r=>r.key==="rent_small_shop" ? {...r,reference:{value:52.778,as_of:"2026년 1분기",scope:"서울 전체 평균",source:"R-ONE"}} : r.key==="vacancy_small_shop_pct" ? {...r,cells:[{value:0,note:"'당산역' 조사값 · 122m"}],reference:{value:6.4,as_of:"2026년 1분기",scope:"서울 전체 평균",source:"R-ONE"}} : r);
+  const report=buildAreaReport({...input,rows});
+  const vacancy=report.location!.facts.find(f=>f.label.startsWith("공실률"));
+  assert.equal(vacancy?.value,"0.0%");
+  assert.match(vacancy!.note,/당산역 조사상권.*2026년 2분기/);
+  assert.match(report.location!.facts.find(f=>f.label.startsWith("㎡당 월 임대료"))!.note,/서울 평균.*2026년 1분기/);
+});
+
+
+test("표지 제목은 모든 인사이트에서 지역·업종 다음 쉼표로 두 줄을 구분한다",()=>{
+  for(const scope of ["외식 전체","한식음식점 전체"]){
+    for(const mode of ["owner","founder"] as const){
+      const r=buildAreaReport({...input,scope,mode});
+      const [context,...insight]=r.headline.split(",");
+      assert.equal(context,`${input.unit.name} ${scope==="외식 전체"?"외식 전체":"한식음식점"}`);
+      assert.ok(insight.join(",").trim().length>0);
+      assert.doesNotMatch(insight.join(","),/한식음식점|외식 전체/);
+    }
+  }
 });

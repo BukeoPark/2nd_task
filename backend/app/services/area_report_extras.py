@@ -198,6 +198,67 @@ def license_survival(level: str, code: str, svc: str | None, scls: str | None) -
     return out
 
 
+def report_map(level: str, code: str, svc: str | None, scls: str | None) -> dict:
+    """선택 경계의 실제 좌표와 경계 안 공식 시설/선택 업종 매장."""
+    from app.services import facility_access
+    from shapely.geometry import mapping
+    boundary = _boundary(level, code)
+    if boundary is None:
+        return {"boundary": None, "points": [], "kind": "stores" if svc or scls else "facilities"}
+    selected = bool(svc or scls)
+    if selected:
+        df = food_map._food_stores(svc, scls).dropna(subset=["lon", "lat"])
+        name_col, type_col = "bizesNm", "indsSclsNm"
+    else:
+        df = facility_access.eligible(data_store.load_parquet("facilities.parquet")).dropna(subset=["lon", "lat"])
+        name_col, type_col = "name", "facility_type"
+    df = df.loc[shapely.intersects_xy(boundary, df["lon"].to_numpy(), df["lat"].to_numpy())]
+    points = [{"name": str(row[name_col]), "category": str(row[type_col]) if selected else facility_access.TYPE_LABEL.get(row[type_col], str(row[type_col])),
+               "lon": float(row["lon"]), "lat": float(row["lat"])} for _, row in df.sort_values(name_col).iterrows()]
+    if not selected:
+        lic = data_store.load_parquet("licenses.parquet")
+        medical = lic.loc[lic["license_code"].isin(["010101", "010102"]) & (lic["status_norm"] == "active") & (lic["uptae"] != "종합병원")].dropna(subset=["lon", "lat"])
+        medical = medical.loc[shapely.intersects_xy(boundary, medical["lon"].to_numpy(), medical["lat"].to_numpy())].drop_duplicates(["name_norm", "road_key", "jibun_key"])
+        points.extend({"name": str(row["name_norm"]), "category": "병원", "lon": float(row["lon"]), "lat": float(row["lat"])} for _, row in medical.sort_values("name_norm").iterrows())
+    categories = []
+    if not selected:
+        from app.services import area_character
+        anchors = data_store.load_parquet("anchor_stores.parquet").dropna(subset=["lon", "lat"])
+        anchors = anchors.loc[shapely.intersects_xy(boundary, anchors["lon"].to_numpy(), anchors["lat"].to_numpy())]
+        for _, row in anchors.iterrows():
+            brand = {"starbucks": "스타벅스", "daiso": "다이소"}.get(str(row["brand"]).lower())
+            if brand:
+                points.append({"name": str(row["bizesNm"]), "category": brand, "lon": float(row["lon"]), "lat": float(row["lat"])})
+        olive = area_character.oliveyoung_stores(data_store.load_parquet("stores.parquet"))
+        olive = olive.loc[shapely.intersects_xy(boundary, olive["lon"].to_numpy(), olive["lat"].to_numpy())]
+        points.extend({"name": str(row["bizesNm"]), "category": "올리브영", "lon": float(row["lon"]), "lat": float(row["lat"])} for _, row in olive.iterrows())
+        categories = [x for x in area_character.facility_breakdown(level, code) if x["key"] not in ("subway", "bus_stop")]
+        supplementary = area_character.supplementary_facilities(level, code)
+        keys = {x["key"] for x in supplementary}
+        categories = [x for x in categories if x["key"] not in keys] + supplementary
+        school_keys = {"elementary", "middle", "high"}
+        school = [x for x in categories if x["key"] in school_keys]
+        if len(school) == 3 and all(x["count"] is not None for x in school):
+            categories = [x for x in categories if x["key"] not in school_keys] + [{"key": "schools", "label": "초·중·고", "count": sum(x["count"] for x in school)}]
+        categories = [{"label": x["label"].replace("병원·의원", "병원"), "count": x["count"]} for x in categories if x["count"] is not None and x["count"] > 0]
+        categories.sort(key=lambda x: -x["count"])
+    stations, landmarks = [], []
+    if not selected:
+        stations = [{k: st[k] for k in ("name", "lines", "lon", "lat")} for st in area_character._spatial().get((level, code), {}).get("stations", [])]
+        units = food_map._units()[level].set_index("code")
+        unit_name = str(units.loc[code, "name"])
+        # 서울 공식 관광 페이지의 공개 지도 좌표. 시설 개수에는 합산하지 않는 위치 안내 표식.
+        # https://korean.visitseoul.net/attractions1/국회의사당/KOP005763 (확인 2026-10-24)
+        if "국회의사당" in unit_name or boundary.covers(shapely.Point(126.91407018463296, 37.531809246347066)):
+            landmarks.append({"name": "국회의사당", "lon": 126.91407018463296, "lat": 37.531809246347066,
+                              "source": "서울 공식 관광정보", "source_url": "https://korean.visitseoul.net/attractions1/국회의사당/KOP005763"})
+        # 실제 이름이 상권명에 포함된 기존 공식 시설은 대표 장소로 강조한다.
+        for point in points:
+            if point["name"].replace(" ", "") in unit_name.replace(" ", "") and len(point["name"]) >= 3:
+                landmarks.append({**point, "source": "공식 시설 자료"})
+    return {"boundary": mapping(boundary), "points": points, "categories": categories, "stations": stations, "landmarks": landmarks, "kind": "stores" if selected else "facilities"}
+
+
 def extras(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     if level not in LEVELS:
         raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
@@ -205,6 +266,8 @@ def extras(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     if code not in food_map._units()[level].set_index("code").index:
         raise KeyError(code)
     return {"level": level, "code": code,
+            "map": report_map(level, code, svc, scls),
+            "facility_map": report_map(level, code, None, None) if svc or scls else None,
             "industry": industry_comparison(level, code, svc),
             "change_index": change_index(level, code),
             "license": license_survival(level, code, svc, scls),

@@ -1,3 +1,4 @@
+import { shortReportLabel, shortReportNote } from "./reportCopy";
 import { RF } from "./reportTypography";
 import { ReportFitLine } from "./ReportFitLine";
 import { AppIcon } from "../../../components/DataVisuals";
@@ -22,8 +23,8 @@ export function Page({ n, total, children, className = "" }: { n: number; total:
   );
 }
 export const Head = ({ eyebrowText, title, text }: { eyebrowText: string; title: string; text?: string }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <div style={eyebrow}>{eyebrowText}</div>
+  <div className="irp-section-head" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="irp-section-category" style={{fontSize:RF.section,fontWeight:800,lineHeight:1.4,color:C.accent,borderLeft:`3px solid ${C.accent}`,paddingLeft:9}}>{eyebrowText}</div>
     <h2 style={h2}>{title}</h2>
     {text && <p style={{ margin: 0 }}>{text}</p>}
   </div>
@@ -41,9 +42,9 @@ export const Fig = ({ title, note, children, legend }: { title: string; note: st
 );
 export const TileBox = ({ label, value, note, tone = "plain" }: { label: string; value: string; note: string; tone?: "plain" | "accent" | "neg" }) => (
   <div className="irp-tile" style={{ background: C.soft, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-    <span title={label} style={{fontSize:RF.label,color:C.mute,lineHeight:1.45,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</span>
+    <span title={label} style={{fontSize:RF.label,color:C.mute,lineHeight:1.45,whiteSpace:"nowrap",}}>{shortReportLabel(label)}</span>
     <b style={{ fontSize: RF.metric, lineHeight: 1.15, fontWeight: 900, color: tone === "neg" ? C.bad : tone === "accent" ? C.accent : C.ink }}><ReportFitLine>{value}</ReportFitLine></b>
-    {note && <span style={{ fontSize: RF.caption, color: C.mute, lineHeight: 1.45,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }} title={note}>{note}</span>}
+    {note && <span style={{ fontSize: RF.caption, color: C.mute, lineHeight: 1.45,whiteSpace:"nowrap", }} title={note}>{shortReportNote(note)}</span>}
   </div>
 );
 export const Take = ({ text, label = "사장님께 의미" }: { text: string; label?: string }) => (

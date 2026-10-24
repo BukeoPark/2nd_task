@@ -416,6 +416,8 @@ export interface OverviewTrdar {
 /** 행정동·상권 종합분석 보조 자료 — 시계열·시간대·유동인구·겹치는 상권. 지표 값은 FoodCompareResponse 가 준다. */
 /** 상권분석 보고서 부가 자료 — 외식 업종별 비교표, 서울시 상권변화지표, 인허가 기준 영업 기간·생존. 값이 없으면 null(0이 아님). */
 export interface ReportExtras {
+  facility_map?: NonNullable<ReportExtras["map"]>;
+  map?: { stations?: {name:string; lines:string; lon:number; lat:number}[]; landmarks?: {name:string; lon:number; lat:number; source?:string; source_url?:string}[]; categories?: {label:string; count:number}[]; boundary: { type: string; coordinates: unknown } | null; kind: "stores" | "facilities"; points: {name:string; category:string; lon:number; lat:number}[] };
   level: "dong" | "trdar";
   code: string;
   industry: {

@@ -1,3 +1,5 @@
+import {industryPageTitle,survivalPageTitle} from "../../../lib/reportPageTitles";
+import type { AreaStability } from "../../../lib/areaReport";
 import type { ReactNode } from "react";
 import type { ReportExtras } from "../../../lib/apiClient";
 import { industryLines, industryTake, licenseNotice, NO_DATA, pctText, survivalTake, yearsText } from "../../../lib/reportExtras";
@@ -11,20 +13,20 @@ const td = { textAlign: "right", padding: "7px 8px", fontSize: RF.body, borderBo
 const sub = { margin: "0 0 6px", fontSize: RF.section } as const;
 const months = (m: number | null) => (m === null ? NO_DATA : `${Math.round(m).toLocaleString("ko-KR")}개월`);
 
-/** 외식 업종별 비교표 — 같은 지역·같은 분기의 서울시 외식 10개 업종. 순위·점수 없이 표준 업종 순서로 놓는다. */
+/** 외식 업종별 비교표 — 같은 지역·같은 분기의 서울시 외식 10개 업종. 점포당 월평균 추정매출 내림차순, 결측은 마지막에 놓는다. */
 export function ReportIndustryPage({ n, total, extras, unitName, takeLabel }: { n: number; total: number; extras: ReportExtras; unitName: string; takeLabel: string }) {
   const ind = extras.industry;
   const lines = ind.status === "ok" ? industryLines(ind) : [];
   const notes = lines.filter((l) => l.note);
   return (
     <Page n={n} total={total}>
-      <Head eyebrowText="인사이트 · 업종 비교" title={`${unitName} 외식 업종별 비교`}
-        text={ind.status === "ok" ? `${ind.quarter_label} 기준으로 서울시 외식 10개 업종을 같은 지역에서 나란히 놓았습니다. 업종을 고르는 순서나 추천이 아니라, 업종마다 현실이 어떻게 다른지 보는 표입니다.` : (ind.message ?? NO_DATA)} />
+      <Head eyebrowText="외식 업종별 비교" title={industryPageTitle(extras)}
+        text={ind.status === "ok" ? `${unitName} · ${ind.quarter_label} 기준으로 서울시 외식 10개 업종을 같은 지역에서 나란히 놓았습니다. 점포당 월평균 추정매출이 높은 순입니다. 자료가 없는 업종은 마지막에 표시합니다.` : (ind.message ?? NO_DATA)} />
       {ind.status === "ok" && (
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup><col style={{ width: "22%" }} /><col style={{ width: "11%" }} /><col style={{ width: "19%" }} /><col style={{ width: "15%" }} /><col style={{ width: "18%" }} /><col style={{ width: "15%" }} /></colgroup>
           <thead><tr>
-            <th style={{ ...th, textAlign: "left" }}>업종</th><th style={th}>점포 수</th><th style={th}>점포당 월평균 추정매출</th><th style={th}>객단가</th><th style={th}>점포당 하루 결제 건수</th><th style={th}>분기 폐업률</th>
+            <th style={{ ...th, textAlign: "left" }}>업종</th><th style={th}>점포 수</th><th style={th} title="점포당 월평균 추정매출">월평균 추정매출</th><th style={th}>객단가</th><th style={th} title="점포당 하루 평균 결제 건수">하루 결제/점포</th><th style={th}>분기 폐업률</th>
           </tr></thead>
           <tbody>
             {lines.map((l) => (
@@ -78,7 +80,7 @@ export function ReportSurvivalPage({ n, total, extras, takeLabel }: { n: number;
   const dongNote = ci ? `${ci.scope === "소속 행정동" ? "소속 행정동 " : ""}${ci.dong_name} · 전 업종` : "";
   return (
     <Page n={n} total={total}>
-      <Head eyebrowText="인사이트 · 영업 기간·생존" title="가게들은 얼마나 오래 버텼을까요"
+      <Head eyebrowText="영업 기간과 폐업 이력" title={survivalPageTitle(extras)}
         text="서울시 상권변화지표와 인허가 이력으로 영업 기간을 봅니다. 과거 통계이며 특정 가게의 폐업 가능성이나 창업 성공 가능성이 아닙니다." />
       <Block title={ci ? `서울시 상권변화지표 · ${ci.quarter_label ?? ""}` : "서울시 상권변화지표"}>
         {ci ? (
@@ -115,4 +117,25 @@ export function ReportSurvivalPage({ n, total, extras, takeLabel }: { n: number;
       <div style={footS}><b style={{ color: C.ink }}>출처</b> 서울시 상권변화지표(상권분석서비스), {lic.source ?? "서울시 LOCALDATA 인허가"}. {extras.disclaimer}</div>
     </Page>
   );
+}
+
+/** 경쟁·개폐업과 영업 기간을 한 페이지에서 핵심만 보여 준다. */
+export function ReportCompetitionSurvivalPage({ n,total,extras,stability }: {n:number;total:number;extras?:ReportExtras;stability:AreaStability|null}) {
+  const lic=extras?.license, ci=extras?.change_index;
+  return <Page n={n} total={total} className="irp-competition-survival">
+    <Head eyebrowText="경쟁 변화와 영업 기간" title={survivalPageTitle(extras,stability)}/>
+    {stability && <section><h3 style={sub}>최근 경쟁 변화</h3><div className="irp-tiles">{stability.facts.filter(f=>!/변동성/.test(f.label)).map(f=><TileBox key={f.label} {...f}/>)}</div></section>}
+    {extras && <section><h3 style={sub}>가게의 영업 기간 · {lic?.scope_label}</h3>
+      {lic?.status === "ok" && lic.active ? <>
+        <div className="irp-tiles">
+          <TileBox label="영업 중 가게 업력" value={yearsText(lic.active.median_years)} note={`중앙값 · ${lic.active.count}곳 기준`}/>
+          <TileBox label="폐업 가게 영업기간" value={yearsText(lic.closed?.median_years ?? null)} note={`최근 5년 폐업 · ${lic.closed?.count ?? 0}곳 기준`}/>
+          <TileBox label="3년 내 폐업 비율" value={lic.cohort?.status === "ok" && lic.cohort.rate !== null ? pctText(lic.cohort.rate*100) : NO_DATA} note="3년 관찰이 가능한 인허가 기준"/>
+        </div>
+        {lic.active.bands.length>0 && <div style={{marginTop:12}}><h3 style={sub}>영업 중 가게의 업력 분포</h3><Bars bands={lic.active.bands}/></div>}
+      </> : <p>{lic ? licenseNotice(lic) : NO_DATA}</p>}
+    </section>}
+    {ci && <div style={{...boxS,fontSize:RF.caption}}>{ci.dong_name} · {ci.scope} 전 업종 · {ci.stage ?? "단계 자료 없음"} · 영업 중 평균 {months(ci.open_months)} · 폐업 점포 평균 {months(ci.close_months)}</div>}
+    <p style={{margin:0,fontSize:RF.caption,color:C.mute}}>업력은 인허가 기준입니다. 과거 폐업 비율은 현재 가게의 폐업 확률이 아닙니다.{lic?.short_lived_excluded ? ` ${lic.short_lived_days}일 이하 단기 영업 ${lic.short_lived_excluded}건은 영업기간·폐업 비율에서 제외했습니다.` : ""}</p>
+  </Page>;
 }

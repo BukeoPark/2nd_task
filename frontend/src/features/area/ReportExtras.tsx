@@ -1,7 +1,9 @@
+import {competitionPageTitle,demandPageTitle} from "../../lib/reportPageTitles";
+import { storeCategoryColor } from "../../lib/storeCategoryColor";
 import { RF } from "../stores/report/reportTypography";
 import { ReportFitLine } from "../stores/report/ReportFitLine";
 import { railLineBadge, splitRailLines } from "../../lib/railLines";
-import type { CSSProperties } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { AppIcon, type AppIconName } from "../../components/DataVisuals";
 import type { AreaCharacter } from "../../lib/apiClient";
 import type { ReportTip } from "../../lib/areaReportTips";
@@ -11,16 +13,16 @@ import type { ReportDetail, FoodUnitStoresResponse } from "../../lib/apiClient";
 import { C } from "../stores/report/reportColors";
 import { Head, Page } from "../stores/report/ReportShell";
 
-function Share({ label, pct }: { label: string; pct: number | null }) {
+function Share({ label, pct, color = C.teal }: { label: string; pct: number | null; color?: string }) {
   return <div className="irp-share-row" style={{fontSize:RF.body}}>
-    <span style={{whiteSpace:"nowrap"}}>{label}</span><span style={{ background: C.soft, height: 14 }}><span style={{ display: "block", height: 14, width: `${Math.max(0, Math.min(100, pct ?? 0))}%`, background: C.teal }} /></span><b>{pct === null ? "자료 없음" : `${pct.toFixed(1)}%`}</b>
+    <span style={{whiteSpace:"nowrap"}}>{label}</span><span style={{ background: C.soft, height: 14 }}><span style={{ display: "block", height: 14, width: `${Math.max(0, Math.min(100, pct ?? 0))}%`, background: color }} /></span><b>{pct === null ? "자료 없음" : `${pct.toFixed(1)}%`}</b>
   </div>;
 }
 
 export function ReportDemandPage({ n, total, detail }: { n: number; total: number; detail?: ReportDetail }) {
   const weekend = detail?.composition["요일"]?.find((r) => r.label === "주말")?.pct ?? null;
   const female = detail?.composition["성별"]?.find((r) => r.label === "여성")?.pct ?? null;
-  return <Page n={n} total={total}><Head eyebrowText="고객과 영업일" title="언제 소비하고, 누가 결제하는가" text={`${detail?.period ?? "기준기간 확인 불가"} · 매출액 구성 기준`} />
+  return <Page n={n} total={total}><Head eyebrowText="고객 구성과 영업일" title={demandPageTitle(detail)} text={`${detail?.period ?? "기준기간 확인 불가"} · 매출액 구성 기준`} />
     {!detail && <p>고객 구성 자료를 불러오지 못했습니다. 자료가 없는 것이 아니라 서버 응답 확인이 필요합니다.</p>}
     <div className="irp-cols"><div><h3>평일·주말 매출 비중</h3><div className="irp-share-list"><Share label="평일" pct={weekend === null ? null : 100 - weekend} /><Share label="주말" pct={weekend} /></div></div>
     <div><h3>성별 매출 비중</h3><div className="irp-share-list"><Share label="남성" pct={female === null ? null : 100 - female} /><Share label="여성" pct={female} /></div></div></div>
@@ -30,12 +32,13 @@ export function ReportDemandPage({ n, total, detail }: { n: number; total: numbe
   </Page>;
 }
 
-export function ReportCompetitionPage({ n, total, stores, failed }: { n: number; total: number; stores?: FoodUnitStoresResponse; failed: boolean }) {
-  return <Page n={n} total={total}><Head eyebrowText="실질 경쟁 점검" title="세부 업종 구성과 확인할 가게" text={stores ? `선택 경계·선택 업종 전체 ${stores.total.toLocaleString()}곳 · 상가정보 등록 기준` : failed ? "점포 자료 조회 실패 · 보고서를 다시 열어 주세요." : "점포 자료를 불러오는 중입니다."} />
-    <div className="irp-share-list">{stores?.category_mix.slice(0, 8).map((r) => <Share key={r.code ?? r.name} label={`${r.name} ${r.count}곳`} pct={r.share_pct} />)}{(stores?.category_mix.length ?? 0) > 8 && <p style={{gridColumn:"1 / -1"}}>상위 8개 세부 업종만 표시했습니다. 나머지 업종도 전체 점포 수에 포함됩니다.</p>}</div>
+export function ReportCompetitionPage({ n, total, stores, failed, map }: { n: number; total: number; stores?: FoodUnitStoresResponse; failed: boolean; map?: ReactNode }) {
+  return <Page n={n} total={total} className={map ? "irp-competition-page" : undefined}><Head eyebrowText="세부 업종 구성과 확인할 가게" title={competitionPageTitle(stores)} text={stores ? `선택 경계·선택 업종 전체 ${stores.total.toLocaleString()}곳 · 상가정보 등록 기준` : failed ? "점포 자료 조회 실패 · 보고서를 다시 열어 주세요." : "점포 자료를 불러오는 중입니다."} />
+    <div className="irp-share-list">{stores?.category_mix.slice(0, 8).map((r) => <Share key={r.code ?? r.name} label={`${r.name} ${r.count}곳`} pct={r.share_pct} color={map ? storeCategoryColor(r.name, stores?.category_mix.map(x=>x.name)) : undefined} />)}{(stores?.category_mix.length ?? 0) > 8 && <p style={{gridColumn:"1 / -1"}}>상위 8개 세부 업종만 표시했습니다. 나머지 업종도 전체 점포 수에 포함됩니다.</p>}</div>
     <table style={{ fontSize: RF.body, width: "100%", borderCollapse: "collapse" }}><thead><tr><th align="left">현장 확인 대상</th><th align="left">세부 업종</th><th align="right">상권 중심 직선거리</th></tr></thead><tbody>{stores?.records.slice(0, 8).map((r) => <tr key={r.store_id}><td style={{ padding: 5 }}>{r.name} {r.branch}</td><td>{r.category_detail}</td><td align="right">{r.distance_m}m</td></tr>)}</tbody></table>
-    <p style={{ fontSize: FS.caption, color: C.mute }}>목록은 상권·행정동 중심에서 가까운 순 최대 8곳이며 전체 경쟁점 목록이나 추천 순위가 아닙니다. 등록 정보만으로 현재 영업 중인지 확인할 수 없습니다. 세부 메뉴·가격·영업시간 자료는 확보되지 않았습니다.</p>
-    <p>목록의 가게에서 대표 메뉴·가격·영업시간·좌석·포장 및 배달 여부를 확인해 내 계획과 겹치는 가게를 추려 보세요.</p>
+    <p className="irp-competition-note" style={{fontSize:RF.caption,color:C.mute}}>중심에서 가까운 최대 8곳 · 상가정보 등록 기준. 실제 영업 여부·메뉴·가격은 현장에서 확인하세요.</p>
+    {map && <section className="irp-competition-map"><h3 style={{fontSize:RF.section,margin:"0 0 6px"}}>세부 업종별 매장 위치</h3>{map}</section>}
+
   </Page>;
 }
 
@@ -77,42 +80,37 @@ export function ReportStrategies({ title, tips }: { title: string; tips: ReportT
 }
 
 /** 입지 페이지는 화면과 같은 역명·노선 배지 및 시설 종류를 보여 준다. */
-export function ReportLocationVisuals({ character, marketTypeName }: { character?: AreaCharacter | null; marketTypeName?: string | null }) {
+export function ReportLocationVisuals({ character, marketTypeName, map }: { character?: AreaCharacter | null; marketTypeName?: string | null; map?: ReactNode }) {
   if (!character) return null;
   const officialType = marketType(marketTypeName ?? "");
   const rail = character.sections.transit.rail;
   const bus = character.sections.transit.bus;
-  const facilities = character.sections.anchor.facilities;
-  const extraKeys = new Set(facilities.supplementary.map(x => x.key));
-  const schoolKeys = new Set(["elementary", "middle", "high"]);
-  const school = facilities.by_type.filter(x => schoolKeys.has(x.key));
-  const items = [...facilities.by_type.filter(x => !extraKeys.has(x.key) && !schoolKeys.has(x.key) && !["subway", "bus_stop"].includes(x.key)), ...facilities.supplementary];
-  if (school.length === 3 && school.every(x => x.count !== null)) items.push({key:"schools",label:"초·중·고",count:school.reduce((sum,x)=>sum+(x.count ?? 0),0)});
-  const sorted = items.filter(x => x.count !== null && x.count > 0).sort((a,b)=>(b.count ?? 0)-(a.count ?? 0));
   return <div className="irp-location-visuals">
-    <section><h3 className="data-heading" style={{fontSize:RF.section,margin:"0 0 10px"}}><AppIcon name="train"/>지하철역</h3>
+    <section className="irp-location-facilities irp-location-types">
+      <h3 style={{fontSize:RF.section,margin:"0 0 10px"}}>상권 유형</h3>
+      <div style={{display:"grid",gap:12,fontSize:RF.body,lineHeight:1.6}}>
+        {character.type.traits.map(trait=><div key={trait.key}><strong style={{...chip,background:"#F3EEFF",color:"#6333B1",border:"1px solid #E6DBFC"}}><AppIcon name={TRAIT_ICON[trait.key]}/>{trait.label}</strong><div title={trait.evidence.join(" · ")}>{trait.evidence[0]}</div></div>)}
+        {character.type.traits.length === 0 && <div><strong style={{...chip,background:"#F3EEFF",color:"#6333B1",border:"1px solid #E6DBFC"}}><AppIcon name="building"/>{character.type.headline}</strong><div>{(character.type.mixed_evidence ?? character.type.held.map(item=>item.reason)).join(" · ")}</div></div>}
+        {officialType && <div><strong style={{...chip,background:officialType.bg,color:officialType.color,border:`1px solid ${officialType.color}33`}}><AppIcon name={officialType.icon}/>{officialType.label}</strong><div>서울시 상권 자료에서 {officialType.label}으로 구분된 지역입니다. {officialType.description}을 뜻합니다.</div></div>}
+      </div>
+    </section>
+    <section className="irp-rail-section"><h3 className="data-heading" style={{fontSize:RF.section,margin:"0 0 10px"}}><AppIcon name="train"/>지하철역</h3>
       <div className="irp-station-list">{[...rail.inside,...rail.within_250m].map(st => <div key={st.name+st.lines} className="irp-station-item">
-        <span className="irp-station-name">{splitRailLines(st.lines).map(line => {const b=railLineBadge(line);return <span key={line} className="rail-line-badge" style={{background:b.color,color:["#BDB092","#F5A200","#B7C452","#77C4A3"].includes(b.color)?"#172033":"white"}} title={b.name}>{b.label}</span>;})}<b style={{flex:1,minWidth:0,fontSize:FS.metric}}><ReportFitLine>{st.name.replace(/역$/,"")}역</ReportFitLine></b></span>
+        <span className="irp-station-name">{splitRailLines(st.lines).map(line => {const b=railLineBadge(line);return <span key={line} className="rail-line-badge" style={{background:b.color,color:["#BDB092","#F5A200","#B7C452","#77C4A3"].includes(b.color)?"#172033":"white"}} title={b.name}>{b.label}</span>;})}<b style={{flex:1,minWidth:0,fontSize:RF.section}}><ReportFitLine>{st.name.replace(/역$/,"")}역</ReportFitLine></b></span>
         <small>{st.where === "inside" ? "지역 안" : `경계에서 ${st.distance_m}m`}</small>
+        <p style={{fontSize:RF.caption,margin:"4px 0 0"}}>하루 평균 승차 {st.boardings === null ? "자료 없음" : `${st.boardings.toLocaleString()}명`}{st.usage_state === "partial" ? " · 일부 노선" : ""}</p>
       </div>)}</div>
       {rail.count===0 && <p>경계 안·250m 이내 확인된 역 없음</p>}
     </section>
     <section><h3 className="data-heading" style={{fontSize:RF.section,margin:"0 0 10px"}}><AppIcon name="bus"/>근처 버스정류장</h3>
       <strong style={{display:"block",fontSize:FS.metric}}>{bus.count.toLocaleString()}곳</strong>
       <p style={{fontSize:FS.caption,color:C.mute,margin:"6px 0"}}>경계 안·경계 밖 250m 이내</p>
-      {bus.boardings_observed !== null && <p style={{fontSize:FS.caption,margin:"6px 0"}}>하루 평균 승차 {bus.boardings_observed.toLocaleString()}명</p>}
+      {bus.boardings_observed !== null && <p style={{fontSize:FS.caption,margin:"6px 0"}}>하루 평균 승차 {bus.boardings_observed.toLocaleString()}명{bus.usage_state === "partial" ? " · 연결된 정류장만 집계" : ""}</p>}
     </section>
-    <section className="irp-location-facilities"><h3 className="data-heading" style={{fontSize:RF.section,margin:"0 0 10px"}}><AppIcon name="building"/>집객시설</h3>
-      <div className="irp-facility-list">{sorted.map(x=><div key={x.key}><span>{x.key==="hospital"?"병원":x.label}</span><b>{x.count?.toLocaleString()}곳</b></div>)}</div>
-      {!sorted.length && <p>확인된 시설 자료 없음</p>}
-    </section>
-    <section className="irp-location-facilities">
-      <h3 style={{fontSize:RF.section,margin:"0 0 10px"}}>상권 유형의 근거</h3>
-      <div style={{display:"grid",gap:12,fontSize:RF.body,lineHeight:1.6}}>
-        {character.type.traits.map(trait=><div key={trait.key}><strong>{trait.label}</strong><div>{trait.evidence.join(" · ")}</div></div>)}
-        {character.type.traits.length === 0 && <div><strong>{character.type.headline}</strong><div>{(character.type.mixed_evidence ?? character.type.held.map(item=>item.reason)).join(" · ")}</div></div>}
-        {officialType && <div><strong>{officialType.label} · 서울시 지정 분류</strong><div>서울시 상권 자료에서 {officialType.label}으로 구분된 지역입니다. {officialType.description}을 뜻합니다.</div></div>}
-      </div>
-    </section>
+    {map && <section className="irp-location-facilities">
+      <h3 className="data-heading" style={{fontSize:RF.section,margin:"0 0 10px"}}><AppIcon name="building"/>집객시설</h3>
+      {map}
+    </section>}
+
   </div>;
 }

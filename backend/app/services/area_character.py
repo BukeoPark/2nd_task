@@ -87,7 +87,7 @@ def _spatial() -> dict[tuple[str, str], dict]:
             stations = []
             for r in near.itertuples():
                 linked = r.usage_state in ("all_linked", "partial")
-                stations.append({"name": r.name, "lines": r.lines, "where": "inside" if r.dist == 0 else "within_250m", "distance_m": int(round(r.dist)),
+                stations.append({"name": r.name, "lines": r.lines, "lon": float(r.lon), "lat": float(r.lat), "where": "inside" if r.dist == 0 else "within_250m", "distance_m": int(round(r.dist)),
                                  "boardings": _num(r.avg_daily_boardings_2025, 0) if linked else None, "alightings": _num(r.avg_daily_alightings_2025, 0) if linked else None,
                                  "usage_state": r.usage_state, "lines_with_usage": int(r.lines_with_usage), "lines_total": int(r.lines_total),
                                  "complete_2025": bool(r.complete_2025) if linked else False, "region": r.region})

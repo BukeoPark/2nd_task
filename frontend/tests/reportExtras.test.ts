@@ -1,3 +1,4 @@
+import {industryPageTitle,survivalPageTitle} from "../src/lib/reportPageTitles.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { countText, industryLines, industryTake, licenseNotice, manwonText, monthsText, NO_DATA, pctText, survivalTake } from "../src/lib/reportExtras.ts";
@@ -66,4 +67,23 @@ test("인허가 자료가 없을 때의 안내 문구", () => {
   assert.equal(licenseNotice(base.license), null);
   assert.match(licenseNotice({ status: "unavailable", scope_label: "x" } as ReportExtras["license"]) ?? "", /계산할 수 없/);
   assert.match(licenseNotice({ status: "ok", scope_label: "x", closures_available: false, message: "폐업일자를 제공하지 않아" } as ReportExtras["license"]) ?? "", /폐업일자/);
+});
+
+
+test("업종 비교는 월평균 추정매출 내림차순이고 결측은 마지막이다", () => {
+  const row=base.industry.rows[0];
+  const input={...base.industry,rows:[
+    {...row,svc_cd:"C",svc_nm:"자료 없음",per_store_month:null},
+    {...row,svc_cd:"B",svc_nm:"낮음",per_store_month:1000000},
+    {...row,svc_cd:"A",svc_nm:"높음",per_store_month:9000000},
+  ]};
+  assert.deepEqual(industryLines(input).map(x=>x.svc),["높음","낮음","자료 없음"]);
+  assert.equal(input.rows[0].svc_nm,"자료 없음");
+});
+
+
+test("업종 비교 제목은 유효한 추정매출의 최대값을 사용하고 결측을 과장하지 않는다",()=>{
+ assert.equal(industryPageTitle(base),"한식음식점의 점포당 추정매출이 가장 높습니다");
+ assert.match(industryPageTitle({...base,industry:{...base.industry,rows:[]}}),/자료가 부족/);
+ assert.match(survivalPageTitle(base),/충분하지 않습니다/);
 });
