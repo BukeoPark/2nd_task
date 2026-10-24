@@ -5,6 +5,7 @@ import { ActionButton, Block, Caption, Stat, SubHead } from "../../components/Pa
 import { inputStyle, labelStyle } from "../../lib/panelStyle";
 import { COST_CHECK_EXCLUDED, COST_CHECK_FIELDS, clearDraft, computeCostCheck, computeRentDetail, loadDraft, saveDraft, type CostCheckDraft, type CostCheckKey } from "../../lib/costCheck";
 import { STARTUP_FIELDS, ORDER_FIELDS, computeStartupPlan } from "../../lib/startupPlan";
+import { BENCH_LEVEL_TEXT, costFill, orderHint, salesBenchmark } from "../../lib/costSummary";
 import { formatKrw } from "../../lib/format";
 import { FS } from "../../lib/typography";
 
@@ -106,21 +107,31 @@ export function CostCheckSection({ unitKey, unitWord, scopeLabel, benchWon }: Pr
 }
 
 /** 지도 패널에서는 저장된 결과와 계산 화면 진입만 보여준다. */
-export function CostCheckLauncher({ unitKey, benchWon, onOpen }: { unitKey?: string; unitWord: string; benchWon: number | null; onOpen: () => void }) {
+export function CostCheckLauncher({ unitKey, unitWord, benchWon, benchNote, onOpen }: { unitKey?: string; unitWord: string; benchWon: number | null; /** 평균의 업종 범위·기준 분기('외식 전체 기준 · 2026년 2분기') */ benchNote?: string; onOpen: () => void }) {
   const draft = loadDraft(unitKey);
   const res = computeCostCheck(draft, benchWon !== null ? benchWon / 1e4 : null);
   const hasLoan = (res.loanPayment ?? 0) > 0;
   const required = hasLoan ? res.cashBep : res.bep;
   const plan = computeStartupPlan(draft, required);
   const valid = (res.status === "ok" || res.status === "no_revenue") && required !== null;
+  const fill = costFill(draft);
+  const bench = valid ? salesBenchmark(required, benchWon) : null;
+  const orderNote = orderHint(draft.openDays, draft.averageTicket, plan.invalidOrders, plan.dailyOrders);
   return <div>
     {valid ? <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
         <Stat onGray big label="필요한 월매출" value={manwon(required!)}/>
-        <Stat onGray big label="하루 필요 주문" value={plan.dailyOrders === null ? "—" : `${plan.dailyOrders.toLocaleString()}건`} missing={plan.dailyOrders === null}/>
+        <Stat onGray big label="하루 필요 주문" value={plan.dailyOrders === null ? "—" : `${plan.dailyOrders.toLocaleString()}건`} missing={plan.dailyOrders === null} sub={orderNote ?? undefined} subTone={plan.invalidOrders ? "warn" : undefined}/>
       </div>
-      <Caption>{hasLoan ? "대출 상환 포함 · " : ""}{res.ownerPay !== null ? "내 월급 포함 · " : ""}저장한 입력값 기준</Caption>
+      <Caption>{hasLoan ? "대출 상환 포함 · " : ""}{res.ownerPay !== null ? "내 월급 포함 · " : ""}저장한 입력값 기준{fill.missing.length === 0 ? ` · 월 비용 ${fill.total}칸 모두 입력` : ""}</Caption>
+      {fill.missing.length > 0 && <Caption tone="warn">월 비용 {fill.total}칸 중 {fill.filled}칸만 입력했어요. 비어 있는 {fill.missing.join("·")}만큼 필요한 매출이 낮게 계산돼요.</Caption>}
+      {bench && <div style={{ marginTop: 10 }}>
+        <Stat onGray
+          label={<>이 {unitWord} 같은 업종 점포당 월평균 추정매출 <InfoTip label="지역 평균 기준">{benchNote ? <>{benchNote}<br/></> : null}서울시 카드결제 기반 추정이라 현금·배달 매출이 빠져 있고, 개별 점포의 매출이나 내 매출 예측이 아닙니다.</InfoTip></>}
+          value={manwon(bench.benchManwon)}
+          sub={`필요한 월매출은 이 평균의 ${bench.pct.toLocaleString()}% · ${BENCH_LEVEL_TEXT[bench.level]}`}/>
+      </div>}
     </> : <Caption>월비용을 넣으면 필요한 매출과 주문 수를 계산해요.</Caption>}
-    <div style={{ marginTop: 12 }}><ActionButton variant="primary" full onClick={onOpen}>{valid ? "입력값 수정·다시 계산하기" : "필요한 매출 계산하기"} ›</ActionButton></div>
+    <div style={{ marginTop: 12 }}><ActionButton variant="primary" full onClick={onOpen}>{!valid ? "필요한 매출 계산하기" : fill.missing.length > 0 ? "비어 있는 비용 입력하기" : "입력값 수정·다시 계산하기"} ›</ActionButton></div>
   </div>;
 }

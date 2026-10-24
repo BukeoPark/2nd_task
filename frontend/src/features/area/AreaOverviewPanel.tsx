@@ -23,6 +23,8 @@ import { SummaryTypeBadge, SummaryTypeContext } from "./SummaryType";
 import { AreaBriefCard } from "./AreaBriefCard";
 import { Block, Caption, ListRow, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { CostCheckLauncher } from "./CostCheckSection";
+import { computeRentDetail, loadDraft, type CostCheckDraft } from "../../lib/costCheck";
+import { rentVsReference } from "../../lib/costSummary";
 import { CostCheckModal } from "./CostCheckModal";
 import { unitSampleStores } from "../../lib/interpretRules";
 import { buildAreaBrief, type BriefTarget } from "../../lib/areaBrief";
@@ -219,8 +221,8 @@ export function AreaOverviewPanel(p: Props) {
         </>, { scoped: true })}
 
       {pane("cost", "비용·임대", <>
-        {p.mode === "founder" && <Block title="내 창업 비용 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onOpen={() => setCostOpen(true)} /></Block>}
-        <RentMarketBlock rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending} failed={cmp.isError}/>
+        {p.mode === "founder" && <Block title="내 창업 비용 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={row("per_store_month")?.cells[0]?.value ?? null} benchNote={[row("per_store_month")?.scope, row("per_store_month")?.as_of].filter(Boolean).join(" · ")} onOpen={() => setCostOpen(true)} /></Block>}
+        <RentMarketBlock rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending} failed={cmp.isError} founderDraft={p.mode === "founder" ? loadDraft(`${p.level}:${p.code}`) : undefined}/>
 
       </>)}
       {p.mode === "founder" && costOpen && <CostCheckModal unitKey={`${p.level}:${p.code}`} unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
@@ -250,17 +252,21 @@ function plainName(title: string, type?: string | null): string {
 }
 
 /** 값이 모두 없으면 같은 결측 사유를 두 번 반복하지 않는다. 0은 유효한 통계다. */
-function RentMarketBlock({ rent, vacancy, loading, failed }: { rent?: Row; vacancy?: Row; loading: boolean; failed: boolean }) {
+function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { rent?: Row; vacancy?: Row; loading: boolean; failed: boolean; /** 예비 창업자가 비용 점검에 저장한 입력 — 있으면 내 ㎡당 월세를 참고값과 견준다 */ founderDraft?: CostCheckDraft }) {
   const hasRent = rent?.cells[0]?.value != null;
+  const mine = founderDraft && hasRent ? rentVsReference(computeRentDetail(founderDraft).rentPerSqm, rent!.cells[0].value as number) : null;
   const hasVacancy = vacancy?.cells[0]?.value != null;
   const tip = <InfoTip label="임대시장 자료 기준">인근 1km 이내 R-ONE 조사상권의 참고 통계이며, 선택 지역의 실제 계약금액이 아닙니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}</InfoTip>;
   return <Block title={<>주변 임대시장 참고 {tip}</>}>
     {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>이번 분기 주변 임대자료가 없어요.</Caption> : <>
-      <Caption>인근 조사상권 기준</Caption>
+      <Caption>인근 조사상권 기준{rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}{rent?.as_of ? ` · ${rent.as_of}` : ""}</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
         <Stat onGray big label="소규모 상가 임대료" value={hasRent ? formatMetric(rent!.kind, rent!.cells[0].value) : "자료 없음"} missing={!hasRent}/>
         <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancy!.cells[0].value) : "자료 없음"} missing={!hasVacancy}/>
       </div>
+      {founderDraft && hasRent && (mine
+        ? <div style={{ marginTop: 10 }}><Stat onGray label="내가 입력한 월세 단가" value={`${mine.mine.toFixed(1)}천원/㎡`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
+        : <Caption>비용 계산에서 월세와 면적을 넣으면 이 임대료와 견줘 드려요.</Caption>)}
     </>}
   </Block>;
 }
