@@ -121,6 +121,41 @@ def _floating(level: str, code: str) -> dict | None:
             "trend": [{"quarter": q, "label": store_churn.quarter_label(q), "flpop": _num(v, 0)} for q, v in zip(fp["quarter"], fp["flpop"])]}
 
 
+def _report_detail(df: pd.DataFrame, latest: str, level: str, code: str) -> dict:
+    """보고서용 구성비와 경계. 결측은 0으로 바꾸지 않는다."""
+    g = df.loc[df["quarter"] == latest]
+    groups = {"요일": [("share_weekend", "주말")], "성별": [("share_female", "여성")],
+              "연령": [(f"share_age{a}", "10대 이하" if a == 10 else "60대 이상" if a == 60 else f"{a}대") for a in [10, 20, 30, 40, 50, 60]]}
+    result = {}
+    for group, cols in groups.items():
+        result[group] = []
+        present = all(col in g.columns for col, _ in cols)
+        group_ok = g.loc[g[[col for col, _ in cols]].notna().all(axis=1)] if present else g.iloc[:0]
+        for col, label in cols:
+            if col not in g.columns:
+                result[group].append({"label": label, "pct": None})
+                continue
+            ok = group_ok.loc[group_ok["sales_q"].notna() & (group_ok["sales_q"] > 0)]
+            v = None if ok.empty else _num(float((ok[col] * ok["sales_q"]).sum() / ok["sales_q"].sum() * 100), 1)
+            result[group].append({"label": label, "pct": v})
+    if level == "trdar":
+        boundary = next((f["geometry"] for f in data_store.load_json("trdar_areas.geojson")["features"] if str(f["properties"]["trdar_cd"]) == code), None)
+    else:
+        from shapely.geometry import mapping
+        geom = food_map._dong_shapes().get(code)
+        boundary = mapping(geom) if geom is not None else None
+    stations = []
+    if boundary is not None:
+        region = transform(_to_m, shape(boundary)).buffer(250)
+        rail = data_store.load_parquet("rail_complexes.parquet")
+        from shapely.geometry import Point
+        for r in rail.loc[rail["lon"].notna() & rail["lat"].notna()].itertuples():
+            if region.covers(transform(_to_m, Point(float(r.lon), float(r.lat)))):
+                stations.append({"name": str(r.name), "lon": float(r.lon), "lat": float(r.lat)})
+    return {"period": store_churn.quarter_label(latest), "composition": result, "boundary": boundary, "stations": stations,
+            "basis": "동일 지역·동일 업종의 매출액 가중 비중. 인원 비중이 아닌 결제 매출 구성입니다."}
+
+
 def overview(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     if level not in LEVELS:
         raise ValueError(f"level 은 {LEVELS} 중 하나여야 합니다")
@@ -134,7 +169,8 @@ def overview(level: str, code: str, svc: str | None, scls: str | None) -> dict:
     body = {"level": level, "code": code, "name": units.loc[code, "name"], "type": units.loc[code].get("type") if "type" in units else None,
             "scope": scope, "latest_quarter": latest,
             "trend": _trend(df), "trend_source": "서울시 상권분석서비스(추정매출·점포)", "trend_scope": scope["sales_label"] + " 기준",
-            "hours": _consumption_hours(df, latest, level, svc), "floating": _floating(level, code)}
+            "hours": _consumption_hours(df, latest, level, svc), "floating": _floating(level, code),
+            "report_detail": _report_detail(df, latest, level, code)}
     if level == "dong":
         found = _overlaps().get(code, [])
         keep = [r for r in found if r["overlap_pct"] >= MIN_OVERLAP * 100]

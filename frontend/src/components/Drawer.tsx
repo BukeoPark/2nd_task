@@ -1,4 +1,4 @@
-import { useContext, type CSSProperties, type ReactNode } from "react";
+import { useContext, useState, useId, type CSSProperties, type ReactNode } from "react";
 import { MapPeekContext } from "./MapPeekContext";
 import { useNarrow } from "../lib/useNarrow";
 import { OVERLAY_Z_INDEX, SIDE_PANEL_WIDTH_PX } from "../lib/vizConfig";
@@ -20,9 +20,18 @@ interface DrawerProps {
 /** 좁은 화면에서는 레일 옆 남는 폭까지 꽉 채우고 지도 조작 단추(확대·축소)보다 위에 둔다. */
 export function Drawer({ title, titleAside, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
   const narrow = useNarrow();
+  const [collapsed, setCollapsed] = useState(false);
+  const contentId = useId();
+  const hidden = collapsed && !narrow;
   const showMap = useContext(MapPeekContext);
   return (
-    <div
+    <>
+    {!narrow && <button type="button" aria-label={hidden ? "왼쪽 정보 창 펼치기" : "왼쪽 정보 창 접기"} aria-expanded={!hidden} aria-controls={contentId}
+      onClick={() => setCollapsed(v => !v)}
+      style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX + 4, top: "50%", left: hidden ? left : SIDE_PANEL_WIDTH_PX, transform: "translateY(-50%)", width: 28, height: 64, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #D1D5DB", borderLeft: "none", borderRadius: "0 12px 12px 0", background: "white", color: "#374151", boxShadow: "3px 0 8px rgba(0,0,0,0.1)", cursor: "pointer" }}>
+      <svg width="18" height="24" viewBox="0 0 18 24" fill="none" aria-hidden="true"><path d={hidden ? "M6 5l7 7-7 7" : "M12 5l-7 7 7 7"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </button>}
+    <div id={contentId} hidden={hidden}
       style={{
         ...Object.fromEntries(Object.entries(FS).map(([key, value]) => [`--panel-${key}`, `${value}px`])) as CSSProperties,
         position: "absolute",
@@ -66,5 +75,6 @@ export function Drawer({ title, titleAside, onClose, onBack, backLabel = "← �
       </div>
       {children}
     </div>
+    </>
   );
 }

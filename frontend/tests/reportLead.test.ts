@@ -10,12 +10,10 @@ test("자영업자: 내 매장 주변 경쟁 → 상권 변화 → 고객 수요
   assert.deepEqual(l.rows.map((r) => r.where), ["4쪽", "2쪽", "3쪽", "4쪽"]);
 });
 
-test("예비 창업자: 후보지 매출 흐름 → 경쟁 → 입지 → 비용 검토(앱) → 현장 확인사항", () => {
+test("예비 창업자: 후보지 매출 흐름 → 경쟁 → 입지 → 현장 확인사항", () => {
   const l = reportLead("founder", "area", all);
-  assert.deepEqual(l.rows.map((r) => r.title), ["후보지 매출 흐름", "경쟁(개폐업·프랜차이즈)", "입지(교통·임대료 참고값)", "비용 검토", "현장 확인사항"]);
-  const cost = l.rows[3];
-  assert.equal(cost.kind, "app");                       // 비용 검토는 보고서 쪽이 아니라 앱 기능이라고 밝힌다
-  assert.match(cost.where, /창업 비용 점검/);
+  assert.deepEqual(l.rows.map((r) => r.title), ["후보지 매출 흐름", "경쟁(개폐업·프랜차이즈)", "입지(교통·임대료 참고값)", "현장 확인사항"]);
+  assert.ok(l.rows.every((r) => !r.title.includes("비용")));
 });
 
 test("보고서에 없는 쪽은 가짜 쪽 번호를 만들지 않고 '이 보고서에는 없음'이라고 말한다", () => {

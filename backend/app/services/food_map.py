@@ -402,8 +402,8 @@ def _nearest_reb(lon: float, lat: float) -> dict | None:
     if r["d"] > REB_NEAR_M:
         return None
     return {"zone": r["reb_zone_nm"], "distance_m": round(float(r["d"])),
-            "rent_small_shop": None if pd.isna(r["rent_small_shop"]) else round(float(r["rent_small_shop"]), 1),
-            "vacancy_small_shop_pct": None if pd.isna(r["vacancy_small_shop_pct"]) else round(float(r["vacancy_small_shop_pct"]), 1)}
+            "rent_small_shop": None if pd.isna(r["rent_small_shop"]) else float(r["rent_small_shop"]),
+            "vacancy_small_shop_pct": None if pd.isna(r["vacancy_small_shop_pct"]) else float(r["vacancy_small_shop_pct"])}
 
 
 def _reb_quarter_label(col: str) -> str | None:
@@ -434,13 +434,47 @@ def _seoul_reb_reference() -> dict:
     return out
 
 
-def _cell(row) -> dict:
+def _reb_trend(metric: str, zone: str | None) -> dict | None:
+    """최신 값과 동일한 범위만 반환한다. 지역 시계열에 서울 값을 섞지 않는다."""
+    try:
+        table = data_store.load_parquet("reb_rent_history.parquet")
+    except data_store.DataNotReady:
+        return None
+    rows = table.loc[table["metric"] == metric]
+    if zone is None:
+        rows = rows.loc[rows["region"] == "서울"]
+    else:
+        names = rows["region"].astype(str)
+        rows = rows.loc[names.str.startswith("서울>") & (names.str.split(">").str[-1] == zone)]
+    if rows.empty or rows["region"].nunique() != 1 or rows["quarter"].duplicated().any():
+        return None
+    rows = rows.sort_values("quarter").tail(8)
+    points = [{"quarter": str(r.quarter), "value": None if pd.isna(r.value) or not np.isfinite(r.value) else float(r.value)} for r in rows.itertuples()]
+    latest = points[-1]
+    previous = next((x["value"] for x in points if x["quarter"] == str(int(latest["quarter"]) - 100)), None)
+    change = None
+    if latest["value"] is not None and previous is not None:
+        if metric == "vacancy_small_shop_pct":
+            change = latest["value"] - previous
+        elif previous > 0:
+            change = (latest["value"] / previous - 1) * 100
+    return {"scope": "서울 전체 추이" if zone is None else f"{zone} 조사상권 추이",
+            "points": points, "yoy_change": change, "change_unit": "%p" if metric == "vacancy_small_shop_pct" else "%"}
+
+
+def _cell(row, metric: str = "") -> dict:
     """비교표 칸 하나 — 값이 없으면 사유를, 일부 업종만 썼으면 그 범위를 note 로 붙인다(전체 값으로 오해하지 않게)."""
     if row is None:
-        return {"value": None, "note": REASON_TEXT[unit_metrics.NO_ROWS]}
+        label = "매출" if metric in ("per_store_month", "sales_yoy_pct", "sales_per_10k_flpop") else "점포·개폐업"
+        return {"value": None, "note": f"이 업종·조건의 {label} 자료가 없어요"}
     value = _num(row["value"])
     if value is None:
-        return {"value": None, "note": REASON_TEXT.get(_reason(row) or unit_metrics.MISSING_INPUTS)}
+        reason = _reason(row) or unit_metrics.MISSING_INPUTS
+        if reason == unit_metrics.MISSING_INPUTS:
+            note = "매출·점포 자료가 부족해요" if metric in ("per_store_month", "sales_yoy_pct", "sales_per_10k_flpop") else "점포·개폐업 자료가 부족해요"
+        else:
+            note = REASON_TEXT.get(reason)
+        return {"value": None, "note": note}
     cell: dict = {"value": value}
     sample = row.get("sample")
     if sample is not None and pd.notna(sample) and unit_metrics.growth_status(sample) == "caution":
@@ -496,13 +530,17 @@ def compare(level: str, codes: list[str], svc: str | None, scls: str | None) -> 
                     note = f"가까운 '{r['zone']}'({r['distance_m']:,}m)은 {q or '해당 분기'} 소규모 상가 조사값이 없음(이전 분기 값으로 대체하지 않음)"
                 else:
                     note = f"'{r['zone']}' 조사값 · {r['distance_m']:,}m"
-                cells.append({"value": None if r is None else r[key], "note": note})
+                cell = {"value": None if r is None else r[key], "note": note}
+                trend = _reb_trend(key, r["zone"] if r is not None and r[key] is not None else None)
+                if trend is not None:
+                    cell["trend"] = trend
+                cells.append(cell)
             elif key == "stores_sbiz":
                 cells.append({"value": int(values.loc[c, "stores_sbiz"])})
             else:
                 f = cov[key]
                 row = f.loc[c] if c in f.index else None
-                cells.append(_cell(row))
+                cells.append(_cell(row, key))
         if src == "hinterland":  # 수요 기반 표는 원천마다 최신 분기가 달라질 수 있어 행마다 그 표의 분기를 쓴다
             quarters = sorted({str(hl.loc[c, HINTERLAND_QUARTER[key]]) for c in codes if c in hl.index and pd.notna(hl.loc[c, HINTERLAND_QUARTER[key]])})
             row_as_of = _quarter_span(quarters[0], quarters[-1]) if quarters else None

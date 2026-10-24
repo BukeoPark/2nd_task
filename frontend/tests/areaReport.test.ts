@@ -76,8 +76,8 @@ test("안정성·입지: 폐업률은 비교 중앙값과 함께, 임대료가 �
   assert.match(r.stability!.text, /최근 분기 폐업률은 19\.7%\(비교 지역 중앙값 12\.7%/);
   assert.match(r.stability!.text, /최근 1년\(.+\) 연 폐업률은 19\.7%입니다/);
   assert.match(r.stability!.take, /폐업률이 비교 지역 중앙값보다 높습니다/);
-  const rent = r.location!.facts.find((f) => f.label.startsWith("소규모상가 임대료"));
-  assert.equal(rent?.value, "자료 없음");
+  const rent = r.location!.facts.find((f) => f.label === "임대료·공실률");
+  assert.equal(rent?.value, "자료 미확보");
   assert.match(rent!.note, /R-ONE 조사 상권 없음/);
   assert.ok(r.location!.facts.some((f) => f.label === "지하철 역" && f.value === "1곳"));
   assert.ok(r.checklist.some((c2) => c2.includes("임대료")));
@@ -104,8 +104,10 @@ test("관점: 예비 창업자는 긍정·주의 신호를 값 그대로 나열�
   assert.ok(cau.some((t) => t.includes("총매출이 전년 동기보다 줄었습니다")), cau.join("|"));
   assert.ok(cau.some((t) => t.includes("문 닫는 비율")));
   assert.ok(cau.some((t) => t.includes("프랜차이즈 점포 비중이 높습니다")));
-  assert.ok(cau.some((t) => t.includes("매출이 한 시간대에 쏠려")));
-  assert.ok(cau.some((t) => t.includes("임대료·공실률을 이 자료로 알 수 없습니다")));
+  assert.ok(r.lens.neutral.some((s) => s.title.includes("매출이 한 시간대에 쏠려")));
+  assert.ok(!cau.some((t) => t.includes("매출이 한 시간대에 쏠려")));
+  assert.ok(r.lens.missing.some((s) => s.title.includes("임대료·공실률을 이 자료로 알 수 없습니다")));
+  assert.ok(!cau.some((t) => t.includes("임대료·공실률")));
   assert.ok(pos.some((t) => t.includes("점포당 추정매출이 비교 지역 중앙값보다 높")) === false); // 중앙값과 같은 수준이면 긍정으로 세지 않는다
   assert.match(r.lens.ruleNote, /점수나 '창업 적합도'가 아니고/);
   const text = JSON.stringify(r.lens);
@@ -118,10 +120,10 @@ test("관점: 자영업자는 매출 증대 기회(비는 시간대·유동 대�
   assert.equal(r.lens.mode, "owner");
   assert.equal(r.lens.eyebrow, "자영업자용 · 매출 증대·기회 포착");
   const pos = r.lens.positive.map((s) => s.title);
-  assert.ok(pos.some((t) => t.startsWith("11~14시에 손님을 더 모을 여지")), pos.join("|")); // 평균보다 13%p 낮은 점심
+  assert.ok(pos.some((t) => t.startsWith("11~14시의 매출 비중이 비교 평균보다 낮습니다")), pos.join("|")); // 평균보다 13%p 낮은 점심
   assert.ok(pos.some((t) => t.includes("17~21시가 이 상권 매출의 중심입니다")), pos.join("|"));
   assert.ok(pos.some((t) => t.includes("개인 가게의 차별화")));
-  assert.match(r.headline, /11~14시 매출 비중이 평균보다 .*%p 낮아 손님을 더 모을 여지를 점검해 볼 만합니다/);
+  assert.match(r.headline, /11~14시 매출 비중이 평균보다 .*%p 낮습니다/);
   assert.ok(r.checklist.some((c) => c.includes("'내 가게 점검'에 월 매출을 기록")));
   assert.ok(r.checklist.some((c) => c.includes("11~14시 시간대에 한 가지")));
   assert.equal(r.lens.checklistTitle, "이번 달 해볼 것");
@@ -222,7 +224,7 @@ test("폐업률이 중앙값을 조금 넘는 정도로는 '높다'고 하지 �
 
 test("자영업자: 제목이 말한 비는 시간대를 핵심 발견에서 다시 반복하지 않는다", () => {
   const r = buildAreaReport({ ...input, mode: "owner" });
-  assert.ok(r.lens.positive.some((s) => s.title.includes("손님을 더 모을 여지")));
+  assert.ok(r.lens.positive.some((s) => s.title.includes("매출 비중이 비교 평균보다 낮습니다")));
   assert.ok(!r.findings.some((f) => f.title === r.headline));
 });
 
@@ -259,7 +261,7 @@ test("점포 10곳 미만 상권 리포트: 순위·증감·폐업률 타일을 
     const r = buildAreaReport(withStores(7, mode));
     assert.ok(!r.tiles.some((t) => /위$/.test(t.value) || t.label.includes("증감") || t.label.includes("폐업률")));
     assert.match(r.tiles[0].note, /참고용\(10곳 미만\)/);
-    const slotSignals = [...r.lens.positive, ...r.lens.caution].filter((s) => /시간대|중심|쏠려/.test(s.title));
+    const slotSignals = [...r.lens.positive, ...r.lens.caution, ...r.lens.neutral].filter((s) => /시간대|중심|쏠려/.test(s.title));
     assert.ok(slotSignals.length > 0 && slotSignals.every((s) => s.body.includes("참고용")));
   }
 });
@@ -282,7 +284,7 @@ test("지나가는 사람 대비 매출 비교에서 0~6시(대부분 집에 있
   const r = buildAreaReport({ ...base, overview: { ...base.overview!, hours: { slots: slots.map((label, i) => ({ label, pct: [0, 10, 30, 10, 40, 10][i] })), pilot: undefined }, floating: { label: "x", flpop: 1000, yoy_pct: 0, weekend_pct: 25, slots: slots.map((label, i) => ({ label, pct: [40, 20, 10, 10, 10, 10][i] })) } } });
   const t = [...r.lens.positive].map((s) => s.title).join("|");
   assert.doesNotMatch(t, /00~06시는 지나가는 사람/);
-  assert.match(t, /06~11시은?는? 지나가는 사람|06~11시.*지나가는 사람/);
+  assert.match(t, /06~11시.*유동인구와 매출의 구성비 차이/);
   assert.ok(!r.lens.checklist.some((c) => c.includes("00~06시 시간대에 내 가게가 열려")));
 });
 
@@ -292,7 +294,7 @@ test("핵심 발견 제목은 서로 되풀이하지 않는다 — 제목이 점
   const r = buildAreaReport(flat(16.6));
   assert.match(r.headline, /중앙값의/);
   assert.equal(new Set(r.findings.map((f) => f.title)).size, r.findings.length);
-  assert.match(r.findings.find((f) => f.body.endsWith("→ 3쪽"))!.title, /시간대별 매출 비중은 평균과 큰 차이가 없습니다/);
+  assert.match(r.findings.find((f) => f.title.includes("시간대별 매출 비중"))!.title, /시간대별 매출 비중은 평균과 큰 차이가 없습니다/);
   for (const m of ["owner", "founder"] as const) {
     const t = buildAreaReport({ ...base, mode: m }).findings.map((f) => f.title);
     assert.equal(new Set(t).size, t.length);
@@ -306,4 +308,25 @@ test("분기 폐업률 문구는 기준 분기를 밝히고, 연 폐업률은 �
   assert.ok(rep.tiles.some((t) => t.label.includes("최근 분기 2026년 2분기")));
   const none = buildAreaReport({ ...input });   // 기준 분기를 모르면 '최근 분기'로만 쓴다(없는 기간을 지어내지 않음)
   assert.match(none.stability!.text, /최근 분기 폐업률은/);
+});
+
+
+test("시간대 구성비를 미충족 수요로 해석하지 않고 자료 기준을 제공한다", () => {
+  const r = buildAreaReport(input);
+  assert.doesNotMatch(r.slots!.take, /수요를 덜 가져오고|잘 맞고/);
+  assert.match(r.slots!.take, /다른 시간대의 매출이 커도 비중은 낮아질/);
+  assert.ok(r.dataBasis.some((d) => d.label === "분기 개폐업률" && d.basis.includes("동일 업종")));
+  assert.ok(!r.location!.facts.some((d) => /스세권|다세권/.test(d.label)));
+});
+
+test("점포당 매출 전년 동기 변화는 같은 분기 유효값으로만 계산한다", () => {
+  const r = buildAreaReport({ ...input, overview: { ...input.overview!, trend: [
+    { quarter: "20252", label: "2025년 2분기", per_store_month: 10000000, stores: 30 },
+    { quarter: "20262", label: "2026년 2분기", per_store_month: 8000000, stores: 30 },
+  ] } });
+  assert.ok(Math.abs(r.level!.yoyPerStore! + 20) < 0.00001);
+  const missing = buildAreaReport({ ...input, overview: { ...input.overview!, trend: [
+    { quarter: "20262", label: "2026년 2분기", per_store_month: 8000000, stores: 30 },
+  ] } });
+  assert.equal(missing.level!.yoyPerStore, null);
 });

@@ -1,3 +1,6 @@
+import { StationName } from "../area/AreaCharacterSection";
+import { AppIcon, PopulationMix, MetricBars } from "../../components/DataVisuals";
+import { StoreTransitVisuals, StoreFacilityVisuals } from "./StoreEnvironmentVisuals";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -7,10 +10,10 @@ import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
 import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityReferenceText, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
-import { densityText, effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
+import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
-import { useLocationInfluence, useStoreAnchors } from "./useStores";
-import { Stat as KitStat } from "../../components/PanelKit";
+import { useLocationInfluence } from "./useStores";
+import { Block, Stat as KitStat } from "../../components/PanelKit";
 import { BLOCK_GAP, PK } from "../../lib/panelStyle";
 import { FS } from "../../lib/typography";
 
@@ -32,19 +35,13 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useLocationInfluence(storeId, radius);
   const options = data?.radius_options ?? [250, 500, 1000];
   return (
-    <Section
-      title="반경 주변 입지 — 상업·교통"
-      scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(radius)}`} />}
-      right={
-        <div role="group" aria-label="분석 반경" style={{ display: "flex", gap: 4 }}>
-          {options.map((m) => (
-            <button key={m} type="button" aria-pressed={m === radius} onClick={() => onRadiusChange(m)} style={m === radius ? radiusOn : radiusOff}>
-              {radiusLabel(m)}
-            </button>
-          ))}
+    <div className="store-environment">
+      <div className="store-environment-controls">
+        <strong>분석 반경</strong>
+        <div role="group" aria-label="분석 반경" style={{display:"flex",gap:6}}>
+          {options.map(m => <button key={m} type="button" aria-pressed={m === radius} onClick={() => onRadiusChange(m)} style={m === radius ? radiusOn : radiusOff}>{radiusLabel(m)}</button>)}
         </div>
-      }
-    >
+      </div>
       {isLoading && <Notice tone="muted">주변을 분석하는 중...</Notice>}
       {isError && (
         <Notice tone="error">
@@ -57,15 +54,17 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
           {isPlaceholderData && <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
           <GlanceBlock data={data} />
           {/* 상업·집객시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 세 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
-          <Fold title="자세한 숫자 보기 — 상업·집객시설·교통">
-            <CommerceBlock data={data} storeId={storeId} />
-            <FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} />
-            <TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
-            <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} />
-          </Fold>
+          <>
+            <StoreBrandCards data={data} />
+            <StoreFacilityVisuals facilities={data.radius_metrics.facilities} />
+            <Fold title="시설 목록·지도 표시"><FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} /></Fold>
+            <StoreTransitVisuals bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} />
+            <Fold title="교통 상세·지도 표시"><TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
+            <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} /></Fold>
+          </>
         </div>
       )}
-    </Section>
+    </div>
   );
 }
 
@@ -75,8 +74,8 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
   if (!data) return null;
   const { anchors, competitors, bus, rail, facilities } = data.radius_metrics;
   return (
-    <Section title="⑥ 분석 기준 자세히 보기" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
-      <Fold title="원천자료·기준일·한계 펼치기">
+    <Section title="읽는 법·유의사항" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
+      <Fold title="계산 기준·자료 안내">
         <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#4B5563", lineHeight: 1.6 }}>
           <li>거리는 모두 직선거리입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.</li>
           <li>{competitors.basis}. 선택 매장은 제외했습니다. 밀도는 점포 수 ÷ 원의 넓이(π·반경²) 단순 환산입니다.</li>
@@ -141,7 +140,7 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
 export function LocationAreaSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError, error, refetch } = useLocationInfluence(storeId, DEFAULT_RADIUS_M);
   return (
-    <Section title="입지 영향력 — 상권 수요 구조·입지 요인" scope={<ScopeTag kind="area" label="소속 상권" />}>
+    <Section title="상권 수요와 입지 특성" scope={<ScopeTag kind="area" label="소속 상권" />}>
       {isLoading && <Notice tone="muted">상권을 분석하는 중...</Notice>}
       {isError && (
         <Notice tone="error">
@@ -152,7 +151,7 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
       {data && (
         <div>
           <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 8 }}>
-            상권 주변을 숫자로 바꾼 값이에요. 상관 관계이며 <strong>이 매장의 매출을 예측하지 않아요.</strong>
+            소속 상권의 인구 구조와 시간대별 수요를 확인하세요.
           </div>
           <AreaBlock data={data} />
           {/* 통계 모델(표준편차·95% 구간 등)은 초보자에게 어려워 접어 둔다 — 위 한 줄이 핵심 경고(예측 아님)를 먼저 말한다 */}
@@ -176,46 +175,35 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
 function GlanceBlock({ data }: { data: LocationInfluenceResponse }) {
   const { competitors, rail } = data.radius_metrics;
   const same = competitors.same_category;
-  const nearest = rail && rail.status === "ok" ? railNearestText(rail.nearest_station) : null;
-  return (
-    <div style={card}>
-      <div style={cardTitle}>반경 {radiusLabel(data.radius_m)} 한눈에</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 6 }}>
-        <Stat big label={same.label} value={`${same.count}곳`} sub={`같은 ${same.level} · 선택 매장 제외`} />
-        <Stat big label="가장 가까운 지하철역" value={nearest ? nearest.value : "자료 없음"} sub={nearest?.sub} />
-        <Stat big label="반경 안 전체 업소" value={`${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} sub="업종 구분 없이" />
-      </div>
+  const nearest = rail?.status === "ok" ? rail.nearest_station : null;
+  return <Block title={`반경 ${radiusLabel(data.radius_m)} 한눈에`}>
+    <div className="store-glance-grid">
+      <div className="store-glance-card"><span className="data-heading"><AppIcon name="store"/>같은 업종</span><strong>{same.count.toLocaleString()}곳</strong><small>{same.label} · 선택 매장 제외</small></div>
+      <div className="store-glance-card"><span className="data-heading"><AppIcon name="train"/>가까운 역</span><div className="environment-transit-summary store-glance-station">{nearest ? <StationName st={nearest}/> : <strong>자료 없음</strong>}</div><small>{nearest ? `${formatDistance(nearest.distance_m)} · 직선거리${nearest.distance_m > data.radius_m ? " (반경 밖)" : ""}` : "확인된 역 없음"}</small></div>
+      <div className="store-glance-card"><span className="data-heading"><AppIcon name="building"/>전체 업소</span><strong>{competitors.all_stores.count.toLocaleString()}곳</strong><small>업종 구분 없이</small></div>
     </div>
-  );
+  </Block>;
 }
 
-function CommerceBlock({ data, storeId }: { data: LocationInfluenceResponse; storeId: string }) {
-  const { anchors, competitors } = data.radius_metrics;
-  // 스세권·다세권(도보권) 판정은 반경과 무관한 매장 기준 값이라 같은 칸에 덧붙인다. 조회 전·실패면 덧붙이지 않는다.
-  const walk = useStoreAnchors(storeId).data;
-  const zoneText = (brand: string) => {
-    const z = walk?.brands.find((x) => x.brand === brand);
-    if (!walk || !z) return "";
-    return ` · ${z.in_zone ? `${brand === "starbucks" ? "스세권" : "다세권"}(도보 ${walk.walk_m}m 이내)` : `도보권(${walk.walk_m}m) 밖`}`;
-  };
-  const same = competitors.same_category;
+export function StoreBrandCards({ data }: { data: LocationInfluenceResponse }) {
+  const { anchors } = data.radius_metrics;
   return (
-    <div style={card}>
-      <div style={cardTitle}>① 상업·경쟁 환경 (상가정보 기준)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+    <Block title={<span className="data-heading"><AppIcon name="store"/>근처 스타벅스·다이소·올리브영</span>}>
+      <div className="nearby-brand-grid" style={{marginTop:12}}>
         {anchors.status === "ok" ? (
           anchors.brands.map((b) => (
-            <Stat key={b.brand} accent={ZONE_COLORS[b.brand]} label={b.label} value={`${b.count}곳`} sub={`가장 가까운 곳 ${b.nearest_m === null ? "자료 없음" : formatDistance(b.nearest_m)}${zoneText(b.brand)}`} />
+            <div key={b.brand} className="nearby-brand-card">
+              <div className="nearby-brand-logo"><img src={`/brands/${b.brand}.png`} alt={b.label}/></div>
+              <strong className="store-detail-value" style={{color:b.brand === "oliveyoung" ? "#456600" : ZONE_COLORS[b.brand]}}>{b.count}곳</strong>
+              <div style={fine}>최근접 {b.nearest_m === null ? "자료 없음" : formatDistance(b.nearest_m)}</div>
+            </div>
           ))
         ) : (
           <div style={{ gridColumn: "1 / -1" }}><Notice tone="muted">{anchors.message}</Notice></div>
         )}
-        <Stat label={`같은 ${same.level}(${same.label})`} value={`${same.count}곳`}
-          sub={`${densityText(same.count, data.radius_m)} · ${same.nearest_m === null ? "가장 가까운 곳 없음" : same.nearest_m === 0 ? "가장 가까운 곳 같은 건물(0m)" : `가장 가까운 곳 ${formatDistance(same.nearest_m)}`}`} />
-        <Stat label={`전체 ${competitors.same_large_category.label}`} value={`${competitors.same_large_category.count}곳`} sub={`같은 ${competitors.same_large_category.level} 전체`} />
-        <Stat label="전체 업소" value={`${competitors.all_stores.count.toLocaleString("ko-KR")}곳`} sub="업종 구분 없이 반경 안 모두" />
+
       </div>
-    </div>
+    </Block>
   );
 }
 
@@ -254,7 +242,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
             const staleNote = facilityStaleNote(v);
             return (
               <div key={t} style={facilityRow}>
-                <div style={{ fontWeight: 600, fontSize: FS.caption }}>
+                <div style={{ fontWeight: 600, fontSize: FS.body }}>
                   <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: FACILITY_MARK[t].color, marginRight: 5 }} />
                   {v.label}
                 </div>
@@ -428,48 +416,20 @@ function BusDemandPart({ bus }: { bus: Extract<BusAccess, { status: "ok" }> }) {
 
 function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
-  return (
-    <div style={card}>
-      <div style={cardTitle}>{a.level_label} 수요 구조 — {a.name}{a.trdar_type ? `(${a.trdar_type})` : ""}</div>
-      {a.fallback_reason && <div style={{ marginTop: 6 }}><Notice tone="muted">{a.fallback_reason}</Notice></div>}
-      {a.demand_type === null ? (
-        <div style={{ marginTop: 6 }}><Notice tone="warn">{a.message}</Notice></div>
-      ) : (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-            <span style={{ fontSize: FS.caption, color: "#374151" }}>{a.basis}</span>
-            <Term id="demandType" label="" />
-          </div>
-          <div style={{ fontSize: FS.caption, color: "#6B7280", marginTop: 6 }}>유형 이름과 직장·상주인구 숫자는 위 '소속 상권'의 유형과 종합분석 '소비 수요'에서 봐요.</div>
-          <Fold title="유형 판정 기준 보기">
-            <div style={fine}>
-              {a.rule} · 지하철역 {a.has_subway === null || a.has_subway === undefined ? "자료 없음" : a.has_subway ? "영역 안에 있음" : "영역 안에 없음"} ·
-              같은 단위 분포 {Object.entries(a.type_counts).map(([t, n]) => `${t} ${n}곳`).join(" · ")}
-            </div>
-          </Fold>
-          {a.time_pattern && (
-            <Fold title="유동인구 시간대 패턴 보기(유형이 맞는지 확인용)">
-              <table style={{ width: "100%", fontSize: FS.caption, borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ color: "#6B7280", textAlign: "left" }}><th scope="col">시간대</th><th scope="col">이 {a.level_label}</th><th scope="col">양천·영등포 중앙값</th></tr>
-                </thead>
-                <tbody>
-                  {a.time_pattern.items.map((it) => (
-                    <tr key={it.key}>
-                      <th scope="row" style={{ fontWeight: 400, textAlign: "left" }}>{it.label}</th>
-                      <td>{it.share === null ? "자료 없음" : `${it.share}%`}</td>
-                      <td>{it.median === null ? "자료 없음" : `${it.median}%`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={fine}>{a.time_pattern.quarter} 기준. {a.time_pattern.note}</div>
-            </Fold>
-          )}
-        </>
-      )}
-    </div>
-  );
+  return <div style={card}>
+    <div className="data-heading" style={cardTitle}><AppIcon name="users"/>{a.name}의 소비 수요</div>
+    {a.fallback_reason && <Notice tone="muted">{a.fallback_reason}</Notice>}
+    {a.demand_type === null ? <Notice tone="muted">{a.message}</Notice> : <>
+      <PopulationMix residents={a.residents} workers={a.workers}/>
+      {a.time_pattern && <div className="store-detail-tile" style={{marginTop:16}}>
+        <h4 className="data-heading"><AppIcon name="clock"/>시간대·요일별 유동인구 비중</h4>
+        <MetricBars items={a.time_pattern.items.map(it => ({label:it.label,value:it.share,color:"#6864E9"}))} format={n => `${n.toFixed(1)}%`} rate/>
+        <div style={fine}>{a.time_pattern.quarter} · 이동 인구 추정치</div>
+      </div>}
+      <Caveat>{a.rule} · {a.basis} · 인구 통계는 매장 방문객 수가 아닙니다.</Caveat>
+      {a.time_pattern && <Caveat>{a.time_pattern.note}</Caveat>}
+    </>}
+  </div>;
 }
 
 function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
@@ -511,7 +471,7 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
   return (
     <li style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px", opacity: dim ? 0.75 : 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-        <strong style={{ fontSize: FS.warn }}>{f.label}</strong>
+        <strong style={{ fontSize: FS.body }}>{f.label}</strong>
         <span style={{ fontSize: FS.caption, fontWeight: 700, color: f.significant ? (f.direction === "positive" ? "#166534" : "#991B1B") : "#6B7280" }}>
           {f.significant ? `${f.direction === "positive" ? "▲" : "▼"} ${f.tendency}` : f.tendency}
         </span>
@@ -527,10 +487,10 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
 }
 
 /** 숫자 칸 — 공통 조각(Stat)을 쓰고, 브랜드 색 띠(accent)만 겉에 덧댄다. */
-function Stat({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
+function Stat({ label, value, sub, accent, big }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
   return (
     <div style={accent ? { borderLeft: `3px solid ${accent}`, borderRadius: 10 } : undefined}>
-      <KitStat onGray label={label} value={value} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />
+      <KitStat onGray big={big} label={label} value={value} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />
     </div>
   );
 }
@@ -539,6 +499,6 @@ const card: React.CSSProperties = { background: PK.soft, borderRadius: 12, paddi
 const cardTitle: React.CSSProperties = { fontSize: FS.cardTitle, fontWeight: 800, color: PK.ink, lineHeight: 1.4, marginBottom: 6 };
 const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: `1px solid ${PK.line}`, alignItems: "baseline" };
 const fine: React.CSSProperties = { fontSize: FS.caption, color: PK.mute, marginTop: 4, lineHeight: 1.5 };
-const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: FS.caption, cursor: "pointer", border: "1px solid #D1D5DB" };
+const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: FS.ui, minHeight: 38, cursor: "pointer", border: "1px solid #D1D5DB" };
 const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8", fontWeight: 700 };
 const radiusOff: React.CSSProperties = { ...radiusBase, background: "#fff", color: "#374151" };

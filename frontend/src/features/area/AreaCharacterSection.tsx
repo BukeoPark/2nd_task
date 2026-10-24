@@ -117,7 +117,7 @@ export function AreaTransitBlock(p: CharProps) {
             {[...d.sections.transit.rail.inside, ...d.sections.transit.rail.within_250m].map(st => <div key={st.name + st.lines} className="environment-station-row"><StationName st={st}/><Caption>{st.where === "inside" ? "지역 안" : `경계에서 ${st.distance_m}m`}</Caption></div>)}
             {d.sections.transit.rail.count === 0 && <Caption>경계에서 250m 이내 지하철역이 없어요.</Caption>}
           </div>
-          <div><span><AppIcon name="bus"/>버스정류장</span><strong>{d.sections.transit.bus.count.toLocaleString()}곳</strong><small>지역 안 정류장</small></div>
+          <div><span><AppIcon name="bus"/>근처 버스정류장</span><strong>{d.sections.transit.bus.count.toLocaleString()}곳</strong><small>경계 밖 250m까지</small></div>
           </div>
           <RailPart rail={d.sections.transit.rail} />
           <BusPart bus={d.sections.transit.bus} />
@@ -262,7 +262,8 @@ function RailPart({ rail }: { rail: AreaCharacter["sections"]["transit"]["rail"]
   </div>;
 }
 
-function StationName({ st }: { st: CharacterStation }) {
+/** 호선 원형 배지 + 역 이름 — 지역 종합분석과 매장 상세 주변이 같이 쓴다. */
+export function StationName({ st }: { st: Pick<CharacterStation, "name" | "lines"> }) {
   return <span className="station-name">{splitRailLines(st.lines).map(line => { const badge = railLineBadge(line); return <span key={line} className="rail-line-badge" style={{ background: badge.color, color: ["#BDB092", "#F5A200", "#B7C452", "#77C4A3"].includes(badge.color) ? "#172033" : "white" }} title={badge.name} aria-label={badge.name}>{badge.label}</span>; })}<FittedStationName name={`${st.name.replace(/역$/, "")}역`}/></span>;
 }
 
@@ -294,7 +295,7 @@ function BusPart({ bus }: { bus: AreaCharacter["sections"]["transit"]["bus"] }) 
         { label: "하루 평균 하차", value: bus.alightings_observed, color: "#73BDB5" },
       ]} format={(n) => `${Math.round(n).toLocaleString("ko-KR")}명`} />
       <Caption>{bus.year}년 · 이용량 확인 {bus.linked}/{bus.count}곳{bus.usage_state === "partial" ? " · 일부 정류장만 포함" : ""}</Caption>
-    </> : <Caption>경계 안 정류장 없음</Caption>}
+    </> : <Caption>근처 정류장 없음</Caption>}
     {bus.caution && <Caption tone="warn">{bus.caution}</Caption>}
     <Caveat>{bus.basis}</Caveat>
   </div>;

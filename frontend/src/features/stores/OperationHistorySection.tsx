@@ -1,3 +1,4 @@
+import { Stat } from "../../components/PanelKit";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { OperationHistory } from "../../lib/apiClient";
@@ -82,7 +83,7 @@ export function OperationHistorySection({ history, compact = false }: { history:
       <LicenseSummary history={history} part="detail" compact={compact} />
       <div style={{ marginTop: 10 }}>
         {certifications.map((c) => (
-          <div key={c.name} style={{ fontSize: FS.caption }}>
+          <div key={c.name} style={{ fontSize: FS.body, padding: "8px 0" }}>
             <strong>{c.name}</strong>{" "}
             {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : compact ? "지정 확인 안 됨" : c.label}
             {!compact && <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />}
@@ -98,11 +99,5 @@ export function OperationHistorySection({ history, compact = false }: { history:
 }
 
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "8px 10px" }}>
-      <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{label}</div>
-      <div style={{ fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{sub}</div>}
-    </div>
-  );
+  return <Stat onGray label={label} value={value} sub={sub}/>;
 }

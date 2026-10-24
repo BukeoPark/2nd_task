@@ -69,6 +69,17 @@ def _anchor_metrics(bizes_id: str, radius_m: int) -> dict:
             "brand": b, "label": label, "nearest_m": _int(r[f"{b}_nearest_m"]), "count": int(r[f"{b}_cnt_{radius_m}m"]),
             "counts_by_radius": {str(x): int(r[f"{b}_cnt_{x}m"]) for x in RADII_M},
         })
+    # 지역 분석과 같은 올리브영 공식 상가정보 목록을 매장 좌표·선택 반경으로 계산한다.
+    from app.services.area_character import oliveyoung_stores
+    stores = data_store.load_parquet("stores.parquet")
+    me = stores.loc[stores["bizesId"] == bizes_id]
+    if not me.empty:
+        point = me.iloc[0]
+        olive = oliveyoung_stores(stores)
+        dist = bus_access._haversine_m(float(point["lon"]), float(point["lat"]), olive["lon"].to_numpy(), olive["lat"].to_numpy())
+        counts = {str(x): int((dist <= x).sum()) for x in RADII_M}
+        brands.append({"brand": "oliveyoung", "label": "올리브영", "nearest_m": _int(float(dist.min())) if len(dist) else None,
+                       "count": counts[str(radius_m)], "counts_by_radius": counts})
     return {"status": "ok", "brands": brands, "note": "직선거리 기준, 파일럿 두 구 밖 매장은 포함하지 않아 구 경계 근처는 실제보다 적게 나올 수 있습니다."}
 
 

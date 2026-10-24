@@ -12,6 +12,7 @@
        vacancy_small_shop_pct, rent_small_shop, vacancy_midlarge_shop_pct, rent_midlarge_shop,
        vacancy_office_pct, rent_office,
        <위 6개 지표마다> <지표>_quarter  — 그 값을 고른 분기('202602' = 2026년 2분기))
+      data/processed/reb_rent_history.parquet — 서울 및 서울 조사상권 소규모 상가 최근 8분기
       data/processed/reb_seoul_reference.parquet — 서울 전체 소규모 상가 공식 임대료·공실률과 지표별 기준 분기
       outputs/tables/reb_zone_metrics_log.csv  통계표별 최신 분기와 값이 있는/없는 상권
 
@@ -106,6 +107,28 @@ def build_seoul_reference(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return pd.DataFrame(records, columns=["metric", "value", "quarter", "region", "unit", "statbl_id"])
 
 
+def build_rent_history(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """서울 집계와 서울 내 조사상권을 같은 범위의 8분기 시계열로 보존한다."""
+    records = []
+    for key in ("rent_small_shop", "vacancy_small_shop"):
+        rows = tables.get(key)
+        if rows is None:
+            continue
+        quarters = sorted({str(q) for q in rows["WRTTIME_IDTFR_ID"] if QUARTER_RE.match(str(q))})[-8:]
+        regions = sorted({str(n) for n in rows["CLS_FULLNM"] if str(n) == "서울" or str(n).startswith("서울>")})
+        expected = "천원/㎡" if key == "rent_small_shop" else "%"
+        for region in regions:
+            for q in quarters:
+                hit = rows.loc[(rows["CLS_FULLNM"] == region) & (rows["WRTTIME_IDTFR_ID"].astype(str) == q)]
+                value = pd.to_numeric(hit["DTA_VAL"], errors="coerce").iloc[0] if len(hit) == 1 else float("nan")
+                unit = hit.iloc[0]["UI_NM"] if len(hit) == 1 else None
+                if unit != expected or pd.isna(value) or not float("-inf") < value < float("inf") or value < 0 or (key == "vacancy_small_shop" and value > 100):
+                    value = float("nan")
+                records.append({"metric": METRIC_COLS[key], "region": region, "quarter": q,
+                                "value": value, "unit": expected, "statbl_id": TABLES[key][0]})
+    return pd.DataFrame(records, columns=["metric", "region", "quarter", "value", "unit", "statbl_id"])
+
+
 def main() -> None:
     zones = pd.read_parquet(config.PROCESSED_DIR / "reb_zone_coords.parquet")
     tables: dict[str, pd.DataFrame] = {}
@@ -113,6 +136,9 @@ def main() -> None:
         path = _latest_raw_file(TABLES[key][0])
         if path is not None:
             tables[key] = pd.DataFrame(json.loads(path.read_text(encoding="utf-8"))["rows"])
+    history = build_rent_history(tables)
+    history.to_parquet(config.PROCESSED_DIR / "reb_rent_history.parquet", index=False)
+    print(f"임대시장 시계열: {len(history)}행 · 결측 {history['value'].isna().sum()}행")
     reference = build_seoul_reference(tables)
     reference.to_parquet(config.PROCESSED_DIR / "reb_seoul_reference.parquet", index=False)
     print(f"서울 소규모 상가 참고값: {len(reference)}개 지표 · 유효 {reference['value'].notna().sum()}개")

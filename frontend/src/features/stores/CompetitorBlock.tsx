@@ -67,7 +67,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
           <div style={{ fontSize: FS.body }}>
             반경 {radius}m · {category || `${industry} 전체`} <strong style={{ fontSize: FS.metric }}>{filtered.length.toLocaleString()}{truncated ? "곳 이상" : "곳"}</strong>
           </div>
-          {!concise && categories.length > 1 && <div style={{ fontSize: FS.warn, color: "#374151", marginTop: 2 }}>세부 업종별: {categories.slice(0, 4).map((g) => `${g.category} ${g.items.length}곳`).join(" · ")}{categories.length > 4 ? " …" : ""}</div>}
+          {!concise && categories.length > 1 && <div style={{ fontSize: FS.ui, color: "#374151", marginTop: 2 }}>세부 업종별: {categories.slice(0, 4).map((g) => `${g.category} ${g.items.length}곳`).join(" · ")}{categories.length > 4 ? " …" : ""}</div>}
           <div style={{ fontSize: FS.ui, color: "#4B5563", marginTop: 2 }}>
             {concise ? <>상가정보 · 선택 매장 제외 · 직선거리{truncated ? " · 일부만 조회됨" : ""}</> : <>소상공인 상가정보 기준 · 선택 매장 제외. 선택 업종의 요약 숫자와 목록을 같은 범위로 보여 드려요. {truncated ? "조회 한도로 일부만 집계했어요. " : ""}파란 링은 같은 상권·같은 업종 표시로, 이 반경 목록과 범위가 다를 수 있어요.</>}
           </div>
@@ -77,7 +77,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
               <button key={s} type="button" aria-pressed={sort === s} onClick={() => { setSort(s); setShown(PAGE); }} style={chip(sort === s)}>{s === "distance" ? "가까운 순" : "세부 업종별"}</button>
             ))}
             {categories.length > 1 && (
-              <select aria-label="세부 업종으로 거르기" value={category} onChange={(e) => { setCategory(e.target.value); setShown(PAGE); }} style={{ padding: "3px 8px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: FS.warn }}>
+              <select aria-label="세부 업종으로 거르기" value={category} onChange={(e) => { setCategory(e.target.value); setShown(PAGE); }} style={{ padding: "3px 8px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: FS.ui }}>
                 <option value="">세부 업종 전체 ({all.length})</option>
                 {categories.map((g) => <option key={g.category} value={g.category}>{g.category} ({g.items.length})</option>)}
               </select>
@@ -99,7 +99,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
           ) : (
             categories.filter((g) => !category || g.category === category).map((g) => (
               <div key={g.category} style={{ marginTop: 8 }}>
-                <div style={{ fontSize: FS.warn, fontWeight: 700 }}>{g.category} · {g.items.length}곳</div>
+                <div style={{ fontSize: FS.ui, fontWeight: 700 }}>{g.category} · {g.items.length}곳</div>
                 <ul style={list}>{g.items.slice(0, 5).map((c) => <Row key={c.store_id} c={c} status={statusOf(c.store_id)} onSelectStore={onSelectStore} onHoverStore={onHoverStore} onShowOnMap={onShowOnMap} />)}</ul>
                 {g.items.length > 5 && <div style={{ fontSize: FS.ui, color: "#4B5563" }}>가까운 5곳만 보여요. '가까운 순'에서 모두 볼 수 있어요.</div>}
               </div>
@@ -117,7 +117,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
 function Row({ c, status, onSelectStore, onHoverStore, onShowOnMap }: { c: Competitor; status: string | null; onSelectStore: (id: string) => void; onHoverStore?: (id: string | null) => void; onShowOnMap?: (c: Competitor) => void }) {
   return (
     <li onMouseEnter={() => onHoverStore?.(c.store_id)} onMouseLeave={() => onHoverStore?.(null)} onFocus={() => onHoverStore?.(c.store_id)} onBlur={() => onHoverStore?.(null)}
-      style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "7px 10px", background: "white" }}>
+      style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: "12px 14px", background: "white" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
         <span style={{ fontSize: FS.body, fontWeight: 700 }}><span aria-hidden="true" style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", border: "2px solid #1D4ED8", marginRight: 6 }} />{c.name}{c.branch ? ` ${c.branch}` : ""}</span>
         <span style={{ fontSize: FS.body, fontWeight: 800, whiteSpace: "nowrap" }}>{distanceLabel(c.distance_m)}</span>
@@ -132,5 +132,5 @@ function Row({ c, status, onSelectStore, onHoverStore, onShowOnMap }: { c: Compe
 }
 
 const list: React.CSSProperties = { listStyle: "none", margin: "4px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 };
-const mini: React.CSSProperties = { padding: "2px 8px", border: "1px solid #BFDBFE", borderRadius: 6, background: "#EFF6FF", color: "#1E3A8A", fontSize: FS.warn, cursor: "pointer" };
-const chip = (on: boolean): React.CSSProperties => ({ padding: "3px 10px", borderRadius: 999, border: on ? "1px solid #1D4ED8" : "1px solid #D1D5DB", background: on ? "#1D4ED8" : "white", color: on ? "white" : "#374151", fontSize: FS.warn, cursor: "pointer" });
+const mini: React.CSSProperties = { padding: "7px 10px", minHeight: 38, border: "1px solid #BFDBFE", borderRadius: 6, background: "#EFF6FF", color: "#1E3A8A", fontSize: FS.ui, cursor: "pointer" };
+const chip = (on: boolean): React.CSSProperties => ({ padding: "7px 12px", minHeight: 38, borderRadius: 999, border: on ? "1px solid #1D4ED8" : "1px solid #D1D5DB", background: on ? "#1D4ED8" : "white", color: on ? "white" : "#374151", fontSize: FS.ui, cursor: "pointer" });

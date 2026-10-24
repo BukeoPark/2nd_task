@@ -1,3 +1,4 @@
+import { reportFilename } from "../../../lib/reportFilename";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiClient } from "../../../lib/apiClient";
@@ -149,7 +150,7 @@ export function InsightReportModal({ storeId, onClose }: { storeId: string; onCl
   const partialFailures = [bench.isError && "상권 매출 비교", nearby.isError && "주변 인허가 분석", loc.isError && "입지 영향력"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame title="상권분석 보고서 · 내 매장(자영업자용)" canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame downloadTitle={store ? reportFilename(store.trdar?.name ?? store.dong, store.category.scls || store.category.mcls) : undefined} title="상권분석 보고서 · 내 매장(자영업자용)" canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>

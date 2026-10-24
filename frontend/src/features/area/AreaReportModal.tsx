@@ -1,3 +1,9 @@
+import { reportFilename } from "../../lib/reportFilename";
+import { ReportHeadline } from "../stores/report/ReportHeadline";
+import { areaReportTips, founderFieldChecks } from "../../lib/areaReportTips";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient, type ReportDetail, type FoodUnitStoresResponse } from "../../lib/apiClient";
+import { ReportDemandPage, ReportCompetitionPage } from "./ReportExtras";
 import { useMemo } from "react";
 import { ReportLead } from "../stores/report/ReportLead";
 import { reportLead } from "../../lib/reportLead";
@@ -49,10 +55,14 @@ function SignalBox({ title, items, color, bg }: { title: string; items: { title:
   );
 }
 
-function Pages({ r, date }: { r: AreaReport; date: string }) {
+function Pages({ r, date, detail, stores, storesFailed }: { r: AreaReport; date: string; detail?: ReportDetail; stores?: FoodUnitStoresResponse; storesFailed: boolean }) {
   const lv = r.level, sl = r.slots, st = r.stability, lo = r.location;
-  const hasStability = st !== null || lo !== null;
-  const pages = ["cover", lv && "level", sl && "slots", hasStability && "stab"].filter(Boolean) as string[];
+  const hasStability = st !== null;
+  const hasSignals = r.lens.positive.length > 0 || r.lens.caution.length > 0 || r.lens.neutral.length > 0 || r.lens.missing.length > 0 || r.profile.length > 0;
+  const tips = r.lens.mode === "founder" ? areaReportTips(r, detail, stores) : [];
+  const summaries = tips.length ? [tips] : [];
+  const checklist = r.lens.mode === "founder" ? [...r.checklist.filter((item) => !/현장|유동|실제 임대료|메뉴·가격대|문을 닫은/.test(item)), ...founderFieldChecks] : r.checklist;
+  const pages = ["cover", hasSignals && "signals", lv && "level", sl && "slots", "demand", "competitors", hasStability && "stab", "location", "basis", ...summaries.map((_, i) => `tips-${i}`)].filter(Boolean) as string[];
   const total = pages.length;
   const no = (k: string) => pages.indexOf(k) + 1;
   return (
@@ -60,13 +70,20 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
       <Page n={no("cover")} total={total}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={eyebrow}>{r.lens.eyebrow} · {lv?.quarterLabel ?? "최근 분기"} 기준</div>
-          <h1 style={{ fontSize: "clamp(26px,5vw,38px)", lineHeight: 1.25, fontWeight: 900, margin: 0, letterSpacing: "-.02em", textWrap: "balance" }}>{r.headline}</h1>
+          <ReportHeadline title={r.headline} />
           <p style={{ margin: 0, color: C.mute, fontSize: 13 }}>{r.subtitle}<br />리포트 작성 {date}</p>
         </div>
-        <ReportLead lead={reportLead(r.lens.mode, "area", { level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("stab") : undefined, checklist: r.checklist.length > 0 ? total : undefined })} />
+        {r.lens.mode === "founder" && <p style={{ margin: 0, fontSize: 14 }}>
+          {sl ? `매출이 가장 집중되는 시간대는 ${sl.rows.reduce((a, b) => a.sales > b.sales ? a : b).label}입니다. ` : ""}
+          {lv && lv.sampleStatus !== "too_few" ? `점포당 추정매출은 비교 중앙값의 ${lv.ratio.toFixed(1)}배입니다. ` : ""}
+          {lv?.yoyTotal != null && lv.sampleStatus !== "too_few" ? `총매출은 전년 동기 대비 ${lv.yoyTotal > 0 ? "+" : ""}${lv.yoyTotal.toFixed(1)}%입니다.` : ""}
+        </p>}
+        <ReportLead lead={reportLead(r.lens.mode, "area", { summary: summaries.length ? no("tips-0") : undefined, level: no("level") || undefined, slots: no("slots") || undefined, competition: hasStability ? no("stab") : undefined, location: lo ? no("location") : undefined, checklist: checklist.length > 0 ? no("location") : undefined })} />
         {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: r.checklist, sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
-        {r.lens.positive.length === 0 && r.lens.caution.length === 0 && (
+        <ReportTriad triad={buildTriad({ mode: r.lens.mode, tiles: r.tiles, cautions: [], checklist: checklist.slice(0, 2), sampleNote: lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores, "지역") : null })} />
+      </Page>
+      {hasSignals && <Page n={no("signals")} total={total}>
+        {r.lens.emptyNote && (
           <div style={{ ...boxS, background: C.paper }}>
             <strong style={{ color: C.ink }}>{r.lens.signalsTitle}</strong>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: C.mute }}>{r.lens.emptyNote}</p>
@@ -82,6 +99,10 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
             <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>{r.lens.ruleNote}</p>
           </div>
         )}
+        {(r.lens.neutral.length > 0 || r.lens.missing.length > 0) && <div className="irp-cols">
+          {r.lens.neutral.length > 0 && <SignalBox title="관측된 특징" items={r.lens.neutral} color={C.slate} bg={C.soft} />}
+          {r.lens.missing.length > 0 && <SignalBox title="추가 확인이 필요한 정보" items={r.lens.missing} color={C.mute} bg={C.soft} />}
+        </div>}
         <div className="irp-cols">
           {r.profile.length > 0 && (
             <div>
@@ -92,7 +113,7 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
             </div>
           )}
         </div>
-      </Page>
+      </Page>}
 
       {lv && (
         <Page n={no("level")} total={total}>
@@ -105,6 +126,8 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
             {lv.yoyTotal !== null && <TileBox label="총매출 전년 동기 대비" value={`${lv.yoyTotal > 0 ? "+" : ""}${lv.yoyTotal.toFixed(1)}%`} note="점포 수 변화가 함께 반영" tone={lv.yoyTotal < 0 ? "neg" : "plain"} />}
             {lv.flpopYoy !== null && <TileBox label="유동인구 지수 전년 동기 대비" value={`${lv.flpopYoy > 0 ? "+" : ""}${lv.flpopYoy.toFixed(1)}%`} note="길 단위로 배분한 추정치" tone={lv.flpopYoy < 0 ? "neg" : "plain"} />}
           </div>
+          <p style={{ margin: 0, fontSize: 12, color: C.mute }}>비교 범위: {lv.peerLabel} · 같은 업종의 유효값 {lv.peerCount}곳(소규모 지역 포함). 순위 중 점포 20곳 이상 비교는 별도 기준입니다.</p>
+          {lv.yoyPerStore !== null && lv.sampleStatus !== "too_few" && <TileBox label="점포당 월평균 추정매출 전년 동기 대비" value={`${lv.yoyPerStore > 0 ? "+" : ""}${lv.yoyPerStore.toFixed(1)}%`} note="같은 분기끼리 비교 · 개별 점포의 매출 변화가 아님" tone={lv.yoyPerStore < 0 ? "neg" : "plain"} />}
           <Take label={r.lens.takeLabel} text={r.lens.levelTake} />
           <div style={footS}><b style={{ color: C.ink }}>출처</b> 서울시 상권분석서비스(추정매출·점포·길단위인구-상권) {lv.quarterLabel}. 추정매출은 카드 결제 기반 평균이며 매출이 큰 점포가 평균을 끌어올릴 수 있습니다.</div>
         </Page>
@@ -112,8 +135,8 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
 
       {sl && (
         <Page n={no("slots")} total={total}>
-          <Head eyebrowText="인사이트 2 · 언제, 누가 오는 지역인가" title={r.headline} text={sl.text} />
-          <Fig title="시간대별 비중 (%)" note="각 계열의 합은 100%입니다. 유동인구와 매출은 다른 집계라 비중의 차이가 구매 전환율을 뜻하지 않습니다."
+          <Head eyebrowText="인사이트 2 · 시간대별 매출과 배후인구" title={r.headline} text={sl.text} />
+          <Fig title="시간대별 비중 (%)" note="반올림 전 각 계열의 합은 100%입니다. 비교 평균은 같은 업종의 매출액 가중 평균이며 분석 지역 자신도 포함합니다. 유동인구와 매출은 다른 집계라 비중의 차이가 구매 전환율을 뜻하지 않습니다."
             legend={[[C.accent, "이 지역 매출 비중"], ...(sl.hasPilot ? ([[C.slate, `${sl.pilotLabel} 평균 매출 비중`]] as [string, string][]) : []), ...(sl.hasFloating ? ([[C.teal, "이 지역 유동인구 비중"]] as [string, string][]) : [])]}>
             <AreaSlotsChart s={sl} />
           </Fig>
@@ -123,14 +146,20 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
         </Page>
       )}
 
+      <ReportDemandPage n={no("demand")} total={total} detail={detail} />
+      <ReportCompetitionPage n={no("competitors")} total={total} stores={stores} failed={storesFailed} />
       {hasStability && (
         <Page n={no("stab")} total={total}>
           <Head eyebrowText="인사이트 3 · 안정성·경쟁과 입지" title={st?.churn?.closeRate != null ? r.lens.stabilityTitle : "입지 여건"} text={st?.text} />
           <div className="irp-cols">
             {st?.churn && <Fig title="분기 개업률·폐업률 vs 비교 지역" note="최근 분기의 개업(폐업) 점포 ÷ 점포 수. 점포 3곳 미만 지역은 비교에서 뺍니다. 업종 변경·이전도 개폐업으로 잡힙니다."><RateBullets churn={st.churn} labels={{ close: "분기 폐업률", open: "분기 개업률" }} /></Fig>}
-            {st && st.facts.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{st.facts.map((f) => <TileBox key={f.label} label={f.label} value={f.value} note={f.note} />)}</div>}
+            {st && st.facts.length > 0 && <div className="irp-tiles" style={{ gridTemplateColumns: "repeat(2,minmax(0,1fr))" }}>{st.facts.map((f) => <TileBox key={f.label} label={f.label} value={f.value} note={f.note} />)}</div>}
           </div>
           {st && <Take label={r.lens.takeLabel} text={st.take} />}
+        </Page>
+      )}
+      <Page n={no("location")} total={total}>
+          <Head eyebrowText="입지 · 현장 확인" title="입지 여건과 창업 전 확인사항" />
           {lo && (
             <>
               <h3 style={{ margin: "4px 0 0", fontSize: 14 }}>입지 여건</h3>
@@ -147,21 +176,44 @@ function Pages({ r, date }: { r: AreaReport; date: string }) {
           <div>
             <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>{r.lens.checklistTitle}</h3>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
-              {r.checklist.map((c) => (<li key={c} style={{ display: "grid", gridTemplateColumns: "20px 1fr", gap: 8, fontSize: 13.5 }}><span style={{ width: 13, height: 13, border: `1.5px solid ${C.accent}`, marginTop: 5 }} />{c}</li>))}
+              {checklist.map((c) => (<li key={c} style={{ display: "grid", gridTemplateColumns: "20px 1fr", gap: 8, fontSize: 13.5 }}><span style={{ width: 13, height: 13, border: `1.5px solid ${C.accent}`, marginTop: 5 }} />{c}</li>))}
             </ul>
           </div>
-          <div style={footS}>
-            <b style={{ color: C.ink }}>데이터 한계</b> {r.limits.join(" ")}<br />
-            <b style={{ color: C.ink }}>출처</b> {r.sources.join(" · ")}.
-          </div>
-        </Page>
-      )}
+
+      </Page>
+      <Page n={no("basis")} total={total} className="irp-appendix">
+        <div>
+          <h2 style={{ fontSize: 18, margin: "0 0 4px", lineHeight: 1.35 }}>자료 기준 · 계산 방법</h2>
+          <p style={{ margin: 0, fontSize: 11.5, color: C.mute }}>작성 {date} · 고객 구성 {detail?.period ?? "기준기간 미확인"}. 작성일과 자료 기준일은 다릅니다.</p>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead><tr>{["지표", "기준기간", "집계 범위·참고사항"].map((v) => <th key={v} style={{ textAlign: "left", padding: 6, borderBottom: `1px solid ${C.line}` }}>{v}</th>)}</tr></thead>
+          <tbody>{r.dataBasis.map((d) => <tr key={d.label}><td style={{ padding: 6 }}>{d.label}</td><td style={{ padding: 6 }}>{d.period}</td><td style={{ padding: 6 }}>{d.basis}</td></tr>)}</tbody>
+        </table>
+        <div className="irp-methods">
+          <p><b>월평균 추정매출</b> 분기 추정매출 합 ÷ 점포 수 합 ÷ 3. 두 값이 모두 확인된 업종만 사용.</p>
+          <p><b>개폐업률</b> 분기: 개업·폐업 수 ÷ 점포 수(비교 시 3곳 미만 제외). 연간: 최근 4분기 합 ÷ 평균 점포 수(4분기 자료가 있는 집단).</p>
+          <p><b>점포 수 변동</b> 8분기 변화율 절댓값의 평균(평균 10곳 미만 제외). 증감은 첫·마지막 분기 비교.</p>
+          <p><b>시간대 비교</b> 같은 지역 단위·업종의 매출액 가중 평균. 유동인구와의 비중 차이는 구매 전환율이 아님.</p>
+        </div>
+        <div style={footS}><b>데이터 한계</b> {r.limits.join(" ")}<br /><b>출처</b> {r.sources.join(" · ")}.</div>
+      </Page>
+      {summaries.map((tips, i) => <Page key={i} n={no(`tips-${i}`)} total={total} className="irp-tip-page">
+        <Head eyebrowText={`종합 정리 · ${i + 1} / ${summaries.length}`} title="이 상권의 특징을 활용한 창업 전략" text="두드러진 상권 특성에 맞춰 영업 방식과 초기 운영 전략을 정리했습니다." />
+        {tips.map((tip, j) => <div className="irp-tip" key={tip.key}>
+          <h3 style={{ margin: "0 0 5px", fontSize: 15 }}>{j + 1}. {tip.title}</h3>
+          <p style={{ margin: "0 0 5px", fontSize: 12, color: C.mute }}><b>자료 근거</b> {tip.evidence}</p>
+          <p style={{ margin: 0, fontSize: 13 }}><b>운영 전략</b> {tip.action}</p>
+        </div>)}
+        <p style={{ margin: 0, fontSize: 11.5, color: C.mute }}>영업시간·메뉴·인력·후보 점포를 정할 때 위 항목을 함께 검토해 보세요.</p>
+      </Page>)}
     </>
   );
 }
 
-/** '상권 인사이트 리포트(예비 창업자용)' — 상권·행정동 × 업종 하나를 4쪽으로 읽는다. 자료는 종합분석·입지 비교가 쓰는 조회를 같은 키로 재사용한다. */
+/** '상권 인사이트 리포트(예비 창업자용)' — 상권·행정동 × 업종 하나를 내용별 페이지로 읽는다. 자료는 종합분석·입지 비교가 쓰는 조회를 같은 키로 재사용한다. */
 export function AreaReportModal({ level, code, name, type = null, svc, scls, mode, onClose }: Props) {
+  const stores = useQuery({ queryKey: ["report-unit-stores", level, code, svc, scls], queryFn: () => apiClient.getFoodUnitStores(level, code, svc, scls, 0, "distance", 8), staleTime: 10 * 60 * 1000 });
   const cmp = useFoodCompare(level, [code], svc, scls);
   const ov = useUnitOverview(level, code, svc, scls);
   const ch = useAreaCharacter(level, code, svc, scls);
@@ -170,7 +222,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
   const bOpen = useFoodBubbles(level, "open_rate", svc, scls);
   const bFrc = useFoodBubbles(level, "frc_share", svc, scls);
 
-  const pending = cmp.isPending || ov.isPending || ch.isPending || bPer.isPending || bClose.isPending || bOpen.isPending || bFrc.isPending;
+  const pending = cmp.isPending || ov.isPending || ch.isPending || bPer.isPending || bClose.isPending || bOpen.isPending || bFrc.isPending || stores.isPending;
   const report = useMemo(() => {
     if (!cmp.data) return null;
     return buildAreaReport({
@@ -190,7 +242,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
   const partialFailures = [ov.isError && "시간대·유동인구", ch.isError && "상권 유형·입지", (bPer.isError || bClose.isError || bOpen.isError || bFrc.isError) && "비교 지역 분포"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame title={`상권분석 보고서 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame downloadTitle={reportFilename(name, cmp.data?.scope.stores_label)} title={`상권분석 보고서 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>
@@ -199,7 +251,7 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
       )}
       {!pending && cmp.isError && <div style={{ ...boxS, background: C.paper, color: C.bad }}>지표를 불러오지 못했습니다: {cmp.error.message}</div>}
       {!pending && report && !hasAny && <div style={{ ...boxS, background: C.paper }}>이 지역·업종은 매출·점포 자료가 부족해 리포트를 만들 수 없습니다. 자료가 없는 것이지 0이라는 뜻이 아닙니다.</div>}
-      {!pending && report && hasAny && <Pages r={report} date={today()} />}
+      {!pending && report && hasAny && <Pages r={report} date={today()} detail={ov.data?.report_detail} stores={stores.data} storesFailed={stores.isError} />}
     </ReportFrame>
   );
 }

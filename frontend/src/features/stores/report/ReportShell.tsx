@@ -6,9 +6,9 @@ import { useOverlayBack } from "../../nav/useOverlayBack";
 import { C } from "./reportColors";
 import { capS, eyebrow, h2, reportCss, takeS } from "./reportStyles";
 
-export function Page({ n, total, children }: { n: number; total: number; children: ReactNode }) {
+export function Page({ n, total, children, className = "" }: { n: number; total: number; children: ReactNode; className?: string }) {
   return (
-    <section className="irp-page">
+    <section className={`irp-page ${className}`}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 11, letterSpacing: ".04em", color: C.mute, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
         <span>상권분석 보고서 · 공개 통계 기반</span><span>{n} / {total}</span>
       </div>
@@ -35,7 +35,7 @@ export const Fig = ({ title, note, children, legend }: { title: string; note: st
   </figure>
 );
 export const TileBox = ({ label, value, note, tone = "plain" }: { label: string; value: string; note: string; tone?: "plain" | "accent" | "neg" }) => (
-  <div style={{ background: C.soft, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+  <div className="irp-tile" style={{ background: C.soft, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
     <span style={{ fontSize: 12, color: C.mute, lineHeight: 1.45 }}>{label}</span>
     <b style={{ fontSize: 28, lineHeight: 1.15, fontWeight: 900, color: tone === "neg" ? C.bad : tone === "accent" ? C.accent : C.ink }}>{value}</b>
     {note && <span style={{ fontSize: 12, color: C.mute, lineHeight: 1.45 }}>{note}</span>}
@@ -46,13 +46,19 @@ export const Take = ({ text, label = "사장님께 의미" }: { text: string; la
 );
 
 /** 전체 화면 리포트 틀 — 위쪽 도구줄(인쇄·닫기), Esc 로 닫기, 인쇄할 때는 리포트만 나오게 한다. */
-export function ReportFrame({ title, canPrint, onClose, children }: { title: string; canPrint: boolean; onClose: () => void; children: ReactNode }) {
+export function ReportFrame({ title, downloadTitle, canPrint, onClose, children }: { title: string; downloadTitle?: string; canPrint: boolean; onClose: () => void; children: ReactNode }) {
   const requestClose = useOverlayBack(onClose);   // 브라우저 뒤로·'← 뒤로'·Esc 가 같은 길로 닫는다
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
+  useEffect(() => {
+    if (!downloadTitle) return;
+    const previousTitle = document.title;
+    document.title = downloadTitle;
+    return () => { document.title = previousTitle; };
+  }, [downloadTitle]);
   return createPortal(
     <div className="irp-overlay" role="dialog" aria-modal="true" aria-label={title}>
       <style>{reportCss}</style>

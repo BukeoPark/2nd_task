@@ -170,14 +170,12 @@ def test_real_rail_facts_match_an_independent_boundary_calculation(real):
 def test_real_bus_and_rail_usage_are_separate_and_missing_is_none_not_zero(all_results):
     bus = data_store.load_parquet("bus_stops.parquet")
     bus = bus[bus["is_primary"] & bus["x_5179"].notna()]
-    pts = shapely.points(bus["x_5179"].to_numpy(), bus["y_5179"].to_numpy())
     for lv, code in [("dong", "11560540"), ("trdar", "3120143")]:
         t = ac.character(lv, code, None, None)["sections"]["transit"]
-        b = bus[shapely.contains(ac._shapes(lv)[code], pts)]
+        b = bus[ac._nearby_bus_mask(ac._shapes(lv)[code], bus)]
         assert t["bus"]["count"] == len(b) and t["bus"]["linked"] == int((b["usage_status"] == "linked").sum())
         assert not any(k in t["bus"] or k in t["rail"] for k in ("total_boardings", "combined", "transfers"))
     none_bus = [k for k, v in all_results.items() if v["sections"]["transit"]["bus"]["count"] == 0][:3]
-    assert none_bus
     for k in none_bus:
         bus_t = all_results[k]["sections"]["transit"]["bus"]
         assert bus_t["usage_state"] == "no_stops" and bus_t["boardings_observed"] is None and bus_t["linked_ratio"] is None
@@ -395,3 +393,21 @@ def test_oliveyoung_matching_excludes_medical_and_deduplicates():
     result = ac.oliveyoung_stores(stores)
     assert len(result) == 2
     assert not result["bizesNm"].str.contains("의학과").any()
+
+
+def test_nearby_bus_includes_boundary_buffer_and_excludes_nonstops():
+    import pandas as pd
+    from shapely.geometry import box
+    bus = pd.DataFrame({"name": ["병원 앞", "맞은편", "교차로(미정차)", "먼 정류장"],
+                        "x_5179": [50, 300, 150, 351], "y_5179": [50, 50, 50, 50]})
+    assert ac._nearby_bus_mask(box(0, 0, 100, 100), bus).tolist() == [True, True, False, False]
+
+
+def test_hospital_market_has_nearby_bus_stops(real):
+    bus = data_store.load_parquet("bus_stops.parquet")
+    bus = bus[bus["is_primary"] & bus["x_5179"].notna()]
+    nearby = bus[ac._nearby_bus_mask(ac._shapes("trdar")["3110796"], bus)]
+    assert (nearby["name"] == "한강성심병원").sum() == 2
+    assert not nearby["name"].str.contains("미정차").any()
+    result = ac.character("trdar", "3110796", None, None)
+    assert result["sections"]["transit"]["bus"]["count"] == len(nearby)

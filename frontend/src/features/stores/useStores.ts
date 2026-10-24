@@ -18,7 +18,7 @@ export function useNearbyAnalysis(storeId: string, radiusM: number) {
 /** 입지 영향력 — 반경을 바꾸면 새 결과가 올 때까지 이전 결과를 남겨 두되 화면에서 흐리게 표시한다(isPlaceholderData). */
 export function useLocationInfluence(storeId: string, radiusM: number) {
   return useQuery({
-    queryKey: ["location-influence", storeId, radiusM],
+    queryKey: ["location-influence", storeId, radiusM, "three-brands-v2"],
     queryFn: () => apiClient.getLocationInfluence(storeId, radiusM),
     staleTime: LONG,
     placeholderData: keepPreviousData,

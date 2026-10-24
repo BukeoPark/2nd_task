@@ -1,3 +1,4 @@
+import { AppIcon } from "../../components/DataVisuals";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -11,7 +12,7 @@ export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; ra
   const { data, isLoading, isError, error } = useNearbyAnalysis(storeId, radius);
   const r = radius >= 1000 ? `${radius / 1000}km` : `${radius}m`;
   return (
-    <Section title={`⑤ 반경 ${r} 동일 업종 인허가 개폐업`} scope={<ScopeTag kind="radius" label={`반경 ${r}`} />}>
+    <Section title={`주변 가게의 개업·폐업`} scope={<ScopeTag kind="radius" label={`반경 ${r}`} />}>
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}
@@ -39,7 +40,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
         <div style={{ fontSize: FS.caption, color: "#6b7280" }}>{c.status === "ok" && c.rate !== null && c.horizon_years !== undefined ? `주변 동일 업종의 과거 ${c.horizon_years}년 이내 폐업 비율` : (c.name ?? "영업 지속 지표")}</div>
         {c.status === "ok" && c.rate !== null ? (
           <>
-            <div style={{ fontWeight: 700, fontSize: FS.cardTitle }}>{(c.rate * 100).toFixed(1)}%</div>
+            <div style={{ fontWeight: 800, fontSize: FS.metric }}>{(c.rate * 100).toFixed(1)}%</div>
             <div style={{ fontSize: FS.caption, color: "#6B7280" }}>분자 {c.numerator} / 분모 {c.denominator}</div>
             <div style={{ fontSize: FS.caption, color: "#6B7280" }}>선택 매장의 미래 폐업 확률이 아니라, 주변 동일 업종 인허가의 과거 통계입니다.</div>
           </>
@@ -52,12 +53,12 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
       <div style={{ fontSize: FS.caption, color: "#6b7280", marginBottom: 4 }}>
         연도별 개업(인허가)·폐업 건수 <Legend color="#3B82F6" label="개업" /> <Legend color="#EF4444" label="폐업" />
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 70 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 140 }}>
         {trend.map((t) => (
           <div key={t.year} style={{ flex: 1, textAlign: "center" }} title={`${t.year}${t.partial_year ? "(진행 중)" : ""} 개업 ${t.opened} / 폐업 ${t.closed ?? "알 수 없음"}`}>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 1, height: 56 }}>
-              <Bar h={(t.opened / maxVal) * 56} color="#3B82F6" />
-              {t.closed === null ? <span style={{ fontSize: FS.caption, color: "#9CA3AF" }}>?</span> : <Bar h={(t.closed / maxVal) * 56} color="#EF4444" />}
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 1, height: 110 }}>
+              <Bar h={(t.opened / maxVal) * 110} color="#3B82F6" />
+              {t.closed === null ? <span style={{ fontSize: FS.caption, color: "#9CA3AF" }}>?</span> : <Bar h={(t.closed / maxVal) * 110} color="#EF4444" />}
             </div>
             <div style={{ fontSize: FS.caption, color: t.partial_year ? "#9CA3AF" : "#6B7280" }}>{String(t.year).slice(2)}</div>
           </div>
@@ -111,11 +112,11 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <KitStat label={label} value={value} />;
+  return <KitStat onGray label={<span className="data-heading"><AppIcon name="store"/>{label}</span>} value={value} />;
 }
 
 function Bar({ h, color }: { h: number; color: string }) {
-  return <div style={{ width: 6, height: Math.max(h, 1), background: color, opacity: 0.8, borderRadius: 1 }} />;
+  return <div style={{ width: 12, height: Math.max(h, 1), background: color, opacity: 0.8, borderRadius: 1 }} />;
 }
 
 function Legend({ color, label }: { color: string; label: string }) {

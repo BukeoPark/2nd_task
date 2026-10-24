@@ -1,10 +1,11 @@
+import "./storeDetail.css";
 import { AppIcon } from "../../components/DataVisuals";
 import { OwnerChurnDetails, OwnerLocationDetails } from "./OwnerReferenceDetails";
 import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
-import { NoteHost } from "../../components/NoteHost";
+import { NoteSlot, NoteHost } from "../../components/NoteHost";
 import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
 import type { StoreBasic } from "../../lib/apiClient";
@@ -119,8 +120,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       ? {
           basic: (
             <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: FS.caption, fontWeight: 700, color: "#6B7280", marginBottom: 2 }}>기본정보 · 이 매장</div>
-              <div style={{ fontSize: FS.caption, color: "#374151" }}>
+              <div className="store-main-heading"><AppIcon name="store" />매장 기본정보</div>
+              <div className="store-address">
                 <AppIcon name="pin" /> {store.address ?? "주소 정보 없음"}
                 {store.building ? ` (${store.building})` : ""}
                 <SourceNote title={store.source.title} reference={store.source.reference} />
@@ -150,8 +151,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
           competition: <NearbyAnalysisSection storeId={storeId} radius={radius} />,
           "radius-basis": <RadiusBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
-            <Section title="소속 상권 — 행정동·발달/골목상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
-              <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>상권 유형·매출 추이·인구·시간대별 소비는 아래 지역 화면에서 봅니다(이 매장의 정보가 아니라 상권 평균). 유형은 상권 경계 기준의 참고용 규칙 분류이고, 매장 반경 값(주변)과 다릅니다.</div>
+            <Section title="소속 상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
+              <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>소속 지역의 매출·경쟁·소비 수요를 확인하세요.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <AreaCharacterLine level="dong" code={store.adong_cd} label={`${store.dong} 행정동`} />
                 <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>
@@ -207,7 +208,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
         {isLoading && <Notice tone="muted">매장 정보를 불러오는 중...</Notice>}
         {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
         {store && blocks && (
-          <>
+          <div className="store-detail">
             {mapView && circleRadius !== null && validCenter(store.lon, store.lat) && (
               <RadiusCircleLayer map={mapView.map} kakao={mapView.kakao} center={{ lon: store.lon, lat: store.lat }} radiusM={circleRadius} />
             )}
@@ -245,7 +246,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                       <ReportCTA tourId="report-button" onClick={areaReport} title="상권분석 보고서 보기 ›"
                         sub={`${store.trdar ? store.trdar.name : store.dong} 전체 · 매출 흐름·경쟁·입지·확인사항 · 지역 보고서 · 인쇄·PDF 저장`} />
                     )}
-                    {mode === "founder" && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>매장 한 곳의 보고서는 자영업자용만 제공돼요. 예비 창업자는 이 매장이 속한 지역의 보고서를 볼 수 있어요.</div>}
+                    {mode === "founder" && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>선택 매장이 속한 지역의 분석 보고서입니다.</div>}
                   </div>
                 )}
                 {g === "store" && (
@@ -266,10 +267,11 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 {g === "mine" && (
                   <MineStatusBar months={Object.keys(mine.record.months).length} lastMonth={lastMonth} costsFilled={Object.values(mine.record.costs).filter((v) => v.trim() !== "").length} storeName={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} />
                 )}
-                <NoteHost>
+                <NoteHost manual>
                   {blocksOf(g).map((id) => (
                     <Fragment key={id}>{blocks[id]}</Fragment>
                   ))}
+                  <NoteSlot />
                 </NoteHost>
                 {g !== "store" && mode === "owner" && (
                   <button type="button" onClick={() => (mode === "owner" ? setReportOpen(true) : areaReport())} style={{ ...reportLinkStyle }}>
@@ -278,7 +280,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                 )}
               </div>
             ))}
-          </>
+          </div>
         )}
       </Drawer>
     </>

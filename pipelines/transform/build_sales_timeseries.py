@@ -16,6 +16,7 @@
     '분기 매출 금액은 개인 매출과 법인 매출의 합'. 월평균은 3으로 나눈다.
   - 점포당 평균의 분모는 유사업종 점포수(SIMILR_INDUTY_STOR_CO = 일반 점포 + 프랜차이즈, 실제 데이터로 확인).
   - 프랜차이즈 비율 = FRC_STOR_CO ÷ 유사업종 점포수. 개업·폐업 점포수/률(OPBIZ_*, CLSBIZ_*)은 서울시 원천 값을 그대로 싣는다.
+  - 매출·점포를 외부 결합하여 어느 한 원천에만 있는 단위·업종도 보존한다. 매출 없이 점포·개폐업만 있는 행도 유지한다.
   - 결측은 0 으로 바꾸지 않는다: 점포수·개업·폐업이 없으면 NaN, 점포수 0 은 0 으로 둔다(둘을 구분해 backend 가 집계에서 제외하고 사유를 표시).
     시간대·연령 구성비는 칸이 하나라도 결측이면 NaN(남은 칸끼리 100%로 부풀리지 않음).
   - 성별·연령 매출에는 법인 매출이 없어 합계와 다를 수 있다 → 구성비는 해당 항목들의 합을 분모로 쓴다.
@@ -109,6 +110,15 @@ def _floating_pop(f: pd.DataFrame, code_col: str, out_cd: str, log: list) -> pd.
     return out.drop(columns=["_prev"]).sort_values(["quarter", out_cd]).reset_index(drop=True)
 
 
+def merge_sales_stores(sales: pd.DataFrame, stores: pd.DataFrame, key: list[str], name: str, store_cols: list[str]) -> pd.DataFrame:
+    """매출·점포 원천을 독립적으로 보존한다. 매출 미제공 행의 매출은 NaN으로 둔다."""
+    labels = [name, "SVC_INDUTY_CD_NM"]
+    merged = sales.merge(stores[[*key, *labels, *store_cols]], on=key, how="outer", suffixes=("", "_stores"), validate="one_to_one", indicator=True)
+    for col in labels:
+        merged[col] = merged[col].combine_first(merged.pop(f"{col}_stores"))
+    return merged
+
+
 def build(level: str) -> None:
     lv = LEVELS[level]
     code, out_cd, out_nm = lv["code"], lv["out_cd"], lv["out_nm"]
@@ -127,7 +137,10 @@ def build(level: str) -> None:
     store_cols = ["SIMILR_INDUTY_STOR_CO", "FRC_STOR_CO", "OPBIZ_STOR_CO", "CLSBIZ_STOR_CO", "OPBIZ_RT", "CLSBIZ_RT"]
     stores[store_cols] = stores[store_cols].apply(pd.to_numeric, errors="coerce")
 
-    df = sales.merge(stores[[*key, *store_cols]], on=key, how="left")
+    df = merge_sales_stores(sales, stores, key, lv["name"], store_cols)
+    log.append(("매출 미제공·점포 원천 존재 → 점포·개폐업 행 보존(매출=NaN)", int((df["_merge"] == "right_only").sum())))
+    log.append(("점포 미제공·매출 원천 존재 → 매출 행 보존(점포=NaN)", int((df["_merge"] == "left_only").sum())))
+    df = df.drop(columns="_merge")
     no_store = df["SIMILR_INDUTY_STOR_CO"].isna() | (df["SIMILR_INDUTY_STOR_CO"] <= 0)
     log.append(("매출은 있으나 점포수 없음(결측) → 점포당 평균 계산 불가(행 유지, stores=NaN)", int(df["SIMILR_INDUTY_STOR_CO"].isna().sum())))
     log.append(("매출은 있으나 점포수 0 → 점포당 평균 계산 불가(행 유지, stores=0)", int((df["SIMILR_INDUTY_STOR_CO"] <= 0).sum())))
@@ -193,7 +206,7 @@ def build(level: str) -> None:
             for label, n in (("qoq", 1), ("yoy", 4)):
                 base_q = _shift_quarter(latest, n)
                 base = g.loc[g["quarter"] == base_q].set_index("svc_cd")["sales_q"]
-                common = now.index.intersection(base.index)
+                common = now.dropna().index.intersection(base.dropna().index)
                 row[f"sales_{label}_pct"] = round((now[common].sum() / base[common].sum() - 1) * 100, 2) if len(common) else None
                 row[f"{label}_base_quarter"] = base_q
                 row[f"{label}_common_svc"] = len(common)

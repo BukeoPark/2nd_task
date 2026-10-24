@@ -77,3 +77,16 @@ def test_seoul_reference_rejects_duplicates_and_wrong_units():
     row = {"WRTTIME_IDTFR_ID": "202602", "CLS_NM": "서울", "CLS_FULLNM": "서울", "DTA_VAL": 50, "UI_NM": "천원/㎡"}
     assert pd.isna(m.build_seoul_reference({"rent_small_shop": pd.DataFrame([row, row])}).iloc[0]["value"])
     assert pd.isna(m.build_seoul_reference({"rent_small_shop": pd.DataFrame([{**row, "UI_NM": "%"}])}).iloc[0]["value"])
+
+
+def test_rent_history_keeps_scope_missing_and_latest_eight():
+    rows = pd.DataFrame([
+        {"WRTTIME_IDTFR_ID": q, "CLS_FULLNM": region, "DTA_VAL": value, "UI_NM": "천원/㎡"}
+        for q, region, value in [("202501", "서울", 50), ("202502", "서울", 51),
+                                 ("202501", "서울>영등포신촌>당산역", 0)]
+    ])
+    out = m.build_rent_history({"rent_small_shop": rows})
+    local = out.loc[out.region.str.endswith("당산역")].sort_values("quarter")
+    assert local.iloc[0]["value"] == 0
+    assert pd.isna(local.iloc[1]["value"])  # 서울 51로 채우지 않음
+    assert len(out) == 4

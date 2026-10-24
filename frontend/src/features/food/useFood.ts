@@ -54,7 +54,7 @@ export function useFoodUnitStores(level: FoodLevel, code: string, svc: string | 
 /** 비교표. 담은 곳·업종이 바뀌면 이전 표를 흐리게 보여 주고(isPlaceholderData) 새 계산이 끝나면 바뀐다. */
 export function useFoodCompare(level: FoodLevel | null, codes: string[], svc: string | null, scls: string | null) {
   return useQuery({
-    queryKey: ["food-compare", level, codes, svc, scls],
+    queryKey: ["food-compare-rent-history-v1", level, codes, svc, scls],
     queryFn: () => apiClient.getFoodCompare(level!, codes, svc, scls),
     enabled: level !== null && codes.length > 0,
     staleTime: LONG,
@@ -65,7 +65,7 @@ export function useFoodCompare(level: FoodLevel | null, codes: string[], svc: st
 /** 행정동·상권 종합분석의 시계열·시간대·겹치는 상권. */
 export function useUnitOverview(level: "dong" | "trdar", code: string, svc: string | null, scls: string | null) {
   return useQuery({
-    queryKey: ["unit-overview", level, code, svc, scls],
+    queryKey: ["unit-overview-report-v2", level, code, svc, scls],
     queryFn: () => apiClient.getUnitOverview(level, code, svc, scls),
     staleTime: LONG,
   });

@@ -1,4 +1,4 @@
-// 상권·행정동 '인사이트 리포트'(예비 창업자용) — 매장 한 곳이 아니라 상권(또는 행정동) × 업종 하나를 4쪽으로 읽는다.
+// 상권·행정동 '인사이트 리포트'(예비 창업자용) — 매장 한 곳이 아니라 상권(또는 행정동) × 업종 하나를 내용별 페이지로 읽는다.
 // 값은 종합분석·입지 비교가 이미 쓰는 API 값 그대로이고, 문장은 규칙으로만 만든다(자료가 없는 쪽은 만들지 않는다).
 // 원인을 단정하지 않고 '관측'과 '가능한 해석'만 쓴다. 점수·'창업 적합도'를 만들지 않으며 리뷰·평점은 쓰지 않는다.
 // 같은 폴더의 순수 함수(insightReport)만 가져온다(tests/areaReport.test.ts).
@@ -77,6 +77,7 @@ export interface AreaReport {
   limits: string[];
   /** 읽는 사람에 따른 관점(제목·신호·해석·확인할 일) */
   lens: Lens;
+  dataBasis: { label: string; period: string; basis: string }[];
 }
 
 const BIG_PEER_STORES = 20;
@@ -112,6 +113,11 @@ function levelSection(inp: AreaReportInput): LevelSection | null {
   const trend = ov.trend.filter((t) => t.per_store_month !== null).map((t) => ({ q: `${t.label.slice(2, 4)}.${t.label.slice(6, 7)}Q`, v: man(t.per_store_month as number), label: t.label }));
   const peak = trend.length ? trend.reduce((m, t) => (t.v > m.v ? t : m), trend[0]) : null;
   const last = trend.at(-1);
+  const latestQuarter = ov.trend.at(-1)?.quarter;
+  const priorQuarter = latestQuarter && /^\d{5}$/.test(latestQuarter) ? `${Number(latestQuarter.slice(0, 4)) - 1}${latestQuarter.slice(4)}` : null;
+  const currentPer = ov.trend.at(-1)?.per_store_month;
+  const priorPer = ov.trend.find((t) => t.quarter === priorQuarter)?.per_store_month;
+  const yoyPerStore = currentPer != null && priorPer != null && priorPer > 0 ? (currentPer / priorPer - 1) * 100 : null;
   const yoyTotal = val(inp.rows, "sales_yoy_pct");
   const stores = ov.trend.filter((t) => t.stores !== null);
   const ratio = med > 0 ? meMan / med : 0;
@@ -125,7 +131,7 @@ function levelSection(inp: AreaReportInput): LevelSection | null {
   if (sNote) text += ` ${sNote}`;
   return {
     me: meMan, median: med, ratio, hist: peers.map(man), rank, peerCount: peers.length, bigRank: big.rank, bigCount: big.count,
-    trend: trend.map((t) => ({ q: t.q, v: t.v })), yoyPerStore: null, yoyTotal, qoqPerStore: null, flpopYoy: ov.floating?.yoy_pct ?? null,
+    trend: trend.map((t) => ({ q: t.q, v: t.v })), yoyPerStore, yoyTotal, qoqPerStore: null, flpopYoy: ov.floating?.yoy_pct ?? null,
     storesFrom: stores.length ? (stores[0].stores as number) : null, storesNow: stores.length ? (stores.at(-1)?.stores as number) : null,
     unitName: inp.unit.name, peerLabel: `양천·영등포 ${label}`, quarterLabel: asOf(inp.rows, "per_store_month") || ov.latest_quarter, text,
     sampleStores, sampleStatus: sampleStatus(sampleStores), yoyCaution: caution(inp.rows, "sales_yoy_pct"),
@@ -165,19 +171,18 @@ function slotsSection(inp: AreaReportInput): AreaSlots | null {
 
   const fo = inp.overview?.floating ?? null;
   const facts: AreaSlots["facts"] = [];
-  if (fo?.flpop != null) facts.push({ label: "유동인구 지수(분기 합)", value: `${fmt(fo.flpop)}명`, note: fo.yoy_pct != null ? `전년 동기 ${signed(fo.yoy_pct)}` : "서울시·KT 생활인구를 길 단위로 배분한 추정" });
+  if (fo?.flpop != null) facts.push({ label: "유동인구 추정치", value: `${fmt(fo.flpop)}명`, note: fo.yoy_pct != null ? `전년 동기 ${signed(fo.yoy_pct)}` : "생활인구를 길 단위로 배분한 추정치" });
   if (fo?.weekend_pct != null) facts.push({ label: "주말 비중", value: `${fo.weekend_pct.toFixed(1)}%`, note: "유동인구 기준" });
   const workers = val(inp.rows, "wrc_total");
   facts.push({ label: "직장인구", value: workers !== null ? `${fmt(workers)}명` : "자료 없음", note: workers !== null ? "상권 영역 안" : "원천에 값이 없음(0이 아님)" });
   const residents = val(inp.rows, "repop_total");
   facts.push({ label: "상주인구", value: residents !== null ? `${fmt(residents)}명` : "자료 없음", note: residents !== null ? "상권 영역 안" : "원천에 값이 없음(0이 아님)" });
-  const fac = val(inp.rows, "fac_total");
-  if (fac !== null) facts.push({ label: "집객시설", value: `${fmt(fac)}곳`, note: "서울시 시설 수" });
 
-  let take = "이 비중은 이 상권 같은 업종 점포 전체가 만든 평균 소비 패턴이며, 내 가게의 매출을 예측하지 않습니다. 영업시간과 메뉴를 어느 시간대 수요에 맞출지 정할 때 참고하고, 현장에서 시간대별 손님 흐름을 직접 확인하세요.";
+
+  let take = "이 비중은 이 상권 같은 업종 점포 전체가 만든 합산 매출의 시간대별 구성이며, 내 가게의 매출을 예측하지 않습니다. 영업시간과 메뉴를 어느 시간대 수요에 맞출지 정할 때 참고하고, 현장에서 시간대별 손님 흐름을 직접 확인하세요.";
   const lowRow = hasPilot ? rows.filter((r) => r.pilot !== null).reduce((m, r) => ((r.sales - (r.pilot as number)) < (m.sales - (m.pilot as number)) ? r : m)) : null;
-  if (lowRow && lowRow.sales - (lowRow.pilot as number) <= -5) take = `${lowRow.label}의 매출 비중이 ${pilotLabel} 평균보다 낮다는 것은 그 시간대 수요를 덜 가져오고 있을 가능성을 보여 줍니다. 원인은 이 자료로 알 수 없습니다. ` + take;
-  if (top.sales >= 45) take = `${top.label}에 매출이 크게 쏠린 상권입니다. 그 시간대 수요를 노린 영업이라면 잘 맞고, 다른 시간대(예: 점심) 수요를 기대한다면 현장 유동을 먼저 확인해 보세요. ` + take;
+  if (lowRow && lowRow.sales - (lowRow.pilot as number) <= -5) take = `${lowRow.label}의 매출 비중이 ${pilotLabel} 평균보다 낮다는 것은 그 시간대 매출액이나 미충족 수요가 작거나 크다는 뜻은 아닙니다. 다른 시간대의 매출이 커도 비중은 낮아질 수 있습니다. ` + take;
+  if (top.sales >= 45) take = `${top.label}에 매출이 크게 쏠린 상권입니다. 그 시간대를 목표로 한다면 현장 수요와 경쟁을 확인하고, 다른 시간대의 수요를 기대한다면 현장 유동을 먼저 확인해 보세요. ` + take;
   return { rows, hasPilot, pilotLabel, hasFloating, text, facts, take };
 }
 
@@ -233,7 +238,7 @@ function stabilitySection(inp: AreaReportInput): AreaStability | null {
   if (yClose !== null) text += ` 최근 1년${asOf(inp.rows, "close_rate_y") ? `(${asOf(inp.rows, "close_rate_y")})` : ""} 연 폐업률은 ${yClose.toFixed(1)}%입니다(한 분기 값과는 기간이 달라 직접 견주지 않습니다).`;
   if (frc) text += ` 프랜차이즈 점포 비중은 ${(frc.share * 100).toFixed(1)}%${frc.median !== null ? `로 비교 중앙값 ${(frc.median * 100).toFixed(0)}%${frc.share > frc.median ? "보다 높습니다" : "와 같거나 낮습니다"}` : "입니다"}.`;
   const higher = churn?.closeRate != null && churn.medClose != null && churn.closeRate > churn.medClose;
-  const take = (higher ? "최근 분기 폐업률이 비교 지역 중앙값보다 높습니다. 수요가 부족했을 수도, 고정비 부담이 컸을 수도 있어 원인은 이 자료로 알 수 없으니, 최근 문을 닫은 가게의 사정을 현장에서 확인해 보세요. " : "") + "개폐업에는 업종 변경·이전도 섞여 있어 실제 영업 중단 수와 다를 수 있습니다. 상관관계이며 창업 성공 가능성을 뜻하지 않습니다.";
+  const take = (higher ? "최근 분기 폐업률이 비교 지역 중앙값보다 높습니다. 수요가 부족했을 수도, 고정비 부담이 컸을 수도 있어 원인은 이 자료로 알 수 없으니, 최근 문을 닫은 가게의 사정을 현장에서 확인해 보세요. " : "") + "점포 수가 유지돼도 개업과 폐업으로 운영자가 교체될 수 있습니다. 개폐업에는 업종 변경·이전도 섞여 있어 실제 영업 중단 수와 다를 수 있습니다. 이 지표만으로 기존 점포의 생존이나 창업 성공 가능성을 판단할 수 없습니다.";
   return { churn, frc, facts, chg2y: chg, volatility: vol, text: text.trim(), take };
 }
 
@@ -243,15 +248,15 @@ function locationSection(inp: AreaReportInput): AreaLocation | null {
   if (tr?.rail && tr.rail.count > 0) {
     facts.push({ label: "지하철 역", value: `${tr.rail.count}곳`, note: tr.rail.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.rail.boardings_observed)}명(${tr.rail.year}년, 연결된 역만)` : "이용량 연결 안 됨" });
   } else if (tr?.rail) facts.push({ label: "지하철 역", value: "경계 안·250m 이내 없음", note: "이용 기록이 없는 것이 아니라 가까운 역이 없다는 뜻" });
-  if (tr?.bus) facts.push({ label: "버스 정류장", value: `${tr.bus.count}곳`, note: tr.bus.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.bus.boardings_observed)}명(연결된 정류장만)` : tr.bus.count === 0 ? "경계 안 정류장 없음" : "이용량 연결 안 됨" });
+  if (tr?.bus) facts.push({ label: "근처 버스정류장", value: `${tr.bus.count}곳`, note: tr.bus.boardings_observed != null ? `승차 하루 평균 ${fmt(tr.bus.boardings_observed)}명(연결된 정류장만)` : tr.bus.count === 0 ? "근처 정류장 없음" : "이용량 연결 안 됨" });
   const rent = val(inp.rows, "rent_small_shop");
   const vac = val(inp.rows, "vacancy_small_shop_pct");
-  facts.push({ label: "소규모상가 임대료(R-ONE 참고)", value: rent !== null ? formatPerArea(rent) : "자료 없음", note: rent !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "rent_small_shop") ?? "가까운 R-ONE 조사상권이 없음") });
-  facts.push({ label: "소규모상가 공실률(R-ONE 참고)", value: vac !== null ? `${vac.toFixed(1)}%` : "자료 없음", note: vac !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "vacancy_small_shop_pct") ?? "가까운 R-ONE 조사상권이 없음") });
-  const sb = val(inp.rows, "starbucks_zone_share");
-  const ds = val(inp.rows, "daiso_zone_share");
-  if (sb !== null) facts.push({ label: "스세권 매장 비율", value: `${sb.toFixed(0)}%`, note: "스타벅스 직선거리 250m 이내 매장 비율" });
-  if (ds !== null) facts.push({ label: "다세권 매장 비율", value: `${ds.toFixed(0)}%`, note: "다이소 직선거리 250m 이내 매장 비율" });
+  if (rent === null && vac === null) {
+    facts.push({ label: "임대료·공실률", value: "자료 미확보", note: [...new Set([note(inp.rows, "rent_small_shop"), note(inp.rows, "vacancy_small_shop_pct")].filter(Boolean))].join(" · ") || "해당 조사값 없음. 실제 계약 조건과 공실은 현장 확인 필요" });
+  } else {
+    facts.push({ label: "소규모상가 임대료(R-ONE 참고)", value: rent !== null ? formatPerArea(rent) : "자료 없음", note: rent !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "rent_small_shop") ?? "해당 조사값 없음") });
+    facts.push({ label: "소규모상가 공실률(R-ONE 참고)", value: vac !== null ? `${vac.toFixed(1)}%` : "자료 없음", note: vac !== null ? "가까운 조사상권의 참고값" : (note(inp.rows, "vacancy_small_shop_pct") ?? "해당 조사값 없음") });
+  }
   const strengths = inp.character?.strengths ?? [];
   const cautions = inp.character?.cautions ?? [];
   if (facts.length === 0 && strengths.length === 0 && cautions.length === 0) return null;
@@ -284,7 +289,7 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
       : `${inp.unit.name} ${scopeShort} ${unitWord} 읽기`;
   // 자영업자는 '어디에서 더 벌 수 있는가'(평균보다 비는 시간대)를, 예비 창업자는 사실 그대로의 제목을 앞세운다
   const headline = inp.mode === "owner" && lowGap && lowGap.gap <= -8
-    ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 매출 비중이 평균보다 ${Math.abs(lowGap.gap).toFixed(1)}%p 낮아 손님을 더 모을 여지를 점검해 볼 만합니다`
+    ? `${inp.unit.name} ${scopeShort}, ${lowGap.label} 매출 비중이 평균보다 ${Math.abs(lowGap.gap).toFixed(1)}%p 낮습니다`
     : factHeadline;
   const subtitle = `${inp.unit.name}${inp.unit.type ? `(${inp.unit.type})` : ""} · ${inp.scope} 기준 · ${unitWord} 단위`;
 
@@ -302,15 +307,15 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   }
 
   const findings: Finding[] = [];
-  if (level && tooFew) findings.push({ title: `점포가 ${level.sampleStores}곳뿐이라 매출 비교는 참고용입니다`, body: `${inp.unit.name} 점포당 월평균 추정매출은 ${fmt(level.me)}만원이지만 ${sampleNote(level.sampleStores, unitWord)} → 2쪽` });
-  else if (level) findings.push({ title: `점포당 월평균 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyTotal !== null ? `, 총매출은 전년 동기 ${signed(level.yoyTotal)}${level.yoyCaution ? "(소규모 상권: 변동성 주의)" : ""}` : ""}입니다`, body: `${inp.unit.name} 평균은 ${fmt(level.me)}만원입니다.${sampleNote(level.sampleStores, unitWord) ? ` ${sampleNote(level.sampleStores, unitWord)}` : ""}${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기 ${signed(level.flpopYoy)}입니다.` : ""} → 2쪽` });
+  if (level && tooFew) findings.push({ title: `점포가 ${level.sampleStores}곳뿐이라 매출 비교는 참고용입니다`, body: `${inp.unit.name} 점포당 월평균 추정매출은 ${fmt(level.me)}만원이지만 ${sampleNote(level.sampleStores, unitWord)}` });
+  else if (level) findings.push({ title: `점포당 월평균 추정매출은 비교 ${unitWord} 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyTotal !== null ? `, 총매출은 전년 동기 ${signed(level.yoyTotal)}${level.yoyCaution ? "(소규모 상권: 변동성 주의)" : ""}` : ""}입니다`, body: `${inp.unit.name} 평균은 ${fmt(level.me)}만원입니다.${sampleNote(level.sampleStores, unitWord) ? ` ${sampleNote(level.sampleStores, unitWord)}` : ""}${level.flpopYoy !== null ? ` 유동인구 지수는 전년 동기 ${signed(level.flpopYoy)}입니다.` : ""}` });
   // 자영업자 제목이 이미 '비는 시간대'를 말하고 신호 상자에도 같은 내용이 있으면 핵심 발견에서는 겹치지 않게 뺀다
-  const slotsDuplicated = inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8 && lens.positive.some((s) => s.title.startsWith(`${lowGap.label}에 손님을`));
+  const slotsDuplicated = inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8 && lens.positive.some((s) => s.title.startsWith(`${lowGap.label}의 매출 비중`));
   // 제목이 시간대 이야기가 아닌 문장(점포당 매출 등)으로 정해졌으면, 시간대 핵심 발견은 제목을 그대로 되풀이하지 않고 자기 내용의 제목을 쓴다
   const headlineIsSlots = (inp.mode === "owner" && lowGap !== null && lowGap.gap <= -8) || (pgap !== null && Math.abs(pgap.gap) >= 8) || (top !== null && top.sales >= 40);
   const slotsTitle = headlineIsSlots ? headline : pgap && Math.abs(pgap.gap) >= 5 ? `${pgap.label} 매출 비중이 평균보다 ${Math.abs(pgap.gap).toFixed(1)}%p ${pgap.gap > 0 ? "높" : "낮"}습니다` : "시간대별 매출 비중은 평균과 큰 차이가 없습니다";
-  if (slots && !slotsDuplicated) findings.push({ title: slotsTitle, body: `${slots.text} → 3쪽` });
-  if (stability) findings.push({ title: stability.churn?.closeRate != null ? `같은 업종 최근 분기${stability.churn.quarterLabel ? `(${stability.churn.quarterLabel})` : ""} 폐업률은 ${(stability.churn.closeRate * 100).toFixed(1)}%입니다` : "경쟁과 안정성", body: `${stability.text || "점포 수 변화와 프랜차이즈 비중을 봅니다."} → 4쪽` });
+  if (slots && !slotsDuplicated) findings.push({ title: slotsTitle, body: `${slots.text}` });
+  if (stability) findings.push({ title: stability.churn?.closeRate != null ? `같은 업종 최근 분기${stability.churn.quarterLabel ? `(${stability.churn.quarterLabel})` : ""} 폐업률은 ${(stability.churn.closeRate * 100).toFixed(1)}%입니다` : "경쟁과 안정성", body: `${stability.text || "점포 수 변화와 프랜차이즈 비중을 봅니다."}` });
 
   const profile: { label: string; value: string }[] = [];
   if (inp.character) profile.push({ label: "유형(참고용 분류)", value: `${inp.character.type.headline}${inp.unit.type ? ` · ${inp.unit.type}` : ""}` });
@@ -335,5 +340,11 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
   ];
   // 관점에 따른 해석을 시간대 해석 앞에 붙인다(예비 창업자는 앞 문구가 비어 있다)
   if (slots && lens.slotsTakePrefix) slots.take = lens.slotsTakePrefix + slots.take;
-  return { headline, subtitle, tiles, findings, profile, level, slots, stability, location, checklist: lens.checklist, sources, limits, lens };
+  const dataBasis = [
+    { label: "매출·점포", period: asOf(inp.rows, "per_store_month") || inp.overview?.latest_quarter || "기준기간 미확인", basis: "서울시 상권분석서비스 · 선택 지역·동일 업종" },
+    { label: "유동인구", period: inp.overview?.floating?.label || "자료 없음", basis: "지역 단위 추정치 · 매장 방문객·순방문자 수가 아님" },
+    { label: "분기 개폐업률", period: quarterText(inp.peerQuarter) || "기준분기 미확인", basis: `양천·영등포 동일 단위·동일 업종 · 폐업 ${nums(inp.peers.close).length}곳 / 개업 ${nums(inp.peers.open).length}곳 비교` },
+    ...["stores_sbiz", "wrc_total", "repop_total", "rent_small_shop", "vacancy_small_shop_pct"].map((key) => ({ label: inp.rows.find((r) => r.key === key)?.label || key, period: asOf(inp.rows, key) || "기준기간 미확인", basis: note(inp.rows, key) || (val(inp.rows, key) === null ? "자료 없음" : "선택 지역의 지표 · 출처별 집계 기준 상이") })),
+  ];
+  return { headline, subtitle, tiles, findings, profile, level, slots, stability, location, checklist: lens.checklist, sources, limits, lens, dataBasis };
 }

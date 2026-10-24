@@ -392,7 +392,7 @@ export interface FoodCompareResponse {
     scope: string | null;
     basis?: string | null;
     reference?: { value: number; as_of: string; scope: string; source: string };
-    cells: { value: number | null; note?: string; partial?: boolean; caution?: boolean }[];
+    cells: { value: number | null; note?: string; partial?: boolean; caution?: boolean; trend?: { scope: string; points: { quarter: string; value: number | null }[]; yoy_change: number | null; change_unit: "%" | "%p" } }[];
   }[];
   scope: FoodScope;
   notes: string[];
@@ -414,7 +414,15 @@ export interface OverviewTrdar {
 }
 
 /** 행정동·상권 종합분석 보조 자료 — 시계열·시간대·유동인구·겹치는 상권. 지표 값은 FoodCompareResponse 가 준다. */
+export interface ReportDetail {
+  stations?: { name: string; lon: number; lat: number }[];
+  period: string;
+  composition: Record<string, { label: string; pct: number | null }[]>;
+  boundary: { type: string; coordinates: unknown } | null;
+  basis: string;
+}
 export interface UnitOverviewResponse {
+  report_detail?: ReportDetail;
   level: "dong" | "trdar";
   code: string;
   name: string;
@@ -789,7 +797,7 @@ export interface LocationInfluenceResponse {
     anchors: {
       status: "ok" | "no_data";
       message?: string;
-      brands: { brand: AnchorBrand; label: string; nearest_m: number | null; count: number; counts_by_radius: Record<string, number> }[];
+      brands: { brand: AnchorBrand | "oliveyoung"; label: string; nearest_m: number | null; count: number; counts_by_radius: Record<string, number> }[];
       note?: string;
     };
     competitors: {

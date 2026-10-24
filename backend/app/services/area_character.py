@@ -4,7 +4,7 @@
 숫자를 읽는 법
   - 모든 값은 그 단위(행정동·상권) '경계' 기준이다. 매장 반경(250·500·1km) 값(location-influence)과 섞지 않는다. 행정동과 상권은 경계가 서로 달라 따로 계산한다.
   - 교통: 역은 '경계 안'과 '경계 밖 250m 이내'를 따로 세고(환승 노선은 한 역사로 한 번), 이용량은 연결된 역만의 2025 하루 평균 승차·하차(관측된 부분 합계, 없으면 자료 없음)다.
-    버스는 경계 안 정류장만 센다. 역과 버스는 서로 다른 교통수단이라 합치지 않는다. 이용량은 실시간 유동인구·매장 방문객이 아니다.
+    버스도 경계 안과 경계 밖 250m 이내 정류장을 세며 미정차 지점은 제외한다. 역과 버스는 서로 다른 교통수단이라 합치지 않는다. 이용량은 실시간 유동인구·매장 방문객이 아니다.
   - 소비 수요·앵커·경쟁은 기존 비교 계산(food_map.compare — 원천·기준 분기·업종 범위가 값마다 따라온다)을 그대로 쓴다. 선택 업종은 경쟁 영역에만 반영하고 유형 판정은 외식 전체 기준이다.
   - 유형 판정은 '참고용 규칙 분류'다(검증 전). 특성은 서로 배타적이지 않아 여러 개가 붙을 수 있고, 근거가 부족하면 그 특성은 판정 보류, 판정할 수 있는 특성이 하나도 없으면 '분류 보류'다.
     상관 관계를 말할 뿐 인과가 아니다.
@@ -33,11 +33,12 @@ LEVELS = ("dong", "trdar")
 WORKER_MIN = 0.60            # 업무 — 기존 수요 유형(업무형) 기준과 같다
 RESIDENT_MAX = 0.30          # 주거 — 기존 수요 유형(주거형) 기준과 같다
 MIN_POP_BASE = 1_000         # 직장+상주 인구 최소(상권 25% 분위수) — 미만이면 업무/주거 판정 보류
+BUS_NEAR_M = 250            # 버스도 지하철과 같은 경계 밖 접근 범위
 RAIL_NEAR_M = 250            # 경계 밖 역 포함 거리(매장 스세권 도보권 250m 와 같은 규모)
 TRANSIT_TOP_QUANTILE = 0.75   # 역(연결된 것) 하루 평균 승차 합의 같은 단위 상위 25% — 기준값은 _refs 에서 단위별로 계산
 MIN_STORES_DENSITY = 20      # 점포 밀도를 판정에 쓰는 최소 점포 수
 MIN_AREA_KM2 = 0.01          # 밀도를 판정에 쓰는 최소 면적(상권 면적 분포 하위 ~10% 미만은 밀도가 튄다)
-BUS_LINK_CAUTION = 0.70      # 경계 안 버스 이용량 연결률이 이보다 낮으면 해석 주의 문구(분류에는 쓰지 않음; 상권 연결률 하위 약 25%)
+BUS_LINK_CAUTION = 0.70      # 근처 버스 이용량 연결률이 이보다 낮으면 해석 주의 문구(분류에는 쓰지 않음; 상권 연결률 하위 약 25%)
 SMALL_AREA_KM2 = 0.03        # 이보다 작으면(상권 25% 분위수) 밀도는 참고
 USAGE_YEAR = 2025
 TRAIT_LABEL = {"business": "업무 중심형", "residential": "주거 중심형", "transit": "교통 거점형", "commercial": "상업 집중형"}
@@ -48,6 +49,12 @@ _to_m = Transformer.from_crs("EPSG:4326", "EPSG:5179", always_xy=True).transform
 
 def _num(v, nd: int = 1):
     return None if v is None or (isinstance(v, float) and np.isnan(v)) or pd.isna(v) else round(float(v), nd)
+
+
+def _nearby_bus_mask(sh, bus):
+    """경계 안·밖 250m의 실제 정차 지점만 포함한다."""
+    points = shapely.points(bus["x_5179"].to_numpy(), bus["y_5179"].to_numpy())
+    return (shapely.distance(sh, points) <= BUS_NEAR_M) & ~bus["name"].fillna("").str.contains("미정차", regex=False).to_numpy()
 
 
 # ── 공간 특성(경계 기준) ───────────────────────────────────────────────────────────────────────
@@ -69,7 +76,6 @@ def _spatial() -> dict[tuple[str, str], dict]:
     rail_pts = shapely.points(cx["x"].to_numpy(), cx["y"].to_numpy())
     bus = data_store.load_parquet("bus_stops.parquet")
     bus = bus[bus["is_primary"] & bus["x_5179"].notna()].reset_index(drop=True)
-    bus_pts = shapely.points(bus["x_5179"].to_numpy(), bus["y_5179"].to_numpy())
     anc = data_store.load_parquet("anchor_stores.parquet")
     ax, ay = _to_m(anc["lon"].to_numpy(), anc["lat"].to_numpy())
     anc_pts = shapely.points(ax, ay)
@@ -86,7 +92,7 @@ def _spatial() -> dict[tuple[str, str], dict]:
                                  "usage_state": r.usage_state, "lines_with_usage": int(r.lines_with_usage), "lines_total": int(r.lines_total),
                                  "complete_2025": bool(r.complete_2025) if linked else False, "region": r.region})
             linked_st = [s for s in stations if s["boardings"] is not None]
-            bi = shapely.contains(sh, bus_pts)
+            bi = _nearby_bus_mask(sh, bus)
             b = bus[bi]
             bl = b[b["usage_status"] == "linked"]
             area_km2 = sh.area / 1e6
@@ -94,7 +100,7 @@ def _spatial() -> dict[tuple[str, str], dict]:
                 "area_km2": area_km2, "rail_nearest_m": int(round(float(d.min()))) if len(d) else None, "stations": stations,
                 "rail_linked": len(linked_st), "rail_boardings": float(sum(s["boardings"] for s in linked_st)) if linked_st else None,
                 "rail_alightings": float(sum(s["alightings"] for s in linked_st)) if linked_st else None,
-                "bus_n": int(len(b)), "bus_per_km2": float(len(b) / area_km2) if area_km2 > 0 else None, "bus_linked": int(len(bl)),
+                "bus_n": int(len(b)), "bus_per_km2": float(len(b) / (sh.buffer(BUS_NEAR_M).area / 1e6)) if area_km2 > 0 else None, "bus_linked": int(len(bl)),
                 "bus_boardings": float(bl["avg_daily_boardings"].sum()) if len(bl) else None, "bus_alightings": float(bl["avg_daily_alightings"].sum()) if len(bl) else None,
                 "anchors": {brand: {"inside": int(((shapely.distance(sh, anc_pts) == 0) & (anc["brand"] == brand).to_numpy()).sum()),
                                     "nearest_m": int(round(float(shapely.distance(sh, anc_pts)[(anc["brand"] == brand).to_numpy()].min()))) if (anc["brand"] == brand).any() else None}
@@ -372,7 +378,7 @@ def character(level: str, code: str, svc: str | None, scls: str | None) -> dict:
                  "basis": f"경계 안 + 경계 밖 {RAIL_NEAR_M}m 이내 역사(환승 노선은 한 역사로 한 번). 이용량은 연결된 역만의 {USAGE_YEAR}년 하루 평균 승차·하차(이용량이 확인된 역만 더한 값)."},
         "bus": {"count": sp["bus_n"], "per_km2": _num(sp["bus_per_km2"], 1), "linked": sp["bus_linked"], "linked_ratio": _num(sp["bus_linked"] / sp["bus_n"], 3) if sp["bus_n"] else None, "usage_state": bus_state,
                 "boardings_observed": _num(sp["bus_boardings"], 0), "alightings_observed": _num(sp["bus_alightings"], 0), "year": USAGE_YEAR,
-                "basis": "경계 안 정류장만(버스는 경계 밖을 더하지 않음). 이용량은 연결된 정류장만의 하루 평균 승차·하차(이용량이 확인된 정류장만 더한 값).",
+                "basis": "경계 안과 경계 밖 250m 이내 정류장(미정차 제외, 맞은편 정류장은 별도). 이용량은 연결된 정류장만의 하루 평균 승차·하차(이용량이 확인된 정류장만 더한 값).",
                 "caution": (f"이용량 연결률 {sp['bus_linked'] / sp['bus_n'] * 100:.0f}% — 연결되지 않은 정류장이 많아 승하차는 일부 정류장만 관측된 값입니다."
                             if sp["bus_n"] and sp["bus_linked"] / sp["bus_n"] < BUS_LINK_CAUTION else None)},
         "note": "역·버스의 승하차 수치는 해당 역·정류장의 이용 기록(역 이용 수요)이며 실제 상권 방문객이나 실시간 유동인구가 아닙니다. 서로 다른 교통수단이라 합치지 않았습니다. "
@@ -452,7 +458,7 @@ def _statements(typ: dict, transit: dict, demand: dict, anchor: dict, competitio
     elif rail["count"] == 0:
         c.append(f"경계 안·{RAIL_NEAR_M}m 이내에 지하철역이 없습니다(가장 가까운 역까지 경계에서 {rail['nearest_m']:,}m).")
     if bus["count"] and bus["per_km2"] is not None:
-        s.append(f"경계 안 버스정류장 {bus['count']}곳(㎢당 {bus['per_km2']:.0f}곳)입니다.")
+        s.append(f"근처 버스정류장 {bus['count']}곳입니다.")
     if demand["demand_type"] == "업무형":
         s.append("직장인구 비중이 높아 평일 낮 시간대 수요가 두드러지는 구조입니다.")
     elif demand["demand_type"] == "주거형":

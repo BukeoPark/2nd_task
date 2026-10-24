@@ -331,3 +331,32 @@ def test_seoul_reference_missing_file_is_optional(monkeypatch):
         raise data_store.DataNotReady("자료 없음")
     monkeypatch.setattr(data_store, "load_parquet", missing)
     assert food_map._seoul_reb_reference() == {}
+
+
+def test_reb_trend_preserves_scope_and_yoy_units(monkeypatch):
+    from app.services import food_map
+    import pandas as pd
+    rows = pd.DataFrame([
+        {"metric": metric, "region": region, "quarter": q, "value": value}
+        for metric, region, q, value in [
+            ("rent_small_shop", "서울", "202501", 50), ("rent_small_shop", "서울", "202601", 55),
+            ("rent_small_shop", "서울>영등포신촌>당산역", "202501", 20),
+            ("rent_small_shop", "서울>영등포신촌>당산역", "202601", float("nan")),
+            ("vacancy_small_shop_pct", "서울", "202501", 0),
+            ("vacancy_small_shop_pct", "서울", "202601", 2),
+        ]])
+    monkeypatch.setattr(food_map.data_store, "load_parquet", lambda _: rows)
+    city = food_map._reb_trend("rent_small_shop", None)
+    assert city["scope"] == "서울 전체 추이"
+    assert abs(city["yoy_change"] - 10) < 1e-8
+    local = food_map._reb_trend("rent_small_shop", "당산역")
+    assert local["points"][-1]["value"] is None and local["yoy_change"] is None
+    vacancy = food_map._reb_trend("vacancy_small_shop_pct", None)
+    assert vacancy["yoy_change"] == 2 and vacancy["change_unit"] == "%p"
+    assert food_map._reb_trend("rent_small_shop", "미등록") is None
+
+
+def test_missing_metric_explanation_does_not_call_churn_sales():
+    from app.services import food_map
+    assert "점포·개폐업" in food_map._cell(None, "close_rate_y")["note"]
+    assert "매출" in food_map._cell(None, "per_store_month")["note"]

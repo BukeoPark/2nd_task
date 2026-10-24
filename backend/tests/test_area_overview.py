@@ -52,3 +52,30 @@ def test_pilot_hours_match_independent_weighted_average():
     pilot, _ = ao._pilot_hours("trdar", "CS100001", str(latest))
     assert pilot is not None
     assert [round(v, 6) for v in pilot] == [round(v, 6) for v in expect]
+
+
+def test_report_detail_weighting_and_missing_are_not_zero():
+    import pandas as pd
+    from unittest.mock import patch
+    from app.services import area_overview as ao
+    frame = pd.DataFrame({"quarter": ["20262", "20262"], "sales_q": [100, 300],
+                          "share_weekend": [0.1, 0.5], "share_female": [None, None]})
+    with patch.object(ao.food_map, "_dong_shapes", return_value={}):
+        detail = ao._report_detail(frame, "20262", "dong", "missing")
+    assert detail["composition"]["요일"][0]["pct"] == 40.0
+    assert detail["composition"]["성별"][0]["pct"] is None
+    assert all(r["pct"] is None for r in detail["composition"]["연령"])
+    assert detail["boundary"] is None
+
+
+def test_report_detail_boundary_customer_mix_and_stations(client):
+    from app.services import food_map
+    units = food_map._units()["trdar"]
+    code = units.loc[units["name"].str.contains("국회의사당")].iloc[0]["code"]
+    response = client.get(f"/api/food/units/trdar/{code}/overview", params={"svc": "CS100001"})
+    assert response.status_code == 200
+    detail = response.json()["report_detail"]
+    assert detail["boundary"]["type"] in ["Polygon", "MultiPolygon"]
+    assert any("국회의사당" in s["name"] for s in detail["stations"])
+    assert abs(sum(r["pct"] for r in detail["composition"]["연령"]) - 100) < 0.6
+    assert 0 <= detail["composition"]["요일"][0]["pct"] <= 100

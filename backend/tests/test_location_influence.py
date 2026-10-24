@@ -23,7 +23,7 @@ def test_response_shape_for_in_sample_food_store(client):
     body = client.get(f"/api/stores/{bid}/location-influence", params={"radius_m": 500}).json()
     assert body["radius_m"] == 500 and body["radius_options"] == [250, 500, 1000]
     a = body["radius_metrics"]["anchors"]
-    assert a["status"] == "ok" and {b["brand"] for b in a["brands"]} == {"starbucks", "daiso"}
+    assert a["status"] == "ok" and {b["brand"] for b in a["brands"]} == {"starbucks", "daiso", "oliveyoung"}
     for b in a["brands"]:  # 반경이 넓을수록 점포 수는 줄지 않는다
         c = b["counts_by_radius"]
         assert c["250"] <= c["500"] <= c["1000"] and b["count"] == c["500"]
@@ -99,3 +99,22 @@ def test_unit_pct_conversion_roundtrip():
     sd = 0.4
     per_sd = (2.718281828 ** 0.4 - 1) * 100  # 단위 계수 1.0 → 표준화 계수 0.4
     assert location_influence._per_unit_pct(per_sd, sd) == pytest.approx((2.718281828 - 1) * 100, abs=0.2)
+
+
+def test_oliveyoung_radius_counts_use_store_coordinates():
+    from app.services.area_character import oliveyoung_stores
+    from app.services.bus_access import _haversine_m
+    stores = data_store.load_parquet("stores.parquet")
+    olive = oliveyoung_stores(stores)
+    assert not olive.empty
+    me = olive.iloc[0]
+    # 앵커 계산 대상인 외식 매장 중 올리브영과 가장 가까운 매장을 검증한다.
+    anchors = data_store.load_parquet("store_anchor.parquet")
+    candidates = stores[stores.bizesId.isin(anchors.bizesId)].copy()
+    distances = _haversine_m(float(me.lon), float(me.lat), candidates.lon.to_numpy(), candidates.lat.to_numpy())
+    chosen = candidates.iloc[int(distances.argmin())]
+    result = location_influence._anchor_metrics(chosen.bizesId, 500)
+    row = next(b for b in result["brands"] if b["brand"] == "oliveyoung")
+    expected = _haversine_m(float(chosen.lon), float(chosen.lat), olive.lon.to_numpy(), olive.lat.to_numpy())
+    assert row["count"] == int((expected <= 500).sum()) > 0
+    assert row["nearest_m"] == round(float(expected.min()))

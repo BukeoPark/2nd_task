@@ -1,3 +1,5 @@
+import { SubmarketList } from "./SubmarketList";
+import { rentSalesTrend } from "../../lib/rentSalesTrend";
 import { useQueries } from "@tanstack/react-query";
 import { apiClient } from "../../lib/apiClient";
 import { AppIcon, PopulationMix, MetricBars } from "../../components/DataVisuals";
@@ -21,7 +23,7 @@ import { AreaReportModal } from "./AreaReportModal";
 import { glyphFor } from "../../lib/storeGlyph";
 import { SummaryTypeBadge, SummaryTypeContext } from "./SummaryType";
 import { AreaBriefCard } from "./AreaBriefCard";
-import { Block, Caption, ListRow, Stat, StatRow, SubHead } from "../../components/PanelKit";
+import { Block, Caption, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { ReportCTA } from "../../components/ReportCTA";
 import { CostCheckLauncher } from "./CostCheckSection";
 import { computeRentDetail, loadDraft, type CostCheckDraft } from "../../lib/costCheck";
@@ -220,7 +222,7 @@ export function AreaOverviewPanel(p: Props) {
 
       {pane("cost", "비용·임대", <>
         {p.mode === "founder" && <Block title="내 창업 비용 계산"><CostCheckLauncher unitKey={`${p.level}:${p.code}`} unitWord={unitWord} benchWon={stale ? null : row("per_store_month")?.cells[0]?.value ?? null} benchNote={[row("per_store_month")?.scope, row("per_store_month")?.as_of].filter(Boolean).join(" · ")} onOpen={() => setCostOpen(true)} /></Block>}
-        <RentMarketBlock rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending || stale} failed={cmp.isError} founderDraft={p.mode === "founder" ? loadDraft(`${p.level}:${p.code}`) : undefined}/>
+        <RentMarketBlock sales={ov.data} salesLoading={ov.isPending} salesFailed={ov.isError} areaName={plainName(p.title, p.type)} onRetry={() => void cmp.refetch()} showTrends rent={row("rent_small_shop")} vacancy={row("vacancy_small_shop_pct")} loading={cmp.isPending || stale} failed={cmp.isError} founderDraft={p.mode === "founder" ? loadDraft(`${p.level}:${p.code}`) : undefined}/>
 
       </>)}
       {p.mode === "founder" && costOpen && <CostCheckModal unitKey={`${p.level}:${p.code}`} unitName={plainName(p.title, p.type)} unitWord={unitWord} scopeLabel={p.filterName} benchWon={row("per_store_month")?.cells[0]?.value ?? null} onClose={() => setCostOpen(false)} />}
@@ -229,7 +231,7 @@ export function AreaOverviewPanel(p: Props) {
         ov.data?.trdars ? (
           <>
             {ov.data.trdars.length === 0 && <Notice tone="muted">겹치는 상권이 없습니다(조회는 정상).</Notice>}
-            {ov.data.trdars.map((t) => <ListRow key={t.code} name={t.name} kind={t.type} meta={`경계 ${t.overlap_pct}% 겹침`} onClick={() => p.onSelectTrdar(t)} />)}
+            <SubmarketList areas={ov.data.trdars} onSelect={p.onSelectTrdar}/>
             <Caption>{ov.data.trdars_basis}{ov.data.trdars_excluded ? ` · 그 미만 ${ov.data.trdars_excluded}곳 제외` : ""}. 겹침 % = 상권 면적 중 이 행정동 안에 든 비율.</Caption>
           </>
         ) : <OvState q={ov} />)}
@@ -251,30 +253,67 @@ function plainName(title: string, type?: string | null): string {
 }
 
 /** 값이 모두 없으면 같은 결측 사유를 두 번 반복하지 않는다. 0은 유효한 통계다. */
-function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft }: { rent?: Row; vacancy?: Row; loading: boolean; failed: boolean; /** 예비 창업자가 비용 점검에 저장한 입력 — 있으면 내 ㎡당 월세를 참고값과 견준다 */ founderDraft?: CostCheckDraft }) {
+function RentMarketBlock({ rent, vacancy, loading, failed, founderDraft, showTrends, onRetry, areaName, sales, salesLoading, salesFailed }: { sales?: ReturnType<typeof useUnitOverview>["data"]; salesLoading: boolean; salesFailed: boolean; areaName: string; onRetry: () => void; showTrends?: boolean; rent?: Row; vacancy?: Row; loading: boolean; failed: boolean; /** 예비 창업자가 비용 점검에 저장한 입력 — 있으면 내 ㎡당 월세를 참고값과 견준다 */ founderDraft?: CostCheckDraft }) {
   const localRent = rent?.cells[0]?.value;
   const localVacancy = vacancy?.cells[0]?.value;
   const rentValue = localRent ?? rent?.reference?.value;
   const vacancyValue = localVacancy ?? vacancy?.reference?.value;
   const rentFallback = localRent == null && rent?.reference != null;
   const vacancyFallback = localVacancy == null && vacancy?.reference != null;
+  const rentScope = localRent != null ? rent?.cells[0]?.trend?.scope.replace(/ 추이$/, "") ?? `R-ONE ${rent?.cells[0]?.note?.match(/^'([^']+)' 조사값/)?.[1] ?? "인근"} 조사상권` : "서울 전체 평균";
+  const vacancyScope = localVacancy != null ? vacancy?.cells[0]?.trend?.scope.replace(/ 추이$/, "") ?? `R-ONE ${vacancy?.cells[0]?.note?.match(/^'([^']+)' 조사값/)?.[1] ?? "인근"} 조사상권` : "서울 전체 평균";
   const hasRent = rentValue != null;
   const mine = founderDraft && hasRent ? rentVsReference(computeRentDetail(founderDraft).rentPerSqm, rentValue as number) : null;
   const hasVacancy = vacancyValue != null;
-  const tip = <InfoTip label="임대시장 자료 기준">지역 자료가 있는 항목은 인근 1km 이내 조사상권 값이며, 없는 항목은 서울 전체 소규모 상가 평균을 표시합니다. 선택 지역의 실제 계약금액이 아닙니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}<br/>{rentFallback ? `${rent?.reference?.source} · ${rent?.reference?.as_of}` : ""}<br/>{vacancyFallback ? `${vacancy?.reference?.source} · ${vacancy?.reference?.as_of}` : ""}</InfoTip>;
-  return <Block title={<>주변 임대시장 참고 {tip}</>}>
+  const tip = <InfoTip label="임대시장 자료 기준">선택한 행정동·서울시 상권과 R-ONE 조사상권은 경계가 다릅니다. 현재는 대표점 간 거리 1km 이내의 인근 조사상권을 연결하며, 경계가 겹치는지 확인한 자료는 아닙니다. 지역 자료가 없으면 서울 전체 평균을 표시합니다.<br/>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note}<br/>{rent?.as_of ?? vacancy?.as_of}<br/>{rent?.source ?? vacancy?.source}<br/>{rentFallback ? `${rent?.reference?.source} · ${rent?.reference?.as_of}` : ""}<br/>{vacancyFallback ? `${vacancy?.reference?.source} · ${vacancy?.reference?.as_of}` : ""}</InfoTip>;
+  return <Block title={<>{areaName} 인근 임대시장 {tip}</>}>
     {loading ? <Caption>임대자료를 확인하는 중...</Caption> : failed ? <Caption>임대자료를 불러오지 못했어요.</Caption> : !hasRent && !hasVacancy ? <Caption>{rent?.cells[0]?.note ?? vacancy?.cells[0]?.note ?? "이번 분기 주변 임대자료가 없어요."}</Caption> : <>
-      <Caption>{rentFallback || vacancyFallback ? "지역 조사값이 없는 항목은 서울 평균으로 표시해요." : `인근 조사상권 기준${rent?.cells[0]?.note ? ` · ${rent.cells[0].note}` : ""}${rent?.as_of ? ` · ${rent.as_of}` : ""}`}</Caption>
+      <Caption>{rentScope === vacancyScope ? `임대자료: ${rentScope}${rentFallback ? " · 지역 조사값 없음" : " 기준"}` : `임대료: ${rentScope} · 공실률: ${vacancyScope}`}</Caption>
+      <Caption>선택 지역 자체의 통계가 아닌 참고자료입니다.</Caption>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
-        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? formatRentWon(rentValue as number) : "자료 없음"} missing={!hasRent} sub={rentFallback ? `서울 평균 · ${rent?.reference?.as_of}` : rentFallback !== vacancyFallback ? "인근 조사상권" : undefined}/>
-        <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancyValue ?? null) : "자료 없음"} missing={!hasVacancy} sub={vacancyFallback ? `서울 평균 · ${vacancy?.reference?.as_of}` : rentFallback !== vacancyFallback ? "인근 조사상권" : undefined}/>
+        <Stat onGray big label="㎡당 월 임대료" value={hasRent ? formatRentWon(rentValue as number) : "자료 없음"} missing={!hasRent} sub={rentFallback ? `서울 평균 · ${rent?.reference?.as_of}` : rent?.as_of ?? undefined}/>
+        <Stat onGray big label="공실률" value={hasVacancy ? formatMetric(vacancy!.kind, vacancyValue ?? null) : "자료 없음"} missing={!hasVacancy} sub={vacancyFallback ? `서울 평균 · ${vacancy?.reference?.as_of}` : vacancy?.as_of ?? undefined}/>
       </div>
+      {showTrends && <>
+        <RentSalesOverlay row={rent} sales={sales} loading={salesLoading} failed={salesFailed} areaName={areaName} onRetry={onRetry}/>
+        <RentTrend onRetry={onRetry} row={vacancy} title="공실률 추이" color="#0D9488"/>
+      </>}
       {founderDraft && hasRent && (mine
         ? <div style={{ marginTop: 10 }}><Stat onGray label={rentFallback ? "내 월세 단가 · 서울 평균과 비교" : "내가 입력한 월세 단가"} value={`${formatRentWon(mine.mine)}/㎡·월`} sub={mine.level === "similar" ? `참고값과 비슷해요 (${mine.diffPct > 0 ? "+" : ""}${mine.diffPct}%)` : `참고값보다 약 ${Math.abs(mine.diffPct)}% ${mine.level === "high" ? "높아요" : "낮아요"}`}/><Caption>관리비를 뺀 월세를 면적으로 나눈 값이에요. 층·면적·계약 조건에 따라 실제와 다를 수 있어요.</Caption></div>
         : <Caption>비용 계산에서 월세와 면적을 넣으면 이 임대료와 견줘 드려요.</Caption>)}
     </>}
   </Block>;
 }
+
+function RentSalesOverlay({ row, sales, loading, failed, areaName, onRetry }: { row?: Row; sales?: ReturnType<typeof useUnitOverview>["data"]; loading: boolean; failed: boolean; areaName: string; onRetry: () => void }) {
+  const trend = row?.cells[0]?.trend;
+  const indexed = trend && sales ? rentSalesTrend(trend.points, sales.trend) : null;
+  if (!indexed) return <>
+    <RentTrend row={row} title="임대료 추이" color="#2563EB" onRetry={onRetry}/>
+    <Caption>{loading ? "매출 추이를 불러오는 중…" : failed ? "매출 추이를 불러오지 못했어요." : "같이 비교할 분기별 매출 자료가 부족해요."}</Caption>
+  </>;
+  return <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
+    <SubHead>임대료·매출 추이 <InfoTip label="임대료·매출 비교 기준">{shortQuarter(indexed.baseQuarter)} = 100으로 맞춘 변화 추이입니다. 서로 단위가 달라 금액 자체를 비교하는 그래프는 아닙니다. 임대료는 {trend!.scope}, 매출은 선택 지역·업종 기준으로 조사 범위가 다릅니다. 인과관계나 매출 대비 임대료 비중을 뜻하지 않습니다.<br/>{sales?.trend_source}</InfoTip></SubHead>
+    <Caption>처음 시점의 임대료와 매출을 같은 높이로 맞춰 비교했어요.</Caption>
+    <div style={{ marginTop: 14 }}><LineChart labels={indexed.labels.map(shortQuarter)} height={150}
+      series={[{ name: `임대료 (${trend!.scope.replace(/ 조사상권 추이$| 추이$/, "")}·소규모 상가)`, color: "#2563EB", values: indexed.rent }, { name: `점포당 매출 (${areaName}·${sales?.trend_scope === "외식 전체 기준" ? "업종 전체" : sales?.trend_scope.replace(/\s*(전체\s*)?기준$/, "")}·점포당 월평균 추정 매출)`, color: "#D97706", values: indexed.sales }]} fmt={v => `${v.toFixed(1)}`}/></div>
+  </div>;
+}
+
+function RentTrend({ row, title, color, onRetry }: { row?: Row; title: string; color: string; onRetry: () => void }) {
+  const trend = row?.cells[0]?.trend;
+  if (!trend || !trend.points.some(p => p.value !== null)) return <div style={{ marginTop: 22 }}><SubHead>{title}</SubHead><Caption>추이 자료를 불러오지 못했어요. <button type="button" onClick={onRetry}>다시 불러오기</button></Caption></div>;
+  const fmt = (v: number) => row?.kind === "rent" ? formatRentWon(v) : `${v.toFixed(1)}%`;
+  const change = trend.yoy_change;
+  return <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
+    <SubHead>{title}</SubHead>
+    <Caption>{trend.scope} · 소규모 상가{row?.kind === "rent" ? " · ㎡당 월 임대료" : ""}</Caption>
+    {change !== null && <Caption>전년 동기 대비 <strong>{change > 0 ? "+" : ""}{change.toFixed(1)}{trend.change_unit}</strong></Caption>}
+    <div style={{ marginTop: 14 }}><LineChart labels={trend.points.map(p => shortQuarter(p.quarter.slice(0, 4) + p.quarter.slice(5)))} height={150}
+      series={[{ name: title, color, values: trend.points.map(p => p.value) }]} fmt={fmt}/></div>
+  </div>;
+}
+
 
 function OvState({ q }: { q: ReturnType<typeof useUnitOverview> }) {
   if (q.isError) return <Notice tone="error">조회 실패: {q.error.message} <button type="button" onClick={() => void q.refetch()}>다시 시도</button></Notice>;
@@ -371,7 +410,7 @@ function SelectedIndustryGrowth({ level, code, name, overview, yoy }: { level: "
 const INDUSTRY_COLORS = ["#2563EB", "#D97706"];
 function IndustryComparisonGraphs({ level, code, groups }: { level: "dong" | "trdar"; code: string; groups: { svc_cd: string; svc_nm: string }[] }) {
   const trends = useQueries({ queries: groups.map(g => ({ queryKey: ["unit-overview", level, code, g.svc_cd, null], queryFn: () => apiClient.getUnitOverview(level, code, g.svc_cd, null), staleTime: 10 * 60 * 1000 })) });
-  const changes = useQueries({ queries: groups.map(g => ({ queryKey: ["food-compare", level, [code], g.svc_cd, null], queryFn: () => apiClient.getFoodCompare(level, [code], g.svc_cd, null), staleTime: 10 * 60 * 1000 })) });
+  const changes = useQueries({ queries: groups.map(g => ({ queryKey: ["food-compare-rent-history-v1", level, [code], g.svc_cd, null], queryFn: () => apiClient.getFoodCompare(level, [code], g.svc_cd, null), staleTime: 10 * 60 * 1000 })) });
   const overall = useUnitOverview(level, code, null, null);
   const [selected, setSelected] = useState<string[]>([groups[0].svc_cd]);
   const [limitNote, setLimitNote] = useState(false);
