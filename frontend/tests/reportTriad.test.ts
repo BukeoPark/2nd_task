@@ -18,8 +18,8 @@ test("주의할 점에는 항상 붙는 경고가 들어가고, 표본 안내가
   assert.match(noSignals.cautions.join(" "), /실제 매출이 아니에요/);
 });
 
-test("모드마다 경고 문구가 다르다(예비 창업자는 성공을 뜻하지 않는다고 말함)", () => {
-  assert.match(buildTriad({ mode: "founder", tiles, cautions: [], checklist: [] }).cautions.join(" "), /창업 성공을 뜻하지 않아요/);
+test("예비 창업자는 임대 조건 현장 확인을 안내한다", () => {
+  assert.match(buildTriad({ mode: "founder", tiles, cautions: [], checklist: [] }).cautions.join(" "), /임대 조건은 현장에서 확인하세요/);
   assert.doesNotMatch(buildTriad({ mode: "owner", tiles, cautions: [], checklist: [] }).cautions.join(" "), /창업 성공/);
 });
 

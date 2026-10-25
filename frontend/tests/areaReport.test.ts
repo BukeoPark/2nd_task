@@ -365,3 +365,13 @@ test("표지 제목은 모든 인사이트에서 지역·업종 다음 쉼표로
     }
   }
 });
+
+
+test("첫 페이지는 점포당 매출 단위를 밝히고 순위 대신 비교 중앙값 대비 수준을 보여준다",()=>{
+ const r=buildAreaReport(input);
+ assert.equal(r.tiles[0].label,"점포당 월평균 추정매출");
+ const comparison=r.tiles.find(t=>t.label==="비교 중앙값 대비");
+ assert.equal(comparison?.value,`${r.level!.ratio.toFixed(1)}배`);
+ assert.match(comparison!.note,/기준/);
+ assert.ok(!r.tiles.some(t=>/위$/.test(t.value)));
+});

@@ -11,7 +11,7 @@ export function ReportLead({ lead, compact = false }: { lead: Lead; compact?: bo
         {lead.rows.map((r, i) => (
           <li key={r.title} style={{ fontSize: 14, display: "flex", gap: 8, alignItems: "baseline" }}>
             <span aria-hidden="true" style={{ color: C.accent, fontWeight: 800 }}>{i + 1}</span>
-            <span><b style={/종합 정리|실전 팁/.test(r.title) ? {color:C.accent} : undefined}>{/종합 정리|실전 팁/.test(r.title) ? "★ " : ""}{compact ? r.title.replace("경쟁(개폐업·프랜차이즈)","경쟁 변화").replace("입지(교통·임대료 참고값)","입지 여건").replace("내 매장 주변 경쟁(개폐업·프랜차이즈)","주변 경쟁") : r.title}</b><br /><span style={{ fontSize: 12.5, color: r.kind === "missing" ? C.bad : C.mute }}>{r.where}</span></span>
+            <span style={compact ? {display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:6,flex:1,minWidth:0,whiteSpace:"nowrap"} : undefined}><b style={/종합(?: 정리|·창업전략)|실전 팁/.test(r.title) ? {color:C.accent} : undefined}>{/종합(?: 정리|·창업전략)|실전 팁/.test(r.title) ? "★ " : ""}{compact ? r.title.replace("경쟁(개폐업·프랜차이즈)","경쟁 변화").replace("입지(교통·임대료 참고값)","입지 여건").replace("내 매장 주변 경쟁(개폐업·프랜차이즈)","주변 경쟁") : r.title}</b>{!compact && <br />}<span style={{ flexShrink:0, fontSize: 12.5, color: r.kind === "missing" ? C.bad : C.mute }}>{r.where}</span></span>
           </li>
         ))}
       </ol>

@@ -41,8 +41,8 @@ test("종합 정리와 실전 팁은 서로 다른 쪽으로 안내한다", () =
 test("지역 길잡이는 현재 분류·실제 페이지 순서와 통합 종합정리를 한 번만 표시한다",()=>{
  const lead=areaReportLead({signals:2,level:3,slots:4,demand:5,industries:6,competitors:7,stability:8,location:9,summary:10,basis:11});
  assert.equal(lead.rows.length,10);
- assert.equal(lead.rows[5].title,"세부 업종 구성과 확인할 가게");
- assert.equal(lead.rows[8].title,"종합 정리 및 창업전략");
+ assert.equal(lead.rows[5].title,"주변 경쟁점");
+ assert.equal(lead.rows[8].title,"종합·창업전략");
  assert.equal(lead.rows[8].where,"10쪽");
  assert.ok(!lead.rows.some(r=>r.title==="실전 팁"||r.title==="현장 확인사항"));
  const missing=areaReportLead({signals:0,level:3,summary:4});

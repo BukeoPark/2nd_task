@@ -1,6 +1,7 @@
 /** 카드에는 짧은 문구를 쓰고 원문은 제목 속성에 남긴다. 숫자·단위를 자르지 않는다. */
 export function shortReportLabel(text: string): string {
   const named: Record<string,string> = {
+    "점포당 월평균 추정매출":"점포당 월평균 추정매출",
     "점포당 월평균 추정매출 전년 동기 대비":"점포당 매출 증감",
     "유동인구 지수 전년 동기 대비":"유동인구 증감",
     "총매출 전년 동기 대비":"총매출 증감",

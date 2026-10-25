@@ -22,7 +22,7 @@ function Share({ label, pct, color = C.teal }: { label: string; pct: number | nu
 export function ReportDemandPage({ n, total, detail }: { n: number; total: number; detail?: ReportDetail }) {
   const weekend = detail?.composition["요일"]?.find((r) => r.label === "주말")?.pct ?? null;
   const female = detail?.composition["성별"]?.find((r) => r.label === "여성")?.pct ?? null;
-  return <Page n={n} total={total}><Head eyebrowText="고객 구성과 영업일" title={demandPageTitle(detail)} text={`${detail?.period ?? "기준기간 확인 불가"} · 매출액 구성 기준`} />
+  return <Page n={n} total={total}><Head eyebrowText="소비 고객" title={demandPageTitle(detail)} text={`${detail?.period ?? "기준기간 확인 불가"} · 매출액 구성 기준`} />
     {!detail && <p>고객 구성 자료를 불러오지 못했습니다. 자료가 없는 것이 아니라 서버 응답 확인이 필요합니다.</p>}
     <div className="irp-cols"><div><h3>평일·주말 매출 비중</h3><div className="irp-share-list"><Share label="평일" pct={weekend === null ? null : 100 - weekend} /><Share label="주말" pct={weekend} /></div></div>
     <div><h3>성별 매출 비중</h3><div className="irp-share-list"><Share label="남성" pct={female === null ? null : 100 - female} /><Share label="여성" pct={female} /></div></div></div>
@@ -33,7 +33,7 @@ export function ReportDemandPage({ n, total, detail }: { n: number; total: numbe
 }
 
 export function ReportCompetitionPage({ n, total, stores, failed, map }: { n: number; total: number; stores?: FoodUnitStoresResponse; failed: boolean; map?: ReactNode }) {
-  return <Page n={n} total={total} className={map ? "irp-competition-page" : undefined}><Head eyebrowText="세부 업종 구성과 확인할 가게" title={competitionPageTitle(stores)} text={stores ? `선택 경계·선택 업종 전체 ${stores.total.toLocaleString()}곳 · 상가정보 등록 기준` : failed ? "점포 자료 조회 실패 · 보고서를 다시 열어 주세요." : "점포 자료를 불러오는 중입니다."} />
+  return <Page n={n} total={total} className={map ? "irp-competition-page" : undefined}><Head eyebrowText="주변 경쟁점" title={competitionPageTitle(stores)} text={stores ? `선택 경계·선택 업종 전체 ${stores.total.toLocaleString()}곳 · 상가정보 등록 기준` : failed ? "점포 자료 조회 실패 · 보고서를 다시 열어 주세요." : "점포 자료를 불러오는 중입니다."} />
     <div className="irp-share-list">{stores?.category_mix.slice(0, 8).map((r) => <Share key={r.code ?? r.name} label={`${r.name} ${r.count}곳`} pct={r.share_pct} color={map ? storeCategoryColor(r.name, stores?.category_mix.map(x=>x.name)) : undefined} />)}{(stores?.category_mix.length ?? 0) > 8 && <p style={{gridColumn:"1 / -1"}}>상위 8개 세부 업종만 표시했습니다. 나머지 업종도 전체 점포 수에 포함됩니다.</p>}</div>
     <table style={{ fontSize: RF.body, width: "100%", borderCollapse: "collapse" }}><thead><tr><th align="left">현장 확인 대상</th><th align="left">세부 업종</th><th align="right">상권 중심 직선거리</th></tr></thead><tbody>{stores?.records.slice(0, 8).map((r) => <tr key={r.store_id}><td style={{ padding: 5 }}>{r.name} {r.branch}</td><td>{r.category_detail}</td><td align="right">{r.distance_m}m</td></tr>)}</tbody></table>
     <p className="irp-competition-note" style={{fontSize:RF.caption,color:C.mute}}>중심에서 가까운 최대 8곳 · 상가정보 등록 기준. 실제 영업 여부·메뉴·가격은 현장에서 확인하세요.</p>
@@ -46,23 +46,45 @@ const TRAIT_ICON: Record<"business" | "residential" | "transit" | "commercial", 
 const chip: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "5px 12px", fontSize: RF.section, fontWeight: 700, lineHeight: 1.4, whiteSpace: "nowrap" };
 
 /** 1쪽 '이 상권의 특징' — 서비스 화면과 같은 아이콘의 상권 유형, 값으로 쓴 특징 문장, 지역 프로필을 한곳에 모은다. */
-export function ReportCharacter({ character, marketTypeName, lines, profile }: { character?: AreaCharacter | null; marketTypeName?: string | null; lines: string[]; profile: { label: string; value: string }[] }) {
+export function ReportCharacter({ character, marketTypeName, lines, profile, detail }: { character?: AreaCharacter | null; marketTypeName?: string | null; lines: string[]; profile: { label: string; value: string }[]; detail?:ReportDetail }) {
   const t = character?.type;
   const market = marketType(marketTypeName ?? "");
   const rows = profile.filter((p) => p.label !== "유형(참고용 분류)");
+  const weekend=detail?.composition["요일"]?.find(x=>x.label==="주말")?.pct;
+  const age=detail?.composition["연령"]?.filter(x=>x.pct!==null).sort((a,b)=>b.pct!-a.pct!)[0];
+  const grounds=t?.traits.map(x=>x.evidence[0]).filter(Boolean)??[];
+  if(!grounds.length&&t?.mixed_evidence?.[0])grounds.push(t.mixed_evidence[0]);
+  const rail=character?.sections.transit.rail;
+  const stations=rail?[...rail.inside,...rail.within_250m]:[];
+  const percent=(n:number)=>`${Number(n.toFixed(1))}%`;
+
   return <section style={{ background: C.soft, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }} aria-label="이 상권의 특징">
-    <h3 style={{ margin: 0, fontSize: RF.section }}>이 상권의 특징</h3>
+    <h3 className="irp-cover-feature-title" style={{ margin: 0, fontSize: RF.section }}>이 상권의 특징</h3>
     {(t || market) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       {t && (t.traits.length > 0
-        ? t.traits.map((x) => <span key={x.key} style={{ ...chip, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name={TRAIT_ICON[x.key]} />{x.label}</span>)
-        : <span style={{ ...chip, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name="building" />{t.headline}</span>)}
-      {market && <span style={{ ...chip, background: market.bg, color: market.color, border: `1px solid ${market.color}33` }} title={market.description}><AppIcon name={market.icon} />{market.label}</span>}
+        ? t.traits.map((x) => <span key={x.key} style={{ ...chip, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name={TRAIT_ICON[x.key]} />{x.label}</span>)
+        : <span style={{ ...chip, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name="building" />{t.headline}</span>)}
+      {market && <span style={{ ...chip, fontSize: RF.section + 4, background: market.bg, color: market.color, border: `1px solid ${market.color}33` }} title={market.description}><AppIcon name={market.icon} />{market.label}</span>}
     </div>}
+    {grounds.length>0&&<p className="irp-cover-type-basis" style={{margin:0,fontSize:RF.caption,color:C.mute,lineHeight:1.4}}>{grounds.join(" · ")}</p>}
     {lines.length > 0 && <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3, fontSize: RF.body }}>{lines.map((l) => <li key={l}>{l}</li>)}</ul>}
-    {rows.length > 0 && <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "6px 14px", fontSize: FS.caption }}>
-      {rows.map((p) => <div key={p.label}><dt style={{ color: C.mute }}>{p.label}</dt><dd style={{ margin: 0, fontWeight: 700 }}>{p.value}</dd></div>)}
+    {rows.length > 0 && <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "6px 14px", fontSize: RF.body }}>
+      {rows.map((p) => <div key={p.label}><dt style={{ color: C.mute }}>{p.label}</dt><dd style={{ margin: 0, fontWeight: 700, fontSize: RF.section + 4 }}>{p.value}</dd></div>)}
     </dl>}
-    <p style={{ margin: 0, fontSize: FS.caption, color: C.mute }}>유형은 인구·입지 통계에 따른 참고용 분류이며 창업 성공 가능성을 뜻하지 않습니다.</p>
+    {(weekend!=null||age)&&<div className="irp-cover-demand" style={{display:"grid",gridTemplateColumns:weekend!=null&&age?"2fr 1fr":"1fr",gap:16,borderTop:`1px solid ${C.line}`,paddingTop:8,fontSize:RF.section}}>
+      {weekend!=null&&<div><div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:5}}><b>평일 매출 {percent(100-weekend)}</b><b>주말 {percent(weekend)}</b></div>
+        <div role="img" aria-label={`매출 비중 평일 ${percent(100-weekend)}, 주말 ${percent(weekend)}`} style={{display:"flex",height:8,borderRadius:5,overflow:"hidden",background:C.line}}><span style={{width:`${100-weekend}%`,background:C.teal}}/><span style={{width:`${weekend}%`,background:C.accent}}/></div>
+      </div>}
+      {age&&<div><span style={{color:C.mute}}>주요 결제 연령</span><b style={{display:"block",fontSize:RF.section + 4}}>{age.label} · {percent(age.pct!)}</b></div>}
+    </div>}
+    {stations.length>0&&<div className="irp-cover-stations" style={{borderTop:`1px solid ${C.line}`,paddingTop:8}}>
+      <b style={{fontSize:RF.body,color:C.mute}}>가까운 지하철역 · 지역 안·경계 밖 250m</b>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"6px 14px",marginTop:5}}>{stations.map(st=><span key={st.name} style={{display:"inline-flex",alignItems:"center",gap:4,minWidth:0,fontSize:RF.section + 2,fontWeight:700}}>
+        {splitRailLines(st.lines).map(line=>{const badge=railLineBadge(line);return <span key={line} title={badge.name} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,flexShrink:0,borderRadius:"50%",background:badge.color,color:["#BDB092","#F5A200","#B7C452","#77C4A3"].includes(badge.color)?"#172033":"#fff",fontSize:RF.body}}>{badge.label}</span>;})}
+        <span style={{overflowWrap:"anywhere"}}>{st.name.replace(/역$/," ").trim()}역</span>
+      </span>)}</div>
+    </div>}
+    <p style={{ margin: 0, fontSize: RF.caption, color: C.mute }}>유형은 인구·입지 통계에 따른 참고용 분류입니다.</p>
   </section>;
 }
 

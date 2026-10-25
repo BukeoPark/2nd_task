@@ -20,7 +20,7 @@ export function ReportIndustryPage({ n, total, extras, unitName, takeLabel }: { 
   const notes = lines.filter((l) => l.note);
   return (
     <Page n={n} total={total}>
-      <Head eyebrowText="외식 업종별 비교" title={industryPageTitle(extras)}
+      <Head eyebrowText="업종 비교" title={industryPageTitle(extras)}
         text={ind.status === "ok" ? `${unitName} · ${ind.quarter_label} 기준으로 서울시 외식 10개 업종을 같은 지역에서 나란히 놓았습니다. 점포당 월평균 추정매출이 높은 순입니다. 자료가 없는 업종은 마지막에 표시합니다.` : (ind.message ?? NO_DATA)} />
       {ind.status === "ok" && (
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -123,7 +123,7 @@ export function ReportSurvivalPage({ n, total, extras, takeLabel }: { n: number;
 export function ReportCompetitionSurvivalPage({ n,total,extras,stability }: {n:number;total:number;extras?:ReportExtras;stability:AreaStability|null}) {
   const lic=extras?.license, ci=extras?.change_index;
   return <Page n={n} total={total} className="irp-competition-survival">
-    <Head eyebrowText="경쟁 변화와 영업 기간" title={survivalPageTitle(extras,stability)}/>
+    <Head eyebrowText="점포 변화·업력" title={survivalPageTitle(extras,stability)}/>
     {stability && <section><h3 style={sub}>최근 경쟁 변화</h3><div className="irp-tiles">{stability.facts.filter(f=>!/변동성/.test(f.label)).map(f=><TileBox key={f.label} {...f}/>)}</div></section>}
     {extras && <section><h3 style={sub}>가게의 영업 기간 · {lic?.scope_label}</h3>
       {lic?.status === "ok" && lic.active ? <>

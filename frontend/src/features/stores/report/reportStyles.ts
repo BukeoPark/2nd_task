@@ -44,6 +44,10 @@ export const reportCss = `
 
 .irp-section-head{break-inside:avoid}.irp-section-category{letter-spacing:0;word-break:keep-all}
 @media print{.irp-section-category{font-size:16px!important}.irp-section-head{gap:7px!important}}
+
+.irp-cover-page .irp-cover-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.irp-cover-page{gap:14px}
+@media print{.irp-page.irp-cover-page{gap:8px;padding:10mm}.irp-cover-page .irp-cover-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.irp-cover-page [aria-label="이 상권의 특징"]{padding:10px!important;gap:7px!important}.irp-cover-page .irp-cover-demand{padding-top:6px!important;gap:12px!important}}
 @page{size:A4;margin:0}
 @media print{
   html,body{margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}

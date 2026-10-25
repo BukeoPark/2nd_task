@@ -56,21 +56,21 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
   const no = (k: string) => pages.indexOf(k) + 1;
   return (
     <ReportDateContext.Provider value={date}>
-      <Page n={no("cover")} total={total}>
+      <Page n={no("cover")} total={total} className="irp-cover-page">
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={eyebrow}>{r.lens.eyebrow} · {lv?.quarterLabel ?? "최근 분기"} 기준</div>
           <ReportHeadline title={r.headline} />
         </div>
-        <ReportCharacter character={character} marketTypeName={marketTypeName} lines={[]} profile={r.profile} />
+        <ReportCharacter character={character} marketTypeName={marketTypeName} lines={[]} profile={r.profile} detail={detail} />
         <ReportLead compact lead={areaReportLead({level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
 
-        {r.tiles.length > 0 && <div className="irp-tiles">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
+        {r.tiles.length > 0 && <div className="irp-tiles irp-cover-metrics">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
         <ReportTriad hideTodo triad={buildTriad({mode:r.lens.mode,tiles:[],cautions:[],checklist:checklist.slice(0,2),sampleNote:lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores,"지역") : null})}/>
 
       </Page>
       {lv && (
         <Page n={no("level")} total={total}>
-          <Head eyebrowText="매출 수준과 흐름" title={`점포당 월평균 추정매출은 비교 ${r.subtitle.includes("행정동 단위") ? "행정동" : "상권"} 중앙값의 ${lv.ratio.toFixed(1)}배`} text={lv.text} />
+          <Head eyebrowText="매출 흐름" title={`점포당 월평균 추정매출은 비교 ${r.subtitle.includes("행정동 단위") ? "행정동" : "상권"} 중앙값의 ${lv.ratio.toFixed(1)}배`} text={lv.text} />
           <div className="irp-cols">
             <Fig title={`${lv.peerCount}개 비교 지역 중 어디에 있나`} note="지역별 점포당 월평균 추정매출 분포(만원). 점포가 적은 지역도 포함돼 값이 크게 흔들릴 수 있습니다."><HistogramChart level={lv} /></Fig>
             <Fig title="최근 분기별 점포당 월평균 추정매출" note={`단위 만원.${lv.storesFrom !== null && lv.storesNow !== null ? ` 서울시 집계 점포 수는 ${lv.storesFrom}곳에서 ${lv.storesNow}곳으로 바뀌었습니다.` : ""}`}><TrendChart level={lv} /></Fig>
@@ -88,7 +88,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
 
       {sl && (
         <Page n={no("slots")} total={total}>
-          <Head eyebrowText="시간대별 매출과 배후인구" title={slotsPageTitle(sl)} text={sl.text} />
+          <Head eyebrowText="시간대별 수요" title={slotsPageTitle(sl)} text={sl.text} />
           <Fig title="시간대별 비중 (%)" note="반올림 전 각 계열의 합은 100%입니다. 비교 평균은 같은 업종의 매출액 가중 평균이며 분석 지역 자신도 포함합니다. 유동인구와 매출은 다른 집계라 비중의 차이가 구매 전환율을 뜻하지 않습니다."
             legend={[[C.accent, "이 지역 매출 비중"], ...(sl.hasPilot ? ([[C.slate, `${sl.pilotLabel} 평균 매출 비중`]] as [string, string][]) : []), ...(sl.hasFloating ? ([[C.teal, "이 지역 유동인구 비중"]] as [string, string][]) : [])]}>
             <AreaSlotsChart s={sl} />
@@ -104,7 +104,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
       <ReportCompetitionPage n={no("competitors")} total={total} stores={stores} failed={storesFailed} map={extras?.map?.kind === "stores" ? <ReportAreaMap data={extras.map} name={unitName} categoryNames={stores?.category_mix.map(x=>x.name)}/> : undefined} />
       {hasStability && <ReportCompetitionSurvivalPage n={no("stab")} total={total} extras={extras} stability={st}/>}
       <Page n={no("location")} total={total} className="irp-location-page">
-        <Head eyebrowText="상권 유형과 주변 환경" title={locationPageTitle(character)}/>
+        <Head eyebrowText="입지·주변 시설" title={locationPageTitle(character)}/>
         <ReportLocationVisuals character={character} marketTypeName={marketTypeName} map={(extras?.facility_map ?? extras?.map)?.kind === "facilities" ? <ReportAreaMap data={(extras?.facility_map ?? extras?.map)!} name={unitName}/> : undefined}/>
         {lo && <div className="irp-tiles">{lo.facts.filter(f => !character || (!f.label.includes("지하철") && !f.label.includes("버스"))).map(f=><TileBox key={f.label} label={f.label} value={f.value} note={f.note}/>)}</div>}
         {lo && <p style={{fontSize:RF.caption,color:C.mute,margin:0}}>소규모 상가 참고값 · 선택 지역의 실제 계약 임대료·공실률과 다를 수 있습니다.</p>}
@@ -112,7 +112,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
 
       <Page n={no("summary")} total={total} className="irp-summary-page">
         <section className="irp-result-section">
-          <Head eyebrowText="★ 종합 정리 및 창업전략" title={summaryPageTitle(r)}/>
+          <Head eyebrowText="★ 종합·창업전략" title={summaryPageTitle(r)}/>
           {/* 인사이트가 있으면 번호 상자(검은 제목 + 회색 근거·확인할 일), 자료가 없으면 예전처럼 핵심 결과 목록을 쓴다 */}
           <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>
             {insights.length
@@ -134,7 +134,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
           </div>
       </Page>
       <Page n={no("basis")} total={total} className="irp-appendix">
-        <Head eyebrowText="자료 기준 · 계산 방법" title="자료마다 집계 범위와 기준기간이 다릅니다" text={`작성 ${date} · 고객 구성 ${detail?.period ?? "기준기간 미확인"}. 작성일과 자료 기준일은 다릅니다.`}/>
+        <Head eyebrowText="자료·계산 기준" title="자료마다 집계 범위와 기준기간이 다릅니다" text={`작성 ${date} · 고객 구성 ${detail?.period ?? "기준기간 미확인"}. 작성일과 자료 기준일은 다릅니다.`}/>
 
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead><tr>{["지표", "기준기간", "집계 범위·참고사항"].map((v) => <th key={v} style={{ textAlign: "left", padding: 6, borderBottom: `1px solid ${C.line}` }}>{v}</th>)}</tr></thead>

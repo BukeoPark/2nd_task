@@ -308,10 +308,8 @@ export function buildAreaReport(inp: AreaReportInput): AreaReport {
 
   const tiles: Tile[] = [];
   if (level) {
-    tiles.push({ label: `${unitWord} 점포당 월평균 추정매출`, value: `${fmt(level.me)}만원`, note: tooFew ? `점포 ${level.sampleStores}곳 — 참고용(${SAMPLE_MIN}곳 미만)` : `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
-    if (tooFew) { /* 점포 10곳 미만 — 순위·증감 타일은 만들지 않는다 */ }
-    else if (level.bigRank !== null) tiles.push({ label: `점포 ${BIG_PEER_STORES}곳 이상 ${level.bigCount}곳 중`, value: `${level.bigRank}위`, note: `전체 ${level.peerCount}곳 중 ${level.rank}위`, tone: "accent" });
-    else if (level.rank !== null) tiles.push({ label: `${level.peerCount}곳 중`, value: `${level.rank}위`, note: "점포 수가 적은 곳이 섞여 있습니다", tone: "accent" });
+    tiles.push({ label: "점포당 월평균 추정매출", value: `${fmt(level.me)}만원`, note: tooFew ? `점포 ${level.sampleStores}곳 — 참고용(${SAMPLE_MIN}곳 미만)` : `${level.peerLabel} 중앙값 ${fmt(level.median)}만원`, tone: "plain" });
+    if (!tooFew) tiles.push({label:"비교 중앙값 대비",value:`${level.ratio.toFixed(1)}배`,note:`${level.peerLabel} ${level.peerCount}곳 기준`,tone:"accent"});
     if (level.yoyTotal !== null && !tooFew) tiles.push({ label: "총매출 증감(전년 동기)", value: signed(level.yoyTotal), note: [level.storesFrom !== null && level.storesNow !== null ? `점포 수 ${level.storesFrom}→${level.storesNow}곳(서울시 집계)` : "", level.yoyCaution ? "소규모 상권: 변동성 주의" : ""].filter(Boolean).join(" · "), tone: level.yoyTotal < 0 ? "neg" : "plain" });
   }
   if (stability?.churn?.closeRate != null && !tooFew) {
