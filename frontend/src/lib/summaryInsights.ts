@@ -7,7 +7,7 @@
 import type { AreaCharacter, FoodUnitStoresResponse, ReportDetail, ReportExtras } from "./apiClient";
 import type { AreaReport } from "./areaReport";
 
-/** detail 이 빈 문자열이면 회색 글을 쓰지 않는다(특징은 제목만). */
+/** 제목 아래에 실제 근거와 확인할 일을 표시한다. */
 export interface Insight { key: "feature" | "sales" | "demand" | "flpop" | "industry" | "survival"; title: string; detail: string }
 
 const HIGH = 1.25;   // lib/interpretRules 와 같은 '눈에 띄게 높다' 기준(그 역수 0.8 이하는 낮다)
@@ -90,12 +90,22 @@ function survivalInsight(extras?: ReportExtras, st?: AreaReport["stability"]): I
 const TRAIT_NAME: Record<string, string> = { business: "업무 중심", residential: "주거 중심", transit: "교통 거점", commercial: "상업 집중" };
 const TRAIT_ORDER = ["business", "residential", "transit", "commercial"];
 
-/** 가장 두드러지는 특징 — 상권 유형(업무·주거·교통 거점·상업 집중, 최대 둘)을 제목 한 줄로만 쓴다(요약 글 없음). */
+/** 상권 유형과 실제 판정 근거를 함께 쓰고 입지에서 확인할 방향을 덧붙인다. */
 function featureInsight(character?: AreaCharacter | null): Insight | null {
   const t = character?.type;
   if (!t || t.kind === "hold") return null;
   const keys = TRAIT_ORDER.filter((k) => t.traits.some((x) => x.key === k));
-  return { key: "feature", title: keys.length ? `${keys.slice(0, 2).map((k) => TRAIT_NAME[k]).join("·")} 상권으로 분류됩니다` : "직장인과 주민이 섞인 상권으로 분류됩니다", detail: "" };
+  const evidence = keys.slice(0,2).map(key => t.traits.find(x=>x.key===key)?.evidence?.[0]?.replace(/\s*\([^)]*\)/g, "").trim()).filter(Boolean);
+  const w = character?.sections.demand.worker_share_pct;
+  if (!evidence.length && w != null) evidence.push(`직장인구 ${r0(w)}% · 상주인구 ${r0(100-w)}%`);
+  if (!evidence.length && t.mixed_evidence?.[0]) evidence.push(t.mixed_evidence[0]);
+  const check = keys.includes("transit") && keys.includes("business") ? "역에서 후보지까지의 동선과 식사 시간대 수요를 함께 확인하세요."
+    : keys.includes("business") ? "주변 직장인의 식사 동선과 시간대별 방문을 확인하세요."
+    : keys.includes("residential") ? "주민의 반복 방문과 포장 수요를 확인하세요."
+    : keys.includes("transit") ? "역 이용객이 후보지 앞을 실제로 지나는지 확인하세요."
+    : keys.includes("commercial") ? "경쟁점이 모인 구간과 후보지의 차별점을 확인하세요."
+    : "직장인·주민의 이용 시간과 방문 목적을 나눠 확인하세요.";
+  return { key: "feature", title: keys.length ? `${keys.slice(0, 2).map((k) => TRAIT_NAME[k]).join("·")} 상권으로 분류됩니다` : "직장인과 주민이 섞인 상권으로 분류됩니다", detail: [evidence.length ? `${evidence.join(" · ")}.` : null, check].filter(Boolean).join(" ") };
 }
 
 export function summaryInsights(i: { report: AreaReport; character?: AreaCharacter | null; detail?: ReportDetail; stores?: FoodUnitStoresResponse; extras?: ReportExtras }): Insight[] {
@@ -111,7 +121,7 @@ export function summaryInsights(i: { report: AreaReport; character?: AreaCharact
 export function summaryHeadline(i: { report: AreaReport; character?: AreaCharacter | null; extras?: ReportExtras }, mode: "owner" | "founder"): string | null {
   const lv = i.report.level;
   const w = i.character?.sections.demand.worker_share_pct ?? null;
-  const demand = w === null ? null : w >= 60 ? "직장인 수요가 중심인" : w <= 30 ? "주민 수요가 중심인" : "직장인과 주민 수요가 섞인";
+  const demand = w === null ? null : w >= 60 ? "직장인 중심" : w <= 30 ? "주민 중심" : "직장인·주민 혼합";
   const usable = lv && lv.sampleStatus !== "too_few" ? lv : null;
   const dir = usable?.yoyTotal != null ? (usable.yoyTotal >= TREND ? "up" : usable.yoyTotal <= -TREND ? "down" : "flat") : null;
   const sales = usable ? (usable.ratio >= HIGH ? "매출은 높은 편" : usable.ratio <= LOW ? "매출은 낮은 편" : "매출은 중앙값 수준") : null;
@@ -132,8 +142,9 @@ export function summaryHeadline(i: { report: AreaReport; character?: AreaCharact
     : null;
   if (!demand && !sales && !risk) return null;
   const subject = demand ? `${demand} 상권` : "이 상권";
-  const fallbackCheck = mode === "founder" ? "내 매출 목표와의 격차" : "내 매출과의 차이";
-  const salesPart = sales ? `${sales}${risk ? "이지만" : "이고"}` : "";
-  const checkPart = risk ? `${risk.why} ${risk.check}부터 확인하세요` : `${fallbackCheck}부터 확인하세요`;
-  return [`${subject} —`, salesPart, checkPart].filter(Boolean).join(" ");
+  const check = survival || manyClosures ? "오래 영업한 가게의 공통점을 확인하세요"
+    : dir === "down" ? "매출 감소 원인을 먼저 확인하세요"
+    : mismatch ? "매출 집중 시간대에 맞춰 준비하세요"
+    : mode === "founder" ? "목표 매출과의 차이를 확인하세요" : "내 매출과의 차이를 확인하세요";
+  return `${subject} — ${sales ? `${sales}, ` : ""}${check}`;
 }

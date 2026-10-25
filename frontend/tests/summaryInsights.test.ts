@@ -34,11 +34,12 @@ const slots = { rows: [{ label: "11~14시", sales: 45.4, pilot: 31, flpop: 18.7 
 const det = (weekend: number) => ({ composition: { 요일: [{ label: "주말", pct: weekend }] } }) as unknown as ReportDetail;
 const pick = (all: ReturnType<typeof summaryInsights>, key: string) => all.find((x) => x.key === key);
 
-test("특징은 상권 유형을 제목 한 줄로만 쓰고 요약 글(회색 줄)은 없다", () => {
+test("특징에는 분류 근거와 입지 검토 방향을 함께 표시한다", () => {
   const all = summaryInsights({ report: rep({ level: lvl(2.9, -7.3) }), character: ch(97, ["commercial", "business", "transit"]) });
   assert.equal(all[0].key, "feature");
   assert.equal(all[0].title, "업무 중심·교통 거점 상권으로 분류됩니다");
-  assert.equal(all[0].detail, "");
+  assert.match(all[0].detail, /직장인구 97%/);
+  assert.match(all[0].detail, /동선과 식사 시간대 수요/);
   assert.equal(summaryInsights({ report: rep({}), character: ch(50) })[0].title, "직장인과 주민이 섞인 상권으로 분류됩니다");
   assert.equal(pick(summaryInsights({ report: rep({ level: lvl(2.9, 1) }) }), "feature"), undefined);   // 상권 유형 자료가 없으면 특징을 만들지 않는다
 });
@@ -112,12 +113,30 @@ test("종합 핵심 메시지: 수요·매출 수준·가장 신경 쓸 점·먼
   const license = { status: "ok", cohort: { status: "ok", rate: 0.4, horizon_years: 3, denominator: 120 }, active: { enough: true, median_years: 6.2 } };
   const extras = { license } as unknown as ReportExtras;
   const h = summaryHeadline({ report: rep({ level: lvl(1.0, 1.2) }), character: ch(30), extras }, "founder")!;
-  assert.equal(h, "주민 수요가 중심인 상권 — 매출은 중앙값 수준이지만 폐업이 잦으니 버틴 가게의 공통점부터 확인하세요");
+  assert.equal(h, "주민 중심 상권 — 매출은 중앙값 수준, 오래 영업한 가게의 공통점을 확인하세요");
   assert.ok(!/1\.0배|\+1\.2/.test(h)); // 인사이트 제목(점포당 매출은 중앙값의 1.0배…)과 같은 숫자를 쓰지 않는다
   // 매출이 줄면 그 이유를, 신경 쓸 점이 없으면 내 목표와의 격차를 먼저 확인하라고 한다
-  assert.equal(summaryHeadline({ report: rep({ level: lvl(0.6, -8) }), character: ch(80) }, "founder"), "직장인 수요가 중심인 상권 — 매출은 낮은 편이지만 총매출이 줄고 있으니 줄어든 이유부터 확인하세요");
-  assert.equal(summaryHeadline({ report: rep({ level: lvl(1.6, 4) }), character: ch(50) }, "founder"), "직장인과 주민 수요가 섞인 상권 — 매출은 높은 편이고 내 매출 목표와의 격차부터 확인하세요");
+  assert.equal(summaryHeadline({ report: rep({ level: lvl(0.6, -8) }), character: ch(80) }, "founder"), "직장인 중심 상권 — 매출은 낮은 편, 매출 감소 원인을 먼저 확인하세요");
+  assert.equal(summaryHeadline({ report: rep({ level: lvl(1.6, 4) }), character: ch(50) }, "founder"), "직장인·주민 혼합 상권 — 매출은 높은 편, 목표 매출과의 차이를 확인하세요");
   // 자료가 없으면 만들지 않는다(예전 제목을 쓴다). 점포가 적어 매출 비교가 참고용이면 매출 말은 빼고 수요만 쓴다
   assert.equal(summaryHeadline({ report: rep({}) }, "founder"), null);
-  assert.equal(summaryHeadline({ report: rep({ level: lvl(3, 20, { sampleStatus: "too_few", sampleStores: 8 }) }), character: ch(10) }, "owner"), "주민 수요가 중심인 상권 — 내 매출과의 차이부터 확인하세요");
+  assert.equal(summaryHeadline({ report: rep({ level: lvl(3, 20, { sampleStatus: "too_few", sampleStores: 8 }) }), character: ch(10) }, "owner"), "주민 중심 상권 — 내 매출과의 차이를 확인하세요");
+});
+
+test("긴 종합 문구는 짧게 표현하고 원래 시간대 불일치 근거는 세부 항목에 남긴다", async () => {
+  const {summaryHeadline}=await import("../src/lib/summaryInsights.ts");
+  const report=rep({level:lvl(1.9,-1.8),slots});
+  const h=summaryHeadline({report,character:ch(88,["business","transit"])},"founder")!;
+  assert.equal(h,"직장인 중심 상권 — 매출은 높은 편, 매출 집중 시간대에 맞춰 준비하세요");
+  assert.ok(h.split(" — ")[1].length < 40);
+  assert.match(pick(summaryInsights({report}),"flpop")!.title,/17~21시.*11~14시/);
+});
+test("특징은 실제 유형 판정 근거를 사용하며 누락된 수치를 만들지 않는다", () => {
+  const character=ch(88,["business","transit"]);
+  character.type.traits[0].evidence=["직장인구 88% (기준 60% 이상)"];
+  character.type.traits[1].evidence=["250m 이내 포함 역 5곳"];
+  const feature=summaryInsights({report:rep({}),character})[0];
+  assert.match(feature.detail,/직장인구 88% · 250m 이내 포함 역 5곳/);
+  const missing=summaryInsights({report:rep({}),character:ch(null,["transit"])})[0];
+  assert.doesNotMatch(missing.detail,/0%|0곳|undefined/);
 });

@@ -11,5 +11,5 @@ export function ReportFitLine({ children }: { children: ReactNode }) {
     window.addEventListener("beforeprint",fit);window.addEventListener("afterprint",fit);
     return()=>{observer.disconnect();window.removeEventListener("beforeprint",fit);window.removeEventListener("afterprint",fit);};
   },[children]);
-  return <span ref={ref} style={{display:"block",minWidth:0,whiteSpace:"nowrap"}}>{children}</span>;
+  return <span ref={ref} style={{display:"block",width:"100%",maxWidth:"100%",minWidth:0,whiteSpace:"nowrap"}}>{children}</span>;
 }

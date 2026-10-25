@@ -42,7 +42,7 @@ export const reportCss = `
 .irp-competition-map{min-width:0}.irp-competition-map .irp-report-map-canvas{height:320px!important}
 @media print{.irp-page.irp-competition-page{padding:10mm;gap:8px;break-inside:avoid}.irp-competition-page>div{break-inside:auto}.irp-competition-page .irp-share-list{font-size:12px!important;gap:5px 8px}.irp-competition-page .irp-share-row{font-size:12px!important;line-height:1.4}.irp-competition-page table{font-size:12px!important;line-height:1.4}.irp-competition-page td,.irp-competition-page th{padding:3px!important}.irp-competition-map .irp-report-map-canvas{height:320px!important}.irp-competition-map .irp-map-legend{font-size:11px!important;gap:4px 12px!important;margin-top:5px!important}.irp-competition-page p{margin:0;font-size:11px!important;line-height:1.4}}
 
-.irp-section-head{break-inside:avoid}.irp-section-category{letter-spacing:0;word-break:keep-all}
+.irp-section-head{break-inside:avoid;min-width:0;max-width:100%}.irp-result-section,.irp-strategy-section{min-width:0;max-width:100%;grid-template-columns:minmax(0,1fr)}.irp-section-category{letter-spacing:0;word-break:keep-all}
 @media print{.irp-section-category{font-size:16px!important}.irp-section-head{gap:7px!important}}
 
 .irp-cover-page .irp-cover-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}

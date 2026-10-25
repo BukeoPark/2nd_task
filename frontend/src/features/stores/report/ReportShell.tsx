@@ -22,10 +22,12 @@ export function Page({ n, total, children, className = "" }: { n: number; total:
     </section>
   );
 }
-export const Head = ({ eyebrowText, title, text }: { eyebrowText: string; title: string; text?: string }) => (
-  <div className="irp-section-head" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+export const Head = ({ eyebrowText, title, text, splitSummary = false }: { eyebrowText: string; title: string; text?: string; splitSummary?: boolean }) => (
+  <div className="irp-section-head" style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, maxWidth: "100%" }}>
     <div className="irp-section-category" style={{fontSize:RF.section,fontWeight:800,lineHeight:1.4,color:C.accent,borderLeft:`3px solid ${C.accent}`,paddingLeft:9}}>{eyebrowText}</div>
-    <h2 style={h2}>{title}</h2>
+    <h2 style={{...h2,minWidth:0,maxWidth:"100%",width:"100%"}}>{splitSummary && title.includes(" — ")
+      ? title.split(" — ", 2).map((line, i) => <ReportFitLine key={i}>{line.trim()}</ReportFitLine>)
+      : title}</h2>
     {text && <p style={{ margin: 0 }}>{text}</p>}
   </div>
 );

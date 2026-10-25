@@ -112,7 +112,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
 
       <Page n={no("summary")} total={total} className="irp-summary-page">
         <section className="irp-result-section">
-          <Head eyebrowText="★ 종합·창업전략" title={(insights.length >= 2 ? summaryHeadline({ report: r, character, extras }, r.lens.mode) : null) ?? summaryPageTitle(r)}/>
+          <Head splitSummary eyebrowText="★ 종합·창업전략" title={(insights.length >= 2 ? summaryHeadline({ report: r, character, extras }, r.lens.mode) : null) ?? summaryPageTitle(r)}/>
           {/* 인사이트가 있으면 번호 상자(검은 제목 + 회색 근거·확인할 일), 자료가 없으면 예전처럼 핵심 결과 목록을 쓴다 */}
           <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>
             {insights.length

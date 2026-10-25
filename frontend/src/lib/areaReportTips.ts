@@ -1,7 +1,7 @@
 import type { AreaReport } from "./areaReport";
 import type { AreaCharacter, ReportDetail, FoodUnitStoresResponse } from "./apiClient";
 
-export interface ReportTip { key: string; title: string; evidence: string; action: string }
+export interface ReportTip { key: string; title: string; evidence: string; action: string; salesCaution?: boolean }
 const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
 export function areaReportTips(r: AreaReport, detail?: ReportDetail, stores?: FoodUnitStoresResponse): ReportTip[] {
   if (r.lens.mode !== "founder") return [];
@@ -19,13 +19,38 @@ export function areaReportTips(r: AreaReport, detail?: ReportDetail, stores?: Fo
   const ages = detail?.composition["연령"]?.filter((a) => a.pct != null) ?? [];
   const age = ages.length ? ages.reduce((a, b) => a.pct! > b.pct! ? a : b) : null;
   if (age && age.pct! >= 45) add("customer", `${age.label} 중심의 초기 고객 확보`, `${age.label} 매출 비중 ${age.pct!.toFixed(1)}%`, `초기 메뉴 테스트와 홍보의 우선 고객을 ${age.label}로 좁혀볼 만합니다. 여러 고객층을 동시에 겨냥하기보다 해당 고객층의 반응을 보며 메뉴·가격 구성을 다듬는 전략입니다.`);
-  if (lv && lv.sampleStatus !== "too_few" && lv.yoyTotal != null && Math.abs(lv.yoyTotal) >= 5) {
-    const falling = lv.yoyTotal < 0;
-    add("trend", falling && lv.ratio >= 1.5 ? "매출 수준은 높지만 확장보다 집중이 필요한 흐름" : falling ? "감소 흐름에 맞춘 가벼운 초기 운영" : "매출 증가기에 맞춘 단계적 운영 확대", `점포당 매출 비교 중앙값의 ${lv.ratio.toFixed(1)}배 · 총매출 전년 동기 ${signed(lv.yoyTotal)}${lv.flpopYoy != null && Math.abs(lv.flpopYoy) >= 5 ? ` · 유동인구 ${signed(lv.flpopYoy)}` : ""}`, falling ? "높은 매출 수준만 보고 큰 매장과 많은 인력을 전제하기보다 핵심 메뉴·주력 시간대 중심으로 시작하세요. 좌석과 인력은 실제 주문이 쌓이는 속도에 맞춰 늘리는 전략이 적절합니다." : "초기에는 핵심 메뉴와 운영 규모를 유지하면서 주문 증가가 이어지는 시간대부터 인력·준비량을 단계적으로 늘리는 방식을 검토하세요.");
-  }
+  const trend = salesTrendStrategy(lv);
+  if (trend) tips.push(trend);
   const mix = stores?.category_mix[0];
   if (mix && mix.share_pct >= 40 && stores!.total >= 20) add("competition", `${mix.name} 중심 경쟁에서 다른 선택 이유 만들기`, `${mix.name} ${mix.count}곳 · 선택 업종 점포의 ${mix.share_pct.toFixed(1)}%`, `같은 ${mix.name}으로 진입한다면 대표 메뉴·가격·제공 방식 중 뚜렷한 차이를 하나 정하세요. 다른 메뉴를 계획한다면 기존 식사 수요와 어떤 목적에서 연결되는지 먼저 정리하는 편이 좋습니다.`);
   return tips;
+}
+
+/** 전년 동기 두 매출 지표를 같은 기준으로 비교한다. ±5%는 통계적 유의성이 아닌 문구 분류 기준이다. */
+export function salesTrendStrategy(lv: AreaReport["level"]): ReportTip | null {
+  if (!lv || lv.sampleStatus === "too_few") return null;
+  const valid = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
+  const total = valid(lv.yoyTotal) ? lv.yoyTotal : null;
+  const per = valid(lv.yoyPerStore) ? lv.yoyPerStore : null;
+  const direction = (n: number | null) => n === null ? null : n >= 5 ? 1 : n <= -5 ? -1 : 0;
+  const t = direction(total), p = direction(per);
+  if ((t === null || t === 0) && (p === null || p === 0)) return null;
+  const facts = [total !== null ? `총매출 ${signed(total)}` : "총매출 증감 미확인", per !== null ? `점포당 월평균 추정매출 ${signed(per)}` : "점포당 매출 증감 미확인"];
+  if (valid(lv.storesFrom) && valid(lv.storesNow) && lv.storesFrom > 0 && lv.storesNow > 0) {
+    facts.push(`서울시 집계 점포 수 ${lv.storesFrom.toLocaleString("ko-KR")}→${lv.storesNow.toLocaleString("ko-KR")}곳`);
+  }
+  const evidence = `전년 동기 대비 · ${facts.join(" · ")}`;
+  const make = (title: string, action: string, salesCaution = true): ReportTip => ({key:"trend",title,evidence,action,salesCaution});
+  const limit = " 개별 가게의 매출 변화나 원인을 확정하는 자료는 아닙니다.";
+  if (t === null || p === null) return make("매출 지표를 함께 확인한 뒤 투자 규모 판단", "한쪽 지표만으로 시장 확대나 점포별 영업 개선을 판단하기 어렵습니다. 누락된 지표와 경쟁점의 실제 영업 상황을 확인한 뒤 초기 투자 규모를 정하세요." + limit);
+  if (t === 1 && p === 1) return make("시장·점포당 매출 증가와 경쟁 진입을 함께 점검", "두 매출 지표가 함께 늘었습니다. 점포 수 변화와 신규 경쟁점의 메뉴·가격을 살펴보고, 후보지에서 핵심 메뉴의 실제 주문 수요를 검증하세요. 매장·인력 확대를 자동으로 권하는 신호는 아닙니다." + limit, false);
+  if (t === 1 && p === -1) return make("시장 확대 속 점포당 매출 감소에 대비", "총매출이 늘어도 점포당 매출은 줄었습니다. 점포 수 증가와 경쟁 구성이 함께 바뀌었는지 살펴보고, 차별화할 메뉴·가격과 보수적인 초기 규모를 검토하세요." + limit);
+  if (t === -1 && p === 1) return make("점포당 매출 개선이 점포 감소와 겹치는지 확인", "총매출은 줄었지만 점포당 매출은 늘었습니다. 집계 점포 수 감소나 업종 구성 변화에 따른 평균 변화인지 확인하고, 수요 회복으로 단정해 투자하지 마세요." + limit);
+  if (t === -1 && p === -1) return make("시장·점포당 매출 감소에 맞춘 보수적 진입", "두 매출 지표가 함께 줄었습니다. 초기 고정비를 낮추고 핵심 메뉴·주력 시간대의 실제 수요를 먼저 검증하세요. 점포 수 변화와 주변 폐업·이전 상황도 함께 살펴보세요." + limit);
+  if (p === -1) return make("점포당 매출 감소를 고려해 초기 투자 조절", "총매출 변동이 작아도 점포당 매출은 줄었습니다. 점포 수와 경쟁 구성을 확인하고, 초기 비용을 낮춘 상태에서 주문 수요를 검증하세요." + limit);
+  if (t === -1) return make("시장 매출 감소와 점포 구성 변화 점검", "점포당 매출의 변동이 작더라도 총매출은 줄었습니다. 점포 수 감소와 업종 구성 변화가 함께 있었는지 확인하고 보수적으로 진입하세요." + limit);
+  if (t === 1) return make("총매출 증가가 점포당 개선으로 이어지는지 확인", "총매출은 늘었지만 점포당 매출의 변동은 작습니다. 점포 수 증가와 경쟁 진입을 확인하고, 총매출 증가만으로 운영 규모를 늘리지 마세요." + limit);
+  return make("점포당 매출 개선과 시장 수요를 함께 확인", "점포당 매출은 늘었지만 총매출의 변동은 작습니다. 점포 수·업종 구성 변화와 후보지의 실제 구매 수요를 확인한 뒤 투자 규모를 정하세요." + limit, false);
 }
 
 /** 일반적인 현장 확인은 전략 팁과 분리해 기존 체크리스트에 합친다. */
@@ -78,8 +103,42 @@ export function areaFeatureLines(r: AreaReport, detail?: ReportDetail, stores?: 
   return out.slice(0, 4);
 }
 
-/** 창업 전략 위에 쓰는 인사이트 한 줄 — 자료로 두드러진 전략(areaStrategies 순서의 첫 항목)의 제목을 그대로 쓴다.
- *  예: 총매출이 늘면 '매출 증가기에 맞춘 단계적 운영 확대'. 전략이 없으면 쓰지 않는다(null). */
+/** 세부 카드 제목을 복사하지 않고 수요·입지와 운영 방향을 조합한 대표 창업전략을 만든다. */
 export function strategyHeadline(tips: ReportTip[]): string | null {
-  return tips.length > 0 ? tips[0].title : null;
+  if (!tips.length) return null;
+  const keys = new Set(tips.map(t => t.key));
+  const trend = tips.find(t => t.key === "trend");
+  const falling = trend?.salesCaution === true;
+  const business = keys.has("trait-business");
+  const residential = keys.has("trait-residential");
+  const transit = keys.has("trait-transit");
+  const competition = keys.has("competition") || keys.has("trait-commercial");
+  // 고객과 입지의 결합을 먼저 표현하고, 매출 흐름은 초기 규모·검증 방향에 반영한다.
+  if (business && transit) return falling
+    ? "출퇴근 동선의 직장인 수요부터 작게 검증하세요"
+    : "직장인 식사와 이동 수요를 함께 잡는 창업을 검토하세요";
+  if (residential && transit) return falling
+    ? "주민·역 이용객의 반복 수요부터 작게 검증하세요"
+    : "주민의 재방문과 역 이용객의 포장 수요를 함께 겨냥하세요";
+  if (business) return falling
+    ? "직장인 주력 식사 수요에 집중해 초기 규모를 낮추세요"
+    : "직장인의 반복 식사를 겨냥해 메뉴와 제공 방식을 설계하세요";
+  if (residential) return falling
+    ? "생활권 단골 수요를 확인하며 작은 규모로 시작하세요"
+    : "주민이 반복해서 찾을 식사와 포장 구성을 설계하세요";
+  if (transit) return falling
+    ? "역 주변의 실제 구매 수요를 확인하며 작게 시작하세요"
+    : "역에서 매장까지의 동선과 빠른 이용 방식을 함께 설계하세요";
+  if (competition) return falling
+    ? "경쟁점과 다른 선택 이유를 검증한 뒤 투자하세요"
+    : "비슷한 가게 사이에서 선택받을 메뉴·가격·방식을 정하세요";
+  if (keys.has("peak")) return falling
+    ? "주력 시간대의 주문 수요를 확인하며 작게 시작하세요"
+    : "매출이 몰리는 시간에 맞춰 메뉴와 처리 동선을 설계하세요";
+  if (keys.has("weekend")) return "요일별 수요에 맞춰 영업일·메뉴·준비량을 함께 설계하세요";
+  if (keys.has("customer")) return "주요 고객의 이용 목적에 맞춰 초기 메뉴와 가격을 검증하세요";
+  if (trend) return falling
+    ? "초기 고정비를 낮추고 실제 주문을 확인한 뒤 투자하세요"
+    : "매출 흐름과 경쟁 진입을 함께 살펴 초기 수요를 검증하세요";
+  return "시간대별 실제 수요를 확인해 메뉴와 운영 규모를 정하세요";
 }
