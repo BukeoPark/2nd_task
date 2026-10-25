@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # 앱이 쓰는 캐시(Google Place ID 연결 결과). git 제외.
     cache_dir: Path = ROOT / "data" / "cache"
 
+    # 단일 서버 정식 배포: React 빌드와 API를 같은 주소에서 제공한다.
+    frontend_dist: Path | None = None
+    port: int = 8000
+    data_bundle_url: str = ""
+    data_bundle_sha256: str = ""
+
     # CORS 허용 오리진 (프론트 개발 서버)
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 

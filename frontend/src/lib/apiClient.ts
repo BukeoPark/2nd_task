@@ -1,7 +1,7 @@
 /** 백엔드 `/api` 호출은 이 모듈을 통해서만 한다 — 컴포넌트에서 fetch 직접 호출 금지. */
 import type { FacilityCountState, FacilityType } from "./facilityText";
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 /** 서버가 거절한 요청(HTTP 상태 포함) — 4xx 는 같은 요청을 다시 해도 같은 결과라 재시도 대상이 아니다. */
 export class ApiError extends Error {

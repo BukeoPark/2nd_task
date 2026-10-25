@@ -30,3 +30,8 @@ app.include_router(search.router)
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
+
+
+# API를 먼저 등록한 뒤 프론트를 마운트해야 /api 요청이 정적 파일에 가려지지 않는다.
+from app.web import mount_frontend
+mount_frontend(app, settings.frontend_dist)
