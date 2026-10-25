@@ -104,3 +104,36 @@ export function summaryInsights(i: { report: AreaReport; character?: AreaCharact
   return [featureInsight(i.character), sales, demandInsight(i.character, i.detail), flpopInsight(i.report.slots, i.report.level?.flpopYoy, salesUsedFlpop),
     industryInsight(i.stores, i.extras), survivalInsight(i.extras, i.report.stability)].filter((x): x is Insight => x !== null);
 }
+
+/** 종합·창업전략 쪽 맨 위 핵심 메시지 — 아래 인사이트(특징·매출·수요·유동인구·업종·영업 기간)를 한 문장의 결론으로 묶는다.
+ * 상권의 성격(수요) → 매출 수준 → 가장 신경 쓸 점 → 먼저 확인할 일 순서로 말하고, 인사이트 제목과 같은 숫자는 되풀이하지 않는다(매출은 '중앙값 수준'처럼 말만).
+ * 점수·성공 가능성은 말하지 않고, 근거가 없으면 그 부분을 뺀다. 성격·매출·주의점이 모두 없으면 null(호출하는 쪽이 예전 제목을 쓴다). */
+export function summaryHeadline(i: { report: AreaReport; character?: AreaCharacter | null; extras?: ReportExtras }, mode: "owner" | "founder"): string | null {
+  const lv = i.report.level;
+  const w = i.character?.sections.demand.worker_share_pct ?? null;
+  const demand = w === null ? null : w >= 60 ? "직장인 수요가 중심인" : w <= 30 ? "주민 수요가 중심인" : "직장인과 주민 수요가 섞인";
+  const usable = lv && lv.sampleStatus !== "too_few" ? lv : null;
+  const dir = usable?.yoyTotal != null ? (usable.yoyTotal >= TREND ? "up" : usable.yoyTotal <= -TREND ? "down" : "flat") : null;
+  const sales = usable ? (usable.ratio >= HIGH ? "매출은 높은 편" : usable.ratio <= LOW ? "매출은 낮은 편" : "매출은 중앙값 수준") : null;
+  const l = i.extras?.license;
+  const survival = !!(l && l.status === "ok" && l.cohort?.status === "ok" && l.cohort.rate != null && l.cohort.rate >= 0.3);
+  const c = i.report.stability?.churn;
+  const close = c?.closeRate != null ? c.closeRate * 100 : null, med = c?.medClose != null ? c.medClose * 100 : null;
+  const manyClosures = close !== null && med !== null && med > 0 && close >= med * FOCUS;
+  const rows = i.report.slots?.rows ?? [];
+  const withF = rows.filter((x) => x.flpop != null);
+  const peakF = withF.length ? withF.reduce((a, b) => (b.flpop! > a.flpop! ? b : a)) : null;
+  const peakS = rows.length ? rows.reduce((a, b) => (b.sales > a.sales ? b : a)) : null;
+  const mismatch = !!peakF && !!peakS && peakF.label !== peakS.label;
+  // 가장 신경 쓸 점 한 가지(우선순위: 폐업 → 매출 감소 → 시간대 어긋남)
+  const risk = survival || manyClosures ? { why: "폐업이 잦으니", check: "버틴 가게의 공통점" }
+    : dir === "down" ? { why: "총매출이 줄고 있으니", check: "줄어든 이유" }
+    : mismatch ? { why: "지나는 사람이 많은 때와 매출이 나는 때가 다르니", check: "손님이 몰리는 시간대 영업 준비" }
+    : null;
+  if (!demand && !sales && !risk) return null;
+  const subject = demand ? `${demand} 상권` : "이 상권";
+  const fallbackCheck = mode === "founder" ? "내 매출 목표와의 격차" : "내 매출과의 차이";
+  const salesPart = sales ? `${sales}${risk ? "이지만" : "이고"}` : "";
+  const checkPart = risk ? `${risk.why} ${risk.check}부터 확인하세요` : `${fallbackCheck}부터 확인하세요`;
+  return [`${subject} —`, salesPart, checkPart].filter(Boolean).join(" ");
+}

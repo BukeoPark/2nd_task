@@ -17,7 +17,8 @@ export interface TourStep {
   avoid?: Size;
 }
 
-export const TOUR_VERSION = 1;
+// 안내 내용이 바뀌어 이전에 '봤음'으로 저장된 브라우저에서도 새 안내를 한 번 다시 보게 한다(v2).
+export const TOUR_VERSION = 2;
 export const tourStorageKey = (mode: Mode) => `tour:v${TOUR_VERSION}:${mode}`;
 
 /** 저장된 값이 '봤음'이 아니면 처음 방문으로 보고 환영 팝업을 띄운다. */

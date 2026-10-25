@@ -4,7 +4,7 @@ import { RF } from "../stores/report/reportTypography";
 import { reportFilename } from "../../lib/reportFilename";
 import { ReportHeadline } from "../stores/report/ReportHeadline";
 import { areaFeatureLines, areaStrategies, founderFieldChecks, strategyHeadline } from "../../lib/areaReportTips";
-import { summaryInsights } from "../../lib/summaryInsights";
+import { summaryHeadline, summaryInsights } from "../../lib/summaryInsights";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, type AreaCharacter, type ReportDetail, type ReportExtras, type FoodUnitStoresResponse } from "../../lib/apiClient";
 import { ReportLocationVisuals, ReportCharacter, ReportCompetitionPage, ReportDemandPage, ReportStrategies } from "./ReportExtras";
@@ -112,7 +112,7 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
 
       <Page n={no("summary")} total={total} className="irp-summary-page">
         <section className="irp-result-section">
-          <Head eyebrowText="★ 종합·창업전략" title={summaryPageTitle(r)}/>
+          <Head eyebrowText="★ 종합·창업전략" title={(insights.length >= 2 ? summaryHeadline({ report: r, character, extras }, r.lens.mode) : null) ?? summaryPageTitle(r)}/>
           {/* 인사이트가 있으면 번호 상자(검은 제목 + 회색 근거·확인할 일), 자료가 없으면 예전처럼 핵심 결과 목록을 쓴다 */}
           <ol style={{margin:0,padding:0,listStyle:"none",display:"grid",gap:8}}>
             {insights.length

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { HERO_BUBBLES, type FlowStep } from "./content";
+import { type FlowStep } from "./content";
 
 const BLUE = "var(--blue)";
 const ORANGE = "var(--orange)";
@@ -7,61 +7,6 @@ const ORANGE = "var(--orange)";
 const Frame = ({ w, h, label, children }: { w: number; h: number; label: string; children: ReactNode }) => (
   <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className="art">{children}</svg>
 );
-
-/** 첫 화면: 외식업 점포 수를 원으로 보여 주는 지도 그림(예시). 원 넓이는 점포 수에 비례한다.
- * 실제 지도처럼 구역 면·큰 도로·한강·지하철 노선을 옅게 깔고, 눈길은 원과 '내 상권' 말풍선으로 모은다. */
-export function HeroMap() {
-  const r = (n: number) => Math.sqrt(n) * 1.02;
-  const mine = HERO_BUBBLES[2];
-  return (
-    <Frame w={500} h={400} label="행정동별 외식업 점포 수를 원 크기로 보여 주는 지도 예시. 여의동 2,073곳, 영등포동 1,077곳, 문래동 716곳">
-      <defs>
-        <filter id="hm-glow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#1d4ed8" floodOpacity="0.28" /></filter>
-        <filter id="hm-card" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#0e1a2b" floodOpacity="0.2" /></filter>
-        <pattern id="hm-dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#c9d6e4" /></pattern>
-      </defs>
-      <rect width="500" height="400" fill="#f1f4f8" />
-      <rect width="500" height="400" fill="url(#hm-dots)" />
-      {/* 구역(행정동) 면 */}
-      <path d="M300 20 L500 20 L500 150 L395 165 L330 120 Z" fill="#e6efe6" />
-      <path d="M0 200 L120 210 L160 330 L0 340 Z" fill="#efe9df" />
-      <path d="M215 235 L400 225 L420 400 L240 400 Z" fill="#e9eef7" />
-      {/* 큰 도로 */}
-      <g fill="none" stroke="#fff" strokeWidth="7" strokeLinecap="round">
-        <path d="M-10 262 C 120 252, 220 280, 330 258 S 470 240, 510 246" />
-        <path d="M140 -10 C 150 90, 120 200, 160 300 S 175 380, 170 410" />
-        <path d="M262 -10 C 270 80, 250 160, 285 250 S 300 350, 292 410" />
-      </g>
-      {/* 한강 */}
-      <path d="M-10 168 C 90 128, 175 196, 255 150 S 400 108, 510 150 L510 198 C 400 160, 300 204, 250 200 S 90 178, -10 218 Z" fill="#cfe2f5" />
-      <path d="M-10 168 C 90 128, 175 196, 255 150 S 400 108, 510 150" fill="none" stroke="#b9d3ee" strokeWidth="1.5" />
-      <text x="40" y="196" className="art-t art-m" transform="rotate(-8 40 196)" letterSpacing="3">한강</text>
-      {/* 지하철 노선(2호선 느낌의 초록) */}
-      <path d="M20 372 C 110 340, 200 352, 290 322 S 420 270, 490 286" fill="none" stroke="#3aa655" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
-      {[[110, 342], [220, 346], [318, 316], [430, 276]].map(([x, y]) => <circle key={x} cx={x} cy={y} r="4.5" fill="#fff" stroke="#3aa655" strokeWidth="2.5" />)}
-      {HERO_BUBBLES.map((b, i) => (
-        <g key={b.name}>
-          {i === 2 && <circle cx={b.x} cy={b.y} r={r(b.n) + 10} fill="none" stroke={ORANGE} strokeWidth="2.5" strokeDasharray="5 4" />}
-          <circle cx={b.x} cy={b.y} r={r(b.n)} fill={i === 2 ? ORANGE : BLUE} opacity="0.9" filter="url(#hm-glow)" />
-          <text x={b.x} y={b.y - 2} textAnchor="middle" className="art-t art-w">{b.name}</text>
-          <text x={b.x} y={b.y + 13} textAnchor="middle" className="art-t art-w art-n">{b.n.toLocaleString("ko-KR")}곳</text>
-        </g>
-      ))}
-      {/* '내 상권' 말풍선 */}
-      <g transform={`translate(${mine.x + 34} ${mine.y - 70})`} filter="url(#hm-card)">
-        <rect width="120" height="46" rx="10" fill="#fff" />
-        <path d="M18 46 L10 58 L34 46 Z" fill="#fff" />
-        <rect x="10" y="9" width="40" height="16" rx="8" fill={ORANGE} />
-        <text x="30" y="20.5" textAnchor="middle" className="art-t art-w art-n">내 상권</text>
-        <text x="10" y="39" className="art-t art-b">문래동 · 716곳</text>
-      </g>
-      <g transform="translate(14 372)">
-        <rect width="172" height="20" rx="10" fill="#fff" opacity="0.94" />
-        <text x="86" y="14" textAnchor="middle" className="art-t art-m">예시 · 원 크기 = 외식업 점포 수</text>
-      </g>
-    </Frame>
-  );
-}
 
 const card = { fill: "var(--card)", stroke: "var(--line)" } as const;
 

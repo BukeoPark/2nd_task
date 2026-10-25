@@ -28,7 +28,7 @@ export interface Tour {
   openHelp: () => void;
 }
 
-/** 튜토리얼 상태 — 처음 방문하면(모드별로) 환영 팝업, 시작하면 단계별 안내. 모드를 바꾸면 진행 중이던 안내는 멈춘다. */
+/** 튜토리얼 상태 — 처음 방문하면(모드별로) 환영 팝업, 시작하면 단계별 안내. 안내 중에 모드를 바꾸면 새 모드의 안내가 1단계부터 이어진다. */
 export function useTour(mode: Mode): Tour {
   const [phase, setPhase] = useState<TourPhase>("idle");
   const [index, setIndex] = useState(0);
@@ -53,7 +53,8 @@ export function useTour(mode: Mode): Tour {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { setPhase((p) => (p === "running" ? "idle" : p)); setIndex(0); }, [mode]);
+  // 안내를 보는 중에 모드를 바꾸면(첫 단계의 '나에게 맞는 모드'에서 단추를 누르는 경우) 그 모드의 안내를 처음부터 이어서 보여 준다 — 끄지 않는다.
+  useEffect(() => { setIndex(0); }, [mode]);
 
   const start = useCallback(() => { setIndex(0); setPhase("running"); }, []);
   const close = useCallback(() => { markDone(mode); setPhase("idle"); }, [mode]);

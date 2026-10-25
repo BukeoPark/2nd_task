@@ -305,6 +305,21 @@ export function MapPage() {
   }, [openPlace]);
   const onClearPlace = useCallback(() => { setPlace(null); setPendingOpen(null); }, []);
 
+  // 처음 열면 시작 화면(왼쪽 서랍)이 지도 왼쪽을 덮으므로, 분석하는 양천·영등포가 서랍을 뺀 지도 한가운데 오도록 중심을 오른쪽으로 옮긴다.
+  // 공유 주소로 들어온 경우(그 지역으로 바로 이동)·좁은 화면(서랍이 화면을 채움)에서는 건드리지 않는다.
+  const centeredOnce = useRef(false);
+  useEffect(() => {
+    if (!mapKakao || shareTarget || narrow) return;
+    const shift = Math.round((SIDE_PANEL_WIDTH_PX + RAIL_WIDTH_PX) / 2);
+    // KakaoMap 이 만든 직후 relayout·setCenter 를 한 프레임 뒤에 하므로 그 뒤에 옮긴다(개발 모드의 이중 실행에도 한 번만).
+    const id = window.setTimeout(() => {
+      if (centeredOnce.current) return;
+      centeredOnce.current = true;
+      mapKakao.map.panBy(-shift, 0);
+    }, 120);
+    return () => window.clearTimeout(id);
+  }, [mapKakao, shareTarget, narrow]);
+
   useEffect(() => {
     const t = shareTarget;
     if (!t || !mapKakao || shareDone.current) return;

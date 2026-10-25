@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AppLink } from "../../components/AppLink";
 import { mapHref } from "../../lib/route";
-import { HeroMap, ReportThumb } from "./Art";
+import { ReportThumb } from "./Art";
 import { FlowTabs } from "./FlowTabs";
 import { ModeCards } from "./ModeCards";
 import { SummaryPreview } from "./SummaryPreview";
@@ -40,7 +40,10 @@ export function LandingPage() {
               <ModeCards />
               <p className="reportlink"><a href="#report">먼저 보고서가 어떤지 볼래요 — 샘플 상권분석 보고서 보기 →</a></p>
             </div>
-            <div className="hero-art"><HeroMap /></div>
+            <div className="hero-art">
+              <img src="/landing-map.jpg" width={900} height={720} alt="서비스 실제 지도 화면: 양천구·영등포구 행정동별 외식 점포 수를 원 크기로 보여 줍니다" />
+              <span className="hero-art-cap">실제 서비스 화면 · 원 크기 = 외식업 점포 수</span>
+            </div>
           </div>
         </section>
 
