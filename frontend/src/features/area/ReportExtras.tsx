@@ -62,24 +62,24 @@ export function ReportCharacter({ character, marketTypeName, lines, profile, det
     <h3 className="irp-cover-feature-title" style={{ margin: 0, fontSize: RF.section }}>이 상권의 특징</h3>
     {(t || market) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       {t && (t.traits.length > 0
-        ? t.traits.map((x) => <span key={x.key} style={{ ...chip, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name={TRAIT_ICON[x.key]} />{x.label}</span>)
-        : <span style={{ ...chip, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name="building" />{t.headline}</span>)}
-      {market && <span style={{ ...chip, fontSize: RF.section + 4, background: market.bg, color: market.color, border: `1px solid ${market.color}33` }} title={market.description}><AppIcon name={market.icon} />{market.label}</span>}
+        ? t.traits.map((x) => <span key={x.key} style={{ ...chip, fontWeight:600, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name={TRAIT_ICON[x.key]} />{x.label}</span>)
+        : <span style={{ ...chip, fontWeight:600, fontSize: RF.section + 4, background: "#F3EEFF", color: "#6333B1", border: "1px solid #E6DBFC" }}><AppIcon name="building" />{t.headline}</span>)}
+      {market && <span style={{ ...chip, fontWeight:600, fontSize: RF.section + 4, background: market.bg, color: market.color, border: `1px solid ${market.color}33` }} title={market.description}><AppIcon name={market.icon} />{market.label}</span>}
     </div>}
     {grounds.length>0&&<p className="irp-cover-type-basis" style={{margin:0,fontSize:RF.caption,color:C.mute,lineHeight:1.4}}>{grounds.join(" · ")}</p>}
     {lines.length > 0 && <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3, fontSize: RF.body }}>{lines.map((l) => <li key={l}>{l}</li>)}</ul>}
     {rows.length > 0 && <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "6px 14px", fontSize: RF.body }}>
-      {rows.map((p) => <div key={p.label}><dt style={{ color: C.mute }}>{p.label}</dt><dd style={{ margin: 0, fontWeight: 700, fontSize: RF.section + 4 }}>{p.value}</dd></div>)}
+      {rows.map((p) => <div key={p.label}><dt style={{ color: C.mute }}>{p.label}</dt><dd style={{ margin: 0, fontWeight: 700, fontSize: RF.section + 4 }}>{p.value.replace("(상가정보)", "")}</dd>{p.value.includes("(상가정보)") && <span style={{fontSize:RF.caption,color:C.mute}}>상가정보 기준</span>}</div>)}
     </dl>}
     {(weekend!=null||age)&&<div className="irp-cover-demand" style={{display:"grid",gridTemplateColumns:weekend!=null&&age?"2fr 1fr":"1fr",gap:16,borderTop:`1px solid ${C.line}`,paddingTop:8,fontSize:RF.section}}>
-      {weekend!=null&&<div><div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:5}}><b>평일 매출 {percent(100-weekend)}</b><b>주말 {percent(weekend)}</b></div>
+      {weekend!=null&&<div><span style={{display:"block",fontSize:RF.body,color:C.mute,marginBottom:4}}>요일별 매출 구성</span><div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:5}}><span>평일 <b>{percent(100-weekend)}</b></span><span>주말 <b>{percent(weekend)}</b></span></div>
         <div role="img" aria-label={`매출 비중 평일 ${percent(100-weekend)}, 주말 ${percent(weekend)}`} style={{display:"flex",height:8,borderRadius:5,overflow:"hidden",background:C.line}}><span style={{width:`${100-weekend}%`,background:C.teal}}/><span style={{width:`${weekend}%`,background:C.accent}}/></div>
       </div>}
       {age&&<div><span style={{color:C.mute}}>주요 결제 연령</span><b style={{display:"block",fontSize:RF.section + 4}}>{age.label} · {percent(age.pct!)}</b></div>}
     </div>}
     {stations.length>0&&<div className="irp-cover-stations" style={{borderTop:`1px solid ${C.line}`,paddingTop:8}}>
-      <b style={{fontSize:RF.body,color:C.mute}}>가까운 지하철역 · 지역 안·경계 밖 250m</b>
-      <div style={{display:"flex",flexWrap:"wrap",gap:"6px 14px",marginTop:5}}>{stations.map(st=><span key={st.name} style={{display:"inline-flex",alignItems:"center",gap:4,minWidth:0,fontSize:RF.section + 2,fontWeight:700}}>
+      <span style={{fontSize:RF.body,color:C.mute}}>가까운 지하철역 · 지역 안·경계 밖 250m</span>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"10px 24px",marginTop:8}}>{stations.map(st=><span key={st.name} style={{display:"inline-flex",alignItems:"center",gap:4,minWidth:0,fontSize:RF.section + 2,fontWeight:700}}>
         {splitRailLines(st.lines).map(line=>{const badge=railLineBadge(line);return <span key={line} title={badge.name} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,flexShrink:0,borderRadius:"50%",background:badge.color,color:["#BDB092","#F5A200","#B7C452","#77C4A3"].includes(badge.color)?"#172033":"#fff",fontSize:RF.body}}>{badge.label}</span>;})}
         <span style={{overflowWrap:"anywhere"}}>{st.name.replace(/역$/," ").trim()}역</span>
       </span>)}</div>

@@ -62,10 +62,10 @@ function Pages({ r, date, detail, stores, storesFailed, character, marketTypeNam
           <ReportHeadline title={r.headline} />
         </div>
         <ReportCharacter character={character} marketTypeName={marketTypeName} lines={[]} profile={r.profile} detail={detail} />
-        <ReportLead compact lead={areaReportLead({level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
 
-        {r.tiles.length > 0 && <div className="irp-tiles irp-cover-metrics">{r.tiles.map((t) => <TileBox key={t.label} {...t} />)}</div>}
-        <ReportTriad hideTodo triad={buildTriad({mode:r.lens.mode,tiles:[],cautions:[],checklist:checklist.slice(0,2),sampleNote:lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores,"지역") : null})}/>
+        {r.tiles.length > 0 && <div className="irp-tiles irp-cover-metrics">{r.tiles.map((t) => <TileBox key={t.label} {...t} label={t.label.startsWith("총매출 증감") ? "총매출 증감 · 전년 동기 대비" : t.label.startsWith("같은 업종 분기 폐업률") ? `분기 폐업률 · ${r.stability?.churn?.quarterLabel ?? "최근 분기"}` : t.label} />)}</div>}
+        <ReportLead compact lead={areaReportLead({level:no("level"),slots:no("slots"),demand:no("demand"),industries:no("industries"),competitors:no("competitors"),stability:no("stab"),location:no("location"),summary:no("summary"),basis:no("basis")})}/>
+        <ReportTriad hideTodo subdued triad={buildTriad({mode:r.lens.mode,tiles:[],cautions:[],checklist:checklist.slice(0,2),sampleNote:lv?.sampleStatus === "too_few" ? sampleNote(lv.sampleStores,"지역") : null})}/>
 
       </Page>
       {lv && (
