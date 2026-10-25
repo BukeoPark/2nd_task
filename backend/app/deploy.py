@@ -37,6 +37,9 @@ def unpack_bundle(archive: Path, destination: Path, expected_sha: str) -> None:
 
 
 def prepare_data() -> None:
+    if settings.data_bundle_path is not None:
+        unpack_bundle(settings.data_bundle_path, settings.processed_dir, settings.data_bundle_sha256)
+        return
     url = settings.data_bundle_url
     if not url or urlparse(url).scheme != "https":
         raise ValueError("DATA_BUNDLE_URL에 비공개 분석 묶음의 HTTPS 다운로드 주소를 설정하세요.")

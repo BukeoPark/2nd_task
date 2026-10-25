@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # 단일 서버 정식 배포: React 빌드와 API를 같은 주소에서 제공한다.
     frontend_dist: Path | None = None
     port: int = 8000
+    data_bundle_path: Path | None = None
     data_bundle_url: str = ""
     data_bundle_sha256: str = ""
 

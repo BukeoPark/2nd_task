@@ -36,3 +36,16 @@ def test_bundle_rejects_non_data_and_traversal_before_writing(tmp_path, name):
     with pytest.raises(ValueError):
         unpack_bundle(file, dest, sha)
     assert not dest.exists()
+
+
+def test_private_image_bundle_does_not_need_external_download(tmp_path, monkeypatch):
+    from app.deploy import prepare_data
+    from app.config import settings
+    file, sha = archive(tmp_path)
+    dest = tmp_path / "processed"
+    monkeypatch.setattr(settings, "data_bundle_path", file)
+    monkeypatch.setattr(settings, "data_bundle_sha256", sha)
+    monkeypatch.setattr(settings, "processed_dir", dest)
+    monkeypatch.setattr(settings, "data_bundle_url", "")
+    prepare_data()
+    assert (dest / "stores.parquet").is_file()
