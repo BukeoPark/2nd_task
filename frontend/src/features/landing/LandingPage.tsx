@@ -5,7 +5,7 @@ import { ReportThumb } from "./Art";
 import { FlowTabs } from "./FlowTabs";
 import { ModeCards } from "./ModeCards";
 import { SummaryPreview } from "./SummaryPreview";
-import { FAQ, FEATURES, HERO, REPORT_PAGES, SCOPE_NOTE, SOURCES, TRUST } from "./content";
+import { FAQ, FEATURES, HERO, REPORT_OUTLINE, REPORT_PAGES, SCOPE_NOTE, SOURCES, TRUST } from "./content";
 import "./landing.css";
 
 /** 서비스 홈('/') — landing/app/page.tsx 와 같은 구성·문구다. 시작 버튼은 같은 앱의 /map?mode=… 로 이동한다(별도 랜딩 서버 없음). */
@@ -72,18 +72,21 @@ export function LandingPage() {
         <section className="section dark" id="report">
           <div className="wrap">
             <p className="eyebrow">상권분석 보고서</p>
-            <h2 className="h2" style={{ marginTop: 8 }}>본 것을 4쪽으로 정리해 드려요</h2>
-            <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면, 매출 수준과 흐름·시간대·경쟁·폐업을 한 번에 읽을 수 있는 리포트가 만들어져요. 자영업자는 내 가게 기준으로, 예비 창업자는 후보 상권 기준으로 받을 수 있고, 인쇄하거나 PDF로 저장할 수도 있어요.</p>
+            <h2 className="h2" style={{ marginTop: 8 }}>본 것을 한 권의 보고서로 정리해 드려요</h2>
+            <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면 매출 흐름·시간대·고객·업종·경쟁·입지를 한 번에 읽을 수 있는 보고서가 만들어져요. 후보 상권·행정동은 A4 약 10쪽으로, 자영업자의 내 매장은 반경 500m 기준 4쪽으로 받을 수 있고, 인쇄하거나 PDF로 저장할 수도 있어요.</p>
             <div className="reports">
               {REPORT_PAGES.map((p) => (
                 <div className="rp" key={p.n}>
-                  <div className="thumb"><ReportThumb n={p.n} /></div>
+                  <div className="thumb"><ReportThumb n={p.thumb} /></div>
                   <span className="n">{p.n}쪽</span>
                   <b>{p.title}</b>
                   <span>{p.body}</span>
                 </div>
               ))}
             </div>
+            <ol className="outline" aria-label="상권·행정동 보고서 전체 목차">
+              {REPORT_OUTLINE.map((t, i) => <li key={t}><b>{i + 1}</b>{t}</li>)}
+            </ol>
             <p className="note">그림은 문래역 상권·한식 업종의 집계 값(서울시 상권분석서비스 2026년 2분기 등)으로 만든 예시이며, 특정 업소의 자료가 아니에요.</p>
           </div>
         </section>

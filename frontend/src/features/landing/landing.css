@@ -155,6 +155,9 @@
 .lp .rp b { font-size: 15px; }
 .lp .rp span { font-size: 13.5px; color: #b4c0d0; line-height: 1.55; }
 .lp .rp .n { font-weight: 800; font-family: var(--f-display); color: #ffb98c; font-size: 14px; }
+.lp .outline { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.lp .outline li { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); font-size: 13.5px; color: #dbe3ee; }
+.lp .outline b { font-family: var(--f-display); font-size: 13px; color: #ffb98c; }
 .lp .note { margin-top: 24px; font-size: 13px; color: #8fa0b5; }
 @media (max-width: 900px) {
   .lp .reports { grid-template-columns: repeat(2, minmax(0, 1fr)); }

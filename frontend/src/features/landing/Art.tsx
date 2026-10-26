@@ -84,7 +84,7 @@ export function Glimpse({ art }: { art: FlowStep["art"] }) {
       );
     case "report":
       return (
-        <Frame w={260} h={160} label="4쪽 인사이트 리포트 첫 쪽 미리보기">
+        <Frame w={260} h={160} label="인사이트 리포트 첫 쪽 미리보기">
           <rect x="70" y="10" width="120" height="142" rx="4" {...card} />
           <rect x="82" y="22" width="60" height="6" rx="3" fill={ORANGE} />
           <rect x="82" y="34" width="96" height="9" rx="3" fill="var(--ink)" />
@@ -123,7 +123,7 @@ export function Glimpse({ art }: { art: FlowStep["art"] }) {
   }
 }
 
-/** 샘플 리포트 4쪽의 축소 그림. 숫자는 문래역 상권·한식 업종의 집계 값(2026년 2분기)이다. */
+/** 샘플 리포트(핵심 요약·매출 흐름·시간대별 수요·점포 변화) 네 쪽의 축소 그림. 숫자는 문래역 상권·한식 업종의 집계 값(2026년 2분기)이다. */
 export function ReportThumb({ n }: { n: 1 | 2 | 3 | 4 }) {
   const frame = { x: 6, y: 6, width: 188, height: 248, rx: 4, ...card };
   return (
