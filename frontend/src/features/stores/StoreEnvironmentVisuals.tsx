@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { AppIcon, MetricBars } from "../../components/DataVisuals";
-import { Block, Caption, ChevronToggle, StatRow } from "../../components/PanelKit";
+import { Block, Caption, ChevronToggle, StatRow, SubHead } from "../../components/PanelKit";
 import type { BusAccess, RailAccess, FacilityAccess } from "../../lib/apiClient";
 import { StationName } from "../area/AreaCharacterSection";
 import { busCountText } from "../../lib/busText";
-import { facilityCountText } from "../../lib/facilityText";
+import { FACILITY_GROUPS, facilityCountText } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 
 /** 지역 화면과 같은 시각 언어를 쓰되, 매장 분석의 선택 반경은 그대로 유지한다. */
@@ -48,17 +48,28 @@ export function StoreTransitVisuals({ rail, bus }: { rail?: RailAccess; bus: Bus
 const typeLabel = (l: string) => (l === "종합병원" ? "대형병원" : l);
 
 export function StoreFacilityVisuals({ facilities, detail }: { facilities?: FacilityAccess; detail?: ReactNode }) {
-  // ⌄ 단추 하나로 접고 편다 — 접힌 상태는 종류별 개수 칸(앞 6개)만, 펼치면 나머지 칸 · 시설 이름·종류·거리 · 종류별 상세(detail)가 이어진다.
+  // ⌄ 단추 하나로 접고 편다 — 접힌 상태는 종류별 개수 카드만, 펼치면 카테고리(의료·상업·문화·여가·교육·공공기관)별 시설 이름·종류·거리가 이어진다.
   const [expanded, setExpanded] = useState(false);
   const f = facilities?.status === "ok" ? facilities : null;
-  const names = f ? [...f.facilities].sort((a, b) => a.distance_m - b.distance_m) : [];
-  const items = f ? Object.values(f.selected.by_type).filter(t => (t.count ?? 0) > 0).sort((a,b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label)) : [];
-  const foldable = items.length > 6 || names.length > 0 || Boolean(detail);
+  // 카드: 상권 페이지처럼 자료가 있는 종류를 모두(0곳 포함) 개수 많은 순으로. 공식 자료가 없는 종류(개수를 모름)는 뺀다.
+  const items = f ? Object.values(f.selected.by_type).filter(t => t.count !== null).sort((a,b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label)) : [];
+  // 세부: 카테고리마다 반경 안 시설을 가까운 순으로 한 줄씩, 반경 안에 하나도 없는 종류는 가장 가까운 곳을 '반경 밖'으로 한 줄 보인다.
+  const groups = f ? FACILITY_GROUPS.map(g => {
+    const rows = g.types.flatMap(t => {
+      const stat = f.selected.by_type[t];
+      if (!stat || stat.count === null) return [];
+      const inside = f.facilities.filter(x => x.type === t).sort((a, b) => a.distance_m - b.distance_m).map(x => ({ key: x.facility_id, name: x.display_name ?? x.name, distance: x.distance_m, note: `${typeLabel(stat.label)}${x.subtype && x.subtype !== stat.label ? ` · ${x.subtype}` : ""}` }));
+      if (inside.length > 0) return inside;
+      return stat.nearest ? [{ key: `${t}-out`, name: stat.nearest.display_name ?? stat.nearest.name, distance: stat.nearest.distance_m, note: `${typeLabel(stat.label)} · 반경 밖` }] : [];
+    });
+    return { id: g.id, label: g.label, rows };
+  }).filter(g => g.rows.length > 0) : [];
+  const foldable = groups.length > 0 || Boolean(detail);
   return <Block title={<span className="data-heading"><AppIcon name="building"/>집객시설</span>}>
-    {items.length ? <div className="store-detail-grid">{(expanded ? items : items.slice(0,6)).map(t => <div className="store-detail-tile store-facility-tile" key={t.type}><span className="data-heading"><AppIcon name={/병원/.test(t.label) ? "hospital" : /마트|쇼핑|백화점|아울렛/.test(t.label) ? "store" : "building"}/>{typeLabel(t.label)}</span><strong>{facilityCountText(t)}</strong></div>)}</div> : <Caption>{f ? "선택 반경에 확인된 시설 없음" : "시설 자료 없음"}</Caption>}
+    {items.length ? <div className="store-detail-grid">{items.map(t => <div className="store-detail-tile store-facility-tile" key={t.type}><span className="data-heading"><AppIcon name={/병원/.test(t.label) ? "hospital" : /마트|쇼핑|백화점|아울렛/.test(t.label) ? "store" : "building"}/>{typeLabel(t.label)}</span><strong>{facilityCountText(t)}</strong></div>)}</div> : <Caption>{f ? "선택 반경에 확인된 시설 없음" : "시설 자료 없음"}</Caption>}
     {foldable && <ChevronToggle open={expanded} onClick={() => setExpanded(!expanded)} label="집객시설 상세" />}
     {expanded && <>
-      {names.map(x => { const label = typeLabel(f?.selected.by_type[x.type]?.label ?? x.type); return <StatRow key={x.facility_id} label={x.display_name ?? x.name} value={formatDistance(x.distance_m)} note={`${label}${x.subtype && x.subtype !== label ? ` · ${x.subtype}` : ""}`} />; })}
+      {groups.map(g => <div key={g.id}><SubHead>{g.label}</SubHead>{g.rows.map(r => <StatRow key={r.key} label={r.name} value={formatDistance(r.distance)} note={r.note} />)}</div>)}
       {detail && <div style={{ marginTop: 10 }}>{detail}</div>}
     </>}
   </Block>;

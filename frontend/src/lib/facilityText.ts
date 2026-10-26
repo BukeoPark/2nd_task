@@ -37,12 +37,13 @@ export interface UnclassifiedRetailInput {
   distance_m: number;
 }
 
-/** 화면 묶음 — 의료 / 상업(백화점·대형마트·쇼핑몰·아울렛) / 문화·여가 / 교육. */
+/** 화면 묶음 — 의료 / 상업(백화점·대형마트·쇼핑몰·아울렛) / 문화·여가 / 교육 / 공공기관. 공공기관은 매장 반경 안 좌표 자료가 아직 없어 종류가 비어 있고, 비어 있는 묶음은 화면에 나오지 않는다. */
 export const FACILITY_GROUPS: { id: string; label: string; types: FacilityType[] }[] = [
   { id: "medical", label: "의료", types: ["general_hospital"] },
   { id: "commerce", label: "상업", types: ["department_store", "hypermarket", "shopping_mall", "outlet"] },
   { id: "culture", label: "문화·여가", types: ["cinema", "cultural_facility"] },
   { id: "education", label: "교육", types: ["university"] },
+  { id: "public", label: "공공기관", types: [] },
 ];
 
 /** 지도 마커 모양(글자·색) — 레일 보라, 앵커 초록/빨강, 반경 원 파랑과 겹치지 않게 고른다. */

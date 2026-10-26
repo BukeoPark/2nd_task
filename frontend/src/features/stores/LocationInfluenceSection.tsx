@@ -6,7 +6,7 @@ import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { FacilityAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
-import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, SUBTYPE_SHOWN } from "../../lib/facilityText";
+import { facilityUnclassifiedNote } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
@@ -169,65 +169,26 @@ export function StoreBrandCards({ data }: { data: LocationInfluenceResponse }) {
 
 /** ② 주요 집객시설 — 의료 / 상업 / 문화·여가 / 교육을 종류별 개수·가장 가까운 시설·직선거리로 보인다. 공식 자료가 없는 종류는 0곳이 아니라 '자료 없음'.
  * 방문객·매출·점수로 바꾸지 않는다. 지도 표시는 기본 꺼짐. 긴 설명은 접어 두고 ⑥ 분석 기준에 모은다. */
-/** 집객시설 카드의 펼침 안쪽 — 종류별(의료·상업·문화·여가·교육) 개수와 가장 가까운 시설, 지도 표시. 별도 카드·제목 없이 '집객시설' 카드 안에 들어간다. */
-function FacilityDetail({ facilities, radius, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
+/** 집객시설 카드 펼침의 맨 아래 — 유의사항·지도 표시·자료 출처. 시설 이름·거리는 카드 안쪽(StoreFacilityVisuals)이 카테고리별로 보인다. */
+function FacilityDetail({ facilities, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
   if (!facilities) return null;      // 구버전 응답(집객시설 필드 없음)
-  if (facilities.status !== "ok") {
-    return <Notice tone="muted">{facilities.message}</Notice>;
-  }
-  const byType = facilities.selected.by_type;
+  if (facilities.status !== "ok") return <Notice tone="muted">{facilities.message}</Notice>;
+  const note = facilityUnclassifiedNote(facilities.unclassified_retail);
   return (
     <div>
-      {FACILITY_GROUPS.map((g) => (
-        <div key={g.id}>
-          <div style={{ ...subTitle, color: "#374151" }}>{g.label}</div>
-          {g.types.map((t) => {
-            const v = byType[t];
-            if (!v) return null;
-            const sub = SUBTYPE_SHOWN.includes(t) ? facilitySubtypeText(v) : "";
-            const statusNote = facilityStatusNote(v);
-            const neighborNote = facilityNeighborNote(v);
-            const staleNote = facilityStaleNote(v);
-            return (
-              <div key={t} style={facilityRow}>
-                <div style={{ fontWeight: 600, fontSize: FS.body }}>
-                  <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: FACILITY_MARK[t].color, marginRight: 5 }} />
-                  {v.label === "종합병원" ? "대형병원" : v.label}
-                </div>
-                <div style={{ fontWeight: 700, fontSize: FS.ui, color: v.count_state === "no_official_source" || v.count_state === "incomplete_zero" ? "#6B7280" : "#111827" }}>{facilityCountText(v)}</div>
-                <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#6B7280" }}>
-                  가장 가까운 곳: {facilityNearestText(v, radius)}
-                  {sub && ` · ${sub}`}
-                  {statusNote && ` · ${statusNote}`}
-                </div>
-                {neighborNote && <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#92400E" }}>{neighborNote}</div>}
-                {staleNote && <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#6B7280" }}>{staleNote}</div>}
-                {(v.count_state === "no_official_source" || v.count_state === "incomplete_zero" || v.count_state === "lower_bound") && (
-                  <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#92400E" }}>{facilityCountNote(v)}</div>
-                )}
-              </div>
-            );
-          })}
-          {g.id === "commerce" && facilityUnclassifiedNote(facilities.unclassified_retail) && (
-            <div style={{ fontSize: FS.caption, color: "#92400E", paddingTop: 4 }}>{facilityUnclassifiedNote(facilities.unclassified_retail)}</div>
-          )}
-        </div>
-      ))}
+      {note && <div style={{ fontSize: FS.caption, color: "#92400E", paddingBottom: 4 }}>{note}</div>}
       <Caveat>개수는 공식 목록 기준이며 이용객 수가 아닙니다. '영업'은 인허가상 상태입니다.</Caveat>
       {facilities.facilities.length > 0 && (
-        <>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
-            <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />
-            지도에 집객시설 위치 표시(기본 꺼짐)
-          </label>
-        </>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />
+          지도에 집객시설 위치 표시(기본 꺼짐)
+        </label>
       )}
       <SourceNote label="주요 집객시설 자료" title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 다릅니다" />
     </div>
   );
 }
 
-const subTitle: React.CSSProperties = { fontSize: FS.ui, fontWeight: 700, color: PK.ink, lineHeight: 1.4, margin: "14px 0 6px" };
 
 function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
@@ -303,7 +264,6 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
 
 const card: React.CSSProperties = { background: PK.soft, borderRadius: 12, padding: "14px 16px", marginBottom: BLOCK_GAP };
 const cardTitle: React.CSSProperties = { fontSize: FS.cardTitle, fontWeight: 800, color: PK.ink, lineHeight: 1.4, marginBottom: 6 };
-const facilityRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr auto", columnGap: 8, rowGap: 1, padding: "4px 0", borderBottom: `1px solid ${PK.line}`, alignItems: "baseline" };
 const fine: React.CSSProperties = { fontSize: FS.caption, color: PK.mute, marginTop: 4, lineHeight: 1.5 };
 const radiusBase: React.CSSProperties = { padding: "2px 8px", borderRadius: 12, fontSize: FS.ui, minHeight: 38, cursor: "pointer", border: "1px solid #D1D5DB" };
 const radiusOn: React.CSSProperties = { ...radiusBase, background: "#1D4ED8", color: "#fff", border: "1px solid #1D4ED8", fontWeight: 700 };

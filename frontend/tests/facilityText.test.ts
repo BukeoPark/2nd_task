@@ -36,7 +36,8 @@ test("화면 묶음은 모든 종류를 정확히 한 번씩 담고 각 종류�
   const all = FACILITY_GROUPS.flatMap((g) => g.types).sort();
   assert.deepEqual(all, Object.keys(FACILITY_MARK).sort());
   assert.equal(new Set(all).size, all.length);
-  assert.deepEqual(FACILITY_GROUPS.map((g) => g.label), ["의료", "상업", "문화·여가", "교육"]);
+  assert.deepEqual(FACILITY_GROUPS.map((g) => g.label), ["의료", "상업", "문화·여가", "교육", "공공기관"]);
+  assert.deepEqual(FACILITY_GROUPS.at(-1)!.types, []);       // 공공기관은 매장 반경 안 좌표 자료가 아직 없어 비어 있다(비어 있는 묶음은 화면에 나오지 않는다)
   assert.deepEqual(FACILITY_GROUPS[1].types, ["department_store", "hypermarket", "shopping_mall", "outlet"]);
 });
 
