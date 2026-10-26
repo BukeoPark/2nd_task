@@ -1,4 +1,5 @@
 /** 백엔드 `/api` 호출은 이 모듈을 통해서만 한다 — 컴포넌트에서 fetch 직접 호출 금지. */
+import { createStaticAnalysisReader } from "./staticAnalysis";
 import { createRequestQueue } from "./requestQueue";
 import type { FacilityCountState, FacilityType } from "./facilityText";
 
@@ -14,8 +15,22 @@ export class ApiError extends Error {
 }
 
 const queueRequest = createRequestQueue(2);
+const staticEnabled = import.meta.env.VITE_STATIC_ANALYSIS === "true";
+const readStatic = createStaticAnalysisReader(async (path) => {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error("미리 계산한 분석 자료를 확인하지 못했습니다.");
+  return response.json();
+});
+let serverWoken = false;
+
 
 async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise<T> {
+  if (staticEnabled && method === "GET") {
+    // 사용자가 서비스를 실제 이용할 때만 백그라운드로 분석 서버를 준비한다.
+    if (!serverWoken && BASE_URL) { serverWoken = true; void fetch(`${BASE_URL}/health`).catch(() => {}); }
+    try { const cached = await readStatic(path); if (cached !== undefined) return cached as T; }
+    catch { /* CDN 조회 실패는 정상 API로 재시도한다. */ }
+  }
   return queueRequest(async () => {
   const res = await fetch(`${BASE_URL}${path}`, { method });
   if (!res.ok) {
