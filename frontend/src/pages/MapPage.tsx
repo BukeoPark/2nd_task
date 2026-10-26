@@ -551,7 +551,7 @@ export function MapPage() {
           />
         )}
         {storeReportFor && <InsightReportModal storeId={storeReportFor} onClose={() => setStoreReportFor(null)} />}
-        {mapReport && !startVisible && (!narrow || peekMap) && !competitionView && (
+        {mapReport && !startVisible && (!narrow || peekMap) && (
           <MapReportButton report={mapReport} leftInset={narrow ? 0 : SIDE_PANEL_WIDTH_PX + RAIL_WIDTH_PX} rightInset={narrow ? 0 : 342} />
         )}
         {reportFor && (

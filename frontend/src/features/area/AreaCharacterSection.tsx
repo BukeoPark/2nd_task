@@ -2,12 +2,13 @@ import { railLineBadge, splitRailLines } from "../../lib/railLines";
 import { AppIcon, MetricBars } from "../../components/DataVisuals";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Caveat } from "../../components/NoteHost";
-import { Block, Caption, Stat, StatRow, SubHead } from "../../components/PanelKit";
+import { Block, Caption, ChevronToggle, Stat, StatRow, SubHead } from "../../components/PanelKit";
 import { PK, grid2, grid3 } from "../../lib/panelStyle";
 import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
 import { cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
-import { useAreaCharacter } from "../food/useFood";
+import { useAreaCharacter, useReportExtras } from "../food/useFood";
+import { namedCounts, namedFacilities } from "../../lib/areaFacilityNames";
 import { FS } from "../../lib/typography";
 
 interface Props {
@@ -128,9 +129,27 @@ export function AreaTransitBlock(p: CharProps) {
   );
 }
 
+/** 집객시설 이름 — 백화점·쇼핑몰·대형마트·영화관·문화시설·종합병원의 이름과 종류(매장 상세의 '어떤 시설인가요'와 같은 모양). 처음 5곳만 보이고 나머지는 '더 보기'. */
+function AreaFacilityNames({ level, code, svc, scls }: CharProps) {
+  const q = useReportExtras(level, code, svc, scls);
+  const [open, setOpen] = useState(false);
+  if (q.isPending) return <Caption>시설 이름을 불러오는 중...</Caption>;
+  if (q.isError) return <Caption>시설 이름을 불러오지 못했어요.</Caption>;
+  const points = q.data?.facility_map?.kind === "facilities" ? q.data.facility_map.points : [];
+  const list = namedFacilities(points);
+  if (list.length === 0) return <Caption>이름을 보일 대표 시설이 없어요.</Caption>;
+  return <>
+    {(open ? list : list.slice(0, 5)).map(x => <StatRow key={`${x.shown}-${x.name}`} label={x.name} value={x.shown} />)}
+    {list.length > 5 && <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}><button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} style={{ border: 0, background: "none", color: PK.sub, fontSize: FS.ui, cursor: "pointer" }}>{open ? "접기 ⌃" : `더 보기 (${list.length - 5}곳) ⌄`}</button></div>}
+  </>;
+}
+
 /** 입지·교통 — 집객시설 수와 밀도(같은 단위 중앙값과 견줌). */
 export function AreaFacilitiesBlock(p: CharProps) {
   const [expanded, setExpanded] = useState(false);
+  const extras = useReportExtras(p.level, p.code, p.svc, p.scls);
+  // 병원급(중형병원)은 시설 지도의 이름으로 센다 — 서버의 '병원·의원' 개수에는 개인의원이 섞여 있다
+  const midHospitals = namedCounts(extras.data?.facility_map?.kind === "facilities" ? extras.data.facility_map.points : null)["중형병원"] ?? 0;
   return (
     <WithCharacter {...p}>
       {(d) => {
@@ -140,8 +159,11 @@ export function AreaFacilitiesBlock(p: CharProps) {
         const schoolCount = schoolRows.length === 3 && schoolRows.every(t => t.count !== null)
           ? schoolRows.reduce((sum, t) => sum + (t.count ?? 0), 0) : null;
         const supplemented = new Set((fa.supplementary ?? []).map(t => t.key));
-        const facilityTypes = (fa.by_type ?? []).filter(t => !schoolKeys.includes(t.key) && !["subway", "bus_stop"].includes(t.key) && !supplemented.has(t.key));
-        facilityTypes.push(...(fa.supplementary ?? []).map(t => t.key === "hospital" ? { ...t, label: "병원" } : t));
+        // 병원·의원·은행·약국은 개수 표에서 뺀다(수가 많고 대부분 개인 점포). 규모가 큰 병원만 대형병원(종합병원)·중형병원(병원급)으로 보인다.
+        const hidden = ["bank", "pharmacy", "hospital"];
+        const facilityTypes = (fa.by_type ?? []).filter(t => !schoolKeys.includes(t.key) && !["subway", "bus_stop"].includes(t.key) && !hidden.includes(t.key) && !supplemented.has(t.key)).map(t => t.key === "general_hospital" ? { ...t, label: "대형병원" } : t);
+        facilityTypes.push(...(fa.supplementary ?? []).filter(t => !hidden.includes(t.key)));
+        if (midHospitals > 0) facilityTypes.push({ key: "mid_hospital", label: "중형병원", count: midHospitals });
         if (schoolRows.length > 0) facilityTypes.push({ key: "schools", label: "초·중·고", count: schoolCount });
         const sortedFacilities = facilityTypes.filter(t => t.count !== null && t.count > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, "ko"));
         const visibleFacilities = expanded ? sortedFacilities : sortedFacilities.slice(0, 6);
@@ -158,9 +180,10 @@ export function AreaFacilitiesBlock(p: CharProps) {
             ]} format={(n) => `${n.toLocaleString("ko-KR")}곳/㎢`} />
             <SubHead>어떤 시설이 있나요?</SubHead>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 16px" }}>{visibleFacilities.map(t => <StatRow key={t.key} label={t.label} value={t.count === null ? "자료 없음" : `${t.count.toLocaleString()}곳`} missing={t.count === null}/>)}</div>
-            {sortedFacilities.length > 6 && <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}><button type="button" onClick={() => setExpanded(v => !v)} aria-expanded={expanded} aria-label={expanded ? "시설 접기" : "시설 더보기"} title={expanded ? "접기" : "더보기"} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 36, padding: 0, border: "none", borderRadius: 8, background: "transparent", color: "#6B7280", cursor: "pointer" }}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={expanded ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"}/></svg></button></div>}
+            {sortedFacilities.length > 6 && <ChevronToggle open={expanded} onClick={() => setExpanded(v => !v)} label="시설 종류" />}
             {!facilityTypes.some(t => t.count !== null && t.count > 0) && <Caption>종류별로 확인되는 시설이 없어요.</Caption>}
-            <Caveat>백화점·쇼핑몰·대형마트는 공개 이용 가능한 공식 시설 목록을, 병원·의원은 영업 중인 의료 인허가 기록(종합병원 제외)을 경계 안에서 집계합니다. 의원에는 치과의원·한의원이 포함됩니다. 공식 자료가 없거나 0곳인 시설 종류는 목록에서 제외합니다. 시설 종류별 개수는 서로 다른 자료로 보완하여 위 서울시 전체 시설 수와 합계가 다를 수 있습니다.</Caveat>
+            <AreaFacilityNames level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
+            <Caveat>백화점·쇼핑몰·대형마트는 공개 이용 가능한 공식 시설 목록을, 중형병원(병원급)은 영업 중인 의료 인허가 기록을 경계 안에서 집계합니다. 공식 자료가 없거나 0곳인 시설 종류는 목록에서 제외합니다. 시설 종류별 개수는 서로 다른 자료로 보완하여 위 서울시 전체 시설 수와 합계가 다를 수 있습니다.</Caveat>
             <Caveat>집객시설 자료: {cellSub(fa.total) || "서울시 상권분석서비스"}. 지역 경계 안 시설을 세며, 밀도는 경계 면적으로 나눈 값입니다.</Caveat>
           </Block>
         );

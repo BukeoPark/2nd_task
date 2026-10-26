@@ -19,6 +19,7 @@ import { useNarrow } from "../../lib/useNarrow";
 import { useNearbyAnalysis, useLocationInfluence } from "./useStores";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { RadiusToggle } from "./LocationInfluenceSection";
+import { StoreAddress } from "./StoreAddress";
 
 type Screen = "overview" | "nearby" | "area" | "info";
 
@@ -63,7 +64,7 @@ export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, o
   const countText = nearby.isError ? "조회 실패" : nearby.isPending ? "불러오는 중" : count == null ? "자료 없음" : `${count.toLocaleString()}곳`;
   const growthText = benchmark.isError ? "조회 실패" : benchmark.isPending ? "불러오는 중" : growth == null ? "자료 없음" : signedPct(growth);
   const area = location.data?.area;
-  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX}
+  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX} subtitle={<StoreAddress store={store} />}
     titleAside={<ActionButton variant={owned ? "primary" : "secondary"} aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</ActionButton>}>
     {overlays}<div className="store-detail">
     {narrow && rail("horizontal")}{saveFailed && <Notice tone="error">이 브라우저에서 내 가게 설정을 저장하지 못했어요.</Notice>}

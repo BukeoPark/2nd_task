@@ -5,29 +5,24 @@ import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
 import { Caveat } from "../../components/NoteHost";
 import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
-import type { BusAccess, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
-import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
+import type { FacilityAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
-import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence } from "./useStores";
-import { Block, Caption, Stat as KitStat, SubHead } from "../../components/PanelKit";
-import { BLOCK_GAP, PK, grid2, grid3 } from "../../lib/panelStyle";
+import { Block } from "../../components/PanelKit";
+import { BLOCK_GAP, PK } from "../../lib/panelStyle";
 import { FS } from "../../lib/typography";
 
 export const DEFAULT_RADIUS_M = 500;
 
-/** '주변 환경' 묶음의 반경 입지 — 한눈에 → ③ 대중교통 접근성·④ 교통 이용 수요 → 주요 집객시설 → 근처 스타벅스·다이소·올리브영 (모두 직선거리, 같은 반경).
+/** '주변 환경' 묶음의 반경 입지 — 한눈에 → 교통 접근성(요약) → 주요 집객시설 → 근처 스타벅스·다이소·올리브영 (모두 직선거리, 같은 반경).
  * 같은 업종 가게 찾기와 개폐업은 '경쟁' 묶음에 있다. 반경 상태는 매장 상세 패널이 들고 있어 두 묶음의 토글(RadiusToggle)이 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
-export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExits, onShowExitsChange, showFacilities, onShowFacilitiesChange }: {
+export function LocationRadiusSection({ storeId, radius, onRadiusChange, showFacilities, onShowFacilitiesChange }: {
   storeId: string;
   radius: number;
   onRadiusChange: (m: number) => void;
-  /** 지하철 출입구를 지도에 표시할지(기본 꺼짐) — 상태는 매장 상세 패널이 들고 있다 */
-  showExits: boolean;
-  onShowExitsChange: (v: boolean) => void;
   /** 주요 집객시설을 지도에 표시할지(기본 꺼짐) — 상태는 매장 상세 패널이 들고 있다 */
   showFacilities: boolean;
   onShowFacilitiesChange: (v: boolean) => void;
@@ -51,10 +46,7 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
           {/* 교통 → 집객시설 → 근처 브랜드 순서. 시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 한눈에와 요약 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
           <>
             <StoreTransitVisuals bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} />
-            <Fold title="교통 상세·지도 표시"><TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
-            <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} /></Fold>
-            <StoreFacilityVisuals facilities={data.radius_metrics.facilities} />
-            <Fold title="시설 목록·지도 표시"><FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} /></Fold>
+            <StoreFacilityVisuals facilities={data.radius_metrics.facilities} detail={<FacilityDetail facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} />} />
             <StoreBrandCards data={data} />
           </>
         </div>
@@ -175,27 +167,17 @@ export function StoreBrandCards({ data }: { data: LocationInfluenceResponse }) {
   );
 }
 
-/** ③ 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
-function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChange }: { bus: BusAccess; rail?: RailAccess; radiusText: string; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
-  return (
-    <Block title={`대중교통 접근성 (반경 ${radiusText})`}>
-      <RailAccessPart rail={rail} showExits={showExits} onShowExitsChange={onShowExitsChange} />
-      <BusAccessPart bus={bus} />
-    </Block>
-  );
-}
-
 /** ② 주요 집객시설 — 의료 / 상업 / 문화·여가 / 교육을 종류별 개수·가장 가까운 시설·직선거리로 보인다. 공식 자료가 없는 종류는 0곳이 아니라 '자료 없음'.
  * 방문객·매출·점수로 바꾸지 않는다. 지도 표시는 기본 꺼짐. 긴 설명은 접어 두고 ⑥ 분석 기준에 모은다. */
-function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
+/** 집객시설 카드의 펼침 안쪽 — 종류별(의료·상업·문화·여가·교육) 개수와 가장 가까운 시설, 지도 표시. 별도 카드·제목 없이 '집객시설' 카드 안에 들어간다. */
+function FacilityDetail({ facilities, radius, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
   if (!facilities) return null;      // 구버전 응답(집객시설 필드 없음)
   if (facilities.status !== "ok") {
-    return (<div style={card}><div style={cardTitle}>주요 집객시설</div><Notice tone="muted">{facilities.message}</Notice></div>);
+    return <Notice tone="muted">{facilities.message}</Notice>;
   }
   const byType = facilities.selected.by_type;
   return (
-    <div style={card}>
-      <div style={cardTitle}>주요 집객시설 (반경 {radiusLabel(radius)})</div>
+    <div>
       {FACILITY_GROUPS.map((g) => (
         <div key={g.id}>
           <div style={{ ...subTitle, color: "#374151" }}>{g.label}</div>
@@ -210,7 +192,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
               <div key={t} style={facilityRow}>
                 <div style={{ fontWeight: 600, fontSize: FS.body }}>
                   <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: FACILITY_MARK[t].color, marginRight: 5 }} />
-                  {v.label}
+                  {v.label === "종합병원" ? "대형병원" : v.label}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: FS.ui, color: v.count_state === "no_official_source" || v.count_state === "incomplete_zero" ? "#6B7280" : "#111827" }}>{facilityCountText(v)}</div>
                 <div style={{ gridColumn: "1 / -1", fontSize: FS.caption, color: "#6B7280" }}>
@@ -240,133 +222,12 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
           </label>
         </>
       )}
-      <SourceNote label="주요 집객시설 자료" title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 ⑥ 분석 기준에서 확인" />
+      <SourceNote label="주요 집객시설 자료" title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 다릅니다" />
     </div>
   );
 }
 
 const subTitle: React.CSSProperties = { fontSize: FS.ui, fontWeight: 700, color: PK.ink, lineHeight: 1.4, margin: "14px 0 6px" };
-
-function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAccess; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
-  if (!rail) return null;      // 구버전 응답(철도 필드 없음)
-  if (rail.status !== "ok") {
-    return (<><SubHead>지하철</SubHead><Notice tone="muted">{rail.message}</Notice></>);
-  }
-  const s = rail.selected;
-  const nearest = railNearestText(rail.nearest_station);
-  const mixed = s.mixed_basis;
-  const exitsOn = railExitsEnabled(rail);
-  return (
-    <>
-      <SubHead>지하철</SubHead>
-      <div style={grid3}>
-        <Stat label="지하철 역" value={railCountText(s)} sub={railCountNote(s)} />
-        <Stat label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
-        <Stat label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
-      </div>
-      {!exitsOn && <Caption>{railCenterOnlyNote()}</Caption>}
-      {exitsOn && (
-        <Caption>
-          {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
-        </Caption>
-      )}
-      {exitsOn && railExcludedNote(s) && <div style={{ marginTop: 4 }}><Notice tone="warn">{railExcludedNote(s)}</Notice></div>}
-      {exitsOn && mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
-      {exitsOn && !mixed && s.count > 0 && s.stations_by_basis.center === s.count && <Caption>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</Caption>}
-      {exitsOn && s.count > 0 && (
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
-          <input type="checkbox" checked={showExits} onChange={(e) => onShowExitsChange(e.target.checked)} />
-          지도에 출입구 위치 표시(기본 꺼짐)
-        </label>
-      )}
-      {s.count > 0 && <Caption>지도의 보라색 '역'은 공식 역 중심점이에요.</Caption>}
-      {rail.stations.length > 0 && (
-        <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
-          <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
-            {rail.stations.map((st) => (
-              <li key={st.complex_id}>
-                <strong>{st.name}</strong>({st.lines}) {st.distance_m.toLocaleString("ko-KR")}m · {st.basis === "entrance" ? `출입구 ${st.entrances.length}곳 확인(최근접 출구 기준)` : "공식 중심점 기준"}
-                {st.usage.boardings === null
-                  ? ` · 이용량 자료 없음(${railNoUsageReasonText(st.usage.reason)})`
-                  : ` · 일평균 승차 ${Math.round(st.usage.boardings).toLocaleString("ko-KR")}명 · 하차 ${Math.round(st.usage.alightings ?? 0).toLocaleString("ko-KR")}명${st.usage.lines_total !== null && st.usage.lines_with_usage < st.usage.lines_total ? ` (노선 ${st.usage.lines_with_usage}/${st.usage.lines_total}만 연결)` : ""}`}
-              </li>
-            ))}
-          </ul>
-        </Fold>
-      )}
-    </>
-  );
-}
-
-function BusAccessPart({ bus }: { bus: BusAccess }) {
-  if (bus.status !== "ok") {
-    return (<><SubHead>버스</SubHead><Notice tone="muted">{bus.message}</Notice></>);
-  }
-  const s = bus.selected;
-  const nearest = bus.nearest;
-  return (
-    <>
-      <SubHead>버스 정류장</SubHead>
-      <div style={grid3}>
-        <Stat label="버스정류장" value={busCountText(s)} sub={busCountNote(s, null)} />
-        <Stat label="가장 가까운 정류장" value={nearest ? formatDistance(nearest.distance_m) : "자료 없음"} sub={nearest ? (nearest.reliable ? "직선거리" : "직선거리 · 수집 범위 밖일 수 있음") : undefined} />
-        <Stat label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}곳`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
-      </div>
-      {bus.scope.reason && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.scope.reason}</Notice></div>}
-    </>
-  );
-}
-
-/** ④ 교통 이용 수요 — 지하철·버스 모두 승차·하차를 따로, 연결된 곳만의 관측된 부분 합계. 승차+하차(+환승) 합계는 만들지 않는다. 지하철과 버스는 서로 더하지 않는다. */
-function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: RailAccess; radiusText: string }) {
-  const railOk = rail && rail.status === "ok" ? rail : null;
-  if (!railOk && bus.status !== "ok") return null;
-  return (
-    <Block title={`교통 이용 수요 (반경 ${radiusText}, 2025년 일 평균)`}>
-      {railOk && <RailDemandPart rail={railOk} />}
-      {bus.status === "ok" && <BusDemandPart bus={bus} />}
-      <Caveat>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</Caveat>
-    </Block>
-  );
-}
-
-function RailDemandPart({ rail }: { rail: Extract<RailAccess, { status: "ok" }> }) {
-  const s = rail.selected;
-  const usage = railUsageLines(s);
-  const linkedText = railLinkedText(s);
-  return (
-    <>
-      <SubHead>지하철 역 승·하차 (연결된 역만)</SubHead>
-      <div style={grid2}>
-        <Stat label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} />
-        <Stat label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} />
-      </div>
-      <Caption>
-        {[linkedText, railCompleteText(s)].filter(Boolean).join(" · ")}
-        {s.usage_state === "none_linked" && s.count > 0 && `${linkedText ? " · " : ""}이 반경 역의 이용량 자료가 없습니다(0명이 아니라 자료 없음${s.no_source_region_stations > 0 ? " — 이용량 자료를 아직 받지 않은 지역 포함" : ""}).`}
-        {usage.partial && ` 이용량이 없거나 일부 노선만 연결된 역은 빠져 있어 이 반경 전체의 값이 아닙니다. 반경 밖 역의 이용량은 더하지 않았습니다.`}
-      </Caption>
-    </>
-  );
-}
-
-function BusDemandPart({ bus }: { bus: Extract<BusAccess, { status: "ok" }> }) {
-  const s = bus.selected;
-  const usage = busUsageLines(s);
-  return (
-    <>
-      <SubHead>버스 정류장 승·하차 (연결된 정류장만)</SubHead>
-      <div style={grid2}>
-        <Stat label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
-        <Stat label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
-      </div>
-      <Caveat>
-        {usage.partial ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. ` : ""}
-        정류장 승·하차 기록이며 승차와 하차는 합치지 않았습니다.
-      </Caveat>
-    </>
-  );
-}
 
 function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
@@ -438,12 +299,6 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
       )}
     </li>
   );
-}
-
-/** 교통 상세의 숫자 칸 — 공통 조각(Stat) 그대로(값은 카드 제목 크기). 값 끝의 '(… 더한 값)' 설명은 보조 줄(sub)에 이미 있어 값에서는 뗀다. */
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  const shown = value.replace(/\s*\(이용량이 확인된[^)]*\)$/, "");
-  return <KitStat onGray label={label} value={shown} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />;
 }
 
 const card: React.CSSProperties = { background: PK.soft, borderRadius: 12, padding: "14px 16px", marginBottom: BLOCK_GAP };

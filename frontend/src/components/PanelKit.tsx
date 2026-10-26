@@ -71,6 +71,18 @@ export function ListRow({ name, kind, meta, onClick }: { name: ReactNode; kind?:
   );
 }
 
+/** 접기·펼치기 아이콘 단추(가운데 ⌄/⌃) — 설명 글자 없이 아이콘만 쓴다. 상권 페이지의 '어떤 시설이 있나요?' 접힘과 매장 페이지의 시설 이름 접힘이 같은 모양이다. label 은 화면낭독기용 이름. */
+export function ChevronToggle({ open, onClick, label }: { open: boolean; onClick: () => void; label: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+      <button type="button" onClick={onClick} aria-expanded={open} aria-label={`${label} ${open ? "접기" : "펼치기"}`} title={open ? "접기" : "펼치기"}
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 36, padding: 0, border: "none", borderRadius: 8, background: "transparent", color: PK.mute, cursor: "pointer" }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={open ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} /></svg>
+      </button>
+    </div>
+  );
+}
+
 /** 누르는 단추 — primary(파랑 꽉 찬)·secondary(파랑 옅은)·ghost(테두리)·danger(빨강 테두리). 글자는 단추 크기(ui), 설명 한 줄(sub)은 보조 크기. */
 export function ActionButton({ variant = "secondary", full, sub, children, ...rest }: { variant?: "primary" | "secondary" | "ghost" | "danger"; full?: boolean; sub?: ReactNode; children: ReactNode } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children">) {
   const V: Record<string, CSSProperties> = {

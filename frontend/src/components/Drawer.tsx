@@ -7,6 +7,8 @@ import { FS } from "../lib/typography";
 interface DrawerProps {
   title: string;
   titleAside?: ReactNode;
+  /** 제목 바로 아래 한 줄(매장 주소 등) */
+  subtitle?: ReactNode;
   onClose: () => void;
   onBack?: () => void;
   /** 뒤로 가기 버튼 문구(기본 '← 목록으로') */
@@ -18,7 +20,7 @@ interface DrawerProps {
 
 /** 지도 왼쪽에서 열리는 상세 서랍의 공용 틀(GNB 아래 전체 높이). */
 /** 좁은 화면에서는 레일 옆 남는 폭까지 꽉 채우고 지도 조작 단추(확대·축소)보다 위에 둔다. */
-export function Drawer({ title, titleAside, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
+export function Drawer({ title, titleAside, subtitle, onClose, onBack, backLabel = "← 목록으로", left = 0, children }: DrawerProps) {
   const narrow = useNarrow();
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
@@ -56,6 +58,7 @@ export function Drawer({ title, titleAside, onClose, onBack, backLabel = "← �
             </button>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "4px 0" }}><strong style={{ fontSize: FS.screenTitle, lineHeight: 1.3, fontWeight: 800, display: "block", wordBreak: "keep-all" }}>{title}</strong>{titleAside}</div>
+          {subtitle && <div style={{ marginBottom: 4 }}>{subtitle}</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
         {narrow && showMap && (

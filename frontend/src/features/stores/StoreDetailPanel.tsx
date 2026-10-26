@@ -1,10 +1,9 @@
 import "./storeDetail.css";
-import { AppIcon } from "../../components/DataVisuals";
 import { OwnerChurnDetails, OwnerLocationDetails } from "./OwnerReferenceDetails";
 import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Drawer } from "../../components/Drawer";
-import { Fold, Notice, Section, SourceNote } from "../../components/Notice";
+import { Fold, Notice, Section } from "../../components/Notice";
 import { NoteSlot, NoteHost } from "../../components/NoteHost";
 import { RailHeading } from "../../components/RailHeading";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -31,7 +30,7 @@ import { CompetitorBlock } from "./CompetitorBlock";
 import { MineStatusBar } from "./MineStatusBar";
 import { toKakaoLatLng } from "../../lib/geo";
 import { StoreBriefCard } from "./StoreBriefCard";
-import { ReportCTA } from "../../components/ReportCTA";
+import { StoreAddress } from "./StoreAddress";
 import { buildStoreBrief, type StoreBriefTarget } from "../../lib/storeBrief";
 import { MyStoreCheckupSection } from "./MyStoreCheckupSection";
 import { RadiusCircleLayer } from "./RadiusCircleLayer";
@@ -120,20 +119,14 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       ? {
           basic: (
             <div style={{ marginTop: 4 }}>
-              <div className="store-main-heading"><AppIcon name="store" />매장 기본정보</div>
-              <div className="store-address">
-                <AppIcon name="pin" /> {store.address ?? "주소 정보 없음"}
-                {store.building ? ` (${store.building})` : ""}
-                <SourceNote title={store.source.title} reference={store.source.reference} />
-              </div>
-              <div style={{ marginTop: 10 }}>
+              <div>
                 {mode === "founder" ? <Fold title="영업 상태 근거·기준일 보기"><LicenseSummary history={data.operation_history} part="basis" /></Fold> : <LicenseSummary history={data.operation_history} compact />}
               </div>
             </div>
           ),
           google: <GoogleReviewSection storeId={storeId} autoLoad />,
           history: <OperationHistorySection history={data.operation_history} compact={mode === "owner"} />,
-          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showExits={showExits} onShowExitsChange={setShowExits} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
+          radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
           competitors: (
             <CompetitorBlock
               storeId={storeId}
@@ -204,6 +197,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
         onBack={onBack}
         onClose={onClose}
         left={narrow ? 0 : RAIL_WIDTH_PX}
+        subtitle={store ? <StoreAddress store={store} /> : undefined}
       >
         {isLoading && <Notice tone="muted">매장 정보를 불러오는 중...</Notice>}
         {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
@@ -241,10 +235,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                         소속 {store.trdar ? "상권" : "행정동"} 보고서 보기 ›
                         <span style={{ ...reportSubStyle, color: "#7C2D12" }}>{store.trdar ? store.trdar.name : store.dong} 전체 · 지역 보고서</span>
                       </button>
-                    )}
-                    {onOpenAreaReport && mode === "founder" && (
-                      <ReportCTA tourId="report-button" onClick={areaReport} title="상권분석 보고서 보기 ›"
-                        sub={`${store.trdar ? store.trdar.name : store.dong} 전체 · 인쇄·PDF 저장`} />
                     )}
                   </div>
                 )}
