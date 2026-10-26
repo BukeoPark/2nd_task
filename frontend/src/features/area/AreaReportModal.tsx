@@ -182,14 +182,14 @@ export function AreaReportModal({ level, code, name, type = null, svc, scls, mod
   }, [cmp.data, ov.data, ch.data, bPer.data, bClose.data, bOpen.data, bFrc.data, level, code, name, type, mode]);
   const hasAny = report !== null && (report.level || report.slots || report.stability || report.location);
   // 일부 조회만 실패했을 때 그 쪽이 조용히 빠지면 '자료 없음'으로 오해하므로 실패한 자료를 밝힌다
-  const partialFailures = [ov.isError && "시간대·유동인구", ch.isError && "상권 유형·입지", (bPer.isError || bClose.isError || bOpen.isError || bFrc.isError) && "비교 지역 분포", ex.isError && "업종별 비교·영업 기간"].filter(Boolean) as string[];
+  const partialFailures = [ov.isError && "시간대·유동인구", ch.isError && "상권 유형·입지", (bPer.isError || bClose.isError || bOpen.isError || bFrc.isError) && "비교 지역 분포", ex.isError && "업종별 비교·영업 기간", stores.isError && "주변 매장", cmp.isError && "핵심 지표"].filter(Boolean) as string[];
 
   return (
-    <ReportFrame downloadTitle={reportFilename(name, cmp.data?.scope.stores_label)} title={`상권분석 보고서 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={!pending && Boolean(hasAny)} onClose={onClose}>
+    <ReportFrame downloadTitle={reportFilename(name, cmp.data?.scope.stores_label)} title={`상권분석 보고서 · ${mode === "owner" ? "자영업자용" : "예비 창업자용"}`} canPrint={!pending && partialFailures.length === 0 && Boolean(hasAny)} onClose={onClose}>
       {pending && <div style={{ ...boxS, background: C.paper }}>리포트 자료를 불러오는 중...</div>}
       {!pending && partialFailures.length > 0 && (
         <div style={{ ...boxS, background: C.paper, color: C.bad }}>
-          다음 자료를 불러오지 못해 해당 내용이 이 리포트에 빠져 있습니다: {partialFailures.join(" · ")}. 자료가 없는 것이 아니라 조회 실패이니 잠시 후 리포트를 다시 열어 주세요.
+          다음 자료를 불러오지 못해 해당 내용이 이 리포트에 빠져 있습니다: {partialFailures.join(" · ")}. 자료가 없는 것이 아니라 조회 실패입니다. 다시 조회한 뒤 인쇄해 주세요. <button type="button" onClick={() => { [cmp, ov, ch, ex, stores, bPer, bClose, bOpen, bFrc].forEach(q => { if (q.isError) void q.refetch(); }); }}>실패한 자료 다시 조회</button>
         </div>
       )}
       {!pending && cmp.isError && <div style={{ ...boxS, background: C.paper, color: C.bad }}>지표를 불러오지 못했습니다: {cmp.error.message}</div>}

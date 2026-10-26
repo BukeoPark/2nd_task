@@ -1,4 +1,5 @@
 /** 백엔드 `/api` 호출은 이 모듈을 통해서만 한다 — 컴포넌트에서 fetch 직접 호출 금지. */
+import { createRequestQueue } from "./requestQueue";
 import type { FacilityCountState, FacilityType } from "./facilityText";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
@@ -12,13 +13,17 @@ export class ApiError extends Error {
   }
 }
 
+const queueRequest = createRequestQueue(2);
+
 async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise<T> {
+  return queueRequest(async () => {
   const res = await fetch(`${BASE_URL}${path}`, { method });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}) as { detail?: string });
     throw new ApiError(body.detail ?? `API 오류 (HTTP ${res.status})`, res.status);
   }
   return res.json() as Promise<T>;
+  });
 }
 
 export interface RegionFeature {
