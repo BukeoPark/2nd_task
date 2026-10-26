@@ -1,3 +1,4 @@
+import { layoutRect, layoutViewport } from "../../lib/displayScale";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { SearchKind, SearchResult } from "../../lib/apiClient";
 import type { Mode } from "../../lib/mode";
@@ -66,7 +67,8 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
   useEffect(() => {
     if (!open) return;
     const place = () => {
-      const r = boxRef.current?.getBoundingClientRect();
+      const raw = boxRef.current?.getBoundingClientRect();
+      const r = raw ? layoutRect(raw) : null;
       if (r) setPos((p) => (p.left === r.left && p.top === r.bottom + 6 ? p : { left: r.left, top: r.bottom + 6 }));
     };
     place();
@@ -158,7 +160,7 @@ export function SearchBox({ onPick, pickedName, onClear, mode }: SearchBoxProps)
           id={listId}
           role="listbox"
           style={{
-            position: "fixed", top: pos.top, left: Math.max(8, Math.min(pos.left, window.innerWidth - (narrow ? 340 : 400) - 8)), width: narrow ? "min(340px, calc(100vw - 16px))" : 400, maxHeight: "min(440px, calc(100vh - 120px))", overflowY: "auto", background: "white", borderRadius: 10,
+            position: "fixed", top: pos.top, left: Math.max(8, Math.min(pos.left, layoutViewport().width - (narrow ? 340 : 400) - 8)), width: narrow ? "min(340px, calc(var(--app-vw) - 16px))" : 400, maxHeight: "min(440px, calc(var(--app-vh) - 120px))", overflowY: "auto", background: "white", borderRadius: 10,
             boxShadow: "0 8px 28px rgba(0,0,0,0.25)", zIndex: OVERLAY_Z_INDEX + 3, fontSize: FS.warn, color: "#111827",
           }}
         >

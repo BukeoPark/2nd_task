@@ -7,7 +7,7 @@ import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { BusAccess, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
-import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityReferenceText, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
+import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
@@ -68,70 +68,20 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
   );
 }
 
-/** ⑥ 분석 기준 자세히 보기 — ①~④ 와 같은 반경의 응답(같은 쿼리 키라 추가 요청 없음)에서 원천·기준일·한계를 접어 보여준다. */
+/** 주변 분석의 공통 안내를 탭 하단의 접힌 유의사항에 모은다. */
 export function RadiusBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
   const { data } = useLocationInfluence(storeId, radius);
   if (!data) return null;
-  const { anchors, competitors, bus, rail, facilities } = data.radius_metrics;
   return (
-    <Section title="읽는 법·유의사항" scope={<ScopeTag kind="radius" label={`반경 ${radiusLabel(data.radius_m)}`} />}>
-      <Fold title="계산 기준·자료 안내">
-        <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#4B5563", lineHeight: 1.6 }}>
-          <li>거리는 모두 직선거리입니다. 큰 도로·철도·하천 때문에 실제 도보 거리는 더 길 수 있습니다.</li>
-          <li>{competitors.basis}. 선택 매장은 제외했습니다. 밀도는 점포 수 ÷ 원의 넓이(π·반경²) 단순 환산입니다.</li>
-          <li>상가정보 기반 점포 수는 위 ① 입니다. 인허가 기반 영업·폐업 현황은 아래 '개폐업' 블록에서 따로 봅니다(서로 다른 자료라 수가 다를 수 있음).</li>
-          {anchors.note && <li>{anchors.note}</li>}
-          {bus.status === "ok" ? (
-            <>
-              <li>버스: {bus.source.title} ({bus.source.reference}). {bus.usage_basis.text}.</li>
-              <li>분석 범위: {bus.scope.extent}. {bus.scope.complete ? "이 반경은 수집 범위 안에 있습니다." : bus.scope.reason}</li>
-              {bus.caveats.map((c) => <li key={c}>{c}</li>)}
-              <li>
-                이용량 미연결 사유({bus.selected.unlinked}곳):{" "}
-                {bus.selected.unlinked_breakdown.length === 0 ? "없음" : bus.selected.unlinked_breakdown.map((b) => `${b.label} ${b.count}곳`).join(" · ")}
-              </li>
-            </>
-          ) : (
-            <li>{bus.message}</li>
-          )}
-          {rail && rail.status === "ok" && (
-            <>
-              <li>지하철: {rail.source.title} ({rail.source.reference}). {rail.usage_basis.text}.</li>
-              {railExitsEnabled(rail) ? (
-                <>
-                  <li>포함 기준: {rail.inclusion_rule} 출입구가 있다는 이유로 역 중심점과 출입구를 둘 다 세지 않고, 출입구 수는 반경 안에 좌표가 확인된 출입구만 셉니다.</li>
-                  <li>
-                    위치 자료 범위: {rail.scope.location_extent}. 출입구 자료 범위: {rail.scope.entrance_extent}
-                    {rail.scope.entrance_scope_complete ? " — 이 반경은 그 범위 안입니다." : " — 이 반경의 일부가 그 범위 밖이라 출입구는 일부만 확인된 값이고, 출입구가 없는 역은 중심점 기준입니다."}
-                  </li>
-                </>
-              ) : (
-                <>
-                  <li>포함 기준: {rail.inclusion_rule}</li>
-                  <li>위치 자료 범위: {rail.scope.location_extent}. {railCenterOnlyNote(rail.entrance_data?.reason)}.</li>
-                </>
-              )}
-              <li>이용량이 있는 지역: {rail.scope.usage_regions.join("·")}. 그 밖 지역의 역은 이용량 자료를 아직 받지 않아 '자료 없음'이며 0명이 아닙니다.</li>
-              <li>이용량 기간(원천별, 서로 다른 기간을 같은 기간처럼 비교하지 않음): {Object.entries(rail.usage_basis.periods).map(([k, v]) => `${k} ${v[0]}~${v[1]}`).join(" · ")}. 역사 합계는 2025년 달력 연도만 씁니다.</li>
-              {rail.caveats.map((c) => <li key={c}>{c}</li>)}
-            </>
-          )}
-          {rail && rail.status !== "ok" && <li>{rail.message}</li>}
-          {facilities && facilities.status === "ok" && (
-            <>
-              <li>주요 집객시설: 공식 자료(건강보험심사평가원 병원정보 · 행정안전부 대규모점포·영화상영관 인허가 · 서울시 LOCALDATA·문화공간 · 소상공인 상가정보)와 이용 권한이 확인된 시설만 셉니다. 권한이 확인되지 않은 지도 업체 검색 결과는 쓰지 않았습니다.</li>
-              <li>자료 기준일: {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.reference_date).map((v) => `${v.label} ${facilityReferenceText(v).replace("기준일 ", "")}`).join(" · ")}. 출처: {facilities.attributions.join(" / ") || "해당 반경 시설 없음"}.</li>
-              {FACILITY_GROUPS.flatMap((g) => g.types).map((t) => facilities.selected.by_type[t]).filter((v) => v && v.count_state !== "no_official_source" && v.coord_coverage?.pilot_coord_rate != null).map((v) => (
-                <li key={v.type}>{v.label}: 양천·영등포 공식 목록의 좌표 보유율 {Math.round((v.coord_coverage?.pilot_coord_rate ?? 0) * 100)}% (좌표 없는 {v.coord_coverage?.pilot_unlocated}곳은 위치를 추정하지 않아 빠져 있음).</li>
-              ))}
-              {facilities.caveats.map((c) => <li key={c}>{c}</li>)}
-            </>
-          )}
-          {facilities && facilities.status !== "ok" && <li>{facilities.message}</li>}
-        </ul>
-        <SourceNote label="반경 입지 지표 자료" title={data.source.title} reference={data.source.reference} />
-      </Fold>
-    </Section>
+    <Caveat>
+      <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+        <li>반경 {radiusLabel(data.radius_m)} · 직선거리 기준이며 실제 도보 거리와 다를 수 있습니다.</li>
+        <li>경쟁점은 같은 세부 업종 기준이며 선택 매장은 제외합니다. 상가정보와 인허가 자료의 점포 수는 다를 수 있습니다.</li>
+        <li>교통 이용량은 연결된 자료만 반영하며, 자료별 기준 기간이 다를 수 있습니다.</li>
+        <li>집객시설은 공식 자료에서 위치가 확인된 곳만 반영합니다. ‘자료 없음’은 0을 뜻하지 않습니다.</li>
+      </ul>
+      <SourceNote label="반경 입지 지표 자료" title={data.source.title} reference={data.source.reference} />
+    </Caveat>
   );
 }
 

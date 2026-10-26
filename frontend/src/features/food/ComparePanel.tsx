@@ -28,7 +28,7 @@ export function ComparePanel({ level, codes, svc, scls, filterName, onRemove, on
       aria-label="입지 비교"
       style={{
         position: "absolute", zIndex: OVERLAY_Z_INDEX + 2, top: 68, left: "50%", transform: "translateX(-50%)",
-        width: "min(980px, calc(100vw - 32px))", maxHeight: "calc(100vh - 100px)", overflowY: "auto", background: "white",
+        width: "min(980px, calc(var(--app-vw) - 32px))", maxHeight: "calc(var(--app-vh) - 100px)", overflowY: "auto", background: "white",
         borderRadius: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.25)", padding: "16px 20px",
       }}
     >

@@ -1,3 +1,4 @@
+import { normalizeStoreLabels } from "./normalizeStoreLabels";
 /** 백엔드 `/api` 호출은 이 모듈을 통해서만 한다 — 컴포넌트에서 fetch 직접 호출 금지. */
 import { createStaticAnalysisReader } from "./staticAnalysis";
 import { createRequestQueue } from "./requestQueue";
@@ -28,7 +29,7 @@ async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise
   if (staticEnabled && method === "GET") {
     // 사용자가 서비스를 실제 이용할 때만 백그라운드로 분석 서버를 준비한다.
     if (!serverWoken && BASE_URL) { serverWoken = true; void fetch(`${BASE_URL}/health`).catch(() => {}); }
-    try { const cached = await readStatic(path); if (cached !== undefined) return cached as T; }
+    try { const cached = await readStatic(path); if (cached !== undefined) return normalizeStoreLabels(cached) as T; }
     catch { /* CDN 조회 실패는 정상 API로 재시도한다. */ }
   }
   return queueRequest(async () => {
@@ -37,7 +38,7 @@ async function request<T>(path: string, method: "GET" | "POST" = "GET"): Promise
     const body = await res.json().catch(() => ({}) as { detail?: string });
     throw new ApiError(body.detail ?? `API 오류 (HTTP ${res.status})`, res.status);
   }
-  return res.json() as Promise<T>;
+  return normalizeStoreLabels(await res.json()) as T;
   });
 }
 

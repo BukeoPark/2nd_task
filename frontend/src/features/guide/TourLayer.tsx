@@ -1,3 +1,4 @@
+import { layoutRect, layoutViewport } from "../../lib/displayScale";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { MODE_LABEL, type Mode } from "../../lib/mode";
 import { placeTip, TOURS, type Rect } from "../../lib/tour";
@@ -102,7 +103,7 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
     const measure = () => {
       const el = findTarget(step.target, folds.current);
       if (!el) { setRect((r) => (r === null ? r : null)); return; }
-      const b = el.getBoundingClientRect();
+      const b = layoutRect(el.getBoundingClientRect());
       setRect((r) => (r && r.left === b.left && r.top === b.top && r.width === b.width && r.height === b.height ? r : { left: b.left, top: b.top, width: b.width, height: b.height }));
     };
     const foldLog = folds.current;
@@ -115,7 +116,8 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
   }, [step.target]);
 
   useLayoutEffect(() => {
-    const b = card.current?.getBoundingClientRect();
+    const raw = card.current?.getBoundingClientRect();
+    const b = raw ? layoutRect(raw) : null;
     if (b) setSize((z) => (Math.round(b.width) !== Math.round(z.width) || Math.round(b.height) !== Math.round(z.height) ? { width: b.width, height: b.height } : z));
   }, [tour.index, hasRect, narrow]);
 
@@ -130,13 +132,13 @@ function Steps({ mode, tour }: { mode: Mode; tour: Tour }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [tour]);
 
-  const view = { width: window.innerWidth, height: window.innerHeight };
+  const view = layoutViewport();
   let cardStyle: CSSProperties;
   if (narrow) cardStyle = { left: 8, right: 8, bottom: 8 };
   else if (rect) {
     const p = placeTip({ left: rect.left - PAD, top: rect.top - PAD, width: Math.max(rect.width, step.avoid?.width ?? 0) + PAD * 2, height: rect.height + (step.avoid?.height ?? 0) + PAD * 2 }, size, view, step.placement);
     cardStyle = { left: p.left, top: p.top, width: 320 };
-  } else cardStyle = { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "min(360px, calc(100vw - 24px))" };
+  } else cardStyle = { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "min(360px, calc(var(--app-vw) - 24px))" };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: Z, pointerEvents: "none" }}>

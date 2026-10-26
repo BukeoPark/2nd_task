@@ -1,3 +1,4 @@
+import "./explorePanel.css";
 import { useState } from "react";
 import { Drawer } from "../../components/Drawer";
 import { Notice } from "../../components/Notice";
@@ -82,29 +83,27 @@ export function ExplorePanel(p: Props) {
             {scopeNote && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>{scopeNote}</div>}
             <div style={{ fontSize: FS.warn, color: "#92400E", lineHeight: 1.5, marginTop: 4 }}>※ {preset.warn}</div>
             {res.candidates.length === 0 && <Notice tone="muted">이 조건에 맞는 {unitWord}가 없어요(자료가 없는 것이 아니라 조건에 맞는 곳이 없는 경우예요).</Notice>}
-            <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            <ul className="explore-candidates">
               {res.candidates.map((c) => {
                 const b = fresh.bubbles.find((x) => x.code === c.code) as FoodBubble;
                 const fav = p.isFavorite(c.code);
                 return (
-                  <li key={c.code} onClick={() => p.onPick(b, fresh)} style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: "6px 8px 8px 10px", background: "white", cursor: "pointer" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                      {/* 카드 어디를 눌러도 종합분석이 열리고, 키보드·화면낭독은 이 이름 단추로 같은 일을 한다 */}
-                      <button type="button" aria-label={`${c.name} 종합분석 보기`} onClick={(e) => { e.stopPropagation(); p.onPick(b, fresh); }}
-                        style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: "none", textAlign: "left", cursor: "pointer", color: "#111827", font: "inherit" }}>
-                        <strong style={{ fontSize: FS.body }}>{c.name}{c.type ? <span style={{ fontWeight: 400, fontSize: FS.caption, color: "#6B7280" }}> {c.type}</span> : null}</strong>
-                      </button>
-                      <span style={{ fontWeight: 800, fontSize: FS.cardTitle, whiteSpace: "nowrap" }}>{formatMetric(fresh.kind, c.value)}</span>
-                      <button type="button" aria-pressed={fav} aria-label={fav ? `${c.name} 내 관심 지역에서 빼기` : `${c.name} 내 관심 지역에 담기`} title={fav ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"}
-                        onClick={(e) => { e.stopPropagation(); p.onFavorite(b, fresh); }}
-                        style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 8, border: "1px solid #D1D5DB", background: fav ? "#FEF3C7" : "white", color: fav ? "#B45309" : "#6B7280", fontSize: FS.cardTitle, lineHeight: 1, cursor: "pointer" }}>
-                        {fav ? "★" : "☆"}
-                      </button>
-                    </div>
-                    {c.caution && <div style={{ fontSize: FS.caption, color: "#6B7280", margin: "0 0 4px" }}>{cautionText(preset, c.stores)}</div>}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-                      <button type="button" aria-label={`${c.name} 상권분석 보고서 보기`} onClick={(e) => { e.stopPropagation(); p.onReport(b); }} style={{ minHeight: 36, padding: "6px 4px", border: 0, background: "none", color: "#6B7280", fontSize: FS.warn, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>보고서 보기</button>
-                    </div>
+                  <li key={c.code} className="explore-candidate" onClick={() => p.onPick(b, fresh)}>
+                    <button type="button" className="explore-candidate-name" aria-label={`${c.name} 종합분석 보기`}
+                      title={[c.name, c.type, c.caution ? cautionText(preset, c.stores) : null].filter(Boolean).join(" · ")}
+                      onClick={(e) => { e.stopPropagation(); p.onPick(b, fresh); }}>
+                      {c.name}
+                    </button>
+                    <span className="explore-candidate-value" title={formatMetric(fresh.kind, c.value)}>{formatMetric(fresh.kind, c.value)}</span>
+                    <button type="button" className="explore-candidate-favorite" aria-pressed={fav}
+                      aria-label={fav ? `${c.name} 내 관심 지역에서 빼기` : `${c.name} 내 관심 지역에 담기`}
+                      title={fav ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"}
+                      onClick={(e) => { e.stopPropagation(); p.onFavorite(b, fresh); }}>
+                      {fav ? "★" : "☆"}
+                    </button>
+                    <button type="button" className="explore-candidate-report" aria-label={`${c.name} 상권분석 보고서 보기`} title="보고서 보기"
+                      onClick={(e) => { e.stopPropagation(); p.onReport(b); }}>보고서 보기</button>
+                    {c.caution && <span className="explore-candidate-caution">{cautionText(preset, c.stores)}</span>}
                   </li>
                 );
               })}

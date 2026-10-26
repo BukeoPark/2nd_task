@@ -65,7 +65,7 @@ interface ChipProps {
 export function SearchResultChip({ query, total, truncated, loading, failed, onClose }: ChipProps) {
   const text = loading ? `'${query}' 찾는 중…` : failed ? `'${query}' 검색 결과를 불러오지 못했어요` : total === 0 ? `'${query}'에 맞는 매장이 없어요` : `'${query}' 매장 ${total?.toLocaleString("ko-KR")}곳을 지도에 표시했어요${truncated ? " (가까운 일부만)" : ""}`;
   return (
-    <div role="status" style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 106, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, maxWidth: "calc(100vw - 24px)", background: "#1D4ED8", color: "white", borderRadius: 999, padding: "6px 8px 6px 14px", fontSize: 13, fontWeight: 600, boxShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>
+    <div role="status" style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 106, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, maxWidth: "calc(var(--app-vw) - 24px)", background: "#1D4ED8", color: "white", borderRadius: 999, padding: "6px 8px 6px 14px", fontSize: 13, fontWeight: 600, boxShadow: "0 2px 10px rgba(0,0,0,0.3)" }}>
       <span>{text}</span>
       <button type="button" onClick={onClose} style={{ border: "none", background: "rgba(255,255,255,0.2)", color: "white", borderRadius: 999, padding: "3px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>지우기 ×</button>
     </div>

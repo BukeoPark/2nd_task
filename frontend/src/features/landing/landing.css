@@ -198,3 +198,7 @@
 /* 컨테이너 — 지도 앱은 화면 높이에 고정이라 랜딩은 이 안에서 스크롤한다(머리글 sticky·해시 이동 모두 이 안에서 동작) */
 .lp { height: 100%; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 @media (prefers-reduced-motion: reduce) { .lp { scroll-behavior: auto; } }
+
+/* Long Korean headings must stay inside their grid column. */
+.lp .hero .wrap > *, .lp .mode { min-width: 0; }
+.lp .hero h1 span { white-space: normal; overflow-wrap: anywhere; }

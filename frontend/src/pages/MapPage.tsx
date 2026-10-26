@@ -488,7 +488,7 @@ export function MapPage() {
   })();
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div style={{ width: "100%", height: "100%" }}>
       <KakaoMap onReady={(map, kakao) => setMapKakao({ map, kakao })}>
         {mapKakao && regions.data && unit !== "gu" && !competitionView && (
           <RegionOutlineLayer map={mapKakao.map} kakao={mapKakao.kakao} features={regions.data.features} />
@@ -882,7 +882,7 @@ function StatusArea(p: {
   if (p.categoriesError) banners.push({ key: "cat", tone: "error", text: `업종 목록을 불러오지 못했습니다: ${p.categoriesError}`, retry: p.onRetryCategories });
   const colors: Record<BannerTone, { bg: string; fg: string }> = { info: { bg: "white", fg: "#374151" }, warn: { bg: "#FFFBEB", fg: "#92400E" }, error: { bg: "#FEF2F2", fg: "#B91C1C" } };
   return (
-    <div style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 100, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", gap: 6, alignItems: "center", maxWidth: "min(720px, calc(100vw - 32px))" }}>
+    <div style={{ position: "absolute", zIndex: OVERLAY_Z_INDEX, top: 100, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", gap: 6, alignItems: "center", maxWidth: "min(720px, calc(var(--app-vw) - 32px))" }}>
       {banners.map((b) => (
         <div key={b.key} role={b.tone === "error" ? "alert" : "status"} style={{ background: colors[b.tone].bg, color: colors[b.tone].fg, borderRadius: 8, padding: "8px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontSize: FS.warn }}>
           {b.text}

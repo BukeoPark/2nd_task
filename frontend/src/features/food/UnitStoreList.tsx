@@ -1,3 +1,4 @@
+import { splitStoreName } from "../../lib/storeName";
 import { useState } from "react";
 import { Notice } from "../../components/Notice";
 import type { FoodLevel, UnitStoreSort } from "../../lib/apiClient";
@@ -59,7 +60,9 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
       {q.data && total === 0 && <Notice tone="muted">조건에 맞는 매장이 0곳입니다(조회는 정상).</Notice>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {records.map((s) => (
+        {records.map((s) => {
+          const display = splitStoreName(s.name, s.branch);
+          return (
           <button
             key={s.store_id}
             type="button"
@@ -71,13 +74,13 @@ export function UnitStoreList({ level, code, svc, scls, filterName, onSelect, on
             style={{ textAlign: "left", border: "1px solid #E5E7EB", borderRadius: 10, padding: "12px 14px", minHeight: 64, lineHeight: 1.6, color: "#111827", background: "white", cursor: "pointer" }}
           >
             <div style={{ fontWeight: 700, fontSize: FS.body }}>
-              {s.name} {s.branch && <span style={{ fontWeight: 400, color: "#6B7280" }}>{s.branch}</span>}
+              {display.name} {display.branch && <span style={{ fontWeight: 400, color: "#6B7280" }}>{display.branch}</span>}
             </div>
             <div style={{ fontSize: FS.caption, color: "#6B7280" }}>
               {s.category_detail} · 중심에서 {formatDistance(s.distance_m)}
             </div>
           </button>
-        ))}
+        ); })}
         {q.hasNextPage && (
           <button
             type="button"

@@ -237,7 +237,7 @@ function MenuSheet({ onClose, children }: { onClose: () => void; children: React
   return (
     <>
       <div onClick={onClose} aria-hidden="true" style={{ position: "fixed", inset: "56px 0 0 0", zIndex: OVERLAY_Z_INDEX + 6, background: "rgba(17,24,39,0.35)" }} />
-      <div id="topbar-menu" role="dialog" aria-label="메뉴" style={{ position: "fixed", top: 56, left: 0, right: 0, zIndex: OVERLAY_Z_INDEX + 7, maxHeight: "calc(100dvh - 56px)", overflowY: "auto", background: "white", padding: "12px 14px 16px", boxShadow: "0 8px 16px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div id="topbar-menu" role="dialog" aria-label="메뉴" style={{ position: "fixed", top: 56, left: 0, right: 0, zIndex: OVERLAY_Z_INDEX + 7, maxHeight: "calc(var(--app-vh) - 56px)", overflowY: "auto", background: "white", padding: "12px 14px 16px", boxShadow: "0 8px 16px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: 8 }}>
         {children}
       </div>
     </>

@@ -1,3 +1,4 @@
+import { layoutRect, layoutViewport } from "../lib/displayScale";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { OVERLAY_Z_INDEX } from "../lib/vizConfig";
 import { FS } from "../lib/typography";
@@ -16,9 +17,10 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
   const id = useId();
 
   const show = () => {
-    const r = btn.current?.getBoundingClientRect();
+    const raw = btn.current?.getBoundingClientRect();
+    const r = raw ? layoutRect(raw) : null;
     if (!r) return;
-    const left = Math.min(Math.max(EDGE, r.left + r.width / 2 - TIP_WIDTH / 2), window.innerWidth - TIP_WIDTH - EDGE);
+    const left = Math.min(Math.max(EDGE, r.left + r.width / 2 - TIP_WIDTH / 2), layoutViewport().width - TIP_WIDTH - EDGE);
     setPos({ left, top: r.bottom + 6 });
     setOpen(true);
   };

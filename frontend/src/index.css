@@ -27,3 +27,16 @@ body,
   width: 100%;
   height: 100%;
 }
+
+/* Desktop density: the same proportions as an 80% browser view.
+   Expand the layout canvas so the map still fills the visible viewport. */
+:root { --app-scale: 1; --app-vw: 100vw; --app-vh: 100dvh; }
+@media screen and (hover: hover) and (pointer: fine) {
+  :root { --app-scale: .8; --app-vw: 125vw; --app-vh: 125dvh; }
+  #root { zoom: var(--app-scale); width: var(--app-vw); height: var(--app-vh); }
+}
+#root { overflow-wrap: anywhere; }
+button, input, select, textarea { max-width: 100%; }
+@media print {
+  #root { zoom: 1; width: 100%; height: auto; }
+}
