@@ -1,4 +1,4 @@
-// 매장 '상권 인사이트 리포트' — 서비스가 이미 가진 값(상권 매출 비교·반경 인허가·입지 요인)을 4쪽짜리 읽을거리로 묶는다.
+// 매장 '상권 인사이트 리포트' — 서비스가 이미 가진 값(상권 매출 비교·반경 인허가·입지 요인)을 최대 6쪽(표지 / 매출 흐름 / 시간대별 수요 / 주변 경쟁·폐업 / 종합·확인사항 / 자료·계산 기준)짜리 읽을거리로 묶는다. 쪽 구성·말투는 상권 보고서(lib/areaReport)와 같다.
 // 숫자는 API 값 그대로이고, 문장은 규칙으로만 만든다(데이터가 없으면 그 쪽·문장을 만들지 않는다). 원인을 단정하지 않고 '관측'과 '가능한 해석'만 쓴다.
 // 점수·순위를 새로 만들지 않고, 리뷰·평점은 쓰지 않는다. 다른 모듈을 import 하지 않는 순수 함수(tests/insightReport.test.ts).
 
@@ -75,6 +75,8 @@ export interface SlotsSection {
   ages: { label: string; work: number | null; sales: number }[] | null;
   salesAge50: number | null; workAge50: number | null; salesAge3040: number | null;
   take: string;
+  /** 쪽 제목 — 평균과 가장 크게 다른 시간대(5%p 이상), 없으면 '큰 차이 없음' */
+  title: string;
 }
 export interface CompetitionSection {
   radiusM: number; sameCount: number | null; label: string; openConfirmed: number | null; unconfirmed: number | null; nearestM: number | null;
@@ -84,6 +86,8 @@ export interface CompetitionSection {
   cohort: { rate: number; num: number; den: number; years: number } | null;
   text: string;
   take: string;
+  /** 쪽 제목 — 최근 1년 개폐업 수, 없으면 반경 안 같은 업종 점포 수 */
+  title: string;
 }
 export interface FactorsSection {
   factors: { label: string; pct: number; lo: number; hi: number; sig: boolean; binary: boolean }[];
@@ -103,6 +107,10 @@ export interface InsightReport {
   checklist: string[];
   sources: string[];
   limits: string[];
+  /** '자료·계산 기준' 쪽의 표 — 지표마다 기준기간과 집계 범위 */
+  dataBasis: { label: string; period: string; basis: string }[];
+  /** '종합' 쪽 제목 */
+  summaryTitle: string;
 }
 
 const BIG_PEER_STORES = 20;
@@ -210,7 +218,9 @@ function slotsSection(b: BenchIn): SlotsSection | null {
   if (age50s !== null && age50w !== null && age50s - age50w >= 10) {
     take += ` 매출의 ${age50s.toFixed(0)}%가 50대 이상으로 직장인구의 연령 구성(${age50w.toFixed(0)}%)보다 높아, 직장인 외 손님이 있을 수 있습니다.`;
   }
-  return { slots, hasFloating: slots.some((s) => s.fl !== null), text, workers, ages: ages && ages.length ? ages : null, salesAge50: age50s, workAge50: age50w, salesAge3040, take };
+  const big = Math.abs(hi.gap) >= Math.abs(lo.gap) ? hi : lo;
+  const title = Math.abs(big.gap) >= 5 ? `${big.label} 매출 비중이 평균보다 ${Math.abs(big.gap).toFixed(1)}%p ${big.gap > 0 ? "높습니다" : "낮습니다"}` : "시간대별 매출 비중은 평균과 큰 차이가 없습니다";
+  return { slots, hasFloating: slots.some((s) => s.fl !== null), text, workers, ages: ages && ages.length ? ages : null, salesAge50: age50s, workAge50: age50w, salesAge3040, take, title };
 }
 
 function competitionSection(b: BenchIn | null, n: NearbyIn | null, l: LocIn | null): CompetitionSection | null {
@@ -241,6 +251,7 @@ function competitionSection(b: BenchIn | null, n: NearbyIn | null, l: LocIn | nu
     franchise: fr ? { share: fr.share as number, frc: fr.frc_stores, stores: fr.stores, median: fr.peer_median } : null,
     churn: churn ? { opened: churn.opened ?? 0, closed: churn.closed ?? 0, avg: churn.avg_stores ?? 0, openRate: churn.open_rate ?? null, closeRate: churn.close_rate ?? null, medOpen: churn.peer_median_open ?? null, p75Open: churn.peer_p75_open ?? null, medClose: churn.peer_median_close ?? null, p75Close: churn.peer_p75_close ?? null, peers: churn.peer_count ?? null, period: churn.period } : null,
     yearly: yearly && yearly.length ? yearly : null, cohort, text: parts.join(" "), take,
+    title: churn ? `최근 1년 ${churn.opened ?? 0}곳이 열고 ${churn.closed ?? 0}곳이 닫았습니다` : `반경 ${radiusM}m 같은 업종 점포 ${same?.count ?? comp?.raw_count ?? "?"}곳`,
   };
 }
 
@@ -271,9 +282,14 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
 
   // 제목은 가장 큰 시간대 차이를 쓰고, 없으면 중립적인 문장을 쓴다
   const topGap = (b?.insights ?? []).filter((i) => i.group === TIME_GROUP).sort((x, y) => Math.abs(y.gap_pctp) - Math.abs(x.gap_pctp))[0];
+  // 숫자는 시간대 쪽 본문과 같은 값(반올림 전 비중의 차)을 쓴다 — 서버 값과 0.1%p 어긋나 한 보고서 안에서 다르게 보이지 않도록
+  const topSlot = topGap ? slots?.slots.find((s) => s.label === topGap.label) : undefined;
+  const topGapPctp = topSlot ? topSlot.me - topSlot.pilot : topGap?.gap_pctp ?? 0;
   const headline = topGap && Math.abs(topGap.gap_pctp) >= 5
-    ? `${areaLabel} ${svcName}은 ${topGap.label} 매출 비중이 평균보다 ${topGap.gap_pctp > 0 ? "높다" : "낮다"}`
-    : `${areaLabel} ${svcName} 상권 읽기`;
+    ? `${areaLabel} ${svcName}, ${topGap.label} 매출 비중이 평균보다 ${Math.abs(topGapPctp).toFixed(1)}%p ${topGapPctp > 0 ? "높습니다" : "낮습니다"}`
+    : level && level.sampleStatus !== "too_few"
+      ? `${areaLabel} ${svcName}, 점포당 추정매출은 비교 ${level.peerLabel.includes("상권") ? "상권" : "행정동"} 중앙값의 ${level.ratio.toFixed(1)}배입니다`
+      : `${areaLabel} ${svcName}, 확인 가능한 자료가 부족합니다`;
 
   const tiles: Tile[] = [];
   const tooFew = level?.sampleStatus === "too_few";
@@ -300,7 +316,7 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   }
   // 제목이 시간대 차이를 말하지 않는 중립 문장이면(차이 5%p 미만) 시간대 발견이 그 제목을 되풀이하지 않게 자기 제목을 쓴다
   if (slots) findings.push({ title: topGap && Math.abs(topGap.gap_pctp) >= 5 ? headline : "시간대별 매출 비중은 평균과 큰 차이가 없습니다", body: `${slots.text} → 3쪽` });
-  if (competition) findings.push({ title: competition.churn ? `최근 1년 ${competition.churn.opened}곳이 열고 ${competition.churn.closed}곳이 닫았습니다` : `반경 ${competition.radiusM}m 같은 업종 점포 ${competition.sameCount ?? "?"}곳`, body: `${competition.text} → 4쪽` });
+  if (competition) findings.push({ title: competition.title, body: `${competition.text} → 4쪽` });
 
   const profile: { label: string; value: string }[] = [];
   if (inp.licenseAge) profile.push({ label: "인허가 업력", value: inp.licenseAge });
@@ -337,5 +353,16 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
     "원인을 단정하지 않으며, 점포당 추정매출이 높다고 수익성이 좋다는 뜻이 아닙니다(임대료·인건비·원가 자료 없음).",
   ];
   const subtitle = `${inp.store.name}${inp.store.branch ? ` ${inp.store.branch}` : ""} · ${inp.store.category} · ${inp.store.sigungu} ${inp.store.dong}${inp.store.areaName ? ` · 소속 ${inp.store.areaName}${inp.store.areaKind ? `(${inp.store.areaKind})` : ""}` : ""}`;
-  return { headline, subtitle, tiles, findings, profile, level, slots, competition, factors, checklist, sources, limits };
+  const quarter = b?.quarter_label ?? "기준기간 미확인";
+  const dataBasis: { label: string; period: string; basis: string }[] = [];
+  if (level) dataBasis.push({ label: "매출·점포", period: quarter, basis: `서울시 상권분석서비스 · ${level.unitName}·같은 업종(${svcName}) · 매장 한 곳의 값이 아님` });
+  if (slots) dataBasis.push({ label: "시간대·연령 구성", period: quarter, basis: "카드 매출액 가중 · 직장인구는 상권 영역 안 값(밖의 배후지 제외)" });
+  if (level && level.flpopYoy !== null) dataBasis.push({ label: "유동인구", period: quarter, basis: "길 단위로 배분한 추정치 · 방문객 수가 아님" });
+  if (competition?.churn) dataBasis.push({ label: "연 개업률·폐업률", period: competition.churn.period, basis: `최근 4개 분기 합 ÷ 평균 점포 수 · 비교 상권 ${competition.churn.peers ?? "여러"}곳과 견줌` });
+  if (competition?.yearly) dataBasis.push({ label: `반경 ${competition.radiusM}m 인허가 개폐업`, period: "연도별(올해는 일부 기간)", basis: "일반·휴게음식점 인허가 · 좌표 없는 건 제외 · 직선거리" });
+  if (factors) dataBasis.push({ label: "입지 요인 모델", period: quarter, basis: "서울시 음식 업종 상권×업종 · 상관관계(인과 아님)" });
+  const summaryTitle = level && level.sampleStatus !== "too_few"
+    ? `매출 수준은 중앙값의 ${level.ratio.toFixed(1)}배${level.yoyTotal !== null ? `, 총매출은 ${signed(level.yoyTotal)}` : "입니다"}`
+    : findings[0]?.title ?? "확인된 특징과 확인사항을 함께 살펴보세요";
+  return { headline, subtitle, tiles, findings, profile, level, slots, competition, factors, checklist, sources, limits, dataBasis, summaryTitle };
 }

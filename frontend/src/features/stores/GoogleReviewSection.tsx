@@ -41,7 +41,7 @@ export function GoogleReviewSection({ storeId, autoLoad = false }: { storeId: st
 
 function LinkResult({ storeId, status, message, placeId }: { storeId: string; status: string; message: string; placeId: string | null }) {
   if (status === "matched" && placeId) {
-    if (!googleBrowserKeyConfigured()) return <Notice tone="pending">연동 준비 중 — Google 지도 표시용 키가 설정되지 않았습니다.</Notice>;
+    if (!googleBrowserKeyConfigured()) return <Notice tone="pending">Google 고객평가는 준비 중이에요.</Notice>;
     return <GooglePlaceDetails storeId={storeId} placeId={placeId} />;
   }
   if (status === "not_configured") return <Notice tone="pending">{message}</Notice>;

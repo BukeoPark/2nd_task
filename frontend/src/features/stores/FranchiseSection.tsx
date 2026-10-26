@@ -25,7 +25,7 @@ export function FranchiseSection({ storeId, manwon }: { storeId: string; manwon:
       )}
       {fr.isLoading && <Notice tone="muted">불러오는 중...</Notice>}
       {fr.isError && <Notice tone="error">조회 실패: {fr.error.message}</Notice>}
-      {fr.data && !fr.data.brand && <Notice tone="muted">{fr.data.message}</Notice>}
+      {fr.data && !fr.data.brand && <Notice tone="muted">공정위 정보공개 브랜드와 연결되지 않은 매장이에요.</Notice>}
       {fr.data?.brand && (() => {
         const b = fr.data.brand;
         const maxCnt = Math.max(1, ...b.trend.map((t) => t.frcs_cnt ?? 0));

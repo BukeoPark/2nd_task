@@ -17,10 +17,10 @@ const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 /** 관계 문장. 95% 구간이 0 을 포함하면(significant=false) '뚜렷한 관계 없음'으로 쓰고, 방향·크기를 단정하지 않는다. 인과 표현은 쓰지 않는다. */
 export function effectSentence(f: EffectInput): string {
   const range = `95% 구간 ${signed(f.pct_lo)} ~ ${signed(f.pct_hi)}`;
-  if (!f.significant) return `다른 조건이 비슷할 때 뚜렷한 관계를 찾지 못했어요(${range}, 0 을 포함).`;
+  if (!f.significant) return `뚜렷한 관계를 찾지 못했어요(${range}).`;
   const dir = f.direction === "positive" ? "높은" : "낮은";
   const cond = f.binary ? "없는 상권보다 있는 상권의" : "값이 표준편차 1만큼 클 때";
-  return `다른 조건이 비슷할 때 ${cond} 점포당 추정매출이 약 ${signed(f.pct)} ${dir} 경향이 있어요(${range}).`;
+  return `${cond} 점포당 추정매출이 약 ${signed(f.pct)} ${dir} 경향(${range}).`;
 }
 
 /** 같은 업종 상권 중 위치. percentile 은 '나보다 값이 작거나 같은 상권 비율(0~100)'. */

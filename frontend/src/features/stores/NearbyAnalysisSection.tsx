@@ -5,6 +5,7 @@ import { ScopeTag } from "../../components/ScopeTag";
 import type { CompetitorSummary, NearbyAnalysisResponse } from "../../lib/apiClient";
 import { useNearbyAnalysis } from "./useStores";
 import { Stat as KitStat } from "../../components/PanelKit";
+import { firstSentence } from "../../lib/shortText";
 import { FS } from "../../lib/typography";
 
 /** '주변 상권 분석' — 같은 업종 인허가의 연도별 개폐업과 관찰기간을 맞춘 폐업 비율. 매장 개별 평가가 아니다. */
@@ -16,7 +17,7 @@ export function NearbyAnalysisSection({ storeId, radius }: { storeId: string; ra
       {isLoading && <Notice tone="muted">분석 중...</Notice>}
       {isError && <Notice tone="error">조회 실패: {error.message}</Notice>}
       {data && (data.status === "unavailable" ? <Notice tone="muted">{data.reason}</Notice> : <Body data={data} />)}
-      {data && <Caveat>{data.disclaimer}</Caveat>}
+      {data && <Caveat>{firstSentence(data.disclaimer)}</Caveat>}
     </Section>
   );
 }
@@ -105,7 +106,7 @@ function CompetitorBlock({ c }: { c: CompetitorSummary }) {
         인허가상 영업 확인 {c.open_confirmed_count}곳 · 영업 여부 미확인 {c.unconfirmed_count}곳(제외하지 않음)
       </div>
       <Caveat>
-        {c.caveat} 기준일: 상가정보 {c.as_of.store_info ?? "자료 없음"} · 인허가 {c.as_of.license ?? "자료 없음"} 수집.
+        {firstSentence(c.caveat)} 기준일: 상가정보 {c.as_of.store_info ?? "자료 없음"} · 인허가 {c.as_of.license ?? "자료 없음"}
       </Caveat>
     </div>
   );

@@ -16,7 +16,7 @@ import { railMapPlan } from "../../lib/railText";
 import type { Mode } from "../../lib/mode";
 import { blocksOf, GROUP_IDS, type BlockId, type GroupId } from "../../lib/panelGroups";
 import { railPanelId, railTabId } from "../../lib/railIds";
-import { SCOPE_GROUP, SCOPE_HINT, SCOPE_STYLE } from "../../lib/scope";
+import { SCOPE_QUESTION, SCOPE_STYLE } from "../../lib/scope";
 import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { FranchiseSection } from "./FranchiseSection";
@@ -153,7 +153,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
           "competition-basis": <CompetitionBasisSection storeId={storeId} radius={radius} />,
           "area-links": (
             <Section title="소속 상권" scope={<ScopeTag kind="area" label="소속 상권" />}>
-              <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 6 }}>소속 지역의 매출·경쟁·소비 수요를 확인하세요.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <AreaCharacterLine level="dong" code={store.adong_cd} label={`${store.dong} 행정동`} />
                 <button type="button" onClick={() => onOpenArea({ level: "dong", store })} style={linkStyle}>{store.dong} 행정동 종합분석 ›</button>
@@ -163,7 +162,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                     <button type="button" onClick={() => onOpenArea({ level: "trdar", store })} style={linkStyle}>{store.trdar.name}({store.trdar.type}) 상권 분석 ›</button>
                   </>
                 ) : (
-                  <Notice tone="muted">이 매장은 서울시가 정한 상권 밖에 있어 상권 단위 분석 대신 행정동 기준으로 보여 드려요.</Notice>
+                  <Notice tone="muted">서울시 지정 상권 밖이라 행정동 기준이에요.</Notice>
                 )}
               </div>
             </Section>
@@ -224,7 +223,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
             {groups.map((g) => (
               <div key={g} role="tabpanel" id={railPanelId(g)} aria-labelledby={railTabId(g)} hidden={g !== group}>
                 <div style={{ marginTop: 12 }}>
-                  <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_GROUP[g]} hint={SCOPE_HINT[g]} />
+                  <RailHeading fg={SCOPE_STYLE[g].fg} bg={SCOPE_STYLE[g].bg} title={SCOPE_QUESTION[g]} />
                 </div>
                 {g === "store" && asRival && (
                   <div style={{ marginTop: 10 }}><Notice tone="info">경쟁 가게로 열어 본 곳이에요. 아래 '내 가게' 기록이나 점검은 이 가게가 아니라 내 가게 기준이에요(이 가게의 기록은 없어요).</Notice></div>
@@ -245,9 +244,8 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
                     )}
                     {onOpenAreaReport && mode === "founder" && (
                       <ReportCTA tourId="report-button" onClick={areaReport} title="상권분석 보고서 보기 ›"
-                        sub={`${store.trdar ? store.trdar.name : store.dong} 전체 · 매출 흐름·경쟁·입지·확인사항 · 지역 보고서 · 인쇄·PDF 저장`} />
+                        sub={`${store.trdar ? store.trdar.name : store.dong} 전체 · 인쇄·PDF 저장`} />
                     )}
-                    {mode === "founder" && <div style={{ fontSize: FS.caption, color: "#6B7280" }}>선택 매장이 속한 지역의 분석 보고서입니다.</div>}
                   </div>
                 )}
                 {g === "store" && (

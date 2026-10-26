@@ -48,3 +48,12 @@ test("지역 길잡이는 현재 분류·실제 페이지 순서와 통합 종�
  const missing=areaReportLead({signals:0,level:3,summary:4});
  assert.deepEqual(missing.rows.map(r=>r.where),["3쪽","4쪽"]);
 });
+
+test("매장 보고서 길잡이는 상권 보고서처럼 실제 쪽 번호만 쪽 순서대로 안내한다", async () => {
+  const { storeReportLead } = await import("../src/lib/reportLead.ts");
+  const l = storeReportLead({ level: 2, slots: 3, competition: 4, summary: 5, basis: 6 });
+  assert.deepEqual(l.rows.map((r) => `${r.title}:${r.where}`), ["매출 흐름:2쪽", "시간대별 수요:3쪽", "주변 경쟁·폐업:4쪽", "종합·확인사항:5쪽", "자료·계산 기준:6쪽"]);
+  assert.equal(l.heading, "보고서 길잡이");
+  const some = storeReportLead({ level: 2, summary: 3, basis: 4 });
+  assert.deepEqual(some.rows.map((r) => r.title), ["매출 흐름", "종합·확인사항", "자료·계산 기준"]);       // 자료가 없어 빠진 쪽은 싣지 않는다
+});

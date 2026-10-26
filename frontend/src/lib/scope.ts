@@ -17,18 +17,18 @@ export const SCOPE_GROUP: Record<ScopeKind, string> = {
 export const SCOPE_STYLE: Record<ScopeKind, { bg: string; fg: string }> = {
   store: { bg: "#DCFCE7", fg: "#166534" },
   radius: { bg: "#FFE4E6", fg: "#BE123C" },
-  compete: { bg: "#CCFBF1", fg: "#0F766E" },
+  compete: { bg: "#DBEAFE", fg: "#1D4ED8" },
   area: { bg: "#F3E8FF", fg: "#6B21A8" },
   mine: { bg: "#FEF3C7", fg: "#92400E" },
 };
 
-/** 묶음 한 줄 설명 — 어떤 범위의 정보인지. */
-export const SCOPE_HINT: Record<ScopeKind, string> = {
-  store: "이 매장 자체의 정보",
-  radius: "이 매장 중심 반경 안의 입지·교통·집객시설",
-  compete: "이 매장 중심 반경 안의 같은 업종 가게와 개업·폐업",
-  area: "소속 상권(행정동) 단위의 정보",
-  mine: "내가 입력한 매출과 운영 점검",
+/** 묶음 맨 위 제목 — 상권 페이지(lib/areaTabs 의 AREA_QUESTION)처럼 궁금한 것을 질문으로 묻는다. 주변 환경·경쟁은 상권 페이지의 같은 이름 항목과 색·아이콘이 같다. */
+export const SCOPE_QUESTION: Record<ScopeKind, string> = {
+  store: "이 매장은 지금 어떤 상태일까?",
+  radius: "이 매장 주변 교통과 시설은 어떨까?",
+  compete: "주변 같은 업종 가게는 얼마나 있을까?",
+  area: "이 매장이 속한 상권은 어떨까?",
+  mine: "내 가게 매출과 비용은 어떨까?",
 };
 
 export const SCOPE_ORDER: ScopeKind[] = ["store", "radius", "compete", "area", "mine"];

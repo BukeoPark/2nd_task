@@ -13,6 +13,7 @@ import type { Mode } from "../../lib/mode";
 import { RailHeading } from "../../components/RailHeading";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import type { FoodCompareResponse, FoodLevel, OverviewTrdar } from "../../lib/apiClient";
+import { COMPETE_ICON, COST_ICON, DEMAND_ICON, LOCATION_ICON, STORE_ICON, SUMMARY_ICON } from "../../components/railIcons";
 import { AREA_QUESTION, AREA_TAB_LABEL, AREA_TAB_STYLE, areaTabsFor, type AreaTabId } from "../../lib/areaTabs";
 import { formatKrw, formatMetric, formatRentWon, shortQuarter } from "../../lib/format";
 import { railPanelId, railTabId } from "../../lib/railIds";
@@ -73,21 +74,15 @@ interface Props {
 
 const RAIL_PREFIX = "area-";
 const ICON: Record<AreaTabId, ReactNode> = {
-  summary: <path d="M4 4h12v12H4zM7 8h6M7 12h4" />,
+  summary: SUMMARY_ICON,
   type: <path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v4l3 2" />,
   growth: <path d="M3 15l5-5 3 3 6-7M12 6h5v5" />,
-  stability: <path d="M10 3l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V5z" />,
-  demand: (
-    <>
-      <circle cx="7" cy="7" r="2.5" />
-      <circle cx="14" cy="8" r="2" />
-      <path d="M2 16c0-3 2-5 5-5s5 2 5 5M12 16c0-2 1-3 3-3s3 1 3 3" />
-    </>
-  ),
-  cost: <path d="M4 16V8M10 16V4M16 16v-6M3 16h14" />,
-  location: <path d="M10 18s6-5 6-9a6 6 0 10-12 0c0 4 6 9 6 9zM10 11a2 2 0 100-4 2 2 0 000 4z" />,
+  stability: COMPETE_ICON,
+  demand: DEMAND_ICON,
+  cost: COST_ICON,
+  location: LOCATION_ICON,
   trdars: <path d="M3 4h6v6H3zM11 4h6v6h-6zM3 12h6v4H3zM11 12h6v4h-6z" />,
-  stores: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
+  stores: STORE_ICON,
 };
 
 /** 행정동·상권 종합분석 — 요약(핵심 카드·기준 안내·지도 버튼)이 레일 첫 항목이고, 상세 지표는 같은 레일(성장성·안정·경쟁·소비 수요·입지·세부 상권·매장 목록)로 한 번에 하나씩 본다.

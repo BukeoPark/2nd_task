@@ -9,9 +9,12 @@ test("범위 5종은 각각 고유한 묶음 이름과 색을 갖고 순서가 �
   for (const k of SCOPE_ORDER) assert.match(SCOPE_STYLE[k].fg, /^#[0-9A-F]{6}$/i);
 });
 
-test("묶음 한 줄 설명이 다섯 범위 모두에 있다", async () => {
-  const { SCOPE_HINT } = await import("../src/lib/scope.ts");
-  for (const k of SCOPE_ORDER) assert.ok(SCOPE_HINT[k].length >= 8, k);
+test("묶음 맨 위 제목은 다섯 범위 모두 질문이고, 주변 환경·경쟁은 상권 페이지와 색이 같다", async () => {
+  const { SCOPE_QUESTION } = await import("../src/lib/scope.ts");
+  const { AREA_TAB_STYLE } = await import("../src/lib/areaTabs.ts");
+  for (const k of SCOPE_ORDER) assert.match(SCOPE_QUESTION[k], /\?$/, k);
+  assert.deepEqual(SCOPE_STYLE.radius, AREA_TAB_STYLE.location);
+  assert.deepEqual(SCOPE_STYLE.compete, AREA_TAB_STYLE.stability);
 });
 
 test("범위 라벨 글자색은 배경과 대비 4.5:1 이상이다", () => {

@@ -121,9 +121,6 @@ export function LocationAreaSection({ storeId }: { storeId: string }) {
       )}
       {data && (
         <div>
-          <div style={{ fontSize: FS.caption, color: "#374151", marginBottom: 8 }}>
-            소속 상권의 인구 구조와 시간대별 수요를 확인하세요.
-          </div>
           <AreaBlock data={data} />
           {/* 통계 모델(표준편차·95% 구간 등)은 초보자에게 어려워 접어 둔다 — 위 한 줄이 핵심 경고(예측 아님)를 먼저 말한다 */}
           <Fold title="입지 요인과 점포당 추정매출의 관계 — 통계 분석 보기">
@@ -181,7 +178,7 @@ export function StoreBrandCards({ data }: { data: LocationInfluenceResponse }) {
 /** ③ 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
 function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChange }: { bus: BusAccess; rail?: RailAccess; radiusText: string; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   return (
-    <Block title={`③ 대중교통 접근성 — 지하철과 버스 (반경 ${radiusText})`}>
+    <Block title={`대중교통 접근성 (반경 ${radiusText})`}>
       <RailAccessPart rail={rail} showExits={showExits} onShowExitsChange={onShowExitsChange} />
       <BusAccessPart bus={bus} />
     </Block>
@@ -193,13 +190,13 @@ function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChang
 function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { facilities?: FacilityAccess; radius: number; showOnMap: boolean; onShowOnMapChange: (v: boolean) => void }) {
   if (!facilities) return null;      // 구버전 응답(집객시설 필드 없음)
   if (facilities.status !== "ok") {
-    return (<div style={card}><div style={cardTitle}>② 주요 집객시설</div><Notice tone="muted">{facilities.message}</Notice></div>);
+    return (<div style={card}><div style={cardTitle}>주요 집객시설</div><Notice tone="muted">{facilities.message}</Notice></div>);
   }
   const byType = facilities.selected.by_type;
   const { shown, hidden } = limitList(facilities.facilities, 8);
   return (
     <div style={card}>
-      <div style={cardTitle}>② 주요 집객시설 — 공식 자료 기준 (반경 {radiusLabel(radius)}, 직선거리)</div>
+      <div style={cardTitle}>주요 집객시설 (반경 {radiusLabel(radius)})</div>
       {FACILITY_GROUPS.map((g) => (
         <div key={g.id}>
           <div style={{ ...subTitle, color: "#374151" }}>{g.label}</div>
@@ -235,7 +232,7 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
           )}
         </div>
       ))}
-      <Caveat>개수는 공식 목록에 있는 시설 기준이며 이용객·방문객 수가 아닙니다. 점포 유형은 인허가 등록 구분, '영업'은 인허가상 상태입니다. 자세한 기준·출처는 ⑥에서 봅니다.</Caveat>
+      <Caveat>개수는 공식 목록 기준이며 이용객 수가 아닙니다. '영업'은 인허가상 상태입니다.</Caveat>
       {facilities.facilities.length > 0 && (
         <>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
@@ -272,13 +269,13 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
   const exitsOn = railExitsEnabled(rail);
   return (
     <>
-      <SubHead>지하철 — 환승 노선은 한 역사로 한 번만 셉니다</SubHead>
+      <SubHead>지하철</SubHead>
       <div style={grid3}>
         <Stat label="지하철 역" value={railCountText(s)} sub={railCountNote(s)} />
         <Stat label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
         <Stat label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
-      {!exitsOn && <Caption>{railCenterOnlyNote(rail.entrance_data?.reason)}</Caption>}
+      {!exitsOn && <Caption>{railCenterOnlyNote()}</Caption>}
       {exitsOn && (
         <Caption>
           {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
@@ -293,8 +290,7 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
           지도에 출입구 위치 표시(기본 꺼짐)
         </label>
       )}
-      {s.count > 0 && exitsOn && <Caption>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</Caption>}
-      {s.count > 0 && !exitsOn && <Caption>지도의 보라색 '역' 표시는 공식 역 중심점입니다.</Caption>}
+      {s.count > 0 && <Caption>지도의 보라색 '역'은 공식 역 중심점이에요.</Caption>}
       {rail.stations.length > 0 && (
         <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
@@ -337,7 +333,7 @@ function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: 
   const railOk = rail && rail.status === "ok" ? rail : null;
   if (!railOk && bus.status !== "ok") return null;
   return (
-    <Block title={`④ 교통 이용 수요 — 지하철과 버스 (반경 ${radiusText}, 2025년 일 평균)`}>
+    <Block title={`교통 이용 수요 (반경 ${radiusText}, 2025년 일 평균)`}>
       {railOk && <RailDemandPart rail={railOk} />}
       {bus.status === "ok" && <BusDemandPart bus={bus} />}
       <Caveat>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</Caveat>
@@ -387,7 +383,7 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
   const a = data.area;
   return <div style={card}>
     <div className="data-heading" style={cardTitle}><AppIcon name="users"/>{a.name}의 소비 수요</div>
-    {a.fallback_reason && <Notice tone="muted">{a.fallback_reason}</Notice>}
+    {a.fallback_reason && !a.fallback_reason.includes("밖") && <Notice tone="muted">{a.fallback_reason}</Notice>}
     {a.demand_type === null ? <Notice tone="muted">{a.message}</Notice> : <>
       <PopulationMix residents={a.residents} workers={a.workers}/>
       {a.time_pattern && <div className="store-detail-tile" style={{marginTop:16}}>
@@ -395,7 +391,7 @@ function AreaBlock({ data }: { data: LocationInfluenceResponse }) {
         <MetricBars items={a.time_pattern.items.map(it => ({label:it.label,value:it.share,color:"#6864E9"}))} format={n => `${n.toFixed(1)}%`} rate/>
         <div style={fine}>{a.time_pattern.quarter} · 이동 인구 추정치</div>
       </div>}
-      <Caveat>{a.rule} · {a.basis} · 인구 통계는 매장 방문객 수가 아닙니다.</Caveat>
+      <Caveat>{a.rule} · 인구 통계는 매장 방문객 수가 아닙니다.</Caveat>
       {a.time_pattern && <Caveat>{a.time_pattern.note}</Caveat>}
     </>}
   </div>;
@@ -424,8 +420,8 @@ function ModelBlock({ data }: { data: LocationInfluenceResponse }) {
           <Fold title="모델 기준·검증 보기">
             {m.cv && <div style={{ fontSize: FS.caption, color: "#374151" }}>{m.cv.text}</div>}
             <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: FS.caption, color: "#6B7280", lineHeight: 1.6 }}>
-              {m.factors.map((f) => <li key={f.key}>{f.label}: {f.definition}(출처 {f.source})</li>)}
-              <li>비교 대상: 서울시 음식 업종 상권×업종 {m.rows}개(상권 {m.clusters}곳). 목표값은 최근 분기 점포당 추정매출(로그)이고 업종 차이는 통제했어요.</li>
+              {m.factors.map((f) => <li key={f.key}>{f.label}: {f.definition.replace(/\s*\(출처.*$/, "")}</li>)}
+              <li>비교 대상: 음식 업종 상권×업종 {m.rows}개(상권 {m.clusters}곳), 목표값은 최근 분기 점포당 추정매출입니다.</li>
               {m.high_vif && m.high_vif.length > 0 && <li>요인끼리 값이 비슷하게 움직이는 항목: {m.high_vif.join(", ")} — 개별 계수를 조심해서 보세요.</li>}
             </ul>
           </Fold>

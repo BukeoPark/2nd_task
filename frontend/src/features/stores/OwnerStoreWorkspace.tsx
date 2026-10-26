@@ -1,35 +1,39 @@
-import { AppIcon, PopulationMix, MetricBars } from "../../components/DataVisuals";
+import { PopulationMix, MetricBars } from "../../components/DataVisuals";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer } from "../../components/Drawer";
+import { Fold, Notice } from "../../components/Notice";
+import { ActionButton, Block, Caption, ListRow, Stat, StatRow } from "../../components/PanelKit";
+import { RailHeading } from "../../components/RailHeading";
+import { COMPETE_ICON, COST_ICON, DEMAND_ICON, STORE_ICON, SUMMARY_ICON } from "../../components/railIcons";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { apiClient, type StoreBasic } from "../../lib/apiClient";
+import { AREA_TAB_STYLE, type AreaTabId } from "../../lib/areaTabs";
 import { recordSummary, noteMyStore } from "../../lib/monthlyCheck";
 import type { StoreRecord } from "../../lib/myStoreStorage";
 import type { GroupId } from "../../lib/panelGroups";
+import { grid2 } from "../../lib/panelStyle";
 import { railPanelId, railTabId } from "../../lib/railIds";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useNarrow } from "../../lib/useNarrow";
 import { useNearbyAnalysis, useLocationInfluence } from "./useStores";
-import "./ownerWorkspace.css";
 import { GoogleReviewSection } from "./GoogleReviewSection";
+import { RadiusToggle } from "./LocationInfluenceSection";
 
 type Screen = "overview" | "records" | "nearby" | "area" | "info";
-const titles: Record<Screen, [string, string]> = {
-  overview: ["운영 요약", "우리 가게, 무엇부터 확인할까요?"], records: ["매출·비용", "매출과 비용을 함께 기록하세요"],
-  nearby: ["주변 경쟁", "같은 업종의 가게부터 살펴보세요"], area: ["상권·수요", "주변 수요를 운영의 참고로 보세요"],
-  info: ["매장 정보", "매장 기본 정보"],
+
+/** 자영업자 매장 상세의 다섯 화면 — 레일 색·아이콘·제목 모양은 상권 페이지(lib/areaTabs)와 같은 것을 빌려 쓴다. 제목은 상권 페이지처럼 궁금한 것을 묻는 질문이다. */
+const TABS: Record<Screen, { label: string; like: AreaTabId; icon: ReactNode; question: string }> = {
+  overview: { label: "운영 요약", like: "summary", icon: SUMMARY_ICON, question: "우리 가게는 지금 어떤 상태일까?" },
+  records: { label: "매출·비용", like: "cost", icon: COST_ICON, question: "이번 달 매출과 비용은 얼마일까?" },
+  nearby: { label: "주변 경쟁", like: "stability", icon: COMPETE_ICON, question: "주변 같은 업종 가게는 얼마나 있을까?" },
+  area: { label: "상권·수요", like: "demand", icon: DEMAND_ICON, question: "우리 상권 손님은 언제 오갈까?" },
+  info: { label: "매장 정보", like: "stores", icon: STORE_ICON, question: "이 매장은 어떤 가게일까?" },
 };
-const icons: Record<Screen, ReactNode> = {
-  overview: <path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h3" />,
-  records: <path d="M3 16h14M5 13V8M10 13V3M15 13V6" />,
-  nearby: <><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="2"/></>,
-  area: <path d="M3 6l5-3 4 3 5-2v11l-5 2-4-3-5 3z" />,
-  info: <><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6h.01"/></>,
-};
-const screens = Object.keys(titles) as Screen[];
+const screens = Object.keys(TABS) as Screen[];
 const mapping: Record<Screen, GroupId> = { overview: "store", records: "mine", nearby: "compete", area: "area", info: "store" };
 const man = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}만원`;
+const signedPct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 interface Props {
   store: StoreBasic; record: StoreRecord; blocks: Record<string, ReactNode>; radius: number; onRadius: (n: number) => void;
   onBack: () => void; onClose: () => void; onGroupChange: (g: GroupId) => void;
@@ -55,35 +59,73 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
       setOwned(!owned); setSaveFailed(false);
     } catch { setSaveFailed(true); }
   };
-  const items: RailItem[] = screens.map(id => ({ id, label: titles[id][0], icon: icons[id], fg: id === "nearby" ? "#BE123C" : "#244BDC", bg: id === "nearby" ? "#FFE4E6" : "#EDF2FF" }));
-  const rail = (orientation: "vertical" | "horizontal") => <TabRail items={items} active={screen} onChange={id => go(id as Screen)} orientation={orientation} ariaLabel="자영업자 운영 점검" idPrefix="owner-" wrapLabels />;
+  const items: RailItem[] = screens.map(id => ({ id, label: TABS[id].label, icon: TABS[id].icon, ...AREA_TAB_STYLE[TABS[id].like] }));
+  const rail = (orientation: "vertical" | "horizontal") => <TabRail items={items} active={screen} onChange={id => go(id as Screen)} orientation={orientation} ariaLabel="자영업자 운영 점검" idPrefix="owner-" />;
   const count = nearby.data?.competitors?.raw_count;
   const growth = bench?.growth?.yoy.total_sales.value;
-  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX} titleAside={<button className="owner-designate" aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</button>}>
-    {overlays}<div className="owner-workspace store-detail">
-    {narrow && rail("horizontal")}{saveFailed && <p role="alert">이 브라우저에서 내 가게 설정을 저장하지 못했어요.</p>}
-    {screens.map(id => <div key={id} role="tabpanel" id={railPanelId(id, "owner-")} aria-labelledby={railTabId(id, "owner-")} hidden={screen !== id}>
-      <header className="owner-page-heading" style={id === "nearby" ? {background:"#FFE4E6",borderColor:"#BE123C",color:"#BE123C"} : undefined}><span>{titles[id][0]}</span><h2>{titles[id][1]}</h2></header>
-      {id === "overview" && <>
-        <section className="owner-feature"><span className="owner-eyebrow">내 가게 기록 · 직접 입력</span><h3>{sum.latest ? `${sum.latest.month} 매출 ${man(sum.latest.value)}` : "이번 달 매출부터 기록해 보세요"}</h3><p>{sum.latest ? "기록한 매출과 비용을 확인하고, 다음 달에도 이어서 기록하세요." : "매출을 기록하고, 비용을 넣어 손익분기점을 확인하세요."}</p><button className="owner-primary" onClick={() => go("records")}>매출·비용 {sum.latest ? "확인하기" : "기록하기"} →</button></section>
-        <h3 className="owner-section-title">기록 없이도 볼 수 있는 주변 상황</h3><div className="owner-stat-grid">
-          <button className="owner-stat" onClick={() => go("nearby")}><span>반경 500m · {store.category.scls}</span><strong>{nearby.isError ? "조회 실패" : nearby.isPending ? "불러오는 중" : count == null ? "자료 없음" : `${count.toLocaleString()}곳`}</strong><small>상가정보 기준 · 선택 매장 제외</small><b>경쟁 매장 확인 →</b></button>
-          <button className="owner-stat" onClick={() => go("area")}><span>{bench?.unit?.name ?? "소속 상권"} · {bench?.svc_nm ?? "대응 업종"} 전체</span><strong>{benchmark.isError ? "조회 실패" : benchmark.isPending ? "불러오는 중" : growth == null ? "자료 없음" : `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`}</strong><small>총매출 · {bench?.quarter_label ?? "집계 기간 확인 필요"} · 전년 동기 대비</small><b>상권 흐름 확인 →</b></button>
-        </div>
-
-      </>}
-      {id === "records" && <>{blocks.checkup}<details className="owner-report"><summary>상권 평균 참고</summary>
-        {bench ? <div className="owner-reference"><span className="owner-caption">{bench.unit?.name} · {bench.svc_nm} 전체 · {bench.quarter_label}</span><div className="owner-time-row"><span>점포당 월평균 추정매출</span><b>{bench.per_store_month == null ? "자료 없음" : man(bench.per_store_month / 10000)}</b></div><p className="owner-caption">{bench.stores ?? "자료 없는"}곳 평균 · 내 가게 실제 매출과는 달라요.</p><small className="owner-caption">출처: {bench.source.title}</small></div> : <p className="owner-caption">상권 매출 자료 없음</p>}
-      </details></>}
-      {id === "nearby" && <><section className="owner-radius"><label>분석 반경<select value={radius} onChange={e => onRadius(Number(e.target.value))}><option value={250}>250m</option><option value={500}>500m</option><option value={1000}>1km</option></select></label></section>{blocks.competitors}<details className="owner-report"><summary>연도별 개폐업</summary>{blocks["owner-churn"]}</details>{blocks["owner-location"]}</>}
-      {id === "area" && <>
-        <section className="owner-surface"><span className="owner-eyebrow">{location.data?.area.name ?? "소속 상권"} · 수요 구조</span><h3>{location.data?.area.demand_type ?? "인구 구조"}</h3><PopulationMix residents={location.data?.area.residents} workers={location.data?.area.workers} /><p className="owner-caption">상권 인구 통계 · 방문 고객 수와 다름</p></section>
-        <section className="owner-surface"><span className="owner-eyebrow">{bench?.svc_nm ?? "대응 업종"} 전체 · {bench?.quarter_label ?? "자료 없음"}</span><h3 className="data-heading"><AppIcon name="trend" />상권 매출 흐름</h3><strong className="owner-value">{growth == null ? "자료 없음" : `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`}</strong><p className="owner-caption">전년 동기 대비 · 상권 추정매출</p></section>
-        <section className="owner-surface"><h3 className="data-heading"><AppIcon name="clock" />시간대·요일별 유동인구 비중</h3>{location.data?.area.time_pattern ? <><span className="owner-caption">{location.data.area.time_pattern.quarter}</span><MetricBars items={location.data.area.time_pattern.items.map(item => ({ label: item.label, value: item.share, color: "#6864E9" }))} format={n => `${n.toFixed(1)}%`} rate /><p className="owner-caption">유동인구 기준 · 매출 비중과 다름</p></> : <p className="owner-caption">시간대 자료 없음</p>}</section>
-        <div className="owner-area-links"><button onClick={() => onOpenArea("dong")}>{store.dong} 종합분석 →</button>{store.trdar && <button onClick={() => onOpenArea("trdar")}>{store.trdar.name} 상권 분석 →</button>}</div>
-      </>}
-      {id === "info" && <>{blocks.basic}{googleVisited && <GoogleReviewSection storeId={store.store_id} autoLoad />}<details className="owner-report"><summary>인허가·지정 이력</summary>{blocks.history}</details></>}
-    </div>)}
+  const countText = nearby.isError ? "조회 실패" : nearby.isPending ? "불러오는 중" : count == null ? "자료 없음" : `${count.toLocaleString()}곳`;
+  const growthText = benchmark.isError ? "조회 실패" : benchmark.isPending ? "불러오는 중" : growth == null ? "자료 없음" : signedPct(growth);
+  const area = location.data?.area;
+  return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX}
+    titleAside={<ActionButton variant={owned ? "primary" : "secondary"} aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</ActionButton>}>
+    {overlays}<div className="store-detail">
+    {narrow && rail("horizontal")}{saveFailed && <Notice tone="error">이 브라우저에서 내 가게 설정을 저장하지 못했어요.</Notice>}
+    {screens.map(id => {
+      const style = AREA_TAB_STYLE[TABS[id].like];
+      return <div key={id} role="tabpanel" id={railPanelId(id, "owner-")} aria-labelledby={railTabId(id, "owner-")} hidden={screen !== id}>
+        <div style={{ marginTop: 12 }}><RailHeading fg={style.fg} bg={style.bg} title={TABS[id].question} /></div>
+        {id === "overview" && <>
+          <Block title={sum.latest ? `${sum.latest.month} 매출 ${man(sum.latest.value)}` : "이번 달 매출부터 기록해 보세요"}>
+            <ActionButton variant="primary" full onClick={() => go("records")}>매출·비용 {sum.latest ? "확인하기" : "기록하기"} ›</ActionButton>
+          </Block>
+          <Block title="기록 없이도 볼 수 있는 주변 상황">
+            <div style={grid2}>
+              <Stat onGray label={`반경 500m · ${store.category.scls}`} value={countText} sub="상가정보 기준 · 선택 매장 제외" />
+              <Stat onGray label={`${bench?.unit?.name ?? "소속 상권"} 총매출`} value={growthText} sub={`전년 동기 대비 · ${bench?.quarter_label ?? "집계 기간 확인 필요"}`} />
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <ListRow name="경쟁 매장 확인" onClick={() => go("nearby")} />
+              <ListRow name="상권 흐름 확인" onClick={() => go("area")} />
+            </div>
+          </Block>
+        </>}
+        {id === "records" && <>{blocks.checkup}
+          <Fold title="상권 평균 참고">
+            {bench
+              ? <><Caption>{bench.unit?.name} · {bench.svc_nm} 전체 · {bench.quarter_label}</Caption>
+                <StatRow label="점포당 월평균 추정매출" value={bench.per_store_month == null ? "자료 없음" : man(bench.per_store_month / 10000)} missing={bench.per_store_month == null} note={`${bench.stores ?? "자료 없는"}곳 평균 · 내 가게 실제 매출과는 달라요`} /></>
+              : <Caption>상권 매출 자료 없음</Caption>}
+          </Fold>
+        </>}
+        {id === "nearby" && <>
+          <div style={{ marginTop: 16 }}><RadiusToggle radius={radius} onChange={onRadius} /></div>
+          {blocks.competitors}
+          <Fold title="연도별 개폐업">{blocks["owner-churn"]}</Fold>
+          {blocks["owner-location"]}
+        </>}
+        {id === "area" && <>
+          <Block title={`${area?.name ?? "소속 상권"} · ${area?.demand_type ?? "수요 구조"}`}>
+            <PopulationMix residents={area?.residents} workers={area?.workers} />
+            <Caption>상권 인구 통계 · 방문 고객 수와 다름</Caption>
+          </Block>
+          <Block title="상권 매출 흐름">
+            <Stat onGray big label={`${bench?.svc_nm ?? "대응 업종"} 전체 · ${bench?.quarter_label ?? "자료 없음"}`} value={growth == null ? "자료 없음" : signedPct(growth)} missing={growth == null} sub="전년 동기 대비 · 상권 추정매출" />
+          </Block>
+          <Block title="시간대·요일별 유동인구 비중">
+            {area?.time_pattern
+              ? <><Caption>{area.time_pattern.quarter}</Caption>
+                <MetricBars items={area.time_pattern.items.map(item => ({ label: item.label, value: item.share, color: "#6864E9" }))} format={n => `${n.toFixed(1)}%`} rate />
+                <Caption>유동인구 기준 · 매출 비중과 다름</Caption></>
+              : <Caption>시간대 자료 없음</Caption>}
+          </Block>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+            <ActionButton variant="secondary" onClick={() => onOpenArea("dong")}>{store.dong} 종합분석 ›</ActionButton>
+            {store.trdar && <ActionButton variant="secondary" onClick={() => onOpenArea("trdar")}>{store.trdar.name} 상권 분석 ›</ActionButton>}
+          </div>
+        </>}
+        {id === "info" && <>{blocks.basic}{googleVisited && <GoogleReviewSection storeId={store.store_id} autoLoad />}<Fold title="인허가·지정 이력">{blocks.history}</Fold></>}
+      </div>;
+    })}
     </div>
   </Drawer></>;
 }

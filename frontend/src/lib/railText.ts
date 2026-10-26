@@ -53,8 +53,8 @@ export function railExitsEnabled(rail: { entrance_data?: { enabled: boolean } } 
 }
 
 /** 출입구를 쓰지 않을 때의 한 줄 — 거리가 역 중심점까지임을 밝히고 출입구 거리라고 하지 않는다. */
-export function railCenterOnlyNote(reason?: string | null): string {
-  return `거리는 공식 역 중심점까지의 직선거리이며 출입구까지의 거리가 아닙니다${reason ? ` — ${reason}` : ""}`;
+export function railCenterOnlyNote(): string {
+  return "거리는 공식 역 중심점 기준 직선거리예요(출입구 아님).";
 }
 
 export function railEntranceText(s: Pick<RailSliceInput, "entrances" | "entrance_scope_complete">): string {

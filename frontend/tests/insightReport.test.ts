@@ -47,7 +47,10 @@ test("값은 API 그대로, 문장은 규칙으로 만든다", () => {
   assert.match(r.level!.text, /3,900만원/);
   assert.match(r.level!.text, /정점보다 13% 낮습니다/);
   assert.match(r.level!.text, /점포당 -2\.6%, 총매출 -5\.6%/);
-  assert.equal(r.headline, "문래역 한식음식점은 17~21시 매출 비중이 평균보다 높다");
+  assert.equal(r.headline, "문래역 한식음식점, 17~21시 매출 비중이 평균보다 14.6%p 높습니다");       // 상권 보고서와 같은 틀('지역 업종, 결론')·같은 말투
+  assert.match(r.slots!.title, /^17~21시 매출 비중이 평균보다 14\.6%p 높습니다$/);
+  assert.ok(r.dataBasis.length >= 3 && r.dataBasis.every((d) => d.label && d.period && d.basis));
+  assert.match(r.summaryTitle, /^매출 수준은 중앙값의 /);
   assert.match(r.slots!.text, /17~21시 매출 비중 55\.3%는 양천·영등포 상권 평균\(40\.7%\)보다 14\.6%p 높고, 11~14시 비중 19\.5%는 평균\(32\.6%\)보다 13\.1%p 낮습니다\./);
   assert.match(r.slots!.text, /직장인구는 2,644명으로 .*중앙값\(475명\)의 5\.6배입니다/);
 });
@@ -125,7 +128,7 @@ test("매장 리포트: 지역 개폐업·프랜차이즈 표본이 10곳 미만
 
 test("매장 리포트: 제목이 중립 문장이면 시간대 핵심 발견은 제목을 되풀이하지 않는다", () => {
   const flat = buildInsightReport({ ...input, bench: { ...bench, insights: [{ group: "시간대별", label: "17~21시", gap_pctp: 2 }] } });
-  assert.match(flat.headline, /상권 읽기$/);
+  assert.match(flat.headline, /^문래역 한식음식점, 점포당 추정매출은 비교 상권 중앙값의 [\d.]+배입니다$/);
   const t = flat.findings.map((f) => f.title);
   assert.equal(new Set(t).size, t.length);
   assert.ok(t.includes("시간대별 매출 비중은 평균과 큰 차이가 없습니다"));

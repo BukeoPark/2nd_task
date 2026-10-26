@@ -71,6 +71,12 @@ export function reportLead(mode: LeadMode, scope: ReportScope, p: LeadPages): Le
 }
 
 
+/** 매장 보고서의 실제 쪽 구성을 번호로 안내한다 — 상권 보고서의 길잡이(areaReportLead)와 같은 틀. 자료가 없어 빠진 쪽은 싣지 않는다. */
+export function storeReportLead(p: { level?: number; slots?: number; competition?: number; summary?: number; basis?: number }): Lead {
+  const entries: [string, number | undefined][] = [["매출 흐름", p.level], ["시간대별 수요", p.slots], ["주변 경쟁·폐업", p.competition], ["종합·확인사항", p.summary], ["자료·계산 기준", p.basis]];
+  return { heading: "보고서 길잡이", scopeNote: "내 매장 + 반경 500m 기준 보고서", rows: entries.filter(([, n]) => n !== undefined && n > 0).sort((a, b) => a[1]! - b[1]!).map(([title, n]) => page(title, n)) };
+}
+
 /** 지역 보고서의 실제 대분류·페이지 순서를 그대로 안내한다. 통합된 전략·확인 목록은 중복 안내하지 않는다. */
 export function areaReportLead(p: {signals?:number;level?:number;slots?:number;demand?:number;industries?:number;competitors?:number;stability?:number;location?:number;summary?:number;basis?:number}):Lead {
   const entries:[string,number|undefined][]=[

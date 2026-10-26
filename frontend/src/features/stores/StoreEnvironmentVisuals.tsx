@@ -41,7 +41,6 @@ export function StoreTransitVisuals({ rail, bus }: { rail?: RailAccess; bus: Bus
       ]} format={format}/>
       {b && <Caption>{b.usage_basis.year}년 · 이용량 확인 {b.selected.linked}/{b.selected.count}곳</Caption>}
     </div>
-    <Caption>선택 반경 · 직선거리 기준 · 이용량이 확인된 역·정류장만 집계</Caption>
   </Block>;
 }
 

@@ -69,8 +69,8 @@ test("출입구 좌표 사용 중단: 서버가 enabled=false 로 알리면 출�
   assert.equal(railExitsEnabled({ entrance_data: { enabled: true } }), true);
   assert.equal(railExitsEnabled({}), true);            // 필드가 없는 구버전 응답
   assert.equal(railExitsEnabled(null), true);
-  const t = railCenterOnlyNote("공식 출입구 좌표 자료가 없어 출입구 위치를 쓰지 않습니다.");
-  assert.match(t, /공식 역 중심점까지의 직선거리/);
-  assert.match(t, /출입구까지의 거리가 아닙니다/);
+  const t = railCenterOnlyNote();
+  assert.match(t, /공식 역 중심점 기준 직선거리/);
+  assert.match(t, /출입구 아님/);
   assert.equal(railMapPlan({ status: "ok", radius_m: 500, stations: [{ complex_id: "A", name: "역", lines: "2호선", lon: 126.9, lat: 37.5, distance_m: 100, basis: "center", entrances: [] }] }, 500, true).exits.length, 0);
 });

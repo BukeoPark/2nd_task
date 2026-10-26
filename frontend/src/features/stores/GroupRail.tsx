@@ -1,22 +1,13 @@
 import type { ReactNode } from "react";
+import { COMPETE_ICON, LOCATION_ICON, STORE_ICON } from "../../components/railIcons";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { GROUP_IDS, type GroupId } from "../../lib/panelGroups";
 import { SCOPE_GROUP, SCOPE_STYLE } from "../../lib/scope";
 
 const ICON: Record<GroupId, ReactNode> = {
-  store: <path d="M3 9l1.5-5h11L17 9M4 9v8h12V9M8 17v-4h4v4" />,
-  radius: (
-    <>
-      <circle cx="10" cy="10" r="7" />
-      <circle cx="10" cy="10" r="2.5" />
-    </>
-  ),
-  compete: (
-    <>
-      <circle cx="7.5" cy="10" r="4.5" />
-      <circle cx="12.5" cy="10" r="4.5" />
-    </>
-  ),
+  store: STORE_ICON,
+  radius: LOCATION_ICON,
+  compete: COMPETE_ICON,
   area: <path d="M3 6l5-3 4 3 5-2v11l-5 2-4-3-5 3z" />,
   mine: <path d="M5 3h7l3 3v11H5zM12 3v3h3M8 10h4M8 13h4" />,
 };

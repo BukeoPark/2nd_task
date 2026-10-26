@@ -85,7 +85,7 @@ export function OperationHistorySection({ history, compact = false }: { history:
         {certifications.map((c) => (
           <div key={c.name} style={{ fontSize: FS.body, padding: "8px 0" }}>
             <strong>{c.name}</strong>{" "}
-            {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : compact ? "지정 확인 안 됨" : c.label}
+            {c.status === "designated" ? `지정 (지정일 ${c.designated_date ?? "정보 없음"})` : "지정 확인 안 됨"}
             {!compact && <SourceNote label={`${c.name} 자료`} title={c.source.title} reference={c.source.reference} />}
           </div>
         ))}

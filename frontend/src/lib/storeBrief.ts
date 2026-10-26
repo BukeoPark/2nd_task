@@ -44,8 +44,7 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
         area,
       ],
       reading: [
-        known ? `인허가 기록상 '${inp.statusLabel}'입니다. 현장에서 실제로 영업 중인지는 확인되지 않았습니다.` : "인허가 자료로 영업 여부를 확인하지 못했습니다(영업하지 않는다는 뜻은 아닙니다).",
-        "이 매장 하나의 기록입니다. 입지는 '주변 환경', 경쟁은 '경쟁', 상권 흐름은 '상권'에서 따로 확인하세요.",
+        known ? `인허가 기록상 '${inp.statusLabel}'이며 현장 영업은 확인되지 않았습니다.` : "인허가로 영업 여부를 확인하지 못했어요(영업 안 한다는 뜻은 아님).",
       ],
       next: [
         { target: "radius", label: "주변 환경 확인", why: "반경 안 교통·집객시설·근처 브랜드" },

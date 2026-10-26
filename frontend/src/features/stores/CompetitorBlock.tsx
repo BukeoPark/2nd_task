@@ -69,7 +69,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
           </div>
           {!concise && categories.length > 1 && <div style={{ fontSize: FS.ui, color: "#374151", marginTop: 2 }}>세부 업종별: {categories.slice(0, 4).map((g) => `${g.category} ${g.items.length}곳`).join(" · ")}{categories.length > 4 ? " …" : ""}</div>}
           <div style={{ fontSize: FS.ui, color: "#4B5563", marginTop: 2 }}>
-            {concise ? <>상가정보 · 선택 매장 제외 · 직선거리{truncated ? " · 일부만 조회됨" : ""}</> : <>소상공인 상가정보 기준 · 선택 매장 제외. 선택 업종의 요약 숫자와 목록을 같은 범위로 보여 드려요. {truncated ? "조회 한도로 일부만 집계했어요. " : ""}파란 링은 같은 상권·같은 업종 표시로, 이 반경 목록과 범위가 다를 수 있어요.</>}
+            <>상가정보 · 선택 매장 제외 · 직선거리{truncated ? " · 일부만 조회됨" : ""}</>
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "10px 0 6px" }}>
@@ -106,7 +106,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
             ))
           )}
           <div style={{ fontSize: FS.ui, color: "#4B5563", marginTop: 8, lineHeight: 1.6 }}>
-            {concise ? `인허가 상태는 가까운 ${STATUS_ROWS}곳만 확인 · 실제 영업은 현장 확인` : `영업 상태는 인허가 기록 기준이고 가까운 ${STATUS_ROWS}곳만 읽어 와요. 실제로 문을 열었는지는 현장에서 확인해야 해요. 이 목록은 같은 업종 가게 위치일 뿐 경쟁이 심하다·약하다는 판단이 아니에요.`}
+            {`인허가 상태는 가까운 ${STATUS_ROWS}곳만 확인 · 실제 영업은 현장 확인`}
           </div>
         </>
       )}

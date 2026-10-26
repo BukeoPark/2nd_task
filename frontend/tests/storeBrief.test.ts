@@ -40,12 +40,12 @@ test("예비 창업자: 내 매출·비용 기록을 쓰지 않고 주변 환경
   assert.ok(!/내 매출|기록 없음|손익분기|비용 입력/.test(text));
   assert.ok(!b.next.some((n) => n.target === "mine"));
   assert.deepEqual(b.next.map((n) => n.target), ["radius", "compete", "area"]);
-  assert.match(b.reading[0], /현장에서 실제로 영업 중인지는 확인되지 않았습니다/);
+  assert.match(b.reading[0], /현장 영업은 확인되지 않았습니다/);
 });
 
 test("예비 창업자: 영업 상태를 모르면 '확인 불가'이고 영업하지 않는다는 뜻이 아니라고 말한다", () => {
   const b = buildStoreBrief({ ...base, mode: "founder" });
   assert.equal(b.facts[0].value, "확인 불가");
   assert.equal(b.facts[1].value, "자료 없음");
-  assert.match(b.reading[0], /영업하지 않는다는 뜻은 아닙니다/);
+  assert.match(b.reading[0], /영업 안 한다는 뜻은 아님/);
 });
