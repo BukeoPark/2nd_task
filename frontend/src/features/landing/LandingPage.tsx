@@ -73,7 +73,7 @@ export function LandingPage() {
           <div className="wrap">
             <p className="eyebrow">상권분석 보고서</p>
             <h2 className="h2" style={{ marginTop: 8 }}>본 것을 한 권의 보고서로 정리해 드려요</h2>
-            <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면 매출 흐름·시간대·고객·업종·경쟁·입지를 한 번에 읽을 수 있는 보고서가 만들어져요. 후보 상권·행정동은 A4 약 10쪽으로, 자영업자의 내 매장은 반경 500m 기준 4쪽으로 받을 수 있고, 인쇄하거나 PDF로 저장할 수도 있어요.</p>
+            <p className="lead" style={{ marginTop: 14 }}>버튼 하나를 누르면 매출 흐름·시간대·고객·업종·경쟁·입지를 한 번에 읽을 수 있는 보고서가 만들어져요. 후보 상권·행정동은 최대 10쪽, 내 매장은 반경 500m 기준 최대 4쪽이며 자료 유무에 따라 분량이 달라져요. 인쇄하거나 PDF로 저장할 수도 있어요.</p>
             <div className="reports">
               {REPORT_PAGES.map((p) => (
                 <div className="rp" key={p.n}>

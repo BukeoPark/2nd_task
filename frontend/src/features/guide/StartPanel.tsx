@@ -99,12 +99,12 @@ function FounderStart(p: Props) {
   );
 }
 
-/** 보고서 진입 — 지역을 고르면 그 지역의 상권분석 보고서를 바로 볼 수 있다(매출 흐름·경쟁·수요·입지를 4쪽으로, 인쇄·PDF 저장). */
+/** 보고서 진입 — 지역을 고르면 그 지역의 상권분석 보고서를 바로 볼 수 있다(매출 흐름·경쟁·수요·입지를 정리, 인쇄·PDF 저장). */
 function ReportCta({ onClick, who }: { onClick: () => void; who: string }) {
   return (
     <button type="button" onClick={onClick} style={{ width: "100%", marginTop: 14, minHeight: 48, padding: "10px 14px", border: "none", borderRadius: 10, background: "#C2410C", color: "white", fontWeight: 800, fontSize: FS.cardTitle, cursor: "pointer", textAlign: "left" }}>
       상권분석 보고서 보기 ›
-      <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>{who}을 고르면 매출 흐름·경쟁·수요·입지를 4쪽으로 정리해 드려요</span>
+      <span style={{ display: "block", fontSize: FS.caption, fontWeight: 500, opacity: 0.92, marginTop: 2 }}>{who}을 고르면 매출 흐름·경쟁·수요·입지를 보고서로 정리해 드려요</span>
     </button>
   );
 }
