@@ -55,7 +55,7 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
   const truncated = q.data?.truncated ?? false;
 
   return (
-    <Section title={`주변 ${industry} 가게 찾기`} scope={<ScopeTag kind="radius" label={`반경 ${radius}m`} />}>
+    <Section title={`주변 ${industry} 가게 찾기`} scope={<ScopeTag kind="compete" label={`반경 ${radius}m`} />}>
       {svc === null ? (
         <Notice tone="muted">이 매장은 서울시 외식 10개 업종에 대응이 없어 같은 업종 목록을 만들지 않았어요(자료가 없는 것이지 0곳이 아닙니다).</Notice>
       ) : q.isPending ? (

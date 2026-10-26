@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { overlayRadius, validCenter } from "../src/lib/radiusOverlay.ts";
+import { isRadiusGroup, overlayRadius, validCenter } from "../src/lib/radiusOverlay.ts";
 
-test("'주변' 묶음에서만, 허용된 반경(250·500·1000)일 때만 원 반경을 돌려준다", () => {
+test("'주변 환경'·'경쟁' 묶음에서만, 허용된 반경(250·500·1000)일 때만 원 반경을 돌려준다", () => {
   assert.equal(overlayRadius("radius", 500), 500);
   assert.equal(overlayRadius("radius", 250), 250);
   assert.equal(overlayRadius("radius", 1000), 1000);
+  assert.equal(overlayRadius("compete", 500), 500);
+  assert.equal(isRadiusGroup("compete"), true);
+  assert.equal(isRadiusGroup("area"), false);
   for (const g of ["store", "area", "mine"]) assert.equal(overlayRadius(g, 500), null, `${g} 에서는 원이 없어야 함`);
   assert.equal(overlayRadius("radius", 300), null);
 });

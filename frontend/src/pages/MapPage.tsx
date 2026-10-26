@@ -49,6 +49,7 @@ import { DEFAULT_LEVEL, toKakaoLatLng } from "../lib/geo";
 import { revealDelta } from "../lib/reveal";
 import { NARROW_MAX_PX, OVERLAY_Z_INDEX, RAIL_WIDTH_PX, SIDE_PANEL_WIDTH_PX, TOP_BAR_HEIGHT_PX, zoomToUnit } from "../lib/vizConfig";
 import { FS } from "../lib/typography";
+import { isRadiusGroup } from "../lib/radiusOverlay";
 
 const UNIT_LABEL = { gu: "자치구", dong: "행정동", trdar: "상권", stores: "개별 매장" } as const;
 const MAX_COMPARE = 4;
@@ -167,7 +168,7 @@ export function MapPage() {
   const [rivalId, setRivalId] = useState<string | null>(null);   // 경쟁 가게 목록에서 열어 본 매장
   // 좁은 화면: 서랍을 접고 지도를 보는 중인가(다른 매장·지역을 고르면 다시 서랍을 연다)
   const [peekAt, setPeekAt] = useState<string | null>(null);
-  // 매장 상세에서 보고 있는 묶음 — '주변'(경쟁 분석)일 때만 경쟁 매장·상권 경계를 진하게 그린다(매장이 바뀌면 이전 값은 무시)
+  // 매장 상세에서 보고 있는 묶음 — 반경 묶음('주변 환경'·'경쟁')일 때만 경쟁 매장·상권 경계를 진하게 그린다(매장이 바뀌면 이전 값은 무시)
   const [groupAt, setGroupAt] = useState<{ id: string; group: string } | null>(null);
   // 관심 지역 — 이 브라우저에만 최대 10곳(계정·서버 없음)
   const [favorites, setFavorites] = useState<FavoriteArea[]>(() => loadFavorites());
@@ -222,7 +223,7 @@ export function MapPage() {
   const peerData = storeId !== null && peers.data?.status === "ok" ? peers.data : null;
   // 검색으로 연 매장은 검색 핀과 선택 매장 마커가 같은 자리라 이름표가 겹친다 — 선택 매장 마커(가장 뚜렷)만 남긴다
   const samePlaceAsSelectedStore = place !== null && selLon !== null && selLat !== null && Math.abs(place.lon - selLon) < 1e-4 && Math.abs(place.lat - selLat) < 1e-4;
-  const competitionView = storeId !== null && groupAt?.id === storeId && groupAt.group === "radius";
+  const competitionView = storeId !== null && groupAt?.id === storeId && isRadiusGroup(groupAt.group);
   const peerIds = useMemo(() => (peerData ? new Set(peerData.store_ids) : null), [peerData]);
 
   // 선택한 매장이 왼쪽 패널·상단 바에 가려지거나 화면 밖이면 보이는 영역 가운데로 지도를 옮긴다(잘 보이면 그대로).

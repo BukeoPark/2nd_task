@@ -13,14 +13,14 @@ import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, rai
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
 import { ZONE_COLORS } from "../../lib/vizConfig";
 import { useLocationInfluence } from "./useStores";
-import { Block, Stat as KitStat } from "../../components/PanelKit";
-import { BLOCK_GAP, PK } from "../../lib/panelStyle";
+import { Block, Caption, Stat as KitStat, SubHead } from "../../components/PanelKit";
+import { BLOCK_GAP, PK, grid2, grid3 } from "../../lib/panelStyle";
 import { FS } from "../../lib/typography";
 
 export const DEFAULT_RADIUS_M = 500;
 
-/** '반경 주변 입지' — ① 상업·경쟁 환경 ② 주요 집객시설 ③ 대중교통 접근성 ④ 교통 이용 수요 (모두 직선거리, 같은 반경). 이어서 ⑤ 인허가 개폐업 ⑥ 분석 기준.
- * 반경은 이 블록의 토글로만 고르고 상태는 매장 상세 패널이 들고 있어 아래 개폐업 블록·⑥ 분석 기준과 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
+/** '주변 환경' 묶음의 반경 입지 — 한눈에 → ③ 대중교통 접근성·④ 교통 이용 수요 → 주요 집객시설 → 근처 스타벅스·다이소·올리브영 (모두 직선거리, 같은 반경).
+ * 같은 업종 가게 찾기와 개폐업은 '경쟁' 묶음에 있다. 반경 상태는 매장 상세 패널이 들고 있어 두 묶음의 토글(RadiusToggle)이 같은 값을 쓴다. 요약 칩은 500m 고정이다. */
 export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExits, onShowExitsChange, showFacilities, onShowFacilitiesChange }: {
   storeId: string;
   radius: number;
@@ -36,12 +36,7 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
   const options = data?.radius_options ?? [250, 500, 1000];
   return (
     <div className="store-environment">
-      <div className="store-environment-controls">
-        <strong>분석 반경</strong>
-        <div role="group" aria-label="분석 반경" style={{display:"flex",gap:6}}>
-          {options.map(m => <button key={m} type="button" aria-pressed={m === radius} onClick={() => onRadiusChange(m)} style={m === radius ? radiusOn : radiusOff}>{radiusLabel(m)}</button>)}
-        </div>
-      </div>
+      <RadiusToggle radius={radius} onChange={onRadiusChange} options={options} />
       {isLoading && <Notice tone="muted">주변을 분석하는 중...</Notice>}
       {isError && (
         <Notice tone="error">
@@ -53,14 +48,14 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
         <div aria-busy={isPlaceholderData} style={{ opacity: isPlaceholderData ? 0.5 : 1, pointerEvents: isPlaceholderData ? "none" : "auto" }}>
           {isPlaceholderData && <div style={{ fontSize: FS.caption, color: "#6B7280", marginBottom: 4 }}>{radiusLabel(radius)} 기준으로 다시 계산하는 중...</div>}
           <GlanceBlock data={data} />
-          {/* 상업·집객시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 세 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
+          {/* 교통 → 집객시설 → 근처 브랜드 순서. 시설·교통의 세부 숫자는 20여 개라 접어 둔다 — 위 한눈에와 요약 칸이 핵심이다(값은 그대로, 지도 표시 체크박스도 이 안에 있다) */}
           <>
-            <StoreBrandCards data={data} />
-            <StoreFacilityVisuals facilities={data.radius_metrics.facilities} />
-            <Fold title="시설 목록·지도 표시"><FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} /></Fold>
             <StoreTransitVisuals bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} />
             <Fold title="교통 상세·지도 표시"><TransitAccessBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} showExits={showExits} onShowExitsChange={onShowExitsChange} />
             <TransitDemandBlock bus={data.radius_metrics.bus} rail={data.radius_metrics.rail} radiusText={radiusLabel(data.radius_m)} /></Fold>
+            <StoreFacilityVisuals facilities={data.radius_metrics.facilities} />
+            <Fold title="시설 목록·지도 표시"><FacilityBlock facilities={data.radius_metrics.facilities} radius={data.radius_m} showOnMap={showFacilities} onShowOnMapChange={onShowFacilitiesChange} /></Fold>
+            <StoreBrandCards data={data} />
           </>
         </div>
       )}
@@ -68,7 +63,20 @@ export function LocationRadiusSection({ storeId, radius, onRadiusChange, showExi
   );
 }
 
-/** 주변 분석의 공통 안내를 탭 하단의 접힌 유의사항에 모은다. */
+/** 분석 반경 고르기 — 주변 환경·경쟁 묶음이 같은 반경 상태(매장 상세 패널)를 함께 쓴다. */
+const RADIUS_CHOICES = [250, 500, 1000];
+export function RadiusToggle({ radius, onChange, options = RADIUS_CHOICES }: { radius: number; onChange: (m: number) => void; options?: number[] }) {
+  return (
+    <div className="store-environment-controls">
+      <strong>분석 반경</strong>
+      <div role="group" aria-label="분석 반경" style={{display:"flex",gap:6}}>
+        {options.map(m => <button key={m} type="button" aria-pressed={m === radius} onClick={() => onChange(m)} style={m === radius ? radiusOn : radiusOff}>{radiusLabel(m)}</button>)}
+      </div>
+    </div>
+  );
+}
+
+/** 주변 환경 묶음의 공통 안내를 탭 하단의 접힌 유의사항에 모은다(경쟁점 안내는 CompetitionBasisSection). */
 export function RadiusBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
   const { data } = useLocationInfluence(storeId, radius);
   if (!data) return null;
@@ -76,11 +84,24 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
     <Caveat>
       <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
         <li>반경 {radiusLabel(data.radius_m)} · 직선거리 기준이며 실제 도보 거리와 다를 수 있습니다.</li>
-        <li>경쟁점은 같은 세부 업종 기준이며 선택 매장은 제외합니다. 상가정보와 인허가 자료의 점포 수는 다를 수 있습니다.</li>
         <li>교통 이용량은 연결된 자료만 반영하며, 자료별 기준 기간이 다를 수 있습니다.</li>
         <li>집객시설은 공식 자료에서 위치가 확인된 곳만 반영합니다. ‘자료 없음’은 0을 뜻하지 않습니다.</li>
       </ul>
       <SourceNote label="반경 입지 지표 자료" title={data.source.title} reference={data.source.reference} />
+    </Caveat>
+  );
+}
+
+/** 경쟁 묶음의 공통 안내 — 같은 업종 가게 기준과 점포 수 자료 차이. */
+export function CompetitionBasisSection({ storeId, radius }: { storeId: string; radius: number }) {
+  const { data } = useLocationInfluence(storeId, radius);
+  if (!data) return null;
+  return (
+    <Caveat>
+      <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+        <li>반경 {radiusLabel(data.radius_m)} · 직선거리 기준이며 실제 도보 거리와 다를 수 있습니다.</li>
+        <li>경쟁점은 같은 세부 업종 기준이며 선택 매장은 제외합니다. 상가정보와 인허가 자료의 점포 수는 다를 수 있습니다.</li>
+      </ul>
     </Caveat>
   );
 }
@@ -160,11 +181,10 @@ export function StoreBrandCards({ data }: { data: LocationInfluenceResponse }) {
 /** ③ 대중교통 접근성 — 지하철(고유 역사 수·최근접·이용량 연결)과 버스(정류장 수·최근접·이용량 연결). 0곳·확인 불가·일부 범위 밖을 문구로 구분한다. */
 function TransitAccessBlock({ bus, rail, radiusText, showExits, onShowExitsChange }: { bus: BusAccess; rail?: RailAccess; radiusText: string; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   return (
-    <div style={card}>
-      <div style={cardTitle}>③ 대중교통 접근성 — 지하철과 버스 (반경 {radiusText})</div>
+    <Block title={`③ 대중교통 접근성 — 지하철과 버스 (반경 ${radiusText})`}>
       <RailAccessPart rail={rail} showExits={showExits} onShowExitsChange={onShowExitsChange} />
       <BusAccessPart bus={bus} />
-    </div>
+    </Block>
   );
 }
 
@@ -244,7 +264,7 @@ const subTitle: React.CSSProperties = { fontSize: FS.ui, fontWeight: 700, color:
 function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAccess; showExits: boolean; onShowExitsChange: (v: boolean) => void }) {
   if (!rail) return null;      // 구버전 응답(철도 필드 없음)
   if (rail.status !== "ok") {
-    return (<><div style={subTitle}>지하철</div><Notice tone="muted">{rail.message}</Notice></>);
+    return (<><SubHead>지하철</SubHead><Notice tone="muted">{rail.message}</Notice></>);
   }
   const s = rail.selected;
   const nearest = railNearestText(rail.nearest_station);
@@ -252,29 +272,29 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
   const exitsOn = railExitsEnabled(rail);
   return (
     <>
-      <div style={subTitle}>지하철 — 환승 노선은 한 역사로 한 번만 셉니다</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
-        <Stat big label="지하철 역" value={railCountText(s)} sub={railCountNote(s)} accent="#6D28D9" />
-        <Stat big label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
-        <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
+      <SubHead>지하철 — 환승 노선은 한 역사로 한 번만 셉니다</SubHead>
+      <div style={grid3}>
+        <Stat label="지하철 역" value={railCountText(s)} sub={railCountNote(s)} />
+        <Stat label="가장 가까운 역" value={nearest.value} sub={nearest.sub} />
+        <Stat label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}역`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
-      {!exitsOn && <div style={fine}>{railCenterOnlyNote(rail.entrance_data?.reason)}</div>}
+      {!exitsOn && <Caption>{railCenterOnlyNote(rail.entrance_data?.reason)}</Caption>}
       {exitsOn && (
-        <div style={fine}>
+        <Caption>
           {railEntranceText(s)} · 가장 가까운 출입구: {railNearestExitText(rail.nearest_entrance)}
-        </div>
+        </Caption>
       )}
       {exitsOn && railExcludedNote(s) && <div style={{ marginTop: 4 }}><Notice tone="warn">{railExcludedNote(s)}</Notice></div>}
       {exitsOn && mixed && <div style={{ marginTop: 4 }}><Notice tone="warn">출입구가 확인된 역은 출입구 기준, 없는 역은 공식 역 중심점 기준으로 거리를 쟀습니다(두 기준이 섞인 결과). 출입구는 공식 좌표가 아니라 카카오 보조 자료입니다.</Notice></div>}
-      {exitsOn && !mixed && s.count > 0 && s.stations_by_basis.center === s.count && <div style={fine}>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</div>}
+      {exitsOn && !mixed && s.count > 0 && s.stations_by_basis.center === s.count && <Caption>출입구 자료가 없어 모두 공식 역 중심점 기준입니다.</Caption>}
       {exitsOn && s.count > 0 && (
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={showExits} onChange={(e) => onShowExitsChange(e.target.checked)} />
           지도에 출입구 위치 표시(기본 꺼짐)
         </label>
       )}
-      {s.count > 0 && exitsOn && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</div>}
-      {s.count > 0 && !exitsOn && <div style={fine}>지도의 보라색 '역' 표시는 공식 역 중심점입니다.</div>}
+      {s.count > 0 && exitsOn && <Caption>지도의 보라색 '역' 표시는 공식 역 중심점입니다(점선 테두리 = 중심점 기준 역). 출입구 기준으로 포함된 역은 중심점이 반경 원 바로 바깥에 있을 수 있습니다.</Caption>}
+      {s.count > 0 && !exitsOn && <Caption>지도의 보라색 '역' 표시는 공식 역 중심점입니다.</Caption>}
       {rail.stations.length > 0 && (
         <Fold title={`반경 안 지하철 역 ${rail.stations.length}곳 보기`}>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
@@ -295,17 +315,17 @@ function RailAccessPart({ rail, showExits, onShowExitsChange }: { rail?: RailAcc
 
 function BusAccessPart({ bus }: { bus: BusAccess }) {
   if (bus.status !== "ok") {
-    return (<><div style={{ ...subTitle, color: "#0E7490" }}>버스</div><Notice tone="muted">{bus.message}</Notice></>);
+    return (<><SubHead>버스</SubHead><Notice tone="muted">{bus.message}</Notice></>);
   }
   const s = bus.selected;
   const nearest = bus.nearest;
   return (
     <>
-      <div style={{ ...subTitle, color: "#0E7490" }}>버스 정류장</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
-        <Stat big label="버스정류장" value={busCountText(s)} sub={busCountNote(s, null)} accent="#0891B2" />
-        <Stat big label="가장 가까운 정류장" value={nearest ? formatDistance(nearest.distance_m) : "자료 없음"} sub={nearest ? (nearest.reliable ? "직선거리" : "직선거리 · 수집 범위 밖일 수 있음") : undefined} />
-        <Stat big label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}곳`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
+      <SubHead>버스 정류장</SubHead>
+      <div style={grid3}>
+        <Stat label="버스정류장" value={busCountText(s)} sub={busCountNote(s, null)} />
+        <Stat label="가장 가까운 정류장" value={nearest ? formatDistance(nearest.distance_m) : "자료 없음"} sub={nearest ? (nearest.reliable ? "직선거리" : "직선거리 · 수집 범위 밖일 수 있음") : undefined} />
+        <Stat label="이용량 연결" value={s.count === 0 || s.linked_ratio === null ? "해당 없음" : `${s.linked}/${s.count}곳`} sub={s.linked_ratio === null ? undefined : `연결률 ${Math.round(s.linked_ratio * 100)}%`} />
       </div>
       {bus.scope.reason && <div style={{ marginTop: 6 }}><Notice tone="warn">{bus.scope.reason}</Notice></div>}
     </>
@@ -317,12 +337,11 @@ function TransitDemandBlock({ bus, rail, radiusText }: { bus: BusAccess; rail?: 
   const railOk = rail && rail.status === "ok" ? rail : null;
   if (!railOk && bus.status !== "ok") return null;
   return (
-    <div style={card}>
-      <div style={cardTitle}>④ 교통 이용 수요 — 지하철과 버스 (반경 {radiusText}, 2025년 일 평균)</div>
+    <Block title={`④ 교통 이용 수요 — 지하철과 버스 (반경 ${radiusText}, 2025년 일 평균)`}>
       {railOk && <RailDemandPart rail={railOk} />}
       {bus.status === "ok" && <BusDemandPart bus={bus} />}
       <Caveat>지하철 역과 버스 정류장의 수치는 서로 다른 교통수단의 측정치라 합치지 않았습니다. 실시간 유동인구나 매장 방문객 수가 아닙니다.</Caveat>
-    </div>
+    </Block>
   );
 }
 
@@ -332,16 +351,16 @@ function RailDemandPart({ rail }: { rail: Extract<RailAccess, { status: "ok" }> 
   const linkedText = railLinkedText(s);
   return (
     <>
-      <div style={subTitle}>지하철 역 승·하차 (연결된 역만)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
-        <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} accent="#6D28D9" />
-        <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} accent="#6D28D9" />
+      <SubHead>지하철 역 승·하차 (연결된 역만)</SubHead>
+      <div style={grid2}>
+        <Stat label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} />
+        <Stat label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 역·노선만 더한 값" : undefined} />
       </div>
-      <div style={fine}>
+      <Caption>
         {[linkedText, railCompleteText(s)].filter(Boolean).join(" · ")}
         {s.usage_state === "none_linked" && s.count > 0 && `${linkedText ? " · " : ""}이 반경 역의 이용량 자료가 없습니다(0명이 아니라 자료 없음${s.no_source_region_stations > 0 ? " — 이용량 자료를 아직 받지 않은 지역 포함" : ""}).`}
         {usage.partial && ` 이용량이 없거나 일부 노선만 연결된 역은 빠져 있어 이 반경 전체의 값이 아닙니다. 반경 밖 역의 이용량은 더하지 않았습니다.`}
-      </div>
+      </Caption>
     </>
   );
 }
@@ -351,10 +370,10 @@ function BusDemandPart({ bus }: { bus: Extract<BusAccess, { status: "ok" }> }) {
   const usage = busUsageLines(s);
   return (
     <>
-      <div style={{ ...subTitle, color: "#0E7490" }}>버스 정류장 승·하차 (연결된 정류장만)</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
-        <Stat big label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
-        <Stat big label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
+      <SubHead>버스 정류장 승·하차 (연결된 정류장만)</SubHead>
+      <div style={grid2}>
+        <Stat label="승차 인원" value={usage.boardings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
+        <Stat label="하차 인원" value={usage.alightings} sub={usage.partial ? "연결된 정류장만 더한 값" : undefined} />
       </div>
       <Caveat>
         {usage.partial ? `이용량이 연결되지 않은 ${s.unlinked}곳은 빠져 있어 이 반경 전체의 값이 아닙니다. ` : ""}
@@ -436,13 +455,10 @@ function FactorRow({ f, dim }: { f: LocationFactor; dim: boolean }) {
   );
 }
 
-/** 숫자 칸 — 공통 조각(Stat)을 쓰고, 브랜드 색 띠(accent)만 겉에 덧댄다. */
-function Stat({ label, value, sub, accent, big }: { label: string; value: string; sub?: string; accent?: string; big?: boolean }) {
-  return (
-    <div style={accent ? { borderLeft: `3px solid ${accent}`, borderRadius: 10 } : undefined}>
-      <KitStat onGray big={big} label={label} value={value} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />
-    </div>
-  );
+/** 교통 상세의 숫자 칸 — 공통 조각(Stat) 그대로(값은 카드 제목 크기). 값 끝의 '(… 더한 값)' 설명은 보조 줄(sub)에 이미 있어 값에서는 뗀다. */
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  const shown = value.replace(/\s*\(이용량이 확인된[^)]*\)$/, "");
+  return <KitStat onGray label={label} value={shown} sub={sub} missing={/자료 없음|확인 불가|해당 없음/.test(value)} />;
 }
 
 const card: React.CSSProperties = { background: PK.soft, borderRadius: 12, padding: "14px 16px", marginBottom: BLOCK_GAP };

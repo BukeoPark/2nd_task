@@ -4,7 +4,7 @@
 // 새 통계·점수는 만들지 않는다. 기록·자료가 없는 것은 0이 아니라 '기록 없음'·'확인 불가'로 말한다. 리포트는 각 묶음 맨 아래의 기존 버튼으로 간다.
 // 다른 모듈을 import 하지 않는 순수 함수(tests/storeBrief.test.ts).
 
-export type StoreBriefTarget = "mine" | "radius" | "area";
+export type StoreBriefTarget = "mine" | "radius" | "compete" | "area";
 
 export interface StoreBriefInput {
   mode: "owner" | "founder";
@@ -45,10 +45,11 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
       ],
       reading: [
         known ? `인허가 기록상 '${inp.statusLabel}'입니다. 현장에서 실제로 영업 중인지는 확인되지 않았습니다.` : "인허가 자료로 영업 여부를 확인하지 못했습니다(영업하지 않는다는 뜻은 아닙니다).",
-        "이 매장 하나의 기록입니다. 입지·경쟁은 '주변', 상권 흐름은 '상권'에서 따로 확인하세요.",
+        "이 매장 하나의 기록입니다. 입지는 '주변 환경', 경쟁은 '경쟁', 상권 흐름은 '상권'에서 따로 확인하세요.",
       ],
       next: [
-        { target: "radius", label: "주변 입지·경쟁 확인", why: "반경 안 경쟁 점포·교통·집객시설" },
+        { target: "radius", label: "주변 환경 확인", why: "반경 안 교통·집객시설·근처 브랜드" },
+        { target: "compete", label: "경쟁 가게 확인", why: "반경 안 같은 업종 가게와 개업·폐업" },
         { target: "area", label: "소속 상권 종합분석 보기", why: "상권 흐름·경쟁 변화" },
       ],
     };
@@ -72,11 +73,11 @@ export function buildStoreBrief(inp: StoreBriefInput): StoreBrief {
     next: has
       ? [
           { target: "mine", label: "내 가게 점검·손익분기 보기", why: "이전 기록과 상권 변화율 견주기" },
-          { target: "radius", label: "주변 경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
+          { target: "compete", label: "경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
           { target: "area", label: "상권 흐름·시간대 수요 보기", why: "소속 상권·행정동 종합분석" },
         ]
       : [
-          { target: "radius", label: "주변 경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
+          { target: "compete", label: "경쟁 가게 확인", why: "가까운 같은 업종 가게와 영업 상태" },
           { target: "area", label: "상권 흐름·시간대 수요 보기", why: "소속 상권·행정동 종합분석" },
           { target: "mine", label: "매출·비용 기록하기(선택)", why: "상권 평균과 변화율로 견줘 보기" },
         ],

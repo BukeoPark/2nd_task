@@ -28,7 +28,7 @@ const icons: Record<Screen, ReactNode> = {
   info: <><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6h.01"/></>,
 };
 const screens = Object.keys(titles) as Screen[];
-const mapping: Record<Screen, GroupId> = { overview: "store", records: "mine", nearby: "radius", area: "area", info: "store" };
+const mapping: Record<Screen, GroupId> = { overview: "store", records: "mine", nearby: "compete", area: "area", info: "store" };
 const man = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}만원`;
 interface Props {
   store: StoreBasic; record: StoreRecord; blocks: Record<string, ReactNode>; radius: number; onRadius: (n: number) => void;

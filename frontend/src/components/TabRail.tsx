@@ -69,7 +69,7 @@ export function TabRail({ items, active, onChange, orientation, ariaLabel, idPre
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {it.icon}
             </svg>
-            <span>{it.label}</span>
+            <span style={wrapLabels ? { wordBreak: "keep-all" } : undefined}>{it.label}</span>
           </button>
         );
       })}
