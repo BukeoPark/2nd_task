@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppIcon, MetricBars } from "../../components/DataVisuals";
-import { Block, Caption } from "../../components/PanelKit";
+import { Block, Caption, StatRow, SubHead } from "../../components/PanelKit";
 import type { BusAccess, RailAccess, FacilityAccess } from "../../lib/apiClient";
 import { StationName } from "../area/AreaCharacterSection";
 import { busCountText } from "../../lib/busText";
@@ -46,10 +46,18 @@ export function StoreTransitVisuals({ rail, bus }: { rail?: RailAccess; bus: Bus
 
 export function StoreFacilityVisuals({ facilities }: { facilities?: FacilityAccess }) {
   const [expanded, setExpanded] = useState(false);
+  const [namesOpen, setNamesOpen] = useState(false);
   const f = facilities?.status === "ok" ? facilities : null;
+  // 어떤 시설인지(이름·종류·거리) — 가까운 순, 처음 5곳만 보이고 나머지는 '더 보기'
+  const names = f ? [...f.facilities].sort((a, b) => a.distance_m - b.distance_m) : [];
   const items = f ? Object.values(f.selected.by_type).filter(t => (t.count ?? 0) > 0).sort((a,b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label)) : [];
   return <Block title={<span className="data-heading"><AppIcon name="building"/>집객시설</span>}>
     {items.length ? <><div className="store-detail-grid">{(expanded ? items : items.slice(0,6)).map(t => <div className="store-detail-tile store-facility-tile" key={t.type}><span className="data-heading"><AppIcon name={/병원/.test(t.label) ? "hospital" : /마트|쇼핑|백화점|아울렛/.test(t.label) ? "store" : "building"}/>{t.label}</span><strong>{facilityCountText(t)}</strong></div>)}</div>
-    {items.length > 6 && <button className="store-more" aria-expanded={expanded} aria-label={expanded ? "시설 접기" : "시설 더보기"} onClick={() => setExpanded(!expanded)}>{expanded ? "접기 ⌃" : "더보기 ⌄"}</button>}</> : <Caption>{f ? "선택 반경에 확인된 시설 없음" : "시설 자료 없음"}</Caption>}
+    {items.length > 6 && <button className="store-more" aria-expanded={expanded} aria-label={expanded ? "시설 접기" : "시설 더보기"} onClick={() => setExpanded(!expanded)}>{expanded ? "접기 ⌃" : "더보기 ⌄"}</button>}
+    {names.length > 0 && <>
+      <SubHead>어떤 시설인가요</SubHead>
+      {(namesOpen ? names : names.slice(0, 5)).map(x => { const label = f?.selected.by_type[x.type]?.label ?? x.type; return <StatRow key={x.facility_id} label={x.display_name ?? x.name} value={formatDistance(x.distance_m)} note={`${label}${x.subtype && x.subtype !== label ? ` · ${x.subtype}` : ""}`} />; })}
+      {names.length > 5 && <button className="store-more" aria-expanded={namesOpen} onClick={() => setNamesOpen(!namesOpen)}>{namesOpen ? "접기 ⌃" : `더 보기 (${names.length - 5}곳) ⌄`}</button>}
+    </>}</> : <Caption>{f ? "선택 반경에 확인된 시설 없음" : "시설 자료 없음"}</Caption>}
   </Block>;
 }

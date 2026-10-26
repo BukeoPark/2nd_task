@@ -3,13 +3,13 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer } from "../../components/Drawer";
 import { Fold, Notice } from "../../components/Notice";
-import { ActionButton, Block, Caption, ListRow, Stat, StatRow } from "../../components/PanelKit";
+import { ActionButton, Block, Caption, ListRow, Stat } from "../../components/PanelKit";
 import { RailHeading } from "../../components/RailHeading";
-import { COMPETE_ICON, COST_ICON, DEMAND_ICON, STORE_ICON, SUMMARY_ICON } from "../../components/railIcons";
+import { COMPETE_ICON, DEMAND_ICON, STORE_ICON, SUMMARY_ICON } from "../../components/railIcons";
 import { TabRail, type RailItem } from "../../components/TabRail";
 import { apiClient, type StoreBasic } from "../../lib/apiClient";
 import { AREA_TAB_STYLE, type AreaTabId } from "../../lib/areaTabs";
-import { recordSummary, noteMyStore } from "../../lib/monthlyCheck";
+import { noteMyStore } from "../../lib/monthlyCheck";
 import type { StoreRecord } from "../../lib/myStoreStorage";
 import type { GroupId } from "../../lib/panelGroups";
 import { grid2 } from "../../lib/panelStyle";
@@ -20,19 +20,17 @@ import { useNearbyAnalysis, useLocationInfluence } from "./useStores";
 import { GoogleReviewSection } from "./GoogleReviewSection";
 import { RadiusToggle } from "./LocationInfluenceSection";
 
-type Screen = "overview" | "records" | "nearby" | "area" | "info";
+type Screen = "overview" | "nearby" | "area" | "info";
 
 /** 자영업자 매장 상세의 다섯 화면 — 레일 색·아이콘·제목 모양은 상권 페이지(lib/areaTabs)와 같은 것을 빌려 쓴다. 제목은 상권 페이지처럼 궁금한 것을 묻는 질문이다. */
 const TABS: Record<Screen, { label: string; like: AreaTabId; icon: ReactNode; question: string }> = {
   overview: { label: "운영 요약", like: "summary", icon: SUMMARY_ICON, question: "우리 가게는 지금 어떤 상태일까?" },
-  records: { label: "매출·비용", like: "cost", icon: COST_ICON, question: "이번 달 매출과 비용은 얼마일까?" },
   nearby: { label: "주변 경쟁", like: "stability", icon: COMPETE_ICON, question: "주변 같은 업종 가게는 얼마나 있을까?" },
   area: { label: "상권·수요", like: "demand", icon: DEMAND_ICON, question: "우리 상권 손님은 언제 오갈까?" },
   info: { label: "매장 정보", like: "stores", icon: STORE_ICON, question: "이 매장은 어떤 가게일까?" },
 };
 const screens = Object.keys(TABS) as Screen[];
-const mapping: Record<Screen, GroupId> = { overview: "store", records: "mine", nearby: "compete", area: "area", info: "store" };
-const man = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}만원`;
+const mapping: Record<Screen, GroupId> = { overview: "store", nearby: "compete", area: "area", info: "store" };
 const signedPct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 interface Props {
   store: StoreBasic; record: StoreRecord; blocks: Record<string, ReactNode>; radius: number; onRadius: (n: number) => void;
@@ -40,7 +38,7 @@ interface Props {
   onOpenArea: (level: "dong" | "trdar") => void;
   overlays: ReactNode;
 }
-export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, onBack, onClose, onGroupChange, onOpenArea, overlays }: Props) {
+export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, onClose, onGroupChange, onOpenArea, overlays }: Props) {
   const narrow = useNarrow();
   const [googleVisited, setGoogleVisited] = useState(false);
   const [screen, setScreen] = useState<Screen>("overview");
@@ -50,7 +48,6 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
   const location = useLocationInfluence(store.store_id, 500);
   const benchmark = useQuery({ queryKey: ["sales-benchmark", store.store_id], queryFn: () => apiClient.getSalesBenchmark(store.store_id), staleTime: 600000 });
   const bench = benchmark.data?.status === "ok" ? benchmark.data : null;
-  const sum = recordSummary(record, new Date());
   const go = (next: Screen) => { if (next === "info") setGoogleVisited(true); setScreen(next); onGroupChange(mapping[next]); };
   const toggleOwn = () => {
     try {
@@ -75,10 +72,7 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
       return <div key={id} role="tabpanel" id={railPanelId(id, "owner-")} aria-labelledby={railTabId(id, "owner-")} hidden={screen !== id}>
         <div style={{ marginTop: 12 }}><RailHeading fg={style.fg} bg={style.bg} title={TABS[id].question} /></div>
         {id === "overview" && <>
-          <Block title={sum.latest ? `${sum.latest.month} 매출 ${man(sum.latest.value)}` : "이번 달 매출부터 기록해 보세요"}>
-            <ActionButton variant="primary" full onClick={() => go("records")}>매출·비용 {sum.latest ? "확인하기" : "기록하기"} ›</ActionButton>
-          </Block>
-          <Block title="기록 없이도 볼 수 있는 주변 상황">
+          <Block title="주변 상황">
             <div style={grid2}>
               <Stat onGray label={`반경 500m · ${store.category.scls}`} value={countText} sub="상가정보 기준 · 선택 매장 제외" />
               <Stat onGray label={`${bench?.unit?.name ?? "소속 상권"} 총매출`} value={growthText} sub={`전년 동기 대비 · ${bench?.quarter_label ?? "집계 기간 확인 필요"}`} />
@@ -88,14 +82,6 @@ export function OwnerStoreWorkspace({ store, record, blocks, radius, onRadius, o
               <ListRow name="상권 흐름 확인" onClick={() => go("area")} />
             </div>
           </Block>
-        </>}
-        {id === "records" && <>{blocks.checkup}
-          <Fold title="상권 평균 참고">
-            {bench
-              ? <><Caption>{bench.unit?.name} · {bench.svc_nm} 전체 · {bench.quarter_label}</Caption>
-                <StatRow label="점포당 월평균 추정매출" value={bench.per_store_month == null ? "자료 없음" : man(bench.per_store_month / 10000)} missing={bench.per_store_month == null} note={`${bench.stores ?? "자료 없는"}곳 평균 · 내 가게 실제 매출과는 달라요`} /></>
-              : <Caption>상권 매출 자료 없음</Caption>}
-          </Fold>
         </>}
         {id === "nearby" && <>
           <div style={{ marginTop: 16 }}><RadiusToggle radius={radius} onChange={onRadius} /></div>

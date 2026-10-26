@@ -7,7 +7,7 @@ import { ScopeTag } from "../../components/ScopeTag";
 import { Term } from "../../components/Term";
 import type { BusAccess, FacilityAccess, RailAccess, LocationFactor, LocationInfluenceResponse } from "../../lib/apiClient";
 import { busCountNote, busCountText, busUsageLines } from "../../lib/busText";
-import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, limitList, SUBTYPE_SHOWN } from "../../lib/facilityText";
+import { FACILITY_GROUPS, FACILITY_MARK, facilityCountNote, facilityCountText, facilityNearestText, facilityNeighborNote, facilityStaleNote, facilityStatusNote, facilitySubtypeText, facilityUnclassifiedNote, SUBTYPE_SHOWN } from "../../lib/facilityText";
 import { formatDistance } from "../../lib/format";
 import { railCenterOnlyNote, railCompleteText, railCountNote, railCountText, railEntranceText, railExcludedNote, railExitsEnabled, railLinkedText, railNearestExitText, railNearestText, railNoUsageReasonText, railUsageLines } from "../../lib/railText";
 import { effectSentence, factorValueText, percentileText, radiusLabel } from "../../lib/locationText";
@@ -193,7 +193,6 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
     return (<div style={card}><div style={cardTitle}>주요 집객시설</div><Notice tone="muted">{facilities.message}</Notice></div>);
   }
   const byType = facilities.selected.by_type;
-  const { shown, hidden } = limitList(facilities.facilities, 8);
   return (
     <div style={card}>
       <div style={cardTitle}>주요 집객시설 (반경 {radiusLabel(radius)})</div>
@@ -239,16 +238,6 @@ function FacilityBlock({ facilities, radius, showOnMap, onShowOnMapChange }: { f
             <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />
             지도에 집객시설 위치 표시(기본 꺼짐)
           </label>
-          <Fold title={`반경 안 시설 ${facilities.facilities.length}곳 보기`}>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: FS.caption, color: "#374151", lineHeight: 1.6 }}>
-              {shown.map((f) => (
-                <li key={f.facility_id}>
-                  <strong title={f.display_name && f.display_name !== f.name ? `공식 명칭: ${f.name}` : undefined}>{f.display_name ?? f.name}</strong>({FACILITY_GROUPS.flatMap((g) => g.types).includes(f.type) ? byType[f.type]?.label : f.type}{f.subtype && f.subtype !== byType[f.type]?.label ? ` · ${f.subtype}` : ""}) {f.distance_m.toLocaleString("ko-KR")}m · {f.status_label}{f.reference_stale ? " · 기록 5년 넘게 갱신 안 됨" : ""}
-                </li>
-              ))}
-            </ul>
-            {hidden > 0 && <div style={fine}>가까운 {shown.length}곳만 보여 줍니다(나머지 {hidden}곳은 지도 표시를 켜서 확인).</div>}
-          </Fold>
         </>
       )}
       <SourceNote label="주요 집객시설 자료" title={facilities.attributions.join(" · ") || "공식 자료"} reference="자료 기준일은 종류별로 ⑥ 분석 기준에서 확인" />

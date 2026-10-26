@@ -22,7 +22,8 @@ interface Props {
   onShowOnMap?: (c: Competitor) => void;
 }
 
-const PAGE = 10;
+const FIRST = 5;   // 처음 보이는 가게 수 — 나머지는 '더 보기'로 펼친다
+const PAGE = 10;   // '더 보기'를 누를 때마다 더 보이는 수
 const STATUS_ROWS = 10;   // 영업 상태(인허가 기록)는 가까운 순으로 보이는 처음 몇 곳만 읽어 온다
 
 /** 주변에 같은 업종 가게는 어디에 있을까? — 경쟁 매장 수 → 실제 목록(거리순·세부 업종별) → 지도 위치 → 운영이력·상세. 영업 상태는 인허가 기록 기준이며 현장 영업을 확인한 것이 아니다.
@@ -30,7 +31,7 @@ const STATUS_ROWS = 10;   // 영업 상태(인허가 기록)는 가까운 순으
 export function CompetitorBlock({ storeId, storeName, center, svc, radius, defaultCategory, concise = false, onSelectStore, onHoverStore, onShowOnMap }: Props) {
   const [sort, setSort] = useState<CompetitorSort>("distance");
   const [category, setCategory] = useState<string>(defaultCategory ?? "");
-  const [shown, setShown] = useState(PAGE);
+  const [shown, setShown] = useState(FIRST);
   const bounds = useMemo(() => radiusBounds(center, radius), [center, radius]);
   const q = useQuery({
     queryKey: ["competitor-points", storeId, radius, svc],
@@ -74,10 +75,10 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "10px 0 6px" }}>
             {(["distance", "category"] as const).map((s) => (
-              <button key={s} type="button" aria-pressed={sort === s} onClick={() => { setSort(s); setShown(PAGE); }} style={chip(sort === s)}>{s === "distance" ? "가까운 순" : "세부 업종별"}</button>
+              <button key={s} type="button" aria-pressed={sort === s} onClick={() => { setSort(s); setShown(FIRST); }} style={chip(sort === s)}>{s === "distance" ? "가까운 순" : "세부 업종별"}</button>
             ))}
             {categories.length > 1 && (
-              <select aria-label="세부 업종으로 거르기" value={category} onChange={(e) => { setCategory(e.target.value); setShown(PAGE); }} style={{ padding: "3px 8px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: FS.ui }}>
+              <select aria-label="세부 업종으로 거르기" value={category} onChange={(e) => { setCategory(e.target.value); setShown(FIRST); }} style={{ padding: "3px 8px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: FS.ui }}>
                 <option value="">세부 업종 전체 ({all.length})</option>
                 {categories.map((g) => <option key={g.category} value={g.category}>{g.category} ({g.items.length})</option>)}
               </select>
@@ -94,7 +95,10 @@ export function CompetitorBlock({ storeId, storeName, center, svc, radius, defau
           ) : sort === "distance" ? (
             <>
               <ul style={list}>{visible.map((c) => <Row key={c.store_id} c={c} status={statusOf(c.store_id)} onSelectStore={onSelectStore} onHoverStore={onHoverStore} onShowOnMap={onShowOnMap} />)}</ul>
-              {filtered.length > visible.length && <button type="button" onClick={() => setShown((n) => n + PAGE)} style={{ ...chip(false), marginTop: 6 }}>더 보기 ({filtered.length - visible.length}곳 남음)</button>}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {filtered.length > visible.length && <button type="button" onClick={() => setShown((n) => n + PAGE)} style={{ ...chip(false), marginTop: 6 }}>더 보기 ({filtered.length - visible.length}곳 남음)</button>}
+                {shown > FIRST && filtered.length > FIRST && <button type="button" onClick={() => setShown(FIRST)} style={{ ...chip(false), marginTop: 6 }}>접기</button>}
+              </div>
             </>
           ) : (
             categories.filter((g) => !category || g.category === category).map((g) => (
