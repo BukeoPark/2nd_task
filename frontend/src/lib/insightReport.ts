@@ -349,7 +349,7 @@ export function buildInsightReport(inp: ReportInput): InsightReport {
   const limits = [
     "매출은 이 매장의 실제 매출이 아니라 같은 상권·업종 점포의 카드 결제 기반 추정 평균입니다.",
     "분석 지역이 양천구·영등포구 상권뿐이라 표본이 작습니다.",
-    "고객평가(Google)는 매장 화면에서 공식 구성요소로만 확인하며 이 리포트에는 쓰지 않았습니다.",
+    "고객 평가·리뷰는 이 리포트에 쓰지 않았습니다.",
     "원인을 단정하지 않으며, 점포당 추정매출이 높다고 수익성이 좋다는 뜻이 아닙니다(임대료·인건비·원가 자료 없음).",
   ];
   const subtitle = `${inp.store.name}${inp.store.branch ? ` ${inp.store.branch}` : ""} · ${inp.store.category} · ${inp.store.sigungu} ${inp.store.dong}${inp.store.areaName ? ` · 소속 ${inp.store.areaName}${inp.store.areaKind ? `(${inp.store.areaKind})` : ""}` : ""}`;

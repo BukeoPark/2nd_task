@@ -1,9 +1,9 @@
-"""데이터 원천·매장 상세(기본정보 / 매장 운영이력 / 주변 상권 분석 / Google 고객평가 연결)."""
+"""데이터 원천·매장 상세(기본정보 / 매장 운영이력 / 주변 상권 분석)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.services import data_store, food_map, franchise, google_places, improvement_report, location_influence, nearby_analysis, sales_benchmark, store_profile, taxonomy
+from app.services import data_store, food_map, franchise, improvement_report, location_influence, nearby_analysis, sales_benchmark, store_profile, taxonomy
 
 router = APIRouter(prefix="/api", tags=["stores"])
 
@@ -111,31 +111,3 @@ def store_anchors(bizes_id: str) -> dict:
     if res is None:
         raise _not_found(bizes_id)
     return res
-
-
-@router.get("/google-usage")
-def google_usage() -> dict:
-    """Google 호출 사용량과 무료 한도 상한(오늘·이번 달)."""
-    return google_places.usage_summary()
-
-
-@router.post("/stores/{bizes_id}/google-place/view")
-def reserve_google_view(bizes_id: str) -> dict:
-    """UI Kit 컴포넌트 표시 허락(일·월 상한 안에서만). allowed=false 면 브라우저는 컴포넌트를 만들지 않는다."""
-    try:
-        return google_places.reserve_ui_kit_view(bizes_id)
-    except store_profile.StoreNotFound:
-        raise _not_found(bizes_id)
-    except data_store.DataNotReady as e:
-        raise HTTPException(status_code=503, detail=str(e))
-
-
-@router.get("/stores/{bizes_id}/google-place")
-def store_google_place(bizes_id: str, refresh: bool = False) -> dict:
-    """Google 장소 연결(요청한 매장 1곳만, Place ID 만 반환). 평점·리뷰는 브라우저의 Places UI Kit 이 직접 표시한다."""
-    try:
-        return google_places.link_store(bizes_id, refresh=refresh)
-    except store_profile.StoreNotFound:
-        raise _not_found(bizes_id)
-    except data_store.DataNotReady as e:
-        raise HTTPException(status_code=503, detail=str(e))

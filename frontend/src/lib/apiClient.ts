@@ -189,16 +189,6 @@ export interface NearbyAnalysisResponse {
   source?: SourceRef;
 }
 
-export type GoogleLinkStatus = "not_configured" | "matched" | "needs_confirmation" | "no_candidate" | "rate_limited" | "api_error";
-
-export interface GooglePlaceLinkResponse {
-  status: GoogleLinkStatus;
-  place_id: string | null;
-  message: string;
-  checked_at?: string;
-  cached: boolean;
-}
-
 export interface SalesShareItem {
   key: string;
   label: string;
@@ -1053,13 +1043,6 @@ export interface SearchResponse {
   note?: string;
 }
 
-export interface GoogleViewReservation {
-  allowed: boolean;
-  place_id?: string;
-  reason?: "not_matched" | "quota";
-  message?: string;
-}
-
 export const apiClient = {
   getRegions: () => request<RegionsResponse>("/api/regions"),
   getRebZones: () => request<RebZonesResponse>("/api/reb-zones"),
@@ -1122,8 +1105,4 @@ export const apiClient = {
     request<NearbyAnalysisResponse>(`/api/stores/${encodeURIComponent(storeId)}/nearby-analysis?radius_m=${radiusM}`),
   getLocationInfluence: (storeId: string, radiusM = 500) =>
     request<LocationInfluenceResponse>(`/api/stores/${encodeURIComponent(storeId)}/location-influence?radius_m=${radiusM}`),
-  getGooglePlaceLink: (storeId: string, refresh = false) =>
-    request<GooglePlaceLinkResponse>(`/api/stores/${encodeURIComponent(storeId)}/google-place${refresh ? "?refresh=true" : ""}`),
-  reserveGoogleView: (storeId: string) =>
-    request<GoogleViewReservation>(`/api/stores/${encodeURIComponent(storeId)}/google-place/view`, "POST"),
 };

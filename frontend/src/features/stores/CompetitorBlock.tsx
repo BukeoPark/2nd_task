@@ -27,7 +27,7 @@ const PAGE = 10;   // '더 보기'를 누를 때마다 더 보이는 수
 const STATUS_ROWS = 10;   // 영업 상태(인허가 기록)는 가까운 순으로 보이는 처음 몇 곳만 읽어 온다
 
 /** 주변에 같은 업종 가게는 어디에 있을까? — 경쟁 매장 수 → 실제 목록(거리순·세부 업종별) → 지도 위치 → 운영이력·상세. 영업 상태는 인허가 기록 기준이며 현장 영업을 확인한 것이 아니다.
- * 리뷰·평점은 보이지 않는다(Google 고객평가는 매장 상세의 공식 구성요소로만 본다). */
+ * 리뷰·평점은 보이지 않는다. */
 export function CompetitorBlock({ storeId, storeName, center, svc, radius, defaultCategory, concise = false, onSelectStore, onHoverStore, onShowOnMap }: Props) {
   const [sort, setSort] = useState<CompetitorSort>("distance");
   const [category, setCategory] = useState<string>(defaultCategory ?? "");

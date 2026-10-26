@@ -23,23 +23,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     neis_api_key: str = ""
 
-    # Google Places API (New) Text Search — 매장↔Google 장소 연결에만 사용(서버 전용 키, 결과는 Place ID 만 저장)
-    google_maps_server_key: str = ""
-    # 무료 한도 안에서만 쓴다. 가격표 확인(2026-10-21): Text Search Pro·Places UI Kit 모두 월 무료 5,000건 → 여유를 두고 월 4,500건에서 멈춘다.
-    #   Text Search Pro(매장↔Google 장소 연결)        : 일 150 · 분당 20 · 월 4,500
-    #   Places UI Kit(브라우저의 평점·리뷰 컴포넌트 표시): 일 150 · 월 4,500 — 서버가 허락한 경우에만 표시
-    google_textsearch_daily_cap: int = 150
-    google_textsearch_per_minute: int = 20
-    google_textsearch_monthly_cap: int = 4500
-    google_ui_kit_daily_cap: int = 150
-    google_ui_kit_monthly_cap: int = 4500
-
     # DB 미설정 시 파일 기반(data/processed)으로 동작
     database_url: str = ""
 
     # 데이터 경로
     processed_dir: Path = ROOT / "data" / "processed"
-    # 앱이 쓰는 캐시(Google Place ID 연결 결과). git 제외.
+    # 앱이 쓰는 캐시. git 제외.
     cache_dir: Path = ROOT / "data" / "cache"
 
     # 단일 서버 정식 배포: React 빌드와 API를 같은 주소에서 제공한다.

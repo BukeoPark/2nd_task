@@ -7,7 +7,6 @@ export type GroupId = "store" | "radius" | "compete" | "area" | "mine";
 
 export type BlockId =
   | "basic" // 주소·영업 상태·업력·외부 링크
-  | "google"
   | "history"
   | "competitors" // 반경 안 같은 업종 가게 목록(거리순·세부 업종별) → 지도 위치 → 운영이력·상세
   | "competition" // 반경 동일 업종 인허가 개폐업
@@ -25,7 +24,6 @@ export const GROUP_IDS: GroupId[] = ["store", "radius", "compete", "area", "mine
 
 export const BLOCKS: { id: BlockId; group: GroupId }[] = [
   { id: "basic", group: "store" },
-  { id: "google", group: "store" },
   { id: "history", group: "store" },
   { id: "radius", group: "radius" },
   { id: "radius-basis", group: "radius" },

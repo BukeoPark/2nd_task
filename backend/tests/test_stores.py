@@ -40,7 +40,6 @@ def test_sources_have_reference_dates(client):
     assert body["sbiz_store"]["reference"]["stdrYm"]
     assert body["neis_academy"]["status"] == "connected"
     assert body["neis_academy"]["reference"]["collected_at"]
-    assert body["google_places_ui_kit"]["verification"] == "docs_only"
 
 
 @pytest.mark.parametrize("scls,kind", [
@@ -119,7 +118,7 @@ def test_lodging_without_close_dates_is_insufficient(client, stores_links):
 
 
 def test_unknown_store_404(client):
-    for path in ("", "/nearby-analysis", "/google-place"):
+    for path in ("", "/nearby-analysis"):
         assert client.get(f"/api/stores/NOPE0000{path}").status_code == 404
 
 

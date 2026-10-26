@@ -25,17 +25,6 @@ export function useLocationInfluence(storeId: string, radiusM: number) {
   });
 }
 
-/** Google 장소 연결은 사용자가 'Google 고객평가'를 열었을 때만(enabled) 호출한다. 결과는 세션 동안 재사용. */
-export function useGooglePlaceLink(storeId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ["google-place", storeId],
-    queryFn: () => apiClient.getGooglePlaceLink(storeId),
-    enabled,
-    staleTime: Infinity,
-    retry: false,
-  });
-}
-
 export function useStoreAnchors(storeId: string) {
   return useQuery({ queryKey: ["store-anchors", storeId], queryFn: () => apiClient.getStoreAnchors(storeId), staleTime: LONG });
 }

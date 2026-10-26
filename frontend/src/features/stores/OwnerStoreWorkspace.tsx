@@ -17,7 +17,6 @@ import { railPanelId, railTabId } from "../../lib/railIds";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { useNarrow } from "../../lib/useNarrow";
 import { useNearbyAnalysis, useLocationInfluence } from "./useStores";
-import { GoogleReviewSection } from "./GoogleReviewSection";
 import { RadiusToggle } from "./LocationInfluenceSection";
 import { StoreAddress } from "./StoreAddress";
 
@@ -41,7 +40,6 @@ interface Props {
 }
 export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, onClose, onGroupChange, onOpenArea, overlays }: Props) {
   const narrow = useNarrow();
-  const [googleVisited, setGoogleVisited] = useState(false);
   const [screen, setScreen] = useState<Screen>("overview");
   const [owned, setOwned] = useState(() => { try { return localStorage.getItem("ownerStore:v1") === store.store_id; } catch { return false; } });
   const [saveFailed, setSaveFailed] = useState(false);
@@ -49,7 +47,7 @@ export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, o
   const location = useLocationInfluence(store.store_id, 500);
   const benchmark = useQuery({ queryKey: ["sales-benchmark", store.store_id], queryFn: () => apiClient.getSalesBenchmark(store.store_id), staleTime: 600000 });
   const bench = benchmark.data?.status === "ok" ? benchmark.data : null;
-  const go = (next: Screen) => { if (next === "info") setGoogleVisited(true); setScreen(next); onGroupChange(mapping[next]); };
+  const go = (next: Screen) => { setScreen(next); onGroupChange(mapping[next]); };
   const toggleOwn = () => {
     try {
       if (owned) localStorage.removeItem("ownerStore:v1");
@@ -110,7 +108,7 @@ export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, o
             {store.trdar && <ActionButton variant="secondary" onClick={() => onOpenArea("trdar")}>{store.trdar.name} 상권 분석 ›</ActionButton>}
           </div>
         </>}
-        {id === "info" && <>{blocks.basic}{googleVisited && <GoogleReviewSection storeId={store.store_id} autoLoad />}<Fold title="인허가·지정 이력">{blocks.history}</Fold></>}
+        {id === "info" && <>{blocks.basic}<Fold title="인허가·지정 이력">{blocks.history}</Fold></>}
       </div>;
     })}
     </div>

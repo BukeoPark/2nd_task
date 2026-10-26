@@ -20,7 +20,6 @@ import { useNarrow } from "../../lib/useNarrow";
 import { RAIL_WIDTH_PX } from "../../lib/vizConfig";
 import { FranchiseSection } from "./FranchiseSection";
 import { FacilityLayer } from "./FacilityLayer";
-import { GoogleReviewSection } from "./GoogleReviewSection";
 import { GroupRail } from "./GroupRail";
 import { ImprovementReportSection } from "./ImprovementReportSection";
 import { InsightReportModal } from "./report/InsightReportModal";
@@ -70,7 +69,7 @@ interface StoreDetailPanelProps {
 
 /** 매장 상세 — 왼쪽 레일의 다섯 묶음(이 매장 / 주변 환경 / 경쟁 / 상권 / 내 가게)으로 나눠 한 번에 한 묶음만 보인다.
  * 요약 칩은 어느 묶음에서나 위에 보이고, 칩을 누르면 그 묶음으로 간다. 블록 배치는 lib/panelGroups, 범위 라벨은 lib/scope.
- * 선택하지 않은 묶음도 화면에는 그려 두고 가리기만 해서(hidden) 반경 선택·Google 불러오기 같은 상태가 탭을 바꿔도 유지된다.
+ * 선택하지 않은 묶음도 화면에는 그려 두고 가리기만 해서(hidden) 반경 선택 같은 상태가 탭을 바꿔도 유지된다.
  * 상권 매출 추이·인구·시간대 그래프는 행정동·상권 상세에만 둔다. 영역을 합친 점수(매장 신뢰도 등)는 만들지 않는다. */
 export function StoreDetailPanel(props: StoreDetailPanelProps) {
   // 매장이 바뀌면 묶음 선택과 입력(내 매출)을 처음 상태로 되돌린다.
@@ -124,7 +123,6 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
               </div>
             </div>
           ),
-          google: <GoogleReviewSection storeId={storeId} autoLoad />,
           history: <OperationHistorySection history={data.operation_history} compact={mode === "owner"} />,
           radius: <LocationRadiusSection storeId={storeId} radius={radius} onRadiusChange={setRadius} showFacilities={showFacilities} onShowFacilitiesChange={setShowFacilities} />,
           competitors: (

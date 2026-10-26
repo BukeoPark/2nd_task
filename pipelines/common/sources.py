@@ -559,34 +559,5 @@ SOURCES: dict[str, DataSource] = {
             notes="키 없이 호출하면 5건만 반환(2026-09-23 실호출: 영등포구 867건·양천구 2,111건 중 5건). "
                   "인증키(NEIS_API_KEY) 발급 후 collect_neis_academy 실행 시 연결된다.",
         ),
-        DataSource(
-            key="google_places_ui_kit",
-            title="Google Places UI Kit — 장소 상세(평점·평가 수·리뷰)",
-            provider="Google Maps Platform",
-            endpoint="Maps JavaScript API + <gmp-place-details> (브라우저)",
-            docs_url="https://developers.google.com/maps/documentation/javascript/places-ui-kit/place-details",
-            fields=["(컴포넌트가 직접 렌더링 — 우리 서버는 내용을 받거나 저장하지 않음)"],
-            update_cycle="조회 시점 실시간",
-            crs="-",
-            terms="https://cloud.google.com/maps-platform/terms/maps-service-terms (UI Kit은 비Google 지도와 함께 사용 가능)",
-            verification="docs_only",
-            status="pending",
-            notes="브라우저 키(VITE_GOOGLE_MAPS_BROWSER_KEY)가 없어 연동 준비 중.",
-        ),
-        DataSource(
-            key="google_places_text_search",
-            title="Google Places API (New) Text Search — 매장↔Google 장소 연결용",
-            provider="Google Maps Platform",
-            endpoint="POST https://places.googleapis.com/v1/places:searchText",
-            docs_url="https://developers.google.com/maps/documentation/places/web-service/text-search",
-            fields=["places.id (저장)", "places.displayName·formattedAddress·location (연결 판정에만 일시 사용, 저장 안 함)"],
-            update_cycle="요청 시(매장당 최초 1회, Place ID 캐시)",
-            crs="EPSG:4326",
-            terms="Place ID 는 캐싱 제한 예외(무기한 저장 가능)",
-            verification="docs_only",
-            status="pending",
-            notes="서버 키(GOOGLE_MAPS_SERVER_KEY)가 없어 연동 준비 중. 약관 해석(2026-09-30 결정): Places API 콘텐츠는 "
-                  "비Google 지도와 함께 표시하지 않고 서버의 연결 판정에만 일시 사용한다(표시·저장 안 함). 무료 한도 안에서만 호출.",
-        ),
     ]
 }

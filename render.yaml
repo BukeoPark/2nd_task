@@ -13,12 +13,3 @@ services:
         sync: false
       - key: DATA_BUNDLE_SHA256
         sync: false
-      # 무료 서버는 재시작 시 로컬 사용량 기록이 사라지므로 유료 API는 비활성화한다.
-      - key: GOOGLE_TEXTSEARCH_DAILY_CAP
-        value: "0"
-      - key: GOOGLE_TEXTSEARCH_MONTHLY_CAP
-        value: "0"
-      - key: GOOGLE_UI_KIT_DAILY_CAP
-        value: "0"
-      - key: GOOGLE_UI_KIT_MONTHLY_CAP
-        value: "0"
