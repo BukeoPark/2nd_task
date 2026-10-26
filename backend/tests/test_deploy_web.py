@@ -13,6 +13,8 @@ def test_same_origin_frontend_routes_and_api(tmp_path):
         return {"ok": True}
     mount_frontend(app, tmp_path)
     client = TestClient(app)
+    assert "상권분석" in client.get("/").text
+    assert client.head("/").status_code == 200
     assert "상권분석" in client.get("/map?mode=founder").text
     assert client.get("/assets/app.js").status_code == 200
     assert client.get("/api/test").json() == {"ok": True}

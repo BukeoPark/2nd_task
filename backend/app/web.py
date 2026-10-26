@@ -8,7 +8,7 @@ from starlette.staticfiles import StaticFiles
 class FrontendFiles(StaticFiles):
     async def get_response(self, path, scope):
         # 없는 API·서버 경로를 index.html(200)로 숨기지 않는다.
-        if any(part.startswith(".") for part in path.split("/")) or path.split("/", 1)[0] in {"api", "health", "docs", "redoc", "openapi.json"}:
+        if any(part.startswith(".") and part != "." for part in path.split("/")) or path.split("/", 1)[0] in {"api", "health", "docs", "redoc", "openapi.json"}:
             raise HTTPException(404)
         try:
             return await super().get_response(path, scope)

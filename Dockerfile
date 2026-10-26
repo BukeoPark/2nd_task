@@ -5,7 +5,7 @@ RUN npm ci
 COPY frontend/ ./
 # 브라우저에 공개되는 카카오 JS 앱 키만 빌드에 넣는다. REST·Google 서버 키는 넣지 않는다.
 ARG VITE_KAKAO_JS_APP_KEY
-RUN test -n "$VITE_KAKAO_JS_APP_KEY" && npm run build
+RUN test -n "$(printenv VITE_KAKAO_JS_APP_KEY)" && npm run build
 
 FROM python:3.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app/backend \
