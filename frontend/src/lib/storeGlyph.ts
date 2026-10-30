@@ -19,8 +19,8 @@ export const SVC_GLYPHS: Record<string, StoreGlyph> = {
   CS100006: { glyph: "🍔", label: "패스트푸드" },
   CS100007: { glyph: "🍗", label: "치킨" },
   CS100008: { glyph: "🍢", label: "분식" },
-  CS100009: { glyph: "🍺", label: "호프·주점" },
-  CS100010: { glyph: "☕", label: "커피·음료" },
+  CS100009: { glyph: "🍺", label: "술집·주점" },
+  CS100010: { glyph: "☕", label: "카페·음료" },
 };
 
 export const FALLBACK_GLYPH: StoreGlyph = { glyph: "🍽️", label: "기타 음식점" };

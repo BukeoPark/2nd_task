@@ -134,10 +134,10 @@ export function AreaOverviewPanel(p: Props) {
     {!narrow && <TabRail {...railProps} orientation="vertical" />}
     <Drawer title={p.title} titleAside={<div className="area-header-badges">
       {character.data && <SummaryTypeBadge data={character.data} />}
-      <span aria-label={`선택 업종: ${p.svc ? p.filterName : "업종 전체"}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "6px 13px", background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#334155", fontSize: FS.cardTitle, fontWeight: 700, lineHeight: 1.4, wordBreak: "keep-all" }}>
+      <span className="industry-favorite-group"><span aria-label={`선택 업종: ${p.svc ? p.filterName : "업종 전체"}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 24, padding: "6px 13px", background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#334155", fontSize: FS.cardTitle, fontWeight: 700, lineHeight: 1.4, wordBreak: "keep-all" }}>
         {p.svc && <span aria-hidden="true">{glyphFor(p.svc).glyph}</span>}{p.svc ? p.filterName : "업종 전체"}
       </span>
-      {p.mode === "founder" && p.favorite && <button type="button" aria-label={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} aria-pressed={p.favorite.saved} onClick={p.favorite.onToggle} title={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, minWidth: 40, justifyContent: "center", padding: "6px", borderRadius: 24, border: "1px solid #D97706", background: p.favorite.saved ? "#FEF3C7" : "#FFFBEB", color: "#92400E", fontSize: FS.ui, fontWeight: 700, cursor: "pointer" }}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={p.favorite.saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8"><path d="m12 3 2.8 5.7 6.3.9-4.6 4.4 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.6l6.2-.9Z"/></svg></button>}
+      {p.favorite && <button type="button" aria-label={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} aria-pressed={p.favorite.saved} onClick={p.favorite.onToggle} title={p.favorite.saved ? "내 관심 지역에서 빼기" : "내 관심 지역에 담기"} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, minWidth: 40, justifyContent: "center", padding: "6px", borderRadius: 24, border: "1px solid #D97706", background: p.favorite.saved ? "#FEF3C7" : "#FFFBEB", color: "#92400E", fontSize: FS.ui, fontWeight: 700, cursor: "pointer" }}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={p.favorite.saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8"><path d="m12 3 2.8 5.7 6.3.9-4.6 4.4 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.6l6.2-.9Z"/></svg></button>}</span>
     </div>} onBack={p.onBack} backLabel={p.backLabel ?? `← ${p.parentName ?? "행정동"} 종합분석으로`} onClose={p.onClose} left={narrow ? 0 : RAIL_WIDTH_PX}>
       {cmp.isPending && <div style={{ marginTop: 10 }}><Notice tone="muted">종합분석을 불러오는 중...</Notice></div>}
       {stale && <div style={{ marginTop: 10 }} role="status"><Notice tone="muted">새 조건의 값을 불러오는 중...</Notice></div>}
@@ -152,7 +152,7 @@ export function AreaOverviewPanel(p: Props) {
       <div aria-busy={stale} style={stale ? { opacity: 0.45, pointerEvents: "none" } : undefined}>
       {pane("summary", "요약", (
         <>
-          {p.mode === "founder" && p.favorite?.note && <div role="status"><Notice tone="warn">{p.favorite.note}</Notice></div>}
+          {p.favorite?.note && <div role="status"><Notice tone="warn">{p.favorite.note}</Notice></div>}
           {character.isPending && <Notice tone="muted">지역 유형을 불러오는 중...</Notice>}
           {character.isError && <Notice tone="error">지역 유형을 불러오지 못했어요. <button type="button" onClick={() => void character.refetch()}>다시 시도</button></Notice>}
           {character.data && <SummaryTypeContext data={character.data} />}
@@ -166,7 +166,7 @@ export function AreaOverviewPanel(p: Props) {
           {p.notice && <div style={{ marginTop: 10 }}>{p.notice}</div>}
           {p.actions}
           {/* 지표 카드·기준 안내와 읽는 법·유의사항은 접이식 하나로 모은다(요약에 접이식이 셋이던 것을 둘로) */}
-          <NoteSlot label="기준·읽는 법 자세히">
+          <NoteSlot label="유의사항">
             {cmp.data && <Summary stores={row("stores_sbiz")} />}
             <div style={{ marginTop: 10 }}>
               <Notice tone="info">
@@ -342,7 +342,7 @@ function Summary({ stores, perStore, yoy }: { stores?: Row; perStore?: Row; yoy?
         {perStore && <Card row={perStore} label="점포당 월평균 추정매출" hint={`서울시 공개 자료(추정) · ${perStore.as_of ?? ""}`} />}
       </div>
       {yoy && <div style={{ marginTop: 8 }}><Card row={yoy} label="총매출 증감률(전년 동기·명목)" /></div>}
-      <Caveat>점포당 매출은 서울시 추정치의 평균이며 개별 매장의 실제 매출이 아닙니다. 매출 증감률은 점포 수 변화가 섞인 총매출 증감이고 물가는 보정하지 않았습니다. 점포 수(상가정보)와 매출·추이의 점포 수(서울시)는 집계 기준이 달라 숫자가 같지 않습니다.</Caveat>
+      <Caveat>매출은 지역 평균 추정치로, 내 가게의 실제 매출이 아닙니다. 총매출 증감에는 점포 수 변화가 포함되며 물가는 반영하지 않았습니다. 자료마다 점포 수 기준이 다릅니다.</Caveat>
     </div>
   );
 }
@@ -397,7 +397,7 @@ function SelectedIndustryGrowth({ level, code, name, overview, yoy }: { level: "
         { name: "업종 전체", color: "#94A3B8", values: quarters.map(q => overall.data?.trend.find(t => t.quarter === q)?.per_store_month ?? null) },
         { name, color: "#2563EB", values: quarters.map(q => overview.data?.trend.find(t => t.quarter === q)?.per_store_month ?? null) },
       ]} fmt={formatKrw}/>}
-      <Caveat>두 선은 같은 지역 경계 기준입니다. 업종 전체는 외식 전체의 추정매출 합계를 점포 수로 나눈 값이고, 선택 업종은 해당 업종의 값입니다. 최근 증감은 점포당 매출이 아닌 총매출의 전년 동기 대비 변화입니다.</Caveat>
+      <Caveat>두 선은 같은 지역의 외식 전체와 선택 업종 평균입니다. 증감률은 점포당 매출이 아닌 총매출의 전년 대비 변화입니다.</Caveat>
     </Block>
   </>;
 }
@@ -524,6 +524,6 @@ function NearbyBrandsBlock({ level, code, svc, scls }: { level: "dong" | "trdar"
       })}
     </div>}
 
-    <Caveat>선택 지역 경계 안에 있는 브랜드 매장 수입니다. 선택 업종과 관계없이 집계하며, 지역 밖 매장은 포함하지 않습니다. 보유 브랜드 목록 기준으로 실제 영업 여부와 차이가 있을 수 있습니다. 올리브영은 소상공인 상가정보의 소매업 매장을 상호로 식별하고 같은 이름·주소 중복을 제외합니다.</Caveat>
+    <Caveat>브랜드 수는 업종과 관계없이 지역 안 매장만 셉니다. 올리브영은 상호·주소 중복을 뺀 값이며, 실제 영업 여부와 다를 수 있습니다.</Caveat>
   </Block>;
 }

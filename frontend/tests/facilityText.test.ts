@@ -38,7 +38,7 @@ test("화면 묶음은 모든 종류를 정확히 한 번씩 담고 각 종류�
   assert.equal(new Set(all).size, all.length);
   assert.deepEqual(FACILITY_GROUPS.map((g) => g.label), ["의료", "상업", "문화·여가", "교육", "공공기관"]);
   assert.deepEqual(FACILITY_GROUPS.at(-1)!.types, []);       // 공공기관은 매장 반경 안 좌표 자료가 아직 없어 비어 있다(비어 있는 묶음은 화면에 나오지 않는다)
-  assert.deepEqual(FACILITY_GROUPS[1].types, ["department_store", "hypermarket", "shopping_mall", "outlet"]);
+  assert.deepEqual(FACILITY_GROUPS[1].types, ["department_store", "hypermarket", "shopping_mall", "outlet", "market"]);
 });
 
 const item = (over: Record<string, unknown> = {}) => ({ facility_id: "a", name: "A", type: "cinema" as const, subtype: null, lon: 126.9, lat: 37.5, distance_m: 300, status_label: "영업(인허가 기준)", ...over });

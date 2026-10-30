@@ -1,3 +1,4 @@
+import { StoreHeaderBadges } from "./StoreHeaderBadges";
 import "./storeDetail.css";
 import { OwnerChurnDetails, OwnerLocationDetails } from "./OwnerReferenceDetails";
 import { OwnerStoreWorkspace } from "./OwnerStoreWorkspace";
@@ -192,6 +193,7 @@ function StoreDetail({ storeId, onBack, onClose, onOpenArea, mapView, mode, onGr
       {!narrow && <GroupRail active={group} onChange={setGroup} orientation="vertical" groups={groups} />}
       <Drawer
         title={store ? `${store.name}${store.branch ? ` ${store.branch}` : ""}` : "매장 정보"}
+        titleAside={store ? <StoreHeaderBadges store={store}/> : undefined}
         onBack={onBack}
         onClose={onClose}
         left={narrow ? 0 : RAIL_WIDTH_PX}

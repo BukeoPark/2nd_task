@@ -8,6 +8,7 @@ import { Fold, Notice, SourceNote } from "../../components/Notice";
 import type { AreaCharacter, CharacterStation } from "../../lib/apiClient";
 import { cellSub, cellText, countText, demandStructureNote, densityReferenceText, densityText, NEUTRAL_STYLE, pctText, rankText, TRAIT_STYLE, typeNotice } from "../../lib/areaCharacter";
 import { useAreaCharacter, useReportExtras } from "../food/useFood";
+import { facilityDistance, supplementalAreaFacilities } from "../../lib/facilitySupplement";
 import { namedCounts, namedFacilities } from "../../lib/areaFacilityNames";
 import { FS } from "../../lib/typography";
 
@@ -132,24 +133,29 @@ export function AreaTransitBlock(p: CharProps) {
 /** 집객시설 이름 — 백화점·쇼핑몰·대형마트·영화관·문화시설·종합병원의 이름과 종류(매장 상세의 '어떤 시설인가요'와 같은 모양). 처음 5곳만 보이고 나머지는 '더 보기'. */
 function AreaFacilityNames({ level, code, svc, scls }: CharProps) {
   const q = useReportExtras(level, code, svc, scls);
-  const [open, setOpen] = useState(false);
   if (q.isPending) return <Caption>시설 이름을 불러오는 중...</Caption>;
   if (q.isError) return <Caption>시설 이름을 불러오지 못했어요.</Caption>;
-  const points = q.data?.facility_map?.kind === "facilities" ? q.data.facility_map.points : [];
+  const map = q.data?.facility_map?.kind === "facilities" ? q.data.facility_map : q.data?.map?.kind === "facilities" ? q.data.map : null;
+  const points = [...(map?.points ?? []), ...supplementalAreaFacilities(map?.boundary).filter(p=>p.category === "시장")];
   const list = namedFacilities(points);
+  const ring = map?.boundary?.type === "Polygon" ? (map.boundary.coordinates as number[][][])[0] : map?.boundary?.type === "MultiPolygon" ? (map.boundary.coordinates as number[][][][])[0]?.[0] : [];
+  const center = ring?.length ? {lon:ring.reduce((s,p)=>s+p[0],0)/ring.length,lat:ring.reduce((s,p)=>s+p[1],0)/ring.length} : null;
   if (list.length === 0) return <Caption>이름을 보일 대표 시설이 없어요.</Caption>;
   return <>
-    {(open ? list : list.slice(0, 5)).map(x => <StatRow key={`${x.shown}-${x.name}`} label={x.name} value={x.shown} />)}
-    {list.length > 5 && <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}><button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} style={{ border: 0, background: "none", color: PK.sub, fontSize: FS.ui, cursor: "pointer" }}>{open ? "접기 ⌃" : `더 보기 (${list.length - 5}곳) ⌄`}</button></div>}
+    {[...new Set(list.map(x=>x.shown))].map(category=><div key={category}><SubHead>{/병원/.test(category) ? "의료" : /시장|쇼핑|마트|백화점/.test(category) ? "상업" : "문화·여가"} · {category}</SubHead>{list.filter(x=>x.shown===category).map(x=><StatRow key={`${x.shown}-${x.name}`} label={x.name} value={center ? `${facilityDistance(center,x).toLocaleString()}m` : "거리 자료 없음"} note={x.shown}/>)}</div>)}
   </>;
 }
+
 
 /** 입지·교통 — 집객시설 수와 밀도(같은 단위 중앙값과 견줌). */
 export function AreaFacilitiesBlock(p: CharProps) {
   const [expanded, setExpanded] = useState(false);
   const extras = useReportExtras(p.level, p.code, p.svc, p.scls);
   // 병원급(중형병원)은 시설 지도의 이름으로 센다 — 서버의 '병원·의원' 개수에는 개인의원이 섞여 있다
-  const midHospitals = namedCounts(extras.data?.facility_map?.kind === "facilities" ? extras.data.facility_map.points : null)["중형병원"] ?? 0;
+  const facilityMap = extras.data?.facility_map?.kind === "facilities" ? extras.data.facility_map : extras.data?.map?.kind === "facilities" ? extras.data.map : null;
+  const extraPoints = supplementalAreaFacilities(facilityMap?.boundary);
+  const midHospitals = namedCounts(facilityMap?.points)["중형병원"] ?? 0;
+  const markets = extraPoints.filter(p=>p.category === "시장").length;
   return (
     <WithCharacter {...p}>
       {(d) => {
@@ -163,28 +169,21 @@ export function AreaFacilitiesBlock(p: CharProps) {
         const hidden = ["bank", "pharmacy", "hospital"];
         const facilityTypes = (fa.by_type ?? []).filter(t => !schoolKeys.includes(t.key) && !["subway", "bus_stop"].includes(t.key) && !hidden.includes(t.key) && !supplemented.has(t.key)).map(t => t.key === "general_hospital" ? { ...t, label: "대형병원" } : t);
         facilityTypes.push(...(fa.supplementary ?? []).filter(t => !hidden.includes(t.key)));
+        if (markets > 0) facilityTypes.push({ key: "market", label: "시장", count: markets });
         if (midHospitals > 0) facilityTypes.push({ key: "mid_hospital", label: "중형병원", count: midHospitals });
         if (schoolRows.length > 0) facilityTypes.push({ key: "schools", label: "초·중·고", count: schoolCount });
         const sortedFacilities = facilityTypes.filter(t => t.count !== null && t.count > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, "ko"));
-        const visibleFacilities = expanded ? sortedFacilities : sortedFacilities.slice(0, 6);
+        const visibleFacilities = sortedFacilities;
         return (
           <Block title={<span className="data-heading"><AppIcon name="building"/>집객시설</span>} >
-            <div className="environment-summary">
-              <div><span><AppIcon name="building"/>전체 집객시설</span><strong>{cellText(fa.total, countText)}</strong>{fa.total.as_of && <small>{fa.total.as_of}</small>}</div>
-              <div><span><AppIcon name="pin"/>집객시설 밀도</span><strong>{densityText(fa.per_km2, false)}</strong><small>경계 면적 1㎢당 시설 수</small></div>
-            </div>
-            <SubHead>같은 단위의 시설 밀도 비교</SubHead>
-            <MetricBars items={[
-              { label: "이 지역", value: fa.per_km2, color: "#3159D9" },
-              { label: "비교 지역 중앙값", value: fa.reference_median, color: "#8391A7" },
-            ]} format={(n) => `${n.toLocaleString("ko-KR")}곳/㎢`} />
+            <div className="environment-summary"><div><span><AppIcon name="building"/>표시 시설 합계</span><strong>{sortedFacilities.reduce((sum,t)=>sum+(t.count ?? 0),0).toLocaleString()}곳</strong><small>의원·약국·은행 제외 · 종류별 공식 자료 기준</small></div></div>
             <SubHead>어떤 시설이 있나요?</SubHead>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 16px" }}>{visibleFacilities.map(t => <StatRow key={t.key} label={t.label} value={t.count === null ? "자료 없음" : `${t.count.toLocaleString()}곳`} missing={t.count === null}/>)}</div>
-            {sortedFacilities.length > 6 && <ChevronToggle open={expanded} onClick={() => setExpanded(v => !v)} label="시설 종류" />}
+            <ChevronToggle open={expanded} onClick={() => setExpanded(v => !v)} label="집객시설 상세" />
             {!facilityTypes.some(t => t.count !== null && t.count > 0) && <Caption>종류별로 확인되는 시설이 없어요.</Caption>}
-            <AreaFacilityNames level={p.level} code={p.code} svc={p.svc} scls={p.scls} />
-            <Caveat>백화점·쇼핑몰·대형마트는 공개 이용 가능한 공식 시설 목록을, 중형병원(병원급)은 영업 중인 의료 인허가 기록을 경계 안에서 집계합니다. 공식 자료가 없거나 0곳인 시설 종류는 목록에서 제외합니다. 시설 종류별 개수는 서로 다른 자료로 보완하여 위 서울시 전체 시설 수와 합계가 다를 수 있습니다.</Caveat>
-            <Caveat>집객시설 자료: {cellSub(fa.total) || "서울시 상권분석서비스"}. 지역 경계 안 시설을 세며, 밀도는 경계 면적으로 나눈 값입니다.</Caveat>
+            {expanded && <><AreaFacilityNames level={p.level} code={p.code} svc={p.svc} scls={p.scls} /><Caption>거리: 지역 경계 대표점 기준 직선거리 · 시장은 서울시 전통시장 상권 대표 좌표 기준. 이름·좌표가 있는 시설만 상세 목록에 표시합니다.</Caption></>}
+            <Caveat>시설은 공식 목록·인허가 기준입니다. 의원·약국은 제외하며, 확인된 시설만 표시합니다. 시장 거리는 대표 좌표 기준입니다.</Caveat>
+            <Caveat>집객시설 자료: {cellSub(fa.total) || "서울시 상권분석서비스"}. 지역 경계 안 시설 기준입니다.</Caveat>
           </Block>
         );
       }}

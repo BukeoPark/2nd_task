@@ -70,7 +70,7 @@ function Body({ data }: { data: NearbyAnalysisResponse }) {
 
       {coordWarnings.length > 0 && (
         <div style={{ marginTop: 6 }}>
-          <Caveat>일부 위치정보 누락으로 주변 분석에서 제외된 인허가가 있습니다.</Caveat>
+          <Caveat>위치가 없는 인허가 기록은 집계에서 빠집니다.</Caveat>
         </div>
       )}
       {otherWarnings.map((w) => (

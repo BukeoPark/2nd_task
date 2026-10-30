@@ -1,3 +1,5 @@
+import { StoreHeaderBadges } from "./StoreHeaderBadges";
+import { NoteHost } from "../../components/NoteHost";
 import { PopulationMix, MetricBars } from "../../components/DataVisuals";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -63,13 +65,14 @@ export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, o
   const growthText = benchmark.isError ? "조회 실패" : benchmark.isPending ? "불러오는 중" : growth == null ? "자료 없음" : signedPct(growth);
   const area = location.data?.area;
   return <>{!narrow && rail("vertical")}<Drawer title={`${store.name}${store.branch ? ` ${store.branch}` : ""}`} onBack={onBack} onClose={onClose} left={narrow ? 0 : RAIL_WIDTH_PX} subtitle={<StoreAddress store={store} />}
-    titleAside={<ActionButton variant={owned ? "primary" : "secondary"} aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</ActionButton>}>
+    titleAside={<><StoreHeaderBadges store={store}/><ActionButton variant={owned ? "primary" : "secondary"} aria-pressed={owned} onClick={toggleOwn}>{owned ? "✓ 내 가게" : "내 가게로 설정"}</ActionButton></>}>
     {overlays}<div className="store-detail">
     {narrow && rail("horizontal")}{saveFailed && <Notice tone="error">이 브라우저에서 내 가게 설정을 저장하지 못했어요.</Notice>}
     {screens.map(id => {
       const style = AREA_TAB_STYLE[TABS[id].like];
       return <div key={id} role="tabpanel" id={railPanelId(id, "owner-")} aria-labelledby={railTabId(id, "owner-")} hidden={screen !== id}>
         <div style={{ marginTop: 12 }}><RailHeading fg={style.fg} bg={style.bg} title={TABS[id].question} /></div>
+        <NoteHost>
         {id === "overview" && <>
           <Block title="주변 상황">
             <div style={grid2}>
@@ -109,6 +112,7 @@ export function OwnerStoreWorkspace({ store, blocks, radius, onRadius, onBack, o
           </div>
         </>}
         {id === "info" && <>{blocks.basic}<Fold title="인허가·지정 이력">{blocks.history}</Fold></>}
+        </NoteHost>
       </div>;
     })}
     </div>

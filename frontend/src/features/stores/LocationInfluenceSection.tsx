@@ -75,9 +75,9 @@ export function RadiusBasisSection({ storeId, radius }: { storeId: string; radiu
   return (
     <Caveat>
       <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
-        <li>반경 {radiusLabel(data.radius_m)} · 직선거리 기준이며 실제 도보 거리와 다를 수 있습니다.</li>
-        <li>교통 이용량은 연결된 자료만 반영하며, 자료별 기준 기간이 다를 수 있습니다.</li>
-        <li>집객시설은 공식 자료에서 위치가 확인된 곳만 반영합니다. ‘자료 없음’은 0을 뜻하지 않습니다.</li>
+        <li>반경 {radiusLabel(data.radius_m)}의 직선거리 기준입니다. 도보 거리는 다를 수 있어요.</li>
+        <li>교통 이용량은 확인된 자료만 합칩니다. 자료별 기간이 다를 수 있어요.</li>
+        <li>시설은 위치가 확인된 곳만 셉니다. ‘자료 없음’은 0이 아닙니다.</li>
       </ul>
       <SourceNote label="반경 입지 지표 자료" title={data.source.title} reference={data.source.reference} />
     </Caveat>
@@ -91,7 +91,7 @@ export function CompetitionBasisSection({ storeId, radius }: { storeId: string; 
   return (
     <Caveat>
       <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
-        <li>반경 {radiusLabel(data.radius_m)} · 직선거리 기준이며 실제 도보 거리와 다를 수 있습니다.</li>
+        <li>반경 {radiusLabel(data.radius_m)}의 직선거리 기준입니다. 도보 거리는 다를 수 있어요.</li>
         <li>경쟁점은 같은 세부 업종 기준이며 선택 매장은 제외합니다. 상가정보와 인허가 자료의 점포 수는 다를 수 있습니다.</li>
       </ul>
     </Caveat>
@@ -177,7 +177,7 @@ function FacilityDetail({ facilities, showOnMap, onShowOnMapChange }: { faciliti
   return (
     <div>
       {note && <div style={{ fontSize: FS.caption, color: "#92400E", paddingBottom: 4 }}>{note}</div>}
-      <Caveat>개수는 공식 목록 기준이며 이용객 수가 아닙니다. '영업'은 인허가상 상태입니다.</Caveat>
+      <Caveat>시설 수는 방문객 수가 아닙니다. 영업 상태는 인허가 기록 기준입니다.</Caveat>
       {facilities.facilities.length > 0 && (
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: FS.caption, color: "#4B5563", marginTop: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={showOnMap} onChange={(e) => onShowOnMapChange(e.target.checked)} />

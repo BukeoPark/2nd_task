@@ -9,3 +9,8 @@
 .environment-transit-summary{align-items:stretch}.environment-transit-summary .environment-station-row{padding:10px 0 0;border:0}.environment-transit-summary .station-name{display:flex;flex-wrap:nowrap;gap:6px;min-width:0}.environment-transit-summary .station-name-text{display:block;flex:1;min-width:0;margin:0;white-space:nowrap;line-height:1.3;letter-spacing:-.4px}.environment-transit-summary .rail-line-badge{width:28px;height:28px;flex-shrink:0}.environment-transit-summary .environment-station-row .station-name{font-size:var(--panel-metric,28px)}
 
 .nearby-brand-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.nearby-brand-card{min-width:0;background:white;border:1px solid #e5e7eb;border-radius:10px;padding:14px 10px;text-align:center}.nearby-brand-logo{height:48px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}.nearby-brand-logo img{display:block;max-width:100%;max-height:44px;object-fit:contain}.nearby-brand-card>strong{display:block;line-height:1.3;white-space:nowrap}
+
+.industry-favorite-group{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:100%;white-space:normal!important}
+.industry-favorite-group>span{min-width:0;white-space:normal;overflow-wrap:anywhere}
+.industry-favorite-group>button{flex:0 0 40px}
+.area-header-badges>span:not(.industry-favorite-group){max-width:100%;white-space:normal;overflow-wrap:anywhere}

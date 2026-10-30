@@ -69,6 +69,7 @@ export function StoreFacilityVisuals({ facilities, detail }: { facilities?: Faci
     {foldable && <ChevronToggle open={expanded} onClick={() => setExpanded(!expanded)} label="집객시설 상세" />}
     {expanded && <>
       {groups.map(g => <div key={g.id}><SubHead>{g.label}</SubHead>{g.rows.map(r => <StatRow key={r.key} label={r.name} value={formatDistance(r.distance)} note={r.note} />)}</div>)}
+      <Caption>거리: 매장 기준 직선거리 · 시장은 서울시 전통시장 상권 대표 좌표 기준</Caption>
       {detail && <div style={{ marginTop: 10 }}>{detail}</div>}
     </>}
   </Block>;

@@ -6,12 +6,13 @@
 export interface FacilityPoint { name: string; category: string }
 
 /** 이름으로 보일 종류와 순서(앞일수록 먼저) */
-export const NAMED_CATEGORY_ORDER = ["백화점", "복합쇼핑몰", "대형마트", "영화관", "문화시설", "대형병원", "중형병원"] as const;
+export const NAMED_CATEGORY_ORDER = ["시장", "백화점", "복합쇼핑몰", "대형마트", "영화관", "문화시설", "대형병원", "중형병원"] as const;
 export type NamedCategory = (typeof NAMED_CATEGORY_ORDER)[number];
 
 /** 서버 종류 + 이름 → 화면에 보일 종류(대표 시설이 아니면 null). */
 export function displayCategory(p: FacilityPoint): NamedCategory | null {
   if (p.category === "종합병원") return "대형병원";
+  if (p.category === "중형병원") return "중형병원";
   if (p.category === "병원") return p.name.trim().endsWith("병원") ? "중형병원" : null;
   return (NAMED_CATEGORY_ORDER as readonly string[]).includes(p.category) ? (p.category as NamedCategory) : null;
 }
