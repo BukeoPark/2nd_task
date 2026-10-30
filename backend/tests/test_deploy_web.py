@@ -42,3 +42,19 @@ def test_windows_style_paths_are_not_served_as_frontend(tmp_path):
         with pytest.raises(HTTPException) as err:
             asyncio.run(files.get_response(path, {"method": "GET"}))
         assert err.value.status_code == 404, path
+
+
+def test_cors_warning_only_when_every_origin_is_local():
+    from app.deploy import cors_warning
+
+    assert "CORS_ORIGINS" in cors_warning(["http://localhost:5173", "http://127.0.0.1:5173"])
+    assert cors_warning(["https://sanggwon-analysis.pages.dev", "http://localhost:5173"]) is None
+
+
+def test_render_blueprint_declares_the_cors_origins_the_deployed_site_needs():
+    import json
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / "render.yaml").read_text(encoding="utf-8")
+    line = next(l for l in text.splitlines() if l.strip().startswith("value: '[") and "pages.dev" in l)
+    assert "https://sanggwon-analysis.pages.dev" in json.loads(line.split("value:", 1)[1].strip().strip("'"))

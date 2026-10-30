@@ -1,6 +1,7 @@
 """정식 서버 시작: 검증된 가공 데이터만 복원한 뒤 단일 worker로 실행."""
 from __future__ import annotations
 import hashlib
+import logging
 import re
 import shutil
 import stat
@@ -10,6 +11,16 @@ from pathlib import Path
 from urllib.parse import urlparse
 import httpx
 from app.config import settings
+
+log = logging.getLogger("uvicorn.error")
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+
+def cors_warning(origins: list[str]) -> str | None:
+    """허용 오리진이 모두 로컬뿐이면 안내 문구를 돌려준다 — 다른 주소(Cloudflare Pages 등)의 화면이 이 API 를 부르면 브라우저가 막는다."""
+    if any(urlparse(o).hostname not in LOCAL_HOSTS for o in origins):
+        return None
+    return "CORS_ORIGINS 가 로컬 주소뿐입니다. 다른 주소(예: Cloudflare Pages)의 화면이 이 서버 API 를 부르려면 CORS_ORIGINS 에 그 주소를 JSON 목록으로 추가하세요."
 
 
 def unpack_bundle(archive: Path, destination: Path, expected_sha: str) -> None:
@@ -64,4 +75,6 @@ def prepare_data() -> None:
 if __name__ == "__main__":
     import uvicorn
     prepare_data()
+    if (warning := cors_warning(settings.cors_origins)) is not None:
+        log.warning(warning)
     uvicorn.run("app.main:app", host="0.0.0.0", port=settings.port, workers=1)
