@@ -28,3 +28,17 @@ def test_missing_frontend_build_is_reported(tmp_path):
     import pytest
     with pytest.raises(RuntimeError, match="빌드"):
         mount_frontend(FastAPI(), tmp_path)
+
+
+def test_windows_style_paths_are_not_served_as_frontend(tmp_path):
+    """윈도우에서는 Starlette 가 'api\\unknown' 처럼 역슬래시 경로를 넘긴다 — 없는 API·숨김 파일을 index.html(200)로 숨기면 안 된다."""
+    import asyncio
+    import pytest
+    from starlette.exceptions import HTTPException
+    from app.web import FrontendFiles
+    (tmp_path / "index.html").write_text("<html>상권분석</html>")
+    files = FrontendFiles(directory=tmp_path, html=True)
+    for path in ("api\\unknown", "api\\nested\\unknown", "health\\x", "docs\\x", ".env", "assets\\.secret"):
+        with pytest.raises(HTTPException) as err:
+            asyncio.run(files.get_response(path, {"method": "GET"}))
+        assert err.value.status_code == 404, path

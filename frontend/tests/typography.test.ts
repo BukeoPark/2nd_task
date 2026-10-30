@@ -29,7 +29,7 @@ test("화면 코드는 숫자 글자 크기를 직접 쓰지 않고 FS 단계를
   const EXCLUDE = ["features/landing/", "features/stores/report/", "features/area/AreaReportModal", "AnchorLayer", "AreaBubbleLayer", "SearchMarker", "SearchStoresLayer", "SelectedStoreMarker", "FacilityLayer", "RailStationLayer", "features/map/"];
   const bad: string[] = [];
   for (const f of walk(root)) {
-    const rel = f.slice(root.length + 1);
+    const rel = f.slice(root.length + 1).replaceAll("\\", "/");   // 윈도우의 역슬래시 구분자도 제외 목록(/)과 맞게
     if (EXCLUDE.some((e) => rel.includes(e))) continue;
     readFileSync(f, "utf8").split("\n").forEach((line, i) => {
       if (/fontSize:\s*[\d.]+/.test(line) && !/aria-label="(닫기|비교에서 삭제|검색어 지우기|이전 화면으로)"/.test(line)) bad.push(`${rel}:${i + 1}`);

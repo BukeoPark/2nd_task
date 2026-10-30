@@ -7,8 +7,9 @@ from starlette.staticfiles import StaticFiles
 
 class FrontendFiles(StaticFiles):
     async def get_response(self, path, scope):
-        # 없는 API·서버 경로를 index.html(200)로 숨기지 않는다.
-        if any(part.startswith(".") and part != "." for part in path.split("/")) or path.split("/", 1)[0] in {"api", "health", "docs", "redoc", "openapi.json"}:
+        # 없는 API·서버 경로를 index.html(200)로 숨기지 않는다. 윈도우에서는 Starlette 가 경로를 'api\unknown' 처럼 역슬래시로 넘기므로 / 로 맞춰서 검사한다.
+        checked = path.replace("\\", "/")
+        if any(part.startswith(".") and part != "." for part in checked.split("/")) or checked.split("/", 1)[0] in {"api", "health", "docs", "redoc", "openapi.json"}:
             raise HTTPException(404)
         try:
             return await super().get_response(path, scope)
